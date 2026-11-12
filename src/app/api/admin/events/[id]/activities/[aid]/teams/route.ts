@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { capsuleRows, loadCapsule, makeTeams, saveTeamsState, teams, teamsState } from "@/lib/capsule";
-import { participantPool, rosterSet } from "@/lib/participants";
+import { isLimited, participantPool, rosterSet } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 
@@ -89,7 +89,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   if (await locked(aid)) return bad("이미 작성된 타임캡슐이 있어서 팀을 바꿀 수 없어요.", 409);
 
   const all = await (await getStore()).list("Members");
-  const att = c.cfg.participants === "selected" ? await rosterSet(c.act) : null;
+  const att = isLimited(c.cfg) ? await rosterSet(c.act) : null;
   const names = new Set<string>();
   const seen = new Set<string>();
   for (const t of parsed.data.teams) {

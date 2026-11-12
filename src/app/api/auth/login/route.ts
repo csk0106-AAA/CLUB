@@ -7,7 +7,7 @@ const body = z.object({ memberId: z.string().min(1), code: z.string().min(1).max
 
 export async function POST(req: Request) {
   const parsed = body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "이름과 초대코드를 입력해 주세요." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "이름과 초대코드(연락처 뒷자리 4자리)를 입력해 주세요." }, { status: 400 });
   const { memberId, code } = parsed.data;
 
   const wait = lockedFor(memberId);
@@ -17,10 +17,12 @@ export async function POST(req: Request) {
 
   const s = await getStore();
   const member = (await s.list("Members")).find((m) => m.id === memberId);
-  const invite = await getSetting("inviteCode", process.env.INVITE_CODE ?? "");
-  if (!member || code !== String(invite)) {
+  // 개인 초대코드 = 명단에 등록된 연락처 뒷자리 4자리. 연락처가 없는 회원만 공통 초대코드를 쓴다.
+  const digits = (member?.phone ?? "").replace(/\D/g, "");
+  const expected = digits.length >= 4 ? digits.slice(-4) : String(await getSetting("inviteCode", process.env.INVITE_CODE ?? ""));
+  if (!member || !expected || code.trim() !== expected) {
     recordFail(memberId);
-    return NextResponse.json({ error: "초대코드가 맞지 않아요. 다시 확인해 주세요." }, { status: 401 });
+    return NextResponse.json({ error: "초대코드가 맞지 않아요. 연락처 뒷자리 4자리를 확인해 주세요." }, { status: 401 });
   }
 
   clearFails(memberId);

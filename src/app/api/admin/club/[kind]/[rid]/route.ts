@@ -14,7 +14,7 @@ async function find(ctx: Ctx) {
   const s = await getStore();
   const row = (await s.list(def.tab)).find((r) => r.id === rid);
   if (!row) return { err: bad("항목을 찾을 수 없어요.", 404) };
-  return { def, s, row };
+  return { def, s, row, by: g.s.name };
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -22,7 +22,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if ("err" in f) return f.err;
   const parsed = f.def.schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad(clubError(parsed.error));
-  const row = await f.s.update(f.def.tab, f.row.id, parsed.data);
+  const extra = f.def.audit ? f.def.audit(f.row, parsed.data, f.by) : {};
+  const row = await f.s.update(f.def.tab, f.row.id, { ...parsed.data, ...extra });
   return NextResponse.json({ item: f.def.view(row as NonNullable<typeof row>) });
 }
 

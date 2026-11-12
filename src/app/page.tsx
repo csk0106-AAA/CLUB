@@ -80,7 +80,7 @@ export default function LoginPage() {
             </select>
           </div>
           <div>
-            <label className="l" htmlFor="cd">초대코드</label>
+            <label className="l" htmlFor="cd">초대코드 (내 연락처 뒷자리 4자리)</label>
             <input
               id="cd"
               className="field"
@@ -91,7 +91,7 @@ export default function LoginPage() {
               onChange={(e) => setCode(e.target.value)}
             />
           </div>
-          <p className="hint">5회 틀리면 1분간 잠겨요.</p>
+          <p className="hint">연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
           {error && <div className="msg bad" role="alert">{error}</div>}
           <div className="footer-actions">
             <button className="btn" type="submit" disabled={busy || !code}>

@@ -15,18 +15,28 @@ type Stage = {
   round: null | {
     id: string; state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer"; orderNo: number;
     alias: string; introMd: string; nameRevealed: boolean; name: string;
-    guessResults: { name: string; count: number }[]; guessTotal: number;
-    statements: string[]; votes: { counts: number[]; voted: number; eligible: number };
+    guessResults: { name: string; count: number }[]; guessTotal: number; guessJoined: number; guessEligible: number;
+    statements: string[]; votes: { counts: number[]; voted: number; eligible: number; notVoted: string[] };
     lieIndex: number; correctVoters: string[]; correctGuessers: string[];
   };
 };
 type Side = { top: { memberId: string; name: string; score: number }[]; topScore: number; tied: { id: string; name: string }[]; needsRoulette: boolean; lottery: null | { winnerId: string; winnerName: string; tiedIds: string[] } };
 type Scores = { played: number; A: Side; B: Side };
-type Action = "open" | "results" | "ready" | "name" | "vote" | "close" | "answer";
+type Action = "open" | "results" | "ready" | "name" | "vote" | "close" | "answer" | "back";
 
 const STATE_LABEL: Record<string, string> = {
   intro: "소개 읽기", results: "사전 추측 결과", reveal: "“저예요” 대기", voting: "거짓 투표 중", closed: "투표 마감", answer: "정답 공개",
 };
+// 막대 색(파랑, 노랑, 보라, 초록 순서로 돌아가며)
+const BAR = ["#1cb0f6", "#ffc800", "#ce82ff", "#58cc02"];
+// 문장 번호 동그라미: 1 파랑, 2 노랑, 3 보라. 글자는 어두운 색으로 대비를 지킨다.
+const NO = [
+  { bg: "#1cb0f6", ink: "#06324a" },
+  { bg: "#ffc800", ink: "#3d2e00" },
+  { bg: "#ce82ff", ink: "#2e0a4a" },
+];
+const namesLine = (names: string[], max = 6) =>
+  names.length <= max ? names.join(", ") : `${names.slice(0, max).join(", ")} 외 ${names.length - max}명`;
 
 // 사회자 전체화면(프로젝터용). 2초마다 서버 상태를 읽고, 큰 버튼으로 진행한다.
 export default function HostPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
@@ -63,6 +73,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
   }, [load]);
 
   async function act(action: Action, targetMemberId?: string) {
+    if (action === "back" && st?.round?.state === "intro" && !window.confirm("이 소개를 취소하고 이전 사람으로 돌아갈까요? 이 분은 다시 순서에 들어가요.")) return;
     setBusy(true);
     setError("");
     const r = await api(`/api/admin/events/${id}/activities/${aid}/round`, { body: { action, targetMemberId } });
@@ -133,7 +144,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
                   <p style={{ margin: 0 }}>“{r.alias}” 님의 이야기 중 거짓이라고 생각하는 번호를 내 휴대폰에서 골라 주세요.</p>
                   {r.statements.map((t, i) => (
                     <div key={i} className={`stmt ${r.state === "answer" ? (i === r.lieIndex ? "lie" : "truth") : ""}`}>
-                      <span className="no">{i + 1}</span>
+                      <span className="no" style={{ background: NO[i % 3].bg, color: NO[i % 3].ink }}>{i + 1}</span>
                       <span style={{ flex: 1 }}>{t}</span>
                       {r.state === "answer" && <b>{i === r.lieIndex ? "거짓!" : "진실"}</b>}
                     </div>
@@ -148,15 +159,29 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
                 <div className="panel">
                   <h3>사전 추측 결과 ({r.guessTotal}명)</h3>
                   {r.guessResults.length === 0 && <span className="sub">추측한 분이 없어요.</span>}
-                  {r.guessResults.slice(0, 6).map((g) => (
+                  {r.guessResults.slice(0, 6).map((g, i) => (
                     <div key={g.name}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}><span>{g.name}</span><span className="num">{g.count}표</span></div>
-                      <div className="bar"><i style={{ width: `${r.guessTotal ? (g.count / r.guessTotal) * 100 : 0}%` }} /></div>
+                      <div className="bar"><i style={{ width: `${r.guessTotal ? (g.count / r.guessTotal) * 100 : 0}%`, background: BAR[i % BAR.length] }} /></div>
                     </div>
                   ))}
                 </div>
               )}
-              {r && (
+              {r?.state === "intro" && (
+                <div className="panel">
+                  <h3>진행 상태</h3>
+                  <div className="hostcard">
+                    <span className="sub">이름</span>
+                    <b aria-live="polite">{r.nameRevealed ? r.name : "비공개"}</b>
+                  </div>
+                  <div className="hostcard">
+                    <span className="sub">사전 추측 참여</span>
+                    <b className="num">{r.guessJoined} / {r.guessEligible}명</b>
+                  </div>
+                  <span className="sub">다음 순서는 사회자가 정하거나 무작위로 뽑을 수 있어요.</span>
+                </div>
+              )}
+              {r && r.state !== "intro" && (
                 <div className="panel">
                   <h3>정답 이름</h3>
                   <div className={`namebox ${r.nameRevealed ? "on" : ""}`} aria-live="polite">{r.nameRevealed ? r.name : "?"}</div>
@@ -170,10 +195,14 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
                   {r.votes.counts.map((n, i) => (
                     <div key={i}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}><span>{i + 1}번</span><span className="num">{n}표</span></div>
-                      <div className="bar"><i style={{ width: `${r.votes.voted ? (n / r.votes.voted) * 100 : 0}%`, background: r.state === "answer" && i === r.lieIndex ? "#ff4b4b" : undefined }} /></div>
+                      <div className="bar"><i style={{ width: `${r.votes.voted ? (n / r.votes.voted) * 100 : 0}%`, background: r.state === "answer" && i === r.lieIndex ? "#ff4b4b" : NO[i % 3].bg }} /></div>
                     </div>
                   ))}
-                  {r.state === "voting" && <span className="sub">아직 투표하지 않은 분 {r.votes.eligible - r.votes.voted}명</span>}
+                  {(r.state === "voting" || r.state === "closed") && (
+                    <span className="sub">
+                      {r.votes.notVoted.length === 0 ? "모두 투표했어요." : `아직 투표하지 않은 분 ${r.votes.notVoted.length}명: ${namesLine(r.votes.notVoted)}`}
+                    </span>
+                  )}
                   {r.state === "answer" && <span className="sub">거짓을 맞힌 분 {r.correctVoters.length}명{r.correctVoters.length ? `: ${r.correctVoters.join(", ")}` : ""}</span>}
                 </div>
               )}
@@ -196,7 +225,18 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
                 )}
               </>
             ) : null}
-            {r?.state === "intro" && <button className="btn" type="button" disabled={busy} onClick={() => act("results")}>추측 결과 보기</button>}
+            {r?.state === "intro" && (
+              <>
+                <button className="btn white" type="button" disabled={busy} onClick={() => act("back")}>‹ 이전 사람</button>
+                <button className="btn" type="button" disabled={busy} onClick={() => act("results")}>추측 결과 보기 ›</button>
+              </>
+            )}
+            {(r?.state === "results" || r?.state === "reveal") && (
+              <button className="btn white" type="button" disabled={busy} onClick={() => act("back")}>‹ 소개 다시 보기</button>
+            )}
+            {(r?.state === "voting" || r?.state === "closed") && (
+              <button className="btn white" type="button" disabled={busy || r.votes.voted > 0} onClick={() => act("back")}>‹ 이전</button>
+            )}
             {r?.state === "results" && (
               <>
                 <button className="btn" type="button" disabled={busy} onClick={() => act("ready")}>“저예요” 열기</button>

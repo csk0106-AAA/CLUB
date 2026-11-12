@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MemberTabs } from "@/components/MemberTabs";
 import { api } from "@/lib/client";
 
 type Data = {
@@ -25,8 +26,7 @@ export default function ProfilesPage() {
   }, [router]);
 
   return (
-    <main className="app">
-      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => router.push("/events")}>‹ 행사 목록</button>
+    <main className="app with-tabs">
       <h1 className="title">회원 프로필 북</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!d && !error && <p className="small">불러오는 중이에요…</p>}
@@ -52,6 +52,7 @@ export default function ProfilesPage() {
           )}
         </>
       )}
+      <MemberTabs on="profiles" />
     </main>
   );
 }

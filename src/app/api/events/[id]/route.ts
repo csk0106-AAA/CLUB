@@ -38,9 +38,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       fee: e.fee,
       feeDeadline: e.feeDeadline,
       account: attending ? e.account : "",
+      accountHolder: attending ? e.accountHolder : "",
     },
     activities,
-    apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true" } : null,
+    apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "" } : null,
     feeDue: attending && e.fee !== "" && a?.paid !== "true",
   });
 }

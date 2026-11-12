@@ -54,8 +54,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
     guessResults = [...counts.entries()].map(([mid, count]) => ({ name: nameOf(mid), count })).sort((a, b) => b.count - a.count);
   }
 
+  // 사전 추측 참여 인원(소개 단계부터, 숫자만). 누가 누구를 골랐는지는 결과 단계 전에는 알려 주지 않는다.
+  const eligibleIds = new Set(eligible.map((m) => m.id));
+  const guessers = new Set(
+    guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && eligibleIds.has(x.guesserId)).map((x) => x.guesserId),
+  );
+
   const showStatements = state === "voting" || state === "closed" || state === "answer";
   const counts = [0, 1, 2].map((i) => rv.filter((v) => Number(v.chosenIndex) === i).length);
+  // 아직 투표하지 않은 분(사회자 화면에만, 투표 중·마감 단계에서만)
+  const votedIds = new Set(rv.map((v) => v.voterId));
+  const notVoted = state === "voting" || state === "closed"
+    ? eligible.filter((m) => !votedIds.has(m.id)).map((m) => m.name).sort((a, b) => a.localeCompare(b, "ko"))
+    : [];
   return NextResponse.json({
     ...base,
     round: {
@@ -69,7 +80,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
       guessResults,
       guessTotal: guessResults.reduce((n, x) => n + x.count, 0),
       statements: showStatements ? parseJson<string[]>(tl?.statements, []) : [],
-      votes: { counts, voted: rv.length, eligible: eligible.length },
+      guessJoined: guessers.size,
+      guessEligible: eligible.length,
+      votes: { counts, voted: rv.length, eligible: eligible.length, notVoted },
       lieIndex: state === "answer" ? lie : -1,
       correctVoters: state === "answer" ? rv.filter((v) => Number(v.chosenIndex) === lie).map((v) => nameOf(v.voterId)) : [],
       correctGuessers: state === "answer" ? guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && x.chosenMemberId === target).map((x) => nameOf(x.guesserId)) : [],

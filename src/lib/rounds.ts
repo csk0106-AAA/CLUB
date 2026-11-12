@@ -16,9 +16,9 @@ import type { TemplateConfig } from "./template-schema";
 export type RoundState = "intro" | "results" | "reveal" | "voting" | "closed" | "answer";
 export const REQUIRED_STEPS = ["intro", "reveal", "vote", "result"] as const;
 
-export type Action = "open" | "results" | "ready" | "name" | "vote" | "close" | "answer";
+export type Action = "open" | "results" | "ready" | "name" | "vote" | "close" | "answer" | "back";
 
-const FROM: Record<Exclude<Action, "open" | "name">, RoundState[]> = {
+const FROM: Record<Exclude<Action, "open" | "name" | "back">, RoundState[]> = {
   results: ["intro"],
   ready: ["intro", "results"],
   vote: ["intro", "results", "reveal"],
@@ -125,6 +125,36 @@ export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: s
     if (state === "intro") return { ok: false, error: "추측 결과를 보여 준 뒤에 이름을 공개할 수 있어요.", status: 409 };
     await s.update("Rounds", cur.id, { nameRevealed: "true", updatedAt: now });
     return { ok: true };
+  }
+
+  // 한 단계 되돌리기. 기록(투표, 점수)이 남지 않은 경우에만 허용한다.
+  //  intro            → 이 소개를 취소하고 이전 사람(정답 공개 화면)으로. 이 사람은 다시 순서에 들어간다.
+  //  results, reveal  → 소개 화면으로
+  //  voting, closed   → 아직 아무도 투표하지 않았으면 "저예요" 단계로
+  //  answer           → 되돌릴 수 없음(점수에 반영됨)
+  if (action === "back") {
+    if (state === "intro") {
+      const hasVotes = (await s.list("Votes")).some((v) => v.roundId === cur.id);
+      if (hasVotes) return { ok: false, error: "이미 기록이 있어서 되돌릴 수 없어요.", status: 409 };
+      await s.remove("Rounds", cur.id);
+      const prev = await currentRound(aid);
+      if (prev) await setLive(aid, "result", true);
+      else await setLive(aid, "", false);
+      return { ok: true };
+    }
+    if (state === "results" || state === "reveal") {
+      await s.update("Rounds", cur.id, { state: "intro", updatedAt: now });
+      await setLive(aid, "intro", true);
+      return { ok: true };
+    }
+    if (state === "voting" || state === "closed") {
+      const hasVotes = (await s.list("Votes")).some((v) => v.roundId === cur.id);
+      if (hasVotes) return { ok: false, error: "이미 투표한 분이 있어서 되돌릴 수 없어요. 투표를 마감하고 정답을 공개해 주세요.", status: 409 };
+      await s.update("Rounds", cur.id, { state: "reveal", updatedAt: now });
+      await setLive(aid, "reveal", true);
+      return { ok: true };
+    }
+    return { ok: false, error: "정답을 공개한 뒤에는 되돌릴 수 없어요.", status: 409 };
   }
 
   if (!FROM[action].includes(state)) return { ok: false, error: "지금 단계에서는 누를 수 없는 버튼이에요.", status: 409 };

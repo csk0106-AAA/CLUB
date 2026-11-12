@@ -2,6 +2,8 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { IconLock } from "@/components/Icons";
+import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 
@@ -66,15 +68,22 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
 
   if (!d) return <main className="app">{note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>}</main>;
 
+  const state = d.opened ? { tone: "ok", text: "열렸어요" } : d.canWrite ? { tone: "ok", text: "작성 중" } : { tone: "gray", text: "작성 대기" };
+  const done = (d.hasGoal ? 1 : 0) + (d.hasPact ? 1 : 0);
+
   return (
     <main className="app">
-      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => router.push(`/events/${id}`)}>‹ {d.event.name}</button>
+      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
+        right={<span className={`pill ${state.tone}`}>{state.text}</span>} />
       <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: 24 }}>{d.activity.name}</h1></div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
-      <div className="card row" style={{ flexWrap: "wrap" }}>
-        <span className={`pill ${d.opened ? "ok" : "gray"}`}>{d.opened ? "열렸어요" : "봉인 중"}</span>
-        <span className="small">{d.opened ? "함께 확인해 보세요." : d.openAt ? `${d.openAt.replace("T", " ")}에 열려요.` : "아직 열리지 않았어요."}</span>
+      <div className={`fb ${d.opened ? "good" : "info"}`}>
+        <span className="ic" aria-hidden="true"><IconLock size={16} /></span>
+        <div>
+          <b>{d.opened ? "타임캡슐이 열렸어요" : d.openAt ? `${d.openAt.replace("T", " ")}에 열려요` : "열림 날짜가 정해지면 알려 드려요"}</b>
+          <span className="t">{d.opened ? "함께 확인해 보세요." : "열리기 전에는 누구도 볼 수 없어요."}</span>
+        </div>
       </div>
 
       {d.team ? (
@@ -104,23 +113,23 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
           {d.hasPact && <div className="msg info" role="status">우리 팀 약속이 저장돼 있어요 ✓</div>}
           {d.content?.goal && <div className="card"><b>내가 쓴 목표 (관리자가 확인을 허용했어요)</b><p style={{ whiteSpace: "pre-wrap", margin: "6px 0 0" }}>{d.content.goal}</p></div>}
 
-          {d.canWrite && (
+          {d.canJoin && (
             <>
-              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }} aria-disabled={!d.canWrite}>
                 <b style={{ font: "400 20px var(--display)" }}>나의 1년 뒤 목표</b>
                 <span className="small">나만 볼 수 있어요. 봉인하면 열림 일시 전에는 나도 다시 볼 수 없어요.{d.hasGoal ? " 다시 쓰면 이전 내용을 대신해요." : ""}</span>
                 <label className="l" htmlFor="c-goal">목표</label>
-                <textarea id="c-goal" className="field" rows={4} style={{ padding: 12 }} maxLength={1000} value={goal} onChange={(e) => setGoal(e.target.value)} />
-                <button className="btn" type="button" disabled={busy || !goal.trim()} onClick={() => save("goal")}>목표 봉인하기</button>
+                <textarea id="c-goal" className="field" rows={4} style={{ padding: 12 }} maxLength={1000} value={goal} disabled={!d.canWrite} onChange={(e) => setGoal(e.target.value)} />
+                <button className="btn" type="button" disabled={busy || !d.canWrite || !goal.trim()} onClick={() => save("goal")}>목표 봉인하기</button>
               </section>
-              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }} aria-disabled={!d.canWrite}>
                 <b style={{ font: "400 20px var(--display)" }}>우리 팀 약속 2가지</b>
                 <span className="small">{d.team ? "팀원이 함께 정해요. 저장하면 팀 이름과 구성원이 함께 남아요." : "팀이 정해진 뒤에 쓸 수 있어요."}</span>
                 <label className="l" htmlFor="c-p1">약속 1</label>
-                <input id="c-p1" className="field" maxLength={200} value={p1} disabled={!d.team} onChange={(e) => setP1(e.target.value)} />
+                <input id="c-p1" className="field" maxLength={200} value={p1} disabled={!d.team || !d.canWrite} onChange={(e) => setP1(e.target.value)} />
                 <label className="l" htmlFor="c-p2">약속 2</label>
-                <input id="c-p2" className="field" maxLength={200} value={p2} disabled={!d.team} onChange={(e) => setP2(e.target.value)} />
-                <button className="btn blue" type="button" disabled={busy || !d.team || !p1.trim() || !p2.trim()} onClick={() => save("pacts")}>팀 약속 저장하기</button>
+                <input id="c-p2" className="field" maxLength={200} value={p2} disabled={!d.team || !d.canWrite} onChange={(e) => setP2(e.target.value)} />
+                <button className="btn blue" type="button" disabled={busy || !d.canWrite || !d.team || !p1.trim() || !p2.trim()} onClick={() => save("pacts")}>팀 약속 저장하기</button>
               </section>
             </>
           )}

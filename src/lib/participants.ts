@@ -1,8 +1,10 @@
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
-
 export const NOT_ATTENDEE = "이 활동은 관리자가 선택한 회원만 참여할 수 있어요.";
+
+// 관리자가 고른 회원만 참여하는 활동인지
+export const isLimited = (cfg: TemplateConfig): boolean => cfg.participants === "selected";
 
 // 활동 참여 대상
 //  all      : 전체 회원
@@ -25,20 +27,20 @@ export const saveAttendanceState = (aid: string, s: AttendanceState): Promise<vo
 // (ev 는 호출하는 쪽 코드를 단순하게 두려고 받는다.)
 export async function canJoin(cfg: TemplateConfig, act: Row, _ev: Row, memberId: string): Promise<boolean> {
   void _ev;
-  if (cfg.participants !== "selected") return true;
+  if (!isLimited(cfg)) return true;
   return (await rosterSet(act)).has(memberId);
 }
 
 // 참여 대상 회원 번호 집합. 전체 회원이면 null(제한 없음).
 export async function joinSet(cfg: TemplateConfig, act: Row, _ev?: Row): Promise<Set<string> | null> {
   void _ev;
-  return cfg.participants === "selected" ? rosterSet(act) : null;
+  return isLimited(cfg) ? rosterSet(act) : null;
 }
 
 // 사회자가 현장 진행(소개 열기, 고민 뽑기, 작성 열기)을 시작하기 전에 출석 체크가 끝났는지.
 // 끝나지 않았다면 안내 문구를, 괜찮다면 null 을 돌려준다.
 export async function onsiteGate(cfg: TemplateConfig, act: Row): Promise<string | null> {
-  if (cfg.participants !== "selected") return null;
+  if (!isLimited(cfg)) return null;
   const st = await attendanceState(act.id);
   if (!st.confirmed) return "활동 전에 출석 체크를 완료해 주세요. 활동 탭의 “출석 체크”에서 참여할 사람을 고르고 완료를 눌러 주세요.";
   return null;
@@ -50,7 +52,7 @@ export async function onsiteGate(cfg: TemplateConfig, act: Row): Promise<string 
 export async function participantPool(cfg: TemplateConfig, act: Row, ev: Row): Promise<{ members: Row[]; kind: "selected" | "attending" | "all" }> {
   const s = await getStore();
   const members = (await s.list("Members")).filter((m) => m.kind !== "회원대기");
-  if (cfg.participants === "selected") {
+  if (isLimited(cfg)) {
     const set = await rosterSet(act);
     return { members: members.filter((m) => set.has(m.id)), kind: "selected" };
   }

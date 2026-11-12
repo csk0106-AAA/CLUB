@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { OrgChart } from "@/components/OrgChart";
 import { api } from "@/lib/client";
 
 type Org = { id: string; dept: string; role: string; name: string; clubName: string; frequency: string; leader: string };
@@ -28,7 +29,7 @@ export default function ClubPage() {
 
   return (
     <main className="app">
-      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => router.push("/events")}>‹ 행사 목록</button>
+      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => router.push("/settings")}>‹ 설정</button>
       <h1 className="title">원우회 정보</h1>
       <div className="subnav" role="tablist" aria-label="원우회 정보">
         <a href="#" role="tab" aria-selected={tab === "org"} className={tab === "org" ? "on" : ""} onClick={(e) => { e.preventDefault(); setTab("org"); }}>조직도</a>
@@ -39,6 +40,7 @@ export default function ClubPage() {
         <>
           {!org && <p className="small">불러오는 중이에요…</p>}
           {org && org.length === 0 && <div className="msg info">아직 등록된 조직도가 없어요.</div>}
+          {org && org.length > 0 && <OrgChart items={org} emptyText="(미정)" />}
           {[...groups.entries()].map(([dept, rows]) => (
             <div key={dept} className="card"><b>{dept}</b>{rows.map((r) => <div key={r.id} className="small">{r.role ? `${r.role} · ` : ""}{r.name || "(미정)"}</div>)}</div>
           ))}

@@ -8,10 +8,12 @@ import { api, fmtWhen } from "@/lib/client";
 
 type E = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
-  status: string; published: string; attend: number; absent: number; paid: number;
+  status: string; published: string; attend: number; absent: number; paid: number; total: number;
 };
 const TYPES = ["전체정기모임", "워크숍", "소모임"];
 const TONE: Record<string, string> = { 워크숍: "blue", 전체정기모임: "ok", 소모임: "warn" };
+// 진행 상태 pill 색: 초안·미정은 회색, 끝난 것은 초록, 그 밖(준비 중·모집 중 등)은 주황
+const statusTone = (s: string) => (!s || s === "초안" ? "gray" : /완료|종료|마감/.test(s) ? "ok" : "warn");
 
 function Events() {
   const router = useRouter();
@@ -45,10 +47,16 @@ function Events() {
 
   return (
     <>
-      <div className="subnav" aria-label="행사 유형">
-        {["전체", ...TYPES].map((t) => (
-          <a key={t} href="#" className={filter === t ? "on" : ""} onClick={(e) => { e.preventDefault(); setFilter(t); }}>{t}</a>
-        ))}
+      <div className="row" style={{ flexWrap: "wrap", justifyContent: "space-between" }}>
+        <div className="subnav" aria-label="행사 유형">
+          {["전체", ...TYPES].map((t) => (
+            <a key={t} href="#" className={filter === t ? "on" : ""} onClick={(e) => { e.preventDefault(); setFilter(t); }}>{t}</a>
+          ))}
+        </div>
+        <a href="#new-event" className="btn" style={{ width: "auto", minWidth: 180, textDecoration: "none" }}
+          onClick={(e) => { e.preventDefault(); document.getElementById("n-name")?.focus(); document.getElementById("new-event")?.scrollIntoView({ behavior: "smooth" }); }}>
+          + 새 행사 만들기
+        </a>
       </div>
 
       {msg && <div className="msg bad" role="alert">{msg}</div>}
@@ -61,13 +69,29 @@ function Events() {
             <span className={`pill ${TONE[e.type] ?? "gray"}`}>{e.type}</span>
             <b style={{ font: "400 21px var(--display)" }}>{e.name}</b>
             <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
-            <span className="small">참석 {e.attend}명 · 불참 {e.absent}명 · 회비 입금 {e.paid}명</span>
-            <span className={`pill ${e.published === "true" ? "ok" : "gray"}`}>{e.published === "true" ? "회원에게 공개 중" : "초안 (회원에게 안 보임)"}</span>
+            <div className="meter" role="progressbar" aria-label="참석 신청" aria-valuemin={0} aria-valuemax={e.total} aria-valuenow={e.attend + e.absent}>
+              <i style={{ width: `${e.total ? Math.min(100, Math.round(((e.attend + e.absent) / e.total) * 100)) : 0}%` }} />
+            </div>
+            <span className="small">참석 신청 {e.attend} / {e.total}명{e.absent ? ` · 불참 ${e.absent}명` : ""} · 회비 입금 {e.paid}명</span>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+              <span className={`pill ${statusTone(e.status)}`}>{e.status || "상태 미정"}</span>
+              <span className={`pill ${e.published === "true" ? "ok" : "gray"}`}>{e.published === "true" ? "회원에게 공개 중" : "회원에게 안 보임"}</span>
+            </div>
           </Link>
         ))}
       </div>
 
-      <form className="card" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="card" style={{ background: "var(--soft)" }}>
+        <b style={{ font: "400 19px var(--display)" }}>행사를 만드는 순서</b>
+        <ol className="flow">
+          <li>① 유형 선택</li><li aria-hidden="true">›</li>
+          <li>② 활동 템플릿에서 선택</li><li aria-hidden="true">›</li>
+          <li>③ 필요하면 수정</li><li aria-hidden="true">›</li>
+          <li>④ 개요를 회원에게 전달</li>
+        </ol>
+      </div>
+
+      <form id="new-event" className="card" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={{ font: "400 20px var(--display)" }}>+ 새 행사 만들기</b>
         <div className="grid2">
           <div>

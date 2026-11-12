@@ -7,14 +7,16 @@ export const TABS = {
     "birth", "phone", "ageGroup", "perms", "extra",
   ],
   Org: ["id", "dept", "role", "memberId", "clubName", "frequency", "leaderId"],
-  Rules: ["id", "chapter", "article", "body", "version", "confirmed"],
+  // history: 조문 변경 기록 [{at, by, what}] JSON (최근 30개)
+  Rules: ["id", "chapter", "article", "body", "version", "confirmed", "history"],
   Minutes: ["id", "heldAt", "place", "attendees", "agenda", "status", "followUp"],
   Events: [
     "id", "type", "name", "startsAt", "endsAt", "place", "booking", "status",
-    "published", "fee", "feeDeadline", "account",
+    "published", "fee", "feeDeadline", "account", "accountHolder",
   ],
+  // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
-    "id", "eventId", "memberId", "answer", "days", "paid", "paidAt", "memo",
+    "id", "eventId", "memberId", "answer", "days", "paid", "paidAt", "memo", "payNotice",
   ],
   EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner"],
   EventPrep: ["id", "eventId", "item", "owner", "done"],

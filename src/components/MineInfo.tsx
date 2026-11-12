@@ -13,7 +13,8 @@ type Data = {
 const when = (at: string) => (at.includes("T") ? `${Number(at.slice(5, 7))}/${Number(at.slice(8, 10))} ${at.slice(11, 16)}` : at);
 
 // 회원이 보는 행사 정보: 일정, 내 조편성(배포된 것), 내 카풀(배포된 것)
-export function MineInfo({ eventId }: { eventId: string }) {
+// placeholder: 조편성·카풀이 아직 배포되지 않았을 때 "조 편성 후 알려 드려요" 카드를 보여 준다.
+export function MineInfo({ eventId, placeholder = false }: { eventId: string; placeholder?: boolean }) {
   const [d, setD] = useState<Data | null>(null);
   useEffect(() => {
     let stop = false;
@@ -30,8 +31,12 @@ export function MineInfo({ eventId }: { eventId: string }) {
   }, [eventId]);
 
   if (!d) return null;
+  const nothingYet = d.groups.length === 0 && !(d.carpool.published && d.carpool.mine.length > 0);
   return (
     <>
+      {placeholder && nothingYet && (
+        <div className="card"><b style={{ font: "400 19px var(--display)" }}>내 조와 카풀</b><div className="small">조 편성 후 알려 드려요.</div></div>
+      )}
       {d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
           <b style={{ font: "400 19px var(--display)" }}>일정</b>

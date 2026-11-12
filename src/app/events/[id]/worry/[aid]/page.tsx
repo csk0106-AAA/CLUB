@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 
@@ -73,7 +74,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
 
   return (
     <main className="app">
-      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => router.push(`/events/${id}`)}>‹ {d.event.name}</button>
+      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={d.canJoin ? d.mine.length : undefined} total={d.canJoin ? d.max : undefined} />
       <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: 24 }}>{d.activity.name}</h1></div>
       <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 적어 주세요. 행사에서 뽑힌 고민은 큰 화면에 내용만 나오고, 작성자는 대화가 끝난 뒤에 공개돼요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}

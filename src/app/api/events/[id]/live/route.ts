@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
 import { activityKind, guessStatus, liveView, preStatus, readConfig } from "@/lib/activities";
-import { canJoin } from "@/lib/participants";
+import { canJoin, isLimited } from "@/lib/participants";
 import { memberWorry } from "@/lib/worry";
 import { memberRound } from "@/lib/rounds";
 import { getStore } from "@/lib/store";
@@ -34,7 +34,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       pre: preStatus(cfg, ev.startsAt),
       guess: guessStatus(cfg, ev.startsAt),
       kind: activityKind(cfg),
-      participants: cfg.participants,
+      participants: isLimited(cfg) ? "selected" : "all",
       canJoin: await canJoin(cfg, a, ev, g.s.mid),
       startsAt: a.startsAt, // 활동 날짜와 진행 시간(안내용)
       endsAt: a.endsAt,

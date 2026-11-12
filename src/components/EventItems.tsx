@@ -15,6 +15,27 @@ const BLANK: Record<Kind, Record<string, string | number | boolean>> = {
 const STATUS = ["예정", "집행 완료", "보류"];
 const TITLE: Record<Kind, string> = { schedule: "일정", prep: "준비 목록", costs: "비용" };
 
+// 일정 타임라인: 시간 순으로 세로 줄에 늘어놓는다. 날짜가 바뀌는 첫 항목에만 날짜를 붙인다.
+function Timeline({ items }: { items: Item[] }) {
+  const sorted = [...items].sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  let prevDay = "";
+  return (
+    <ol className="tl" aria-label="일정 타임라인">
+      {sorted.map((i) => {
+        const at = String(i.at);
+        const [day, time = ""] = at.split("T");
+        let label = time || "시간 미정";
+        if (day && day !== prevDay) {
+          const [, m, d] = day.split("-");
+          label = `${Number(m)}/${Number(d)} ${time}`.trim();
+        }
+        prevDay = day;
+        return <li key={i.id}><b>{at ? label : "시간 미정"}</b><span>{String(i.title) || "(내용 없음)"}</span></li>;
+      })}
+    </ol>
+  );
+}
+
 // 행사 일정 / 준비 목록 / 비용(예산과 집행). 같은 화면 틀로 세 가지를 다룬다.
 // 일정은 회원에게 보이고, 준비 목록과 비용은 관리자만 본다.
 export function EventItems({ eventId, kind, canEdit }: { eventId: string; kind: Kind; canEdit: boolean }) {
@@ -91,6 +112,7 @@ export function EventItems({ eventId, kind, canEdit }: { eventId: string; kind: 
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 행사 화면에도 보여요.</span>}
+      {kind === "schedule" && items.length > 0 && <Timeline items={items} />}
       {kind === "prep" && <span className="small">준비 목록은 관리자만 볼 수 있어요. 끝낸 것은 체크해 주세요.</span>}
       {kind === "costs" && <span className="small">비용은 “회비·비용” 권한이 있는 관리자만 볼 수 있어요.</span>}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MAX_ADMINS, bad, guard } from "@/lib/api";
 import { can } from "@/lib/auth";
+import { fieldValues, withFields } from "@/lib/member-fields";
 import { getStore } from "@/lib/store";
 import { memberBody } from "@/lib/schemas";
 
@@ -10,9 +11,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const g = await guard("members");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
-  const parsed = memberBody.safeParse(await req.json().catch(() => null));
+  const parsed = memberBody.extend({ fields: fieldValues }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
-  const d = parsed.data;
+  const { fields, ...d } = parsed.data;
 
   const s = await getStore();
   const all = await s.list("Members");
@@ -29,7 +30,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (allAfter === 0) return bad("모든 권한 관리자는 한 명 이상 있어야 해요.");
   }
 
-  const row = await s.update("Members", id, { ...d, perms: nextPerms });
+  // fields 를 보내지 않으면(예: 관리자 권한만 바꿀 때) 추가 항목 값은 그대로 둔다.
+  const row = await s.update("Members", id, { ...d, perms: nextPerms, ...(fields ? { extra: withFields(cur.extra, fields) } : {}) });
   return NextResponse.json({ member: row });
 }
 

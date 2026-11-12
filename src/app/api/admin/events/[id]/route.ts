@@ -32,6 +32,8 @@ export async function GET(_req: Request, ctx: Ctx) {
         days: a?.days ?? "",
         paid: a?.paid === "true",
         paidAt: a?.paidAt ?? "",
+        memo: a?.memo ?? "",
+        payNotice: a?.payNotice ?? "",
       };
     });
   return NextResponse.json({ event, rows });
@@ -48,6 +50,7 @@ const patch = z.object({
   fee: z.string().regex(/^\d{0,9}$/).optional(),
   feeDeadline: z.string().max(30).optional(),
   account: z.string().max(120).optional(),
+  accountHolder: z.string().max(60).optional(),
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {

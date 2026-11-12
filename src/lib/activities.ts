@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { templateConfigSchema, type TemplateConfig, type TemplateStep } from "./template-schema";
-
 // 템플릿 설정(JSON 문자열)을 읽는다. 스키마에 맞지 않으면 null.
 export function readConfig(json: string | undefined): TemplateConfig | null {
   if (!json) return null;

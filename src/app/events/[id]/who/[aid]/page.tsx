@@ -2,6 +2,8 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { IconMic } from "@/components/Icons";
+import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 import { useVoice } from "@/lib/voice";
@@ -29,7 +31,9 @@ const WHEN: Record<string, string> = {
   unknown: "행사 날짜가 정해지면 작성 기간이 열려요.",
   none: "이 활동에는 사전 작성이 없어요.",
 };
-const SCOPE_LABEL = { intro: "소개 페이지에 공개", truthlie: "2진실 1거짓용으로만", none: "사용 안 함" } as const;
+// 사전 추측 후보 동그라미 색(돌아가며). 글자색은 globals.css .avatar 의 어두운 색이라 대비 4.5:1 이상.
+const AVATAR = ["#1CB0F6", "#FF9600", "#CE82FF", "#FF4B4B", "#58CC02"];
+const SCOPE_LABEL ={ intro: "소개 페이지에 공개", truthlie: "2진실 1거짓용으로만", none: "사용 안 함" } as const;
 
 export default function WhoPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
@@ -38,6 +42,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   const [tab, setTab] = useState<"write" | "guess">("write");
   const [note, setNote] = useState<Note>(null);
   const [busy, setBusy] = useState(false);
+  const [guessProg, setGuessProg] = useState<{ done: number; total: number } | null>(null);
 
   const load = useCallback(async () => {
     const r = await api<State>(`/api/who/${aid}`);
@@ -58,11 +63,17 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
     );
   }
 
+  // 위쪽 진행 막대: 작성 탭은 인터뷰 답변 수, 맞히기 탭은 고른 사람 수
+  const iv = st.interview;
+  const ivStarted = Boolean(st.profile.alias) && iv.messages.length > 0;
+  const progress =
+    tab === "guess" ? guessProg
+    : ivStarted ? { done: iv.status === "done" ? Math.max(iv.answered, iv.required) : iv.answered, total: Math.max(1, iv.required) }
+    : null;
+
   return (
     <main className="app">
-      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => router.push(`/events/${id}`)}>
-        ‹ {st.event.name}
-      </button>
+      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={progress?.done} total={progress?.total} />
       <h1 className="title" style={{ fontSize: 24 }}>{st.activity.name}</h1>
       <div className="subnav" role="tablist" aria-label="내가 누굴까요? 메뉴" style={{ display: "flex", gap: 6 }}>
         <a href="#" role="tab" aria-selected={tab === "write"} className={tab === "write" ? "on" : ""} onClick={(e) => { e.preventDefault(); setTab("write"); }}>내 소개 작성</a>
@@ -73,7 +84,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
       {tab === "write" ? (
         <Write st={st} aid={aid} busy={busy} setBusy={setBusy} setNote={setNote} reload={load} />
       ) : (
-        <Guess aid={aid} setNote={setNote} />
+        <Guess aid={aid} setNote={setNote} onProgress={setGuessProg} />
       )}
     </main>
   );
@@ -94,6 +105,8 @@ function Write(props: {
   const [lie, setLie] = useState(st.truthLies.lieIndex);
   const [scopes, setScopes] = useState<Record<string, "intro" | "truthlie" | "none">>({});
   const [reviseText, setReviseText] = useState("");
+  const [lastReq, setLastReq] = useState(""); // 마지막 수정 요청(말풍선으로 보여 줌)
+  const [refusal, setRefusal] = useState(""); // 지침 때문에 반영하지 못한 이유
   const [answer, setAnswer] = useState("");
   const [editAlias, setEditAlias] = useState(false);
   const chatEnd = useRef<HTMLDivElement>(null);
@@ -157,12 +170,22 @@ function Write(props: {
     await reload();
   });
 
-  const revise = () => run(async () => {
-    const r = await api<{ introMd: string }>(`/api/who/${aid}/revise`, { body: { request: reviseText, introMd: intro } });
+  // 수정 요청. 빠른 버튼(더 짧게, 부드럽게)은 정해진 요청문을 그대로 보낸다.
+  const revise = (request = reviseText) => run(async () => {
+    const req = request.trim();
+    if (!req) return;
+    setLastReq(req);
+    setRefusal("");
+    const r = await api<{ introMd: string }>(`/api/who/${aid}/revise`, { body: { request: req, introMd: intro } });
     if (r.ok) {
       setIntro(r.data.introMd);
-      setReviseText("");
+      if (request === reviseText) setReviseText("");
       return setNote({ tone: "info", text: "요청대로 고쳤어요. 마음에 들면 최종 배포를 눌러 주세요." });
+    }
+    if (r.status === 422) {
+      // 서버 문구: "관리자 지침에 맞지 않아 반영할 수 없습니다. 이유: …" → 이유만 보여 준다.
+      const reason = r.error.includes("이유:") ? r.error.split("이유:").slice(1).join("이유:").trim() : r.error;
+      return setRefusal(/[.?!요다]$/.test(reason) ? reason : `${reason}.`);
     }
     setNote({ tone: "bad", text: r.error });
   });
@@ -232,21 +255,15 @@ function Write(props: {
             </>
           ) : (
             <>
-              <div className="row">
-                <div className="meter" style={{ flex: 1, height: 14, background: "var(--line)", borderRadius: 8, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.min(100, (iv.answered / Math.max(1, iv.required)) * 100)}%`, height: "100%", background: "var(--green)" }} />
-                </div>
-                <span className="small num">{iv.answered}/{iv.required}</span>
-              </div>
-              <div role="log" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div role="log" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {iv.messages.map((m, i) =>
                   m.role === "ai" ? (
-                    <div key={i} className="row" style={{ alignItems: "flex-end" }}>
-                      <Mascot size={44} />
-                      <div className="card" style={{ fontWeight: 700, borderRadius: 16 }}>{m.text}</div>
+                    <div key={i} className="say">
+                      <Mascot size={56} />
+                      <div className="bubble">{m.text}</div>
                     </div>
                   ) : (
-                    <div key={i} style={{ alignSelf: "flex-end", maxWidth: "88%", background: "var(--blue-bg)", color: "var(--blue-t)", border: "2px solid #9adcf9", borderRadius: 16, padding: "10px 14px", fontWeight: 700 }}>{m.text}</div>
+                    <div key={i} className="mine">{m.text}</div>
                   ),
                 )}
                 <div ref={chatEnd} />
@@ -261,9 +278,8 @@ function Write(props: {
                 </p>
                 <div className="row">
                   {voice.supported && (
-                    <button type="button" className="btn white" aria-label={voice.listening ? "음성 입력 멈추기" : "음성으로 입력"} aria-pressed={voice.listening}
-                      style={{ width: 64, flex: "none", ...(voice.listening ? { background: "var(--red)", color: "#3d0505", borderColor: "var(--red-d)" } : {}) }} onClick={voice.toggle}>
-                      {voice.listening ? "■" : "🎤"}
+                    <button type="button" className={`mic ${voice.listening ? "on" : ""}`} aria-label={voice.listening ? "음성 입력 멈추기" : "음성으로 입력"} aria-pressed={voice.listening} onClick={voice.toggle}>
+                      <IconMic />
                     </button>
                   )}
                   <button className="btn" type="button" disabled={busy || !answer.trim()} onClick={sendAnswer}>보내기</button>
@@ -286,7 +302,7 @@ function Write(props: {
       {hasAlias && interviewDone && hasDraft && (
         <section aria-label="미리보기와 승인" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <b style={{ font: "400 21px var(--display)" }}>소개 글</b>
+            <h2 className="title" style={{ fontSize: 23, margin: 0 }}>별칭 “{st.profile.alias}”</h2>
             <span className={`pill ${approved ? "ok" : "warn"}`}>{approved ? "배포됨 ✓" : "초안 (나만 보여요)"}</span>
           </div>
           <label className="l" htmlFor="intro">소개 글 (직접 고칠 수 있어요)</label>
@@ -294,9 +310,25 @@ function Write(props: {
 
           {!approved && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label className="l" htmlFor="rev">고치고 싶은 점 (예: 더 짧게, 말투를 부드럽게)</label>
+              <span className="l" id="quick-l">빠르게 고치기</span>
+              <div className="quick" role="group" aria-labelledby="quick-l">
+                <button className="btn white" type="button" disabled={busy || intro.trim().length < 2} onClick={() => revise("더 짧게 줄여 주세요.")}>더 짧게</button>
+                <button className="btn white" type="button" disabled={busy || intro.trim().length < 2} onClick={() => revise("말투를 더 부드럽게 해 주세요.")}>부드럽게</button>
+              </div>
+              {(lastReq || refusal) && (
+                <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {lastReq && <div className="mine">{lastReq}</div>}
+                  {refusal && (
+                    <div className="fb bad" role="alert">
+                      <span className="ic" aria-hidden="true">!</span>
+                      <div><b>반영할 수 없어요</b><span className="t">{refusal} 다른 수정은 계속 도와드릴게요.</span></div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <label className="l" htmlFor="rev">고치고 싶은 점 (예: 취미 이야기를 더 넣어 주세요)</label>
               <input id="rev" className="field" value={reviseText} onChange={(e) => setReviseText(e.target.value)} />
-              <button className="btn blue" type="button" disabled={busy || !reviseText.trim()} onClick={revise}>이렇게 고쳐 주세요</button>
+              <button className="btn blue" type="button" disabled={busy || !reviseText.trim()} onClick={() => revise()}>{busy ? "고치는 중…" : "이렇게 고쳐 주세요"}</button>
             </div>
           )}
 
@@ -353,7 +385,7 @@ function Write(props: {
 }
 
 /* ───────────── 누구일까요? (사전 추측) ───────────── */
-function Guess({ aid, setNote }: { aid: string; setNote: (n: Note) => void }) {
+function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) => void; onProgress: (p: { done: number; total: number } | null) => void }) {
   const [data, setData] = useState<{ guess: { status: string; opensAt: string; closesAt: string }; targets: Target[]; candidates: Cand[]; notJoin?: boolean } | null>(null);
   const [openId, setOpenId] = useState("");
 
@@ -365,6 +397,12 @@ function Guess({ aid, setNote }: { aid: string; setNote: (n: Note) => void }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // 위쪽 진행 막대에 "고른 사람 수 / 전체" 를 알린다.
+  useEffect(() => {
+    if (!data || data.notJoin || data.targets.length === 0) return onProgress(null);
+    onProgress({ done: data.targets.filter((t) => t.myChoice).length, total: data.targets.length });
+  }, [data, onProgress]);
 
   async function pick(t: Target, c: Cand) {
     const r = await api(`/api/who/${aid}/guess`, { body: { profileId: t.profileId, chosenMemberId: c.id } });
@@ -400,10 +438,14 @@ function Guess({ aid, setNote }: { aid: string; setNote: (n: Note) => void }) {
                   <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{t.introMd}</p>
                   <b>이 분은 누구일까요?</b>
                   <div className="pick" role="radiogroup" aria-label={`${t.alias} 추측`}>
-                    {data.candidates.map((c) => (
-                      <button key={c.id} type="button" role="radio" aria-checked={t.myChoice === c.id} className="opt" aria-pressed={t.myChoice === c.id} disabled={g.status !== "open"} onClick={() => pick(t, c)}>
-                        <span className="name">{c.name}</span>
-                        {c.trip && <span className="pill warn">{c.trip}</span>}
+                    {data.candidates.map((c, i) => (
+                      <button key={c.id} type="button" role="radio" aria-checked={t.myChoice === c.id} className="opt rowopt" aria-pressed={t.myChoice === c.id} disabled={g.status !== "open"} onClick={() => pick(t, c)}>
+                        <span className="avatar" style={{ background: AVATAR[i % AVATAR.length] }} aria-hidden="true">{c.name.slice(0, 1)}</span>
+                        <span className="grow">
+                          <span className="name">{c.name}</span>
+                          {c.trip && <span className="pill warn">{c.trip}</span>}
+                        </span>
+                        <span className="tick" aria-hidden="true" />
                       </button>
                     ))}
                   </div>

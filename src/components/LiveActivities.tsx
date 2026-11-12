@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { IconBook, IconChat, IconLock, IconQuestion, IconStar } from "./Icons";
 
 type Worry = {
   canJoin: boolean; body: string; category: string; orderNo: number; paused: boolean; remainingMs: number;
@@ -56,8 +57,30 @@ function preBadge(p: Live["pre"]): { tone: string; text: string } {
   return { tone: "gray", text: "사전 작성 · 날짜 미정" };
 }
 
+// 활동 길(⑥)의 노드 하나: 색, 아래 설명, 누르면 갈 곳
+type Node = { tone: "now" | "done" | "lock"; sub: string; href: string };
+function nodeOf(eventId: string, a: Live): Node {
+  const page =
+    a.kind === "who" ? `/events/${eventId}/who/${a.id}`
+    : a.kind === "worry" ? `/events/${eventId}/worry/${a.id}`
+    : a.kind === "capsule" ? `/events/${eventId}/capsule/${a.id}`
+    : "";
+  if (a.participants === "selected" && !a.canJoin) return { tone: "lock", sub: "참여 대상이 아니에요", href: page };
+  if (a.live.active || a.round || a.worry) return { tone: "now", sub: "지금 진행 중", href: page };
+  if (a.pre.status === "open") return { tone: "now", sub: `작성 중 · ${a.pre.closesAt}까지`, href: page };
+  if (a.kind === "who" && a.guess.status === "open") return { tone: "now", sub: `맞히기 · ${a.guess.closesAt}까지`, href: page };
+  if (a.pre.status === "closed") return { tone: "done", sub: "사전 작성 마감", href: page };
+  return { tone: "lock", sub: preBadge(a.pre).text, href: a.kind === "capsule" ? page : "" };
+}
+const NODE_ICON: Record<string, React.ReactNode> = {
+  who: <IconQuestion />,
+  worry: <IconChat />,
+  capsule: <IconLock />,
+};
+
 // 활동 카드. 2초마다 서버 상태를 확인해서 사회자가 버튼을 누르면 회원 화면이 바로 켜진다.
-export function LiveActivities({ eventId }: { eventId: string }) {
+// layout="path" 이면 목업 ⑥처럼 길 모양 노드로 보여 주고, 진행 중인 활동만 아래에 카드로 보여 준다.
+export function LiveActivities({ eventId, layout = "cards" }: { eventId: string; layout?: "cards" | "path" }) {
   const [list, setList] = useState<Live[] | null>(null);
   const [offline, setOffline] = useState(false);
 
@@ -83,13 +106,62 @@ export function LiveActivities({ eventId }: { eventId: string }) {
     };
   }, [load]);
 
-  if (!list || list.length === 0) return null;
+  if (!list) return null;
+  if (list.length === 0) {
+    return layout === "path" ? <div className="msg info">이 행사에는 아직 활동이 없어요. 정해지면 여기에 나타나요.</div> : null;
+  }
+
+  if (layout === "path") {
+    const nodes = list.map((a) => ({ a, n: nodeOf(eventId, a) }));
+    const firstNow = nodes.findIndex((x) => x.n.tone === "now");
+    const live = list.filter((a) => a.round || a.worry || a.live.active);
+    return (
+      <>
+        <section aria-label="활동 길" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="unit">
+            <div><span>이번 행사</span><b>함께할 활동 {list.length}가지</b></div>
+            <span style={{ color: "#fff", display: "inline-flex" }}><IconBook /></span>
+          </div>
+          {offline && <div className="msg info" role="status">연결이 불안정해요. 다시 연결하는 중이에요…</div>}
+          <div className="path">
+            {nodes.map(({ a, n }, i) => {
+              const icon = NODE_ICON[a.kind] ?? <IconStar size={36} />;
+              const label = `${a.name} · ${n.sub}`;
+              return (
+                <div key={a.id} className={`nodewrap ${i % 2 === 0 ? "l" : "r"}`}>
+                  <div style={{ position: "relative" }}>
+                    {i === firstNow && <span className="start" aria-hidden="true">시작!</span>}
+                    {n.href ? (
+                      <Link href={n.href} className={`node ${n.tone}`} aria-label={label}>{icon}</Link>
+                    ) : (
+                      <span className={`node ${n.tone}`} role="img" aria-label={label}>{icon}</span>
+                    )}
+                  </div>
+                  <div className="nl" aria-hidden="true">{a.name}<small>{n.sub}</small></div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+        {live.length > 0 && (
+          <section aria-label="지금 진행 중" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <b style={{ font: "400 20px var(--display)" }}>지금 진행 중</b>
+            {live.map((a) => card(a))}
+          </section>
+        )}
+      </>
+    );
+  }
 
   return (
     <section aria-label="활동" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ font: "400 20px var(--display)" }}>활동</b>
       {offline && <div className="msg info" role="status">연결이 불안정해요. 다시 연결하는 중이에요…</div>}
-      {list.map((a) => {
+      {list.map((a) => card(a))}
+    </section>
+  );
+
+  function card(a: Live) {
         const b = preBadge(a.pre);
         return (
           <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -153,9 +225,7 @@ export function LiveActivities({ eventId }: { eventId: string }) {
             )}
           </div>
         );
-      })}
-    </section>
-  );
+  }
 }
 
 /* ───── 나의 고민은?: 지금 뽑힌 고민 (회원 휴대폰) ───── */
@@ -211,6 +281,8 @@ function WorryPanel({ aid, w, reload }: { aid: string; w: Worry; reload: () => P
 }
 
 /* ───── 현장 진행: 회원 휴대폰 화면 (사회자 버튼에 따라 바뀐다) ───── */
+const STMT_COLOR = ["#1CB0F6", "#FFC800", "#CE82FF"];
+
 function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload: () => Promise<void> }) {
   const [sel, setSel] = useState(-1);
   const [err, setErr] = useState("");
@@ -231,11 +303,41 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
     await reload();
   }
 
+  const votingOpen = round.screen === "vote" && round.state === "voting";
+  const status =
+    votingOpen ? { tone: "ok", text: "투표 중" }
+    : round.state === "closed" || round.state === "answer" ? { tone: "gray", text: "마감" }
+    : { tone: "warn", text: "대기 중" };
+
   const head = (
     <div className="row" style={{ flexWrap: "wrap" }}>
       <span className="pill blue">지금 소개</span>
       <b style={{ font: "400 20px var(--display)" }}>“{round.alias}”</b>
       {round.nameRevealed && round.name && <span className="pill ok">{round.name} 님</span>}
+      <span className="grow" />
+      {round.canJoin && <span className={`pill ${status.tone}`} role="status">{status.text}</span>}
+    </div>
+  );
+
+  // 문장 목록(번호 동그라미: 1 파랑, 2 노랑, 3 보라). pick 이 없으면 고를 수 없는 미리보기로 보여 준다.
+  const stmtList = (pressed: number, pick?: (i: number) => void) => (
+    <div className="pick" role={pick ? "radiogroup" : undefined} aria-label="거짓인 문장 고르기">
+      {round.statements.map((t, i) => (
+        <button
+          key={i}
+          type="button"
+          className={`opt rowopt ${pick ? "" : "preview"}`}
+          role={pick ? "radio" : undefined}
+          aria-checked={pick ? pressed === i : undefined}
+          aria-pressed={pressed === i}
+          disabled={!pick || busy}
+          onClick={pick ? () => pick(i) : undefined}
+          style={{ minHeight: 72 }}
+        >
+          <span className="avatar" style={{ background: STMT_COLOR[i % 3] }}>{i + 1}</span>
+          <span className="grow">{t}</span>
+        </button>
+      ))}
     </div>
   );
 
@@ -251,20 +353,14 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
         </button>
       </>
     );
-  } else if (round.screen === "vote" && round.state === "voting") {
+  } else if (votingOpen) {
     body = round.isTarget ? (
       <div className="msg info">내 차례예요. 다른 분들이 투표하고 있어요. 투표는 하지 않아요.</div>
     ) : (
       <>
-        <b>거짓은 어느 것일까요?</b>
+        <b style={{ font: "400 21px var(--display)" }}>거짓은 어느 것일까요?</b>
         <span className="small">두 개는 진실, 한 개는 거짓이에요. 한 번만 투표할 수 있어요.</span>
-        <div className="pick">
-          {round.statements.map((t, i) => (
-            <button key={i} type="button" className="opt" aria-pressed={(round.voted ? round.myVote : sel) === i} disabled={round.voted || busy} onClick={() => setSel(i)}>
-              <span className="name">{i + 1}. {t}</span>
-            </button>
-          ))}
-        </div>
+        {round.voted ? stmtList(round.myVote) : stmtList(sel, setSel)}
         {round.voted ? (
           <div className="msg info" role="status">{round.myVote + 1}번에 투표했어요. 결과를 기다려 주세요.</div>
         ) : (
@@ -272,16 +368,35 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
         )}
       </>
     );
+  } else if (round.state === "voting" && round.statements.length > 0 && !round.isTarget) {
+    // 문장은 내려왔지만 사회자가 아직 회원 화면의 투표를 켜지 않은 경우: 미리 읽기만 할 수 있다.
+    body = (
+      <>
+        <b style={{ font: "400 21px var(--display)" }}>거짓은 어느 것일까요?</b>
+        <span className="small">두 개는 진실, 한 개는 거짓이에요.</span>
+        {stmtList(-1)}
+        <button className="btn" type="button" disabled>확인</button>
+        <p className="hint center" role="status">사회자가 투표를 열면 선택할 수 있어요.</p>
+      </>
+    );
   } else if (round.state === "closed") {
-    body = <div className="msg info" role="status">투표가 마감됐어요. 정답 공개를 기다려 주세요.{round.voted ? ` (내 선택: ${round.myVote + 1}번)` : ""}</div>;
+    body = (
+      <>
+        {round.statements.length > 0 && !round.isTarget && stmtList(round.voted ? round.myVote : -1)}
+        <div className="msg info" role="status">투표가 마감됐어요. 정답 공개를 기다려 주세요.{round.voted ? ` (내 선택: ${round.myVote + 1}번)` : ""}</div>
+      </>
+    );
   } else if (round.state === "answer" && round.lieIndex >= 0) {
     body = (
       <>
         <div className="pick">
           {round.statements.map((t, i) => (
-            <div key={i} className="card" style={i === round.lieIndex ? { borderColor: "var(--green)", background: "var(--green-bg)" } : round.myVote === i ? { borderColor: "var(--red)" } : undefined}>
-              <b>{i + 1}. {t}</b>
+            <div key={i} className="card row" style={{ alignItems: "flex-start", ...(i === round.lieIndex ? { borderColor: "var(--green)", background: "var(--green-bg)" } : round.myVote === i ? { borderColor: "var(--red)" } : {}) }}>
+              <span className="avatar" style={{ background: STMT_COLOR[i % 3] }}>{i + 1}</span>
+              <div className="grow">
+              <b>{t}</b>
               <div className="small">{i === round.lieIndex ? "거짓이었어요!" : "진실이에요"}{round.myVote === i ? " · 내 선택" : ""}</div>
+              </div>
             </div>
           ))}
         </div>

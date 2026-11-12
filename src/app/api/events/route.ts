@@ -28,6 +28,8 @@ export async function GET() {
         myAnswer: a?.answer ?? "",
         // 참석 신청하고 회비를 내지 않았으면 회비 알림
         feeDue: a?.answer === "참석" && e.fee !== "" && a.paid !== "true",
+        feePaid: a?.answer === "참석" && e.fee !== "" && a.paid === "true",
+        payNotice: a?.answer === "참석" && a.paid !== "true" && Boolean(a.payNotice),
       };
     });
   return NextResponse.json({ events: list });

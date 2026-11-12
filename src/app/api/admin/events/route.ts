@@ -10,11 +10,14 @@ export async function GET() {
   const g = await guard(["events", "fees"]);
   if ("err" in g) return g.err;
   const s = await getStore();
-  const [events, applies] = await Promise.all([s.list("Events"), s.list("EventApplies")]);
+  const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
+  // 참석 신청 진행 막대의 분모: 회원대기를 뺀 회원 수(행사 상세의 신청 명단과 같은 기준)
+  const total = members.filter((m) => m.kind !== "회원대기").length;
   const list = events.map((e) => {
     const a = applies.filter((x) => x.eventId === e.id);
     return {
       ...e,
+      total,
       attend: a.filter((x) => x.answer === "참석").length,
       absent: a.filter((x) => x.answer === "불참").length,
       paid: a.filter((x) => x.answer === "참석" && x.paid === "true").length,

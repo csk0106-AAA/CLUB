@@ -60,6 +60,13 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
 
   if (!d) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
   const shown = d.cars.filter((c) => leg === "전체" || c.leg === leg);
+  // 배정 대기: 참석 신청했지만 고른 구간에 운전자나 동승자로 들어가지 않은 사람
+  // 왕복은 갈 때나 올 때 중 한쪽이라도 차가 없는 사람을 보여 준다.
+  const names = (ids: string[]) => ids.map(nm).filter(Boolean);
+  const waiting: { label: string; ids: string[] }[] =
+    leg === "전체" ? [{ label: "갈 때", ids: d.free.go }, { label: "올 때", ids: d.free.back }]
+      : leg === "왕복" ? [{ label: "왕복", ids: [...new Set([...d.free.go, ...d.free.back])] }]
+        : [{ label: leg, ids: leg === "갈 때" ? d.free.go : d.free.back }];
 
   return (
     <>
@@ -116,6 +123,16 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
             </div>
           );
         })}
+        <section className="card" aria-label="배정 대기" style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--soft)" }}>
+          <b>배정 대기</b>
+          <span className="small">참석 신청했지만 아직 차가 정해지지 않은 분</span>
+          {waiting.map((w) => (
+            <div key={w.label}>
+              <span className="small" style={{ fontWeight: 700 }}>{w.label} · {w.ids.length}명</span>
+              <div>{w.ids.length ? names(w.ids).join(" · ") : <span className="small">모두 배정됐어요</span>}</div>
+            </div>
+          ))}
+        </section>
       </div>
 
       {canEdit && (

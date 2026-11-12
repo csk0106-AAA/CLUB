@@ -24,6 +24,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const parsed = def.schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad(clubError(parsed.error));
-  const row = await (await getStore()).insert(def.tab, parsed.data);
+  const extra = def.audit ? def.audit(null, parsed.data, g.s.name) : {};
+  const row = await (await getStore()).insert(def.tab, { ...parsed.data, ...extra });
   return NextResponse.json({ item: def.view(row) });
 }

@@ -27,6 +27,9 @@ export function fmtWhen(startsAt: string, endsAt: string, place: string): string
   return place ? `${range} · ${place}` : range;
 }
 
+// 행사 유형별 pill 색
+export const TYPE_TONE: Record<string, string> = { 워크숍: "blue", 전체정기모임: "ok", 소모임: "warn" };
+
 export function won(n: string | number): string {
   const v = Number(n);
   return Number.isFinite(v) ? `${v.toLocaleString("ko-KR")}원` : "";

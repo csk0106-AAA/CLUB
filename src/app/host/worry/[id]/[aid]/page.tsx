@@ -71,19 +71,34 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
     await load();
   }
 
-  // 로또 번호 뽑기처럼 돌아가는 연출 뒤에 서버가 뽑은 고민이 나온다.
+  // 로또 번호 뽑기처럼 카테고리 이름이 돌아가다(약 1.8초, 점점 느려짐) 서버가 뽑은 고민이 나온다.
+  // 아직 나오지 않은 고민의 내용은 서버가 내려주지 않으므로 카테고리 이름만 돌린다.
+  // 움직임 줄이기 설정이면 돌리지 않고 "뽑는 중" 문구만 보여 준다.
+  // 서버 뽑기는 연출과 동시에 시작하고, 연출이 끝나면 실제로 뽑힌 고민이 나온다(연출 중에는 화면에 가려 둔다).
   async function draw() {
     if (!st) return;
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const labels = ["고민을 뽑는 중…", "● ○ ○", "○ ● ○", "○ ○ ●"];
+    setSpin("고민을 뽑는 중…");
+    const req = act("draw", cat ? { category: cat } : {});
     if (!reduce) {
-      let i = 0;
-      const t = setInterval(() => setSpin(labels[i++ % labels.length]), 120);
-      await new Promise((r) => setTimeout(r, 1800));
-      clearInterval(t);
+      const left = st.categories.filter((k) => (st.counts.byCategory[k] ?? 0) > 0);
+      const pool = cat ? [cat] : left.length ? left : st.categories;
+      const labels = pool.length > 1 ? pool : [...pool, "고민을 뽑는 중…"];
+      let i = Math.floor(Math.random() * labels.length);
+      let elapsed = 0;
+      let step = 70;
+      while (elapsed < 1800) {
+        setSpin(labels[i++ % labels.length]);
+        await new Promise((r) => setTimeout(r, step));
+        elapsed += step;
+        step = Math.min(260, Math.round(step * 1.12));
+      }
     }
-    setSpin("");
-    await act("draw", cat ? { category: cat } : {});
+    try {
+      await req;
+    } finally {
+      setSpin("");
+    }
   }
 
   function fullscreen() {
@@ -124,7 +139,12 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
 
       <div className="stage">
         <div className="panel" style={{ justifyContent: "center" }}>
-          {spin && <div className="roulette spin" aria-live="polite">{spin}</div>}
+          {spin && (
+            <>
+              <span className="sub" role="status">고민을 뽑는 중이에요…</span>
+              <div className="roulette spin" aria-hidden="true">{spin}</div>
+            </>
+          )}
           {!spin && !c && <><h2>“고민 뽑기”를 눌러 주세요</h2><p className="sub" style={{ margin: 0 }}>이미 나온 고민은 다시 나오지 않아요. 남은 고민 {st.counts.remaining}개.</p></>}
           {!spin && c && (
             <>
@@ -144,8 +164,8 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
           <div className="panel">
             <h3>대화 시간</h3>
             <div className="num" style={{ font: "400 clamp(64px, 10vw, 120px)/1 var(--display)", color: timeUp ? "#ff4b4b" : "#ffc800" }} aria-label="남은 시간">{c ? (timeUp ? "00:00" : fmt(remaining)) : "--:--"}</div>
-            <span className="sub">{!c ? "고민을 뽑으면 시작돼요" : timeUp ? "시간이 끝났어요. 이름 오픈을 눌러 주세요." : c.paused ? "일시정지 중" : `기본 ${c.minutes}분`}</span>
-            {c && !c.nameRevealed && (
+            <span className="sub">{!c ? "고민을 뽑으면 시작돼요" : timeUp ? (c.nameRevealed ? "시간이 끝났어요." : "시간이 끝났어요. 이름 오픈을 눌러 주세요.") : c.paused ? "일시정지 중" : `기본 ${c.minutes}분`}</span>
+            {c && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {c.paused ? <button className="btn white" type="button" disabled={busy} style={{ minHeight: 52 }} onClick={() => act("resume")}>계속</button>
                   : <button className="btn white" type="button" disabled={busy || timeUp} style={{ minHeight: 52 }} onClick={() => act("pause")}>일시정지</button>}
@@ -171,7 +191,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
             </select>
           </>
         )}
-        {c && !c.nameRevealed && <button className="btn blue" type="button" disabled={busy || !timeUp} onClick={() => act("reveal")}>이름 오픈</button>}
+        {c && !c.nameRevealed && <button className="btn blue" type="button" disabled={busy} onClick={() => act("reveal")}>이름 오픈</button>}
         {c && <button className="btn white" type="button" disabled={busy} onClick={() => act("tips")}>AI 관점 3가지</button>}
       </div>
     </div>

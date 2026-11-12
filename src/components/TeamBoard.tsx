@@ -149,6 +149,12 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
         <b style={{ font: "400 18px var(--display)" }}>{unit} 구성 ({td.participantCount}명 · {POOL_TEXT[td.poolKind]})</b>
         <span className={`pill ${td.published ? "ok" : "warn"}`}>{td.published ? "회원에게 배포됨" : "배포 전 (회원에게 안 보여요)"}</span>
         {td.locked && <span className="pill gray">작성이 시작되어 바꿀 수 없어요</span>}
+        <span className="grow" />
+        {screenHref && cols.length > 0 && (
+          <Link href={screenHref} target="_blank" rel="noopener" className="btn blue" style={{ width: "auto", minHeight: 48, fontSize: 17, textDecoration: "none" }}>
+            큰 화면에 보여 주기 ⛶<span className="sr-only"> (새 탭)</span>
+          </Link>
+        )}
       </div>
 
       {editable && (
@@ -169,7 +175,6 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
               ? <input className="field" aria-label={`${unit}당 인원`} type="number" min={2} max={20} style={{ width: 100 }} value={size} onChange={(e) => setSize(e.target.value)} />
               : <input className="field" aria-label={`${unit} 수`} type="number" min={1} max={30} style={{ width: 100 }} value={count} onChange={(e) => setCount(e.target.value)} />}
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={generate}>{cols.length > 0 ? "다시 만들기" : `${unit} 만들기`}</button>
-            {screenHref && <Link href={screenHref} className="btn blue" style={{ width: "auto", minHeight: 48, fontSize: 17, textDecoration: "none" }}>큰 화면에 보여 주기 ⛶</Link>}
           </div>
         </div>
       )}

@@ -63,7 +63,7 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
             <span className="grow" />
             {canEdit && <button className="mini danger" type="button" onClick={() => remove(cur)}>이 조편성 지우기</button>}
           </div>
-          <TeamBoard key={cur.id} base={`${base}/${cur.id}`} canEdit={canEdit} unit="조" />
+          <TeamBoard key={cur.id} base={`${base}/${cur.id}`} canEdit={canEdit} unit="조" screenHref={`/host/groups/${eventId}/${cur.id}`} />
         </div>
       )}
 
