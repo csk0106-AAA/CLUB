@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { TABS, type TabName } from "./schema";
 import type { Row, Store } from "./types";
 
-// 개발용 저장소: .data/db.json 한 파일. 구글 시트 설정이 없을 때 사용한다.
+// 개발용 저장소: .data/db.json 한 파일. DATABASE_URL 이 없을 때 사용한다.
 const FILE = path.join(process.cwd(), ".data", "db.json");
 
 type Db = Partial<Record<TabName, Row[]>>;

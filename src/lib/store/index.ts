@@ -7,11 +7,10 @@ let store: Store | null = null;
 let seeding: Promise<void> | null = null;
 
 async function create(): Promise<Store> {
-  const id = process.env.GOOGLE_SHEET_ID;
-  const cred = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (id && cred) {
-    const { GoogleStore } = await import("./google");
-    return new GoogleStore(id, cred);
+  const url = process.env.DATABASE_URL;
+  if (url) {
+    const { NeonStore } = await import("./neon");
+    return new NeonStore(url);
   }
   return new LocalStore();
 }
