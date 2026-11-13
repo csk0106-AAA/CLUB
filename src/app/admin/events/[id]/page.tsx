@@ -46,7 +46,7 @@ function infoLines(ev: Ev, rules: FeeRule[], actNames: string[], withAccount: bo
   if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
   const one = oneFee(rules);
   if (one) out.push({ icon: "💰", label: "참가비", value: `1인 ${won(one)}` });
-  else if (rules.length) out.push({ icon: "💰", label: "참가비", value: "원우회 앱에 로그인한 뒤 회비 안내 화면에서 내 회비를 확인해 주세요" });
+  else if (rules.length) out.push({ icon: "💰", label: "참가비", value: "앱 접속 후 내 회비 확인" });
   if (rules.length && ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: ev.feeDeadline });
   if (withAccount && ev.account) {
     out.push({ icon: "🏦", label: "계좌", value: `${ev.account}${ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""}`, note: "참석 신청한 회원에게만 보여요" });
