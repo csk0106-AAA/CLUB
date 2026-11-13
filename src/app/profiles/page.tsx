@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MemberTabs } from "@/components/MemberTabs";
+import { Sheet } from "@/components/Sheet";
 import { api } from "@/lib/client";
 
 type Data = {
@@ -16,20 +17,63 @@ export default function ProfilesPage() {
   const router = useRouter();
   const [d, setD] = useState<Data | null>(null);
   const [error, setError] = useState("");
+  // 개인정보 동의 전에는 다른 회원의 프로필 북을 볼 수 없다. popup: 안내 팝업을 띄울지
+  const [locked, setLocked] = useState(false);
+  const [popup, setPopup] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    api<Data>("/api/profiles").then((r) => {
-      if (r.ok) setD(r.data);
-      else if (r.status === 401) router.replace("/");
-      else setError(r.error);
-    });
+  const load = useCallback(async () => {
+    const r = await api<Data>("/api/profiles");
+    if (r.ok) {
+      setD(r.data);
+      setLocked(false);
+    } else if (r.status === 401) router.replace("/");
+    else if (r.status === 403) {
+      setLocked(true);
+      setPopup(true);
+    } else setError(r.error);
   }, [router]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function agree() {
+    setBusy(true);
+    const r = await api("/api/me/consent", { method: "POST", body: {} });
+    setBusy(false);
+    if (!r.ok) return setError(r.error);
+    setPopup(false);
+    load();
+  }
 
   return (
     <main className="app with-tabs">
       <h1 className="title">회원 프로필 북</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
-      {!d && !error && <p className="small">불러오는 중이에요…</p>}
+      {!d && !error && !locked && <p className="small">불러오는 중이에요…</p>}
+      {locked && !popup && (
+        <div className="fb info">
+          <span className="ic" aria-hidden="true">i</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <b>동의 후에 볼 수 있어요</b>
+            <span className="t">개인정보 안내에 동의하지 않으면 다른 회원의 프로필 북을 볼 수 없어요.</span>
+            <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => setPopup(true)}>동의 안내 다시 보기</button>
+          </div>
+        </div>
+      )}
+      {popup && (
+        <Sheet title="프로필 북은 동의 후에 볼 수 있어요" mascot>
+          <p style={{ margin: 0 }}>
+            프로필 북에는 회원들이 공개로 승인한 소개가 담겨 있어요. 서로의 소개를 함께 나누는 공간이라, 개인정보 안내에 동의한 회원만 볼 수 있어요.
+          </p>
+          <div className="card" style={{ background: "var(--soft)" }}>
+            <b>개인정보 안내</b>
+            <div className="small">작성하신 내용 중 본인이 공개로 선택한 부분은 원우회 회원들에게 보여집니다. 언제든 수정·삭제할 수 있습니다.</div>
+          </div>
+          <button className="btn" type="button" disabled={busy} onClick={agree}>동의하고 프로필 북 보기</button>
+          <button className="btn white" type="button" onClick={() => setPopup(false)}>동의하지 않음</button>
+        </Sheet>
+      )}
       {d && (
         <>
           <p className="small" style={{ margin: 0 }}>

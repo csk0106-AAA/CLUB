@@ -15,6 +15,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
     api<NonNullable<typeof p>>(`/api/profiles/${pid}`).then((r) => {
       if (r.ok) setP(r.data);
       else if (r.status === 401) router.replace("/");
+      else if (r.status === 403) router.replace("/profiles"); // 동의 전: 프로필 북 화면에서 동의 팝업을 보여 준다
       else setError(r.error);
     });
   }, [pid, router]);

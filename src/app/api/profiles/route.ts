@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guard } from "@/lib/api";
+import { consentRequired, hasConsent } from "@/lib/consent";
 import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const g = await guard();
   if ("err" in g) return g.err;
+  if (!(await hasConsent(g.s.mid))) return consentRequired();
   const s = await getStore();
   const [members, profiles] = await Promise.all([s.list("Members"), s.list("Profiles")]);
   const revealAt = await getSetting<string>("profileRevealAt", "");
