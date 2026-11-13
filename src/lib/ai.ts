@@ -55,6 +55,23 @@ export function followUpPrompt(guidelines: string, qa: { q: string; a: string }[
   };
 }
 
+// 소개 글과 별칭을 함께 만든다. alias 가 있으면 그 별칭을 그대로 쓰고, 없으면 인터뷰 내용으로 별칭을 제안한다.
+// 소개 글 첫 줄 제목에 같은 별칭을 넣어 둘이 어긋나지 않게 한다.
+export function introAliasPrompt(guidelines: string, answers: string[], alias: string, taken: string[]): { system: string; messages: Msg[] } {
+  const aliasRule = alias
+    ? `별칭은 반드시 "${alias}" 를 그대로 씁니다.`
+    : `인터뷰 내용에서 이 사람을 잘 드러내는 별칭을 지어 주세요(2~12자, 이름·회사명·직함·업종을 짐작할 수 없게). 이미 쓰는 별칭과 겹치면 안 됩니다: ${taken.length ? taken.join(", ") : "(없음)"}`;
+  return {
+    system: `${BASE(guidelines)}
+
+아래 인터뷰 답변으로 별칭 소개 글(약 2페이지)을 쓰세요.
+- ${aliasRule}
+- 소개 글 첫 줄은 마크다운 제목으로 "# {이 사람을 그리는 짧은 수식어}, '{별칭}'입니다." 형식으로 씁니다.
+반드시 JSON 하나만 출력합니다. 코드 블록이나 다른 글은 쓰지 않습니다: {"alias":"...","intro":"..."}`,
+    messages: [{ role: "user", content: answers.join("\n\n") }],
+  };
+}
+
 export function draftPrompt(guidelines: string, answers: string[]): { system: string; messages: Msg[] } {
   return {
     system: `${BASE(guidelines)}\n\n아래 인터뷰 답변으로 별칭 소개 글(약 2페이지)을 쓰세요. 소개 글만 출력하세요.`,

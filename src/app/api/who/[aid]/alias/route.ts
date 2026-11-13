@@ -34,7 +34,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   const mine = await myProfile(g.s.mid);
   if (mine?.introStatus === "approved") return bad("승인된 소개가 있어요. 승인을 취소한 뒤 바꿀 수 있어요.", 409);
   const now = new Date().toISOString();
-  if (mine) await s.update("Profiles", mine.id, { alias, updatedAt: now });
+  // 소개 글 초안에 예전 별칭이 들어 있으면(예: 제목 "'글로우웜'입니다") 새 별칭으로 함께 바꾼다.
+  const old = mine?.alias ?? "";
+  const draftMd = old && old !== alias && mine?.draftMd ? mine.draftMd.split(old).join(alias) : mine?.draftMd ?? "";
+  if (mine) await s.update("Profiles", mine.id, { alias, draftMd, updatedAt: now });
   else await s.insert("Profiles", { memberId: g.s.mid, alias, introStatus: "none", updatedAt: now });
-  return NextResponse.json({ ok: true, alias });
+  return NextResponse.json({ ok: true, alias, draftMd });
 }

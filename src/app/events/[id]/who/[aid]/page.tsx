@@ -66,7 +66,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
 
   // 위쪽 진행 막대: 작성 탭은 인터뷰 답변 수, 맞히기 탭은 고른 사람 수
   const iv = st.interview;
-  const ivStarted = Boolean(st.profile.alias) && iv.messages.length > 0;
+  const ivStarted = iv.messages.length > 0;
   const progress =
     tab === "guess" ? guessProg
     : ivStarted ? { done: iv.status === "done" ? Math.max(iv.answered, iv.required) : iv.answered, total: Math.max(1, iv.required) }
@@ -128,10 +128,13 @@ function Write(props: {
     }
   }
 
+  // 별칭 바꾸기: 소개 글 초안에 들어 있는 예전 별칭도 서버가 함께 바꿔 준다.
   const saveAlias = () => run(async () => {
-    const r = await api(`/api/who/${aid}/alias`, { body: { alias } });
+    const r = await api<{ alias: string; draftMd: string }>(`/api/who/${aid}/alias`, { body: { alias } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (r.data.draftMd) setIntro(r.data.draftMd);
     setEditAlias(false);
+    setNote({ tone: "info", text: `별칭을 “${r.data.alias}”(으)로 정했어요. 소개 글 속 별칭도 함께 바꿨어요.` });
     await reload();
   });
 
@@ -159,8 +162,8 @@ function Write(props: {
     setNote({
       tone: "info",
       text: r.data.mode === "manual"
-        ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 직접 다듬고, 2진실 1거짓 문장 3개를 적어 주세요."
-        : "초안을 만들었어요. 읽어 보고 고칠 부분을 알려 주세요.",
+        ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬은 뒤, 2진실 1거짓 문장 3개를 적어 주세요."
+        : "별칭과 소개 글을 만들었어요. 별칭이 마음에 들지 않으면 “바꾸기”로 고치고, 글도 읽어 보고 고칠 부분을 알려 주세요.",
     });
     await reload();
   });
@@ -240,7 +243,7 @@ function Write(props: {
   const iv = st.interview;
   const hasAlias = Boolean(st.profile.alias);
   const interviewDone = iv.status === "done";
-  const inInterview = hasAlias && !interviewDone && iv.messages.length > 0;
+  const inInterview = !interviewDone && iv.messages.length > 0;
   const hasDraft = st.profile.introStatus === "draft" || approved || intro.trim().length > 0;
 
   // 답변 사용 방법: 소개 글·2진실 1거짓을 "만들 때" 쓰는 설정이다.
@@ -276,7 +279,7 @@ function Write(props: {
     }
     return (
       <details className="card" open={scopeChanged || undefined}>
-        <summary style={{ fontWeight: 700, cursor: "pointer" }}>답변 사용 방법 바꾸고 다시 만들기</summary>
+        <summary style={{ fontWeight: 700, cursor: "pointer" }}>답변 사용 방법 바꾸기 (선택)</summary>
         {list}
         {scopeChanged && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
@@ -303,25 +306,8 @@ function Write(props: {
         <div className="msg info" role="status">AI가 아직 연결되지 않아 정해진 질문으로 진행해요. 소개 글은 내 답변을 모아 초안을 만들고 직접 다듬어요.</div>
       )}
 
-      {/* 1. 별칭 */}
-      {(!hasAlias || editAlias) && !approved ? (
-        <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="row"><Mascot size={48} /><b style={{ font: "400 20px var(--display)" }}>별칭을 정해 주세요</b></div>
-          <span className="small">이름과 회사명이 드러나면 안 되고, 다른 회원과 겹치면 안 돼요.</span>
-          <label className="l" htmlFor="alias">별칭</label>
-          <input id="alias" className="field" value={alias} maxLength={20} onChange={(e) => setAlias(e.target.value)} placeholder="예: 평상 위의 독서가" />
-          <button className="btn" type="button" disabled={busy || alias.trim().length < 2} onClick={saveAlias}>별칭 정하기</button>
-        </section>
-      ) : (
-        <div className="card row" style={{ flexWrap: "wrap" }}>
-          <span className="small">내 별칭</span><b style={{ font: "400 20px var(--display)" }}>{st.profile.alias}</b>
-          <span className="grow" />
-          {!approved && <button className="mini" type="button" onClick={() => setEditAlias(true)}>바꾸기</button>}
-        </div>
-      )}
-
-      {/* 2. 인터뷰 */}
-      {hasAlias && !interviewDone && (
+      {/* 1. 인터뷰 (별칭은 인터뷰가 끝난 뒤 AI가 소개 글과 함께 제안한다) */}
+      {!interviewDone && (
         <section aria-label="인터뷰" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {iv.messages.length === 0 ? (
             <>
@@ -365,22 +351,48 @@ function Write(props: {
         </section>
       )}
 
-      {/* 3. 초안 만들기 */}
-      {hasAlias && interviewDone && !hasDraft && (
+      {/* 2. 초안 만들기: AI가 별칭·소개 글·2진실 1거짓을 함께 만든다 */}
+      {interviewDone && !hasDraft && (
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="msg info">인터뷰를 마쳤어요. 이제 소개 글{inAct ? "과 2진실 1거짓을" : "을"} 만들어요.</div>
+          <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 별칭과 소개 글{inAct ? ", 2진실 1거짓을" : "을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
           {scopeEditor(false)}
           <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : inAct ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
         </section>
       )}
 
-      {/* 4. 미리보기 · 수정 · 승인 */}
-      {hasAlias && interviewDone && hasDraft && (
+      {/* 3. 미리보기 · 수정 · 승인 */}
+      {interviewDone && hasDraft && (
         <section aria-label="미리보기와 승인" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <h2 className="title" style={{ fontSize: 23, margin: 0 }}>별칭 “{st.profile.alias}”</h2>
+            <h2 className="title grow" style={{ fontSize: 23, margin: 0 }}>{hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
             <span className={`pill ${approved ? "ok" : "warn"}`}>{approved ? "배포됨 ✓" : "초안 (나만 보여요)"}</span>
+            {!approved && (
+              <button className="mini" type="button" disabled={busy}
+                onClick={() => { if (window.confirm(`인터뷰 답변으로 소개 글${inAct ? "과 2진실 1거짓을" : "을"} 다시 만들까요? 지금 고친 내용은 새로 만든 내용으로 바뀌어요. 별칭은 그대로예요.`)) makeDraft(); }}>
+                {busy ? "만드는 중…" : "다시 만들기"}
+              </button>
+            )}
           </div>
+
+          {/* 별칭: AI가 제안한 것을 확인하고, 필요하면 고쳐서 '바꾸기' */}
+          {(!hasAlias || editAlias) && !approved ? (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label className="l" htmlFor="alias">{hasAlias ? "새 별칭" : "별칭을 정해 주세요"}</label>
+              <span className="small">이름과 회사명이 드러나면 안 되고, 다른 회원과 겹치면 안 돼요. 바꾸면 소개 글 속 별칭도 함께 바뀌어요.</span>
+              <input id="alias" className="field" value={alias} maxLength={20} onChange={(e) => setAlias(e.target.value)} placeholder="예: 평상 위의 독서가" />
+              <div className="row">
+                <button className="btn" type="button" disabled={busy || alias.trim().length < 2} style={{ width: "auto", minWidth: 120 }} onClick={saveAlias}>{hasAlias ? "바꾸기" : "정하기"}</button>
+                {hasAlias && <button className="btn white" type="button" style={{ width: "auto", minWidth: 100 }} onClick={() => setEditAlias(false)}>취소</button>}
+              </div>
+            </div>
+          ) : (
+            <div className="card row" style={{ flexWrap: "wrap" }}>
+              <span className="small">{approved ? "내 별칭" : "AI가 제안한 별칭"}</span>
+              <b style={{ font: "400 20px var(--display)" }}>{st.profile.alias}</b>
+              <span className="grow" />
+              {!approved && <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>}
+            </div>
+          )}
           <label className="l" htmlFor="intro">소개 글 (직접 고칠 수 있어요)</label>
           <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.6 }} value={intro} disabled={approved} onChange={(e) => setIntro(e.target.value)} />
 
@@ -444,7 +456,7 @@ function Write(props: {
             ) : (
               <>
                 <button className="btn white" type="button" disabled={busy} onClick={() => saveDraft()}>임시 저장</button>
-                <button className="btn" type="button" disabled={busy || intro.trim().length < 20 || (inAct && stmts.some((s) => s.trim().length < 2))} onClick={approve}>최종 배포하겠습니다</button>
+                <button className="btn" type="button" disabled={busy || !hasAlias || intro.trim().length < 20 || (inAct && stmts.some((s) => s.trim().length < 2))} onClick={approve}>최종 배포하겠습니다</button>
                 <p className="hint center">승인하기 전에는 다른 회원과 관리자에게 보이지 않아요. 승인 뒤에도 취소하고 다시 고칠 수 있어요.</p>
               </>
             )}

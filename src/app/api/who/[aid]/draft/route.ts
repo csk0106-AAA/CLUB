@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ask, draftPrompt, isAiEnabled } from "@/lib/ai";
+import { ask, extractJson, introAliasPrompt, isAiEnabled } from "@/lib/ai";
 import { bad, guard } from "@/lib/api";
 import { generateTruthLies, qaPairs } from "@/lib/truthlies";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
 import { canJoin } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import { guidelinesFor } from "@/lib/ai-guides";
-import { loadWho, myInterview, myProfile, myTruthLies, writeClosed, type ChatMsg, type Scope } from "@/lib/who";
+import { loadWho, myInterview, myProfile, myTruthLies, normAlias, writeClosed, type ChatMsg, type Scope } from "@/lib/who";
 
 type Ctx = { params: Promise<{ aid: string }> };
 
@@ -26,8 +26,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
   const s = await getStore();
   const profile = await myProfile(g.s.mid);
-  if (!profile?.alias) return bad("별칭을 먼저 정해 주세요.");
-  if (profile.introStatus === "approved") return bad("승인된 소개가 있어요. 승인을 취소한 뒤 다시 만들 수 있어요.", 409);
+  if (profile?.introStatus === "approved") return bad("승인된 소개가 있어요. 승인을 취소한 뒤 다시 만들 수 있어요.", 409);
   const iv = await myInterview(g.s.mid, aid);
   const row = iv.row;
   if (!row || row.status !== "done") return bad("인터뷰를 끝낸 뒤에 소개 글을 만들 수 있어요.");
@@ -49,12 +48,29 @@ export async function POST(req: Request, ctx: Ctx) {
   let statements = [tlAns[0] ?? "", tlAns[1] ?? "", tlAns[2] ?? ""];
   let lieIndex = 0;
 
+  // 별칭: 이미 정한 별칭(내가 바꾼 것 포함)이 있으면 그대로 쓰고, 없으면 AI가 인터뷰 내용으로 제안한다.
+  let alias = profile?.alias ?? "";
+  const taken = (await s.list("Profiles")).filter((p) => p.memberId !== g.s.mid && p.alias).map((p) => p.alias);
+  const aliasOk = (a: string) =>
+    a.length >= 2 && a.length <= 20 && findIdentity(a, terms).length === 0 && !taken.some((t) => normAlias(t) === normAlias(a));
+
   if (isAiEnabled()) {
-    const dp = draftPrompt(await guidelinesFor("draft"), introAns);
-    const out = await ask(dp.system, dp.messages, 3000);
-    if (out) {
-      mode = "ai";
-      intro = generalize(out, terms);
+    const ap = introAliasPrompt(await guidelinesFor("draft"), introAns, alias, taken);
+    const msgs = [...ap.messages];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const out = await ask(ap.system, msgs, 4000);
+      if (!out) break;
+      const o = z.object({ alias: z.string().trim(), intro: z.string().min(20) }).safeParse(extractJson(out));
+      if (o.success && (alias || aliasOk(o.data.alias))) {
+        mode = "ai";
+        if (!alias) alias = o.data.alias;
+        intro = generalize(o.data.intro, terms);
+        break;
+      }
+      msgs.push(
+        { role: "assistant", content: out },
+        { role: "user", content: "형식이 맞지 않거나 별칭이 규칙(2~12자, 신원이 드러나지 않음, 다른 회원과 겹치지 않음)에 맞지 않아요. JSON 하나만 다시 출력해 주세요." },
+      );
     }
   }
   // 2진실 1거짓은 인터뷰 답변 전체로 AI가 바로 만든다(소개 글에 쓴 내용과 겹치지 않게).
@@ -65,7 +81,9 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
-  await s.update("Profiles", profile.id, { draftMd: intro, introStatus: "draft", updatedAt: now });
+  // 프로필이 아직 없으면(별칭 단계를 건너뛰므로) 여기서 만든다. AI가 없으면 별칭은 비워 두고 회원이 정한다.
+  if (profile) await s.update("Profiles", profile.id, { alias, draftMd: intro, introStatus: "draft", updatedAt: now });
+  else await s.insert("Profiles", { memberId: g.s.mid, alias, draftMd: intro, introStatus: "draft", updatedAt: now });
   // 불참하는 분은 활동에 들어가지 않으므로 2진실 1거짓은 만들지 않는다(프로필 북용 소개만).
   const inAct = await canJoin(w.cfg, w.act, w.ev, g.s.mid);
   if (inAct) {
@@ -75,7 +93,7 @@ export async function POST(req: Request, ctx: Ctx) {
     else await s.insert("TruthLies", { memberId: g.s.mid, eventActivityId: aid, ...tlPatch });
   }
 
-  return NextResponse.json({ mode, inActivity: inAct, draftMd: intro, statements: inAct ? statements : [], lieIndex, remaining: findIdentity(intro, terms) });
+  return NextResponse.json({ mode, alias, inActivity: inAct, draftMd: intro, statements: inAct ? statements : [], lieIndex, remaining: findIdentity(intro, terms) });
 }
 
 const save = z.object({
@@ -101,7 +119,7 @@ export async function PUT(req: Request, ctx: Ctx) {
 
   const s = await getStore();
   const profile = await myProfile(g.s.mid);
-  if (!profile?.alias) return bad("별칭을 먼저 정해 주세요.");
+  if (!profile) return bad("소개 글을 먼저 만들어 주세요.");
   if (profile.introStatus === "approved") return bad("승인을 취소한 뒤 고칠 수 있어요.", 409);
 
   const now = new Date().toISOString();

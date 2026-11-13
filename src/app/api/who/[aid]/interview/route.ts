@@ -5,7 +5,7 @@ import { guidelinesFor } from "@/lib/ai-guides";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
 import {
-  followUpMax, interviewView, loadWho, myInterview, myProfile, questions, writeClosed, type ChatMsg,
+  followUpMax, interviewView, loadWho, myInterview, questions, writeClosed, type ChatMsg,
 } from "@/lib/who";
 
 const body = z.object({ answer: z.string().trim().min(1).max(2000).optional() });
@@ -24,7 +24,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("답변은 2000자까지 쓸 수 있어요.");
 
-  if (!(await myProfile(g.s.mid))?.alias) return bad("별칭을 먼저 정해 주세요.");
+  // 별칭은 인터뷰가 끝난 뒤 AI가 소개 글과 함께 제안하므로, 인터뷰 전에는 필요 없다.
 
   const s = await getStore();
   const qs = await questions();
