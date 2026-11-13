@@ -49,16 +49,22 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
     setAnon(null);
   }
 
-  // 이미 쓴 고민의 실명/익명을 카드에서 바로 바꾼다(뽑히기 전까지).
-  async function setAnonOf(m: Mine, anonymous: boolean) {
-    if (m.anonymous === anonymous) return;
+  // 이미 쓴 고민의 실명/익명·카테고리를 카드에서 바로 바꾼다(뽑히기 전까지).
+  async function updateWorry(m: Mine, patch: { anonymous?: boolean; category?: string }, done: string) {
     setBusy(true);
     setNote(null);
-    const r = await api(`/api/worry/${aid}/${m.id}`, { method: "PATCH", body: { body: m.body, category: m.category, anonymous } });
+    const r = await api(`/api/worry/${aid}/${m.id}`, {
+      method: "PATCH",
+      body: { body: m.body, category: patch.category ?? m.category, anonymous: patch.anonymous ?? m.anonymous },
+    });
     setBusy(false);
-    setNote(r.ok ? { tone: "info", text: anonymous ? "이 고민을 익명으로 바꿨어요." : "이 고민을 실명으로 바꿨어요." } : { tone: "bad", text: r.error });
+    setNote(r.ok ? { tone: "info", text: done } : { tone: "bad", text: r.error });
     load();
   }
+  const setAnonOf = (m: Mine, anonymous: boolean) =>
+    m.anonymous !== anonymous && updateWorry(m, { anonymous }, anonymous ? "이 고민을 익명으로 바꿨어요." : "이 고민을 실명으로 바꿨어요.");
+  const setCatOf = (m: Mine, category: string) =>
+    m.category !== category && updateWorry(m, { category }, `카테고리를 “${category}”(으)로 바꿨어요.`);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -100,7 +106,16 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
           {d.mine.map((m) => (
             <div key={m.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div className="row" style={{ flexWrap: "wrap" }}>
-                <span className="pill blue">{m.category}</span>
+                {open && !m.drawn ? (
+                  <select className="field" aria-label="이 고민의 카테고리" value={m.category} disabled={busy}
+                    style={{ width: "auto", minHeight: 40, padding: "0 10px", fontSize: 16, borderRadius: 12 }}
+                    onChange={(e) => setCatOf(m, e.target.value)}>
+                    {d.categories.map((c) => <option key={c}>{c}</option>)}
+                    {!d.categories.includes(m.category) && <option>{m.category}</option>}
+                  </select>
+                ) : (
+                  <span className="pill blue">{m.category}</span>
+                )}
                 {open && !m.drawn ? (
                   <span className="row" role="group" aria-label="이 고민의 이름 공개 방식" style={{ gap: 6 }}>
                     <button type="button" className="mini" aria-pressed={!m.anonymous} disabled={busy} onClick={() => setAnonOf(m, false)}
