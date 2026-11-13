@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
+import { memberFee, payable } from "@/lib/fee";
 import { getStore } from "@/lib/store";
 
 const body = z.object({ sent: z.boolean() });
@@ -15,11 +16,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!parsed.success) return bad("요청을 확인해 주세요.");
 
   const s = await getStore();
-  const [events, applies] = await Promise.all([s.list("Events"), s.list("EventApplies")]);
+  const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
   const e = events.find((x) => x.id === id && x.published === "true");
   if (!e) return bad("행사를 찾을 수 없어요.", 404);
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);
-  if (!a || a.answer !== "참석" || !e.fee) return bad("참석을 신청한 행사의 회비만 알릴 수 있어요.");
+  const me = members.find((m) => m.id === g.s.mid);
+  const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
+  if (!a || a.answer !== "참석" || !mf.known || !payable(mf.amount)) return bad("참석을 신청한 행사의 회비만 알릴 수 있어요.");
   if (a.paid === "true") return bad("이미 입금이 확인됐어요.");
 
   await s.update("EventApplies", a.id, { payNotice: parsed.data.sent ? new Date().toISOString() : "" });

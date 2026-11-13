@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { memberFee, payable } from "@/lib/fee";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -10,13 +11,18 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 });
 
   const s = await getStore();
-  const [events, applies] = await Promise.all([s.list("Events"), s.list("EventApplies")]);
+  const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
   const mine = applies.filter((a) => a.memberId === session.mid);
+  const me = members.find((m) => m.id === session.mid);
 
   const list = events
     .filter((e) => e.published === "true")
     .map((e) => {
       const a = mine.find((x) => x.eventId === e.id);
+      const attending = a?.answer === "참석";
+      // 이 회원의 참석일·회원구분·직책에 맞는 회비가 있는지(0원이면 회비 없음)
+      const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
+      const hasFee = mf.known && payable(mf.amount);
       return {
         id: e.id,
         type: e.type,
@@ -27,9 +33,9 @@ export async function GET() {
         status: e.status,
         myAnswer: a?.answer ?? "",
         // 참석 신청하고 회비를 내지 않았으면 회비 알림
-        feeDue: a?.answer === "참석" && e.fee !== "" && a.paid !== "true",
-        feePaid: a?.answer === "참석" && e.fee !== "" && a.paid === "true",
-        payNotice: a?.answer === "참석" && a.paid !== "true" && Boolean(a.payNotice),
+        feeDue: attending && hasFee && a?.paid !== "true",
+        feePaid: attending && hasFee && a?.paid === "true",
+        payNotice: attending && hasFee && a?.paid !== "true" && Boolean(a?.payNotice),
       };
     });
   return NextResponse.json({ events: list });

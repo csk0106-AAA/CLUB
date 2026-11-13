@@ -9,12 +9,17 @@ import { EventItems } from "@/components/EventItems";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
 import { api, fmtWhen, won } from "@/lib/client";
+import type { FeeRule } from "@/lib/fee";
 
 type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; booking: string;
   status: string; published: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
+  feeRules?: FeeRule[];
 };
-type Row = { memberId: string; name: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string };
+type Row = {
+  memberId: string; name: string; kind: string; position: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string;
+  fee: string; feePending: boolean; // 이 회원이 낼 회비(조건 반영), 날짜를 골라야 정해지면 feePending
+};
 
 const TABS = [
   { key: "over", label: "개요" },
@@ -42,6 +47,7 @@ function Detail({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
   const [actNames, setActNames] = useState<string[]>([]);
+  const [opts, setOpts] = useState<{ kinds: string[]; positions: string[] }>({ kinds: [], positions: [] });
 
   useEffect(() => {
     api<{ perms: string[] }>("/api/me").then((r) => {
@@ -51,12 +57,13 @@ function Detail({ id }: { id: string }) {
 
   const load = useCallback(async () => {
     const [r, a] = await Promise.all([
-      api<{ event: Ev; rows: Row[] }>(`/api/admin/events/${id}`),
+      api<{ event: Ev; rows: Row[]; options: { kinds: string[]; positions: string[] } }>(`/api/admin/events/${id}`),
       api<{ activities: { config: { name: string } }[] }>(`/api/admin/events/${id}/activities`),
     ]);
     if (r.ok) {
       setEv(r.data.event);
       setRows(r.data.rows);
+      setOpts(r.data.options);
     } else setMsg({ tone: "bad", text: r.error });
     if (a.ok) setActNames(a.data.activities.map((x) => x.config.name));
   }, [id]);
@@ -110,7 +117,9 @@ function Detail({ id }: { id: string }) {
       `· 일시: ${ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, "").replace(/ · $/, "") : "추후 안내"}`,
       ev.place ? `· 장소: ${ev.place}` : "",
       actNames.length ? `· 주요 활동: ${actNames.join(", ")}` : "",
-      ev.fee ? `· 참가비: 1인 ${won(ev.fee)}${ev.feeDeadline ? ` (입금 기한 ${ev.feeDeadline})` : ""}` : "",
+      ev.feeRules?.length
+        ? `· 참가비: 참석일·회원구분에 따라 달라요(앱에서 내 회비 확인)${ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}`
+        : ev.fee ? `· 참가비: 1인 ${won(ev.fee)}${ev.feeDeadline ? ` (입금 기한 ${ev.feeDeadline})` : ""}` : "",
       "",
       `원우회 앱에서 참석 여부를 알려 주세요 👉 ${window.location.origin}`,
       "로그인: 내 이름 선택 + 연락처 뒷자리 4자리",
@@ -143,6 +152,19 @@ function Detail({ id }: { id: string }) {
   const noAns = rows.filter((r) => r.answer === "");
   const paid = attend.filter((r) => r.paid);
   const feeNum = Number(ev.fee) || 0;
+  const rules = ev.feeRules ?? [];
+  const setRules = (next: FeeRule[]) => setEv({ ...ev, feeRules: next });
+  // 참석일 선택지: 행사 기간(최대 7일)
+  const dayCount = (() => {
+    const a = ev.startsAt?.slice(0, 10);
+    const b = (ev.endsAt || ev.startsAt)?.slice(0, 10);
+    return a && b ? Math.min(7, Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000) + 1)) : 2;
+  })();
+  const owed = (r: Row) => Number(r.fee) || 0;
+  const totalOwed = attend.reduce((n, r) => n + owed(r), 0);
+  const totalPaid = paid.reduce((n, r) => n + owed(r), 0);
+  // 참석자 회비 분포 (예: 150,000원 8명 · 70,000원 3명)
+  const dist = [...attend.reduce((m, r) => m.set(r.feePending ? "날짜 선택 전" : r.fee ? won(r.fee) : "회비 없음", (m.get(r.feePending ? "날짜 선택 전" : r.fee ? won(r.fee) : "회비 없음") ?? 0) + 1), new Map<string, number>())];
 
   return (
     <>
@@ -170,11 +192,61 @@ function Detail({ id }: { id: string }) {
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><input id="o-end" className="field" type="datetime-local" value={ev.endsAt} onChange={(e) => set("endsAt", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-book">예약 정보</label><input id="o-book" className="field" value={ev.booking} onChange={(e) => set("booking", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-status">진행 상태</label><input id="o-status" className="field" value={ev.status} onChange={(e) => set("status", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-fee">1인 회비 (숫자만, 없으면 비워 두기)</label><input id="o-fee" className="field" inputMode="numeric" value={ev.fee} onChange={(e) => set("fee", e.target.value.replace(/\D/g, ""))} /></div>
+            <div><label className="l" htmlFor="o-fee">기본 회비 (숫자만, 없으면 비워 두기)</label><input id="o-fee" className="field" inputMode="numeric" value={ev.fee} onChange={(e) => set("fee", e.target.value.replace(/\D/g, ""))} /></div>
             <div><label className="l" htmlFor="o-dl">입금 기한</label><input id="o-dl" className="field" type="date" value={ev.feeDeadline} onChange={(e) => set("feeDeadline", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div>
           </div>
+
+          {/* 조건별 회비: 참석일 / 회원구분 / 직책 */}
+          <section className="card" aria-label="조건별 회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <b style={{ font: "400 19px var(--display)" }}>조건별 회비 (선택)</b>
+            <span className="small">
+              참석일, 회원구분, 직책에 따라 회비가 다르면 줄을 추가하세요. “전체”는 조건 없음이에요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고,
+              맞는 줄이 없으면 기본 회비를 써요. 0원은 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
+            </span>
+            {rules.map((r, i) => {
+              const upd = (patch: Partial<FeeRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+              return (
+                <div key={i} className="row" style={{ flexWrap: "wrap", alignItems: "flex-end", gap: 8 }}>
+                  <div style={{ flex: "1 1 120px" }}>
+                    <label className="l" htmlFor={`fr-d-${i}`}>참석일</label>
+                    <select id={`fr-d-${i}`} className="field" value={r.days} onChange={(e) => upd({ days: e.target.value })}>
+                      <option value="">전체</option>
+                      {Array.from({ length: dayCount }, (_, d) => d + 1).map((d) => (
+                        <option key={d} value={String(d)}>{d === 1 ? "1일" : `${d}일 (${d - 1}박${d}일)`}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ flex: "1 1 130px" }}>
+                    <label className="l" htmlFor={`fr-k-${i}`}>회원구분</label>
+                    <select id={`fr-k-${i}`} className="field" value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
+                      <option value="">전체</option>
+                      {[...new Set([...opts.kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: "1 1 130px" }}>
+                    <label className="l" htmlFor={`fr-p-${i}`}>직책</label>
+                    <select id={`fr-p-${i}`} className="field" value={r.position} onChange={(e) => upd({ position: e.target.value })}>
+                      <option value="">전체</option>
+                      {[...new Set([...opts.positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: "1 1 130px" }}>
+                    <label className="l" htmlFor={`fr-a-${i}`}>금액(원)</label>
+                    <input id={`fr-a-${i}`} className="field" inputMode="numeric" value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} />
+                  </div>
+                  <button className="mini danger" type="button" style={{ minHeight: 54 }} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button>
+                </div>
+              );
+            })}
+            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: 17 }}
+              onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>
+              + 조건 추가
+            </button>
+            {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
+            {dist.length > 0 && <span className="small">현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
+          </section>
           <div>
             <span className="l">주요 활동 (활동 탭에서 고른 것이 자동으로 들어가요)</span>
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
@@ -186,7 +258,9 @@ function Detail({ id }: { id: string }) {
             <b style={{ font: "400 22px var(--display)" }}>{ev.name}</b>
             <div className="small">{ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, ev.place) : "날짜가 정해지면 알려 드려요"}</div>
             {actNames.length > 0 && <div className="small">주요 활동: {actNames.join(" · ")}</div>}
-            {ev.fee && <div className="small">참가비 1인 {won(ev.fee)}{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
+            {rules.length > 0
+              ? <div className="small">참가비: 회원마다 본인 회비만 보여요(참석일·회원구분·직책 기준){ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>
+              : ev.fee && <div className="small">참가비 1인 {won(ev.fee)}{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
             {ev.account && <div className="small">계좌 {ev.account}{ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""} · 참석 신청한 회원에게만 보여요</div>}
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
@@ -263,8 +337,12 @@ function Detail({ id }: { id: string }) {
       {tab === "fee" && (
         <>
           <div className="cards">
-            <div className="card"><span className="small">1인 회비</span><div className="big">{feeNum ? won(feeNum) : "미정"}</div></div>
-            <div className="card"><span className="small">입금 완료</span><div className="big" style={{ color: "var(--green-t)" }}>{paid.length}명</div><span className="small">{won(paid.length * feeNum)} / {won(attend.length * feeNum)}</span></div>
+            <div className="card">
+              <span className="small">{rules.length ? "회비 (조건별)" : "1인 회비"}</span>
+              <div className="big">{rules.length ? `${rules.length}개 조건` : feeNum ? won(feeNum) : "미정"}</div>
+              {rules.length > 0 && <span className="small">기본 {feeNum ? won(feeNum) : "없음"} · 개요에서 고쳐요</span>}
+            </div>
+            <div className="card"><span className="small">입금 완료</span><div className="big" style={{ color: "var(--green-t)" }}>{paid.length}명</div><span className="small">{won(totalPaid)} / {won(totalOwed)}</span></div>
             <div className="card"><span className="small">미입금</span><div className="big" style={{ color: "var(--red-t)" }}>{attend.length - paid.length}명</div></div>
           </div>
           <span className="small">“입금 확인”을 누르면 그 회원 화면의 회비 알림이 바로 사라져요. 미입금 회원에게는 알림이 계속 보여요.</span>
@@ -277,7 +355,7 @@ function Detail({ id }: { id: string }) {
                   {attend.map((r) => (
                     <tr key={r.memberId}>
                       <td><b>{r.name}</b></td>
-                      <td className="num">{feeNum ? feeNum.toLocaleString("ko-KR") : "-"}</td>
+                      <td className="num">{r.feePending ? <span className="small">날짜 선택 전</span> : owed(r) ? owed(r).toLocaleString("ko-KR") : "-"}</td>
                       <td>
                         <span className={`pill ${r.paid ? "ok" : "warn"}`}>{r.paid ? "입금" : "미입금"}</span>
                         {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {Number(r.payNotice.slice(5, 7))}/{Number(r.payNotice.slice(8, 10))}</span>}

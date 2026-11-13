@@ -6,7 +6,7 @@ import { LessonHeader } from "@/components/LessonHeader";
 import { api, won } from "@/lib/client";
 
 type Detail = {
-  event: { name: string; fee: string; feeDeadline: string; account: string; accountHolder: string };
+  event: { name: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string };
   apply: { answer: string; paid: boolean; payNotice: string } | null;
   feeDue: boolean;
 };
@@ -67,11 +67,13 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
       <h1 className="title">회비를 보내 주세요</h1>
 
       {!attending && <div className="msg info">참석을 신청하면 회비 안내가 열려요.</div>}
-      {attending && !e.fee && <div className="msg info">이 행사는 정해진 회비가 없어요.</div>}
+      {attending && !e.fee && (e.feePending
+        ? <div className="msg info">참석 날짜에 따라 회비가 달라요. 행사 개요에서 “참석 날짜 바꾸기”로 날짜를 고르면 내 회비를 알려 드려요.</div>
+        : <div className="msg info">내 회비는 없어요. 따로 보내지 않아도 돼요.</div>)}
 
       {attending && e.fee && (
         <>
-          <div className="card center"><span className="small">1인 회비</span><div className="title num" style={{ fontSize: 40 }}>{won(e.fee)}</div></div>
+          <div className="card center"><span className="small">내 회비</span><div className="title num" style={{ fontSize: 40 }}>{won(e.fee)}</div></div>
           <div className="card">
             <span className="small">입금 계좌</span>
             <div className="num" style={{ font: "700 19px var(--body)" }}>{e.account || "계좌가 정해지면 알려 드려요"}</div>

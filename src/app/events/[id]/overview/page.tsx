@@ -10,7 +10,7 @@ import { api, fmtWhen, TYPE_TONE, won } from "@/lib/client";
 type Detail = {
   event: {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
-    booking: string; fee: string; feeDeadline: string; account: string; accountHolder: string;
+    booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
   };
   activities: { id: string; name: string }[];
   apply: { answer: string; days: string[]; paid: boolean } | null;
@@ -84,7 +84,9 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setPicking(false);
-    if (d) next(d.event.fee);
+    // 참석 날짜에 따라 회비가 달라질 수 있으므로 날짜를 저장한 뒤의 내 회비로 다음 화면을 정한다.
+    const fresh = await api<Detail>(`/api/events/${id}`);
+    next(fresh.ok ? fresh.data.event.fee : d?.event.fee ?? "");
   }
 
   if (error && !d) {
@@ -115,9 +117,15 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       {d.activities.length > 0 && (
         <div className="card"><b>주요 활동</b><div className="small">{d.activities.map((a) => a.name).join(" · ")}</div></div>
       )}
+      {e.feePending && !e.fee && (
+        <div className="card">
+          <b>내 참가비</b>
+          <div className="small">참석 날짜(1일 / 1박2일 등)에 따라 달라요. 참석 날짜를 고르면 내 회비를 알려 드려요.</div>
+        </div>
+      )}
       {e.fee && (
         <div className="card">
-          <b>참가비</b>
+          <b>내 참가비</b>
           <div className="small">{won(e.fee)}{e.account ? ` · 계좌 ${e.account}${e.accountHolder ? ` (예금주 ${e.accountHolder})` : ""}` : ""}{e.feeDeadline ? ` · 입금 기한 ${e.feeDeadline}` : ""}</div>
         </div>
       )}

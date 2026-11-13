@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { getStore } from "@/lib/store";
+import { feeRules, memberFee, readRules } from "@/lib/fee";
+import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -25,18 +26,27 @@ export async function GET(_req: Request, ctx: Ctx) {
     .filter((m) => m.kind !== "회원대기")
     .map((m) => {
       const a = applies.find((x) => x.eventId === id && x.memberId === m.id);
+      // 이 회원이 낼 회비(참석일·회원구분·직책 조건 반영)
+      const mf = memberFee(event, { kind: m.kind, position: m.position }, a);
       return {
         memberId: m.id,
         name: m.name,
+        kind: m.kind,
+        position: m.position,
         answer: a?.answer ?? "",
         days: a?.days ?? "",
         paid: a?.paid === "true",
         paidAt: a?.paidAt ?? "",
         memo: a?.memo ?? "",
         payNotice: a?.payNotice ?? "",
+        fee: mf.known ? mf.amount : "",
+        feePending: !mf.known,
       };
     });
-  return NextResponse.json({ event, rows });
+  // 조건별 회비 선택지: 회원구분(설정 값), 직책(명단에 있는 값)
+  const kinds = (await getSetting<{ value: string }[]>("memberKinds", [])).map((k) => k.value);
+  const positions = [...new Set(members.map((m) => m.position).filter((p) => p && p !== "-"))].sort((a, b) => a.localeCompare(b, "ko"));
+  return NextResponse.json({ event: { ...event, feeRules: readRules(event.feeRules) }, rows, options: { kinds, positions } });
 }
 
 const patch = z.object({
@@ -51,6 +61,7 @@ const patch = z.object({
   feeDeadline: z.string().max(30).optional(),
   account: z.string().max(120).optional(),
   accountHolder: z.string().max(60).optional(),
+  feeRules: feeRules.optional(), // 조건별 회비
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -59,10 +70,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const parsed = patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 회비는 숫자만 넣어 주세요.");
-  const { published, ...rest } = parsed.data;
+  const { published, feeRules: rules, ...rest } = parsed.data;
   const s = await getStore();
   const row = await s.update("Events", id, {
     ...rest,
+    ...(rules === undefined ? {} : { feeRules: JSON.stringify(rules) }),
     ...(published === undefined ? {} : { published: String(published) }),
   });
   if (!row) return bad("행사를 찾을 수 없어요.", 404);

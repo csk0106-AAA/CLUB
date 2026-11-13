@@ -13,6 +13,8 @@ export const TABS = {
   Events: [
     "id", "type", "name", "startsAt", "endsAt", "place", "booking", "status",
     "published", "fee", "feeDeadline", "account", "accountHolder",
+    // feeRules: 조건별 회비 [{days, kind, position, amount}] JSON (lib/fee.ts). fee 는 기본 회비.
+    "feeRules",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
