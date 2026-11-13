@@ -30,7 +30,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
   const [edit, setEdit] = useState<string | null>(null); // null: 새로 쓰기
   const [body, setBody] = useState("");
   const [cat, setCat] = useState("경영");
-  const [anon, setAnon] = useState(false);
+  const [anon, setAnon] = useState<boolean | null>(null); // null: 아직 고르지 않음(새 고민은 꼭 골라야 저장)
 
   const load = useCallback(async () => {
     const r = await api<Data>(`/api/worry/${aid}`);
@@ -46,11 +46,23 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
     setEdit(null);
     setBody("");
     setCat(d?.categories[0] ?? "경영");
-    setAnon(false);
+    setAnon(null);
+  }
+
+  // 이미 쓴 고민의 실명/익명을 카드에서 바로 바꾼다(뽑히기 전까지).
+  async function setAnonOf(m: Mine, anonymous: boolean) {
+    if (m.anonymous === anonymous) return;
+    setBusy(true);
+    setNote(null);
+    const r = await api(`/api/worry/${aid}/${m.id}`, { method: "PATCH", body: { body: m.body, category: m.category, anonymous } });
+    setBusy(false);
+    setNote(r.ok ? { tone: "info", text: anonymous ? "이 고민을 익명으로 바꿨어요." : "이 고민을 실명으로 바꿨어요." } : { tone: "bad", text: r.error });
+    load();
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (anon === null) return;
     setBusy(true);
     setNote(null);
     const payload = { body, category: cat, anonymous: anon };
@@ -77,7 +89,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기"
         right={d.canJoin ? <span className={`pill ${d.mine.length ? "ok" : "gray"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
       <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: 24 }}>{d.activity.name}</h1></div>
-      <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 행사에서 뽑힌 고민은 큰 화면에 내용만 나오고, 작성자는 대화가 끝난 뒤에 공개돼요.</p>
+      <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 행사에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 사회자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
       {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${d.pre.opensAt} ~ ${d.pre.closesAt} 예요.` : ""}</div>}
@@ -89,7 +101,20 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
             <div key={m.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <span className="pill blue">{m.category}</span>
-                <span className={`pill ${m.anonymous ? "gray" : "ok"}`}>{m.anonymous ? "익명" : "실명"}</span>
+                {open && !m.drawn ? (
+                  <span className="row" role="group" aria-label="이 고민의 이름 공개 방식" style={{ gap: 6 }}>
+                    <button type="button" className="mini" aria-pressed={!m.anonymous} disabled={busy} onClick={() => setAnonOf(m, false)}
+                      style={!m.anonymous ? { borderColor: "var(--green)", background: "var(--green-bg)", color: "var(--green-t)" } : undefined}>
+                      {!m.anonymous ? "✓ " : ""}실명
+                    </button>
+                    <button type="button" className="mini" aria-pressed={m.anonymous} disabled={busy} onClick={() => setAnonOf(m, true)}
+                      style={m.anonymous ? { borderColor: "var(--blue)", background: "var(--blue-bg)", color: "var(--blue-t)" } : undefined}>
+                      {m.anonymous ? "✓ " : ""}익명
+                    </button>
+                  </span>
+                ) : (
+                  <span className={`pill ${m.anonymous ? "gray" : "ok"}`}>{m.anonymous ? "익명" : "실명"}</span>
+                )}
                 {m.drawn && <span className="pill warn">이미 뽑혔어요</span>}
               </div>
               <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{m.body}</p>
@@ -119,14 +144,14 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
             </select>
           </div>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend className="l">이름 공개 방식 (미리 정해 주세요)</legend>
+            <legend className="l">이 고민의 이름 공개 방식 (꼭 골라 주세요)</legend>
             <div className="pick">
-              <button type="button" className="opt" aria-pressed={!anon} onClick={() => setAnon(false)}><span className="name">{!anon ? "✓ " : ""}실명으로 공개</span><span className="small">대화가 끝나면 이름이 나와요</span></button>
-              <button type="button" className="opt" aria-pressed={anon} onClick={() => setAnon(true)}><span className="name">{anon ? "✓ " : ""}익명으로</span><span className="small">“익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요</span></button>
+              <button type="button" className="opt" aria-pressed={anon === false} onClick={() => setAnon(false)}><span className="name">{anon === false ? "✓ " : ""}실명으로</span><span className="small">사회자가 이름을 공개해요</span></button>
+              <button type="button" className="opt" aria-pressed={anon === true} onClick={() => setAnon(true)}><span className="name">{anon === true ? "✓ " : ""}익명으로</span><span className="small">“익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요</span></button>
             </div>
           </fieldset>
           <div className="row">
-            <button className="btn" type="submit" disabled={busy || body.trim().length < 2}>{edit ? "저장" : "저장하기"}</button>
+            <button className="btn" type="submit" disabled={busy || body.trim().length < 2 || anon === null}>{edit ? "저장" : "저장하기"}</button>
             {edit && <button className="btn white" type="button" onClick={reset}>취소</button>}
           </div>
         </form>
