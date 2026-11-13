@@ -100,9 +100,20 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
     if (!r.ok) setMsg({ tone: "bad", text: r.error });
     return r.ok;
   }
+  // 선택 저장 = 고른 사람 저장 + 출석 체크 완료(한 명 이상일 때). 아무도 없으면 완료 상태를 푼다.
   async function onSave() {
     setBusy(true);
-    if (await saveSel()) setMsg({ tone: "info", text: "선택한 사람을 저장했어요." });
+    setMsg(null);
+    if (dirty && !(await saveSel())) return setBusy(false);
+    const done = sel.size > 0;
+    if (done !== att?.confirmed) {
+      const r = await api(base, { body: { confirmed: done } });
+      if (!r.ok) {
+        setBusy(false);
+        return setMsg({ tone: "bad", text: r.error });
+      }
+    }
+    setMsg({ tone: "info", text: done ? `${sel.size}명을 저장했어요. 출석 체크가 완료돼 활동을 시작할 수 있어요.` : "아무도 선택하지 않아 출석 체크가 완료되지 않았어요. 참여할 사람을 골라 저장해 주세요." });
     setBusy(false);
     await load();
     onChange();
@@ -111,16 +122,6 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
     setBusy(true);
     const r = await api(base, { method: "PUT", body: { preset: "applicants" } });
     setMsg(r.ok ? { tone: "info", text: "행사에 참석을 신청한 회원으로 채웠어요. 필요하면 고쳐 주세요." } : { tone: "bad", text: r.error });
-    setBusy(false);
-    await load();
-    onChange();
-  }
-  async function confirm(confirmed: boolean) {
-    setBusy(true);
-    setMsg(null);
-    if (confirmed && dirty && !(await saveSel())) return setBusy(false);
-    const r = await api(base, { body: { confirmed } });
-    setMsg(r.ok ? { tone: "info", text: confirmed ? "출석 체크를 완료했어요. 이제 활동을 시작할 수 있어요." : "출석 체크 완료를 취소했어요." } : { tone: "bad", text: r.error });
     setBusy(false);
     await load();
     onChange();
@@ -135,7 +136,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
         <span className="pill blue">선택 {sel.size}명</span>
         <span className={`pill ${att.confirmed ? "ok" : "warn"}`}>{att.confirmed ? "완료" : "활동 전에 완료해 주세요"}</span>
       </div>
-      {!att.confirmed && <div className="msg info">참여할 사람을 고르고 “출석 체크 완료”를 눌러야 사회자가 활동을 시작할 수 있어요. 선택하지 않은 회원은 활동에 들어가지 않아요.</div>}
+      {!att.confirmed && <div className="msg info">참여할 사람을 고르고 아래 “선택 저장”을 누르면 출석 체크가 완료돼 사회자가 활동을 시작할 수 있어요. 선택하지 않은 회원은 활동에 들어가지 않아요.</div>}
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
@@ -155,13 +156,13 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
       </div>
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn white" type="button" disabled={busy || !dirty} style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={onSave}>선택 저장</button>
-          {!att.confirmed
-            ? <button className="btn" type="button" disabled={busy || sel.size === 0} style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={() => confirm(true)}>출석 체크 완료</button>
-            : <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={() => confirm(false)}>완료 취소</button>}
+          <button className="btn" type="button" disabled={busy || (!dirty && att.confirmed === sel.size > 0)} style={{ width: "auto", minWidth: 160, minHeight: 46, fontSize: 16 }} onClick={onSave}>
+            {busy ? "저장 중…" : "선택 저장"}
+          </button>
+          {dirty && <span className="small">저장하지 않은 변경이 있어요.</span>}
         </div>
       )}
-      {att.confirmed && <span className="small">{fmtDateTime(att.confirmedAt)} ·{att.by} 님이 완료했어요. 늦게 온 분은 선택해서 저장하면 바로 참여할 수 있어요.</span>}
+      {att.confirmed && <span className="small">{fmtDateTime(att.confirmedAt)} ·{att.by} 님이 저장했어요. 늦게 온 분은 선택하고 “선택 저장”을 누르면 바로 참여할 수 있어요.</span>}
     </div>
   );
 }
