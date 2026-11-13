@@ -9,7 +9,7 @@ import { EventItems } from "@/components/EventItems";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
 import { DateField } from "@/components/DateField";
-import { api, fmtDate, fmtDays, fmtRange, won } from "@/lib/client";
+import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, won } from "@/lib/client";
 import type { FeeRule } from "@/lib/fee";
 
 type Ev = {
@@ -64,7 +64,7 @@ function Detail({ id }: { id: string }) {
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [canEditActs, setCanEditActs] = useState(false);
-  const [editRow, setEditRow] = useState<{ memberId: string; answer: string; memo: string } | null>(null);
+  const [editRow, setEditRow] = useState<{ memberId: string; answer: string; memo: string; days: string[] } | null>(null);
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
   const [actNames, setActNames] = useState<string[]>([]);
@@ -99,6 +99,15 @@ function Detail({ id }: { id: string }) {
   if (!ev) return msg ? <div className="msg bad" role="alert">{msg.text}</div> : <p className="small">불러오는 중이에요…</p>;
 
   const set = (k: keyof Ev, v: string) => setEv({ ...ev, [k]: v });
+  // 행사 기간의 날짜 목록(참석 날짜 고르기용, 최대 7일)
+  const evDays = (() => {
+    const a = ev.startsAt?.slice(0, 10);
+    const b = (ev.endsAt || ev.startsAt)?.slice(0, 10);
+    const out: string[] = [];
+    if (!a || !b) return out;
+    for (let t = Date.parse(`${a}T00:00:00Z`); t <= Date.parse(`${b}T00:00:00Z`) && out.length < 7; t += 86_400_000) out.push(new Date(t).toISOString().slice(0, 10));
+    return out;
+  })();
 
   async function save(published?: boolean) {
     if (!ev) return;
@@ -126,6 +135,9 @@ function Detail({ id }: { id: string }) {
 
   async function saveRow() {
     if (!editRow) return;
+    if (editRow.answer === "참석" && evDays.length > 1 && editRow.days.length === 0) {
+      return setMsg({ tone: "bad", text: "참석 날짜를 하나 이상 골라 주세요." });
+    }
     setBusy(true);
     const r = await api(`/api/admin/events/${id}/apply`, { body: editRow });
     setBusy(false);
@@ -358,7 +370,19 @@ function Detail({ id }: { id: string }) {
                           <option value="참석">참석</option><option value="불참">불참</option><option value="">미응답</option>
                         </select>
                       </td>
-                      <td className="num">{editRow.answer === "참석" ? dayText(r.days) : ""}</td>
+                      <td>
+                        {editRow.answer === "참석" ? (
+                          <div className="checks" role="group" aria-label={`${r.name} 참석 날짜`} style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                            {evDays.map((d) => (
+                              <label key={d} style={{ minHeight: 40 }}>
+                                <input type="checkbox" checked={editRow.days.includes(d)}
+                                  onChange={(e) => setEditRow({ ...editRow, days: e.target.checked ? [...editRow.days, d].sort() : editRow.days.filter((x) => x !== d) })} />
+                                {fmtDateDow(d)}
+                              </label>
+                            ))}
+                          </div>
+                        ) : <span className="small">-</span>}
+                      </td>
                       <td><input className="field" style={{ minHeight: 44 }} aria-label={`${r.name} 메모`} maxLength={200} value={editRow.memo} onChange={(e) => setEditRow({ ...editRow, memo: e.target.value })} /></td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         <button className="mini" type="button" disabled={busy} onClick={saveRow}>저장</button>{" "}
@@ -371,7 +395,7 @@ function Detail({ id }: { id: string }) {
                       <td><span className={`pill ${r.answer === "참석" ? "ok" : r.answer === "불참" ? "gray" : "warn"}`}>{r.answer || "미응답"}</span></td>
                       <td className="num">{dayText(r.days)}</td>
                       <td>{r.memo || <span className="small">-</span>}</td>
-                      <td><button className="mini" type="button" onClick={() => setEditRow({ memberId: r.memberId, answer: r.answer, memo: r.memo })}>수정</button></td>
+                      <td><button className="mini" type="button" onClick={() => setEditRow({ memberId: r.memberId, answer: r.answer, memo: r.memo, days: r.days ? r.days.split(",").filter(Boolean) : [] })}>수정</button></td>
                     </tr>
                   ),
                 )}
