@@ -61,8 +61,11 @@ function AiSettings() {
       </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 20px var(--display)" }}>AI가 개입하는 단계별 추가 지침</b>
-        <span className="small">위의 공통 지침에 더해, 단계마다 따로 적을 수 있어요. 비워 두면 공통 지침만 적용돼요.</span>
+        <b style={{ font: "400 20px var(--display)" }}>단계별 전체 지침 (기본값)</b>
+        <span className="small">
+          위의 공통 지침에 더해 단계마다 적는 기본 지침이에요. 활동 템플릿의 “AI 지침”에서 그 활동만의 지침을 정하면 그 활동에서는 템플릿 지침을 먼저 써요.
+          비워 두면 공통 지침만 적용돼요.
+        </span>
         {s.points.map((p) => (
           <div key={p.key}>
             <label className="l" htmlFor={`pg-${p.key}`}>{p.label}</label>

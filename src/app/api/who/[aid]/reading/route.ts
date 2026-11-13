@@ -79,7 +79,7 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const terms = termsFrom(await s.list("Members"));
-  const p = readingPrompt(await guidelinesFor("reading"), sajuSummary(saju, gender));
+  const p = readingPrompt(await guidelinesFor("reading", w.act), sajuSummary(saju, gender));
   const messages = [...p.messages];
   let result: { traits: string; full: string } | null = null;
   for (let attempt = 0; attempt < 2 && !result; attempt++) {

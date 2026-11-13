@@ -50,6 +50,9 @@ export const templateConfigSchema = z.object({
   scoring: z
     .object({ enabled: z.boolean(), tieBreak: z.enum(["roulette", "none"]).default("roulette") })
     .optional(),
+  // AI 지침(지점별). 키는 lib/ai-guides.ts 의 AI 지점(followup, draft, truthlies, revise, reading, worry).
+  // 비어 있는 지점은 AI 설정 화면의 전체 지침을 쓴다.
+  aiGuides: z.record(z.string(), z.string().max(4000)).optional(),
 });
 
 export type TemplateConfig = z.infer<typeof templateConfigSchema>;

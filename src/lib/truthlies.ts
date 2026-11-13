@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ask, extractJson, isAiEnabled, truthLiesPrompt } from "./ai";
 import { guidelinesFor } from "./ai-guides";
 import { findIdentity, generalize, type IdentityTerms } from "./identity";
+import type { Row } from "./store/types";
 import type { ChatMsg } from "./who";
 
 const shape = z.object({
@@ -36,9 +37,9 @@ export function keyWords(statements: string[]): string[] {
 }
 
 // AI로 2진실 1거짓을 만든다. 형식이 틀리거나 신원이 드러나면 한 번 더 시도하고, 그래도 안 되면 null.
-export async function generateTruthLies(intro: string, qa: { q: string; a: string }[], terms: IdentityTerms): Promise<{ statements: string[]; lieIndex: number } | null> {
+export async function generateTruthLies(intro: string, qa: { q: string; a: string }[], terms: IdentityTerms, act?: Row): Promise<{ statements: string[]; lieIndex: number } | null> {
   if (!isAiEnabled() || qa.length === 0) return null;
-  const p = truthLiesPrompt(await guidelinesFor("truthlies"), intro, qa);
+  const p = truthLiesPrompt(await guidelinesFor("truthlies", act), intro, qa);
   const messages = [...p.messages];
   for (let attempt = 0; attempt < 2; attempt++) {
     const text = await ask(p.system, messages, 3000);

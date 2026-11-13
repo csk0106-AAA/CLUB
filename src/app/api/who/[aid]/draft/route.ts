@@ -43,7 +43,7 @@ export async function POST(_req: Request, ctx: Ctx) {
 
   // ① 2진실 1거짓 먼저
   if (inAct) {
-    const tl = await generateTruthLies("", qaPairs(messages, terms), terms);
+    const tl = await generateTruthLies("", qaPairs(messages, terms), terms, w.act);
     if (tl) {
       statements = tl.statements;
       lieIndex = tl.lieIndex;
@@ -61,7 +61,7 @@ export async function POST(_req: Request, ctx: Ctx) {
   // ② 소개 글 + 별칭 (2진실 1거짓 내용은 빼고) ③ 겹침 검사 후 한 번 더
   let leaked: string[] = [];
   if (isAiEnabled()) {
-    const guide = await guidelinesFor("draft");
+    const guide = await guidelinesFor("draft", w.act);
     let banned: string[] = [];
     for (let attempt = 0; attempt < 3; attempt++) {
       const ap = introAliasPrompt(guide, answers, alias, taken, avoid, banned);

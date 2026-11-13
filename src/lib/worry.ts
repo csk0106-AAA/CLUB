@@ -125,7 +125,7 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     return { ok: true };
   } else if (action === "tips") {
     if (!isAiEnabled()) return { ok: false, error: "AI가 아직 연결되지 않았어요. 연결되면 관점 3가지를 보여 드릴 수 있어요.", status: 503 };
-    const gl = await guidelinesFor("worry");
+    const gl = await guidelinesFor("worry", ctx.act);
     const out = await ask(
       `당신은 원우회 대화를 돕는 진행 도우미입니다. 한국어로, 아래 고민에 대한 서로 다른 관점 3가지를 각각 한 문장으로 짧게 제시하세요. 줄바꿈으로 구분하고 번호나 기호는 붙이지 마세요.\n\n[관리자 지침]\n${gl}`,
       [{ role: "user", content: current.body }],

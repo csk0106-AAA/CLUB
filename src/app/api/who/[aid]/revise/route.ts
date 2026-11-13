@@ -31,7 +31,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   if (!isAiEnabled()) {
     return NextResponse.json({ manual: true, error: "AI가 아직 연결되지 않았어요. 글을 직접 고쳐 주세요." }, { status: 503 });
   }
-  const p = revisePrompt(await guidelinesFor("revise"), parsed.data.introMd, parsed.data.request);
+  const p = revisePrompt(await guidelinesFor("revise", w.act), parsed.data.introMd, parsed.data.request);
   const out = await ask(p.system, p.messages, 3000);
   if (!out) return NextResponse.json({ manual: true, error: "AI가 응답하지 않았어요. 글을 직접 고쳐 주세요." }, { status: 503 });
   if (out.startsWith("거절:")) {
