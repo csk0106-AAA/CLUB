@@ -27,10 +27,15 @@ export function fmtWhen(startsAt: string, endsAt: string, place: string): string
   return place ? `${range} · ${place}` : range;
 }
 
-// 일시 범위: "12/11 14:30 ~ 12/12 14:00" (같은 날이면 "12/11 14:30 ~ 16:00", 끝이 없으면 시작만)
+// 날짜: "2026-11-30" → "2026/11/30"
+export function fmtDate(iso: string): string {
+  return /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(0, 10).replace(/-/g, "/") : iso;
+}
+
+// 일시 범위: "2026/12/11 14:30 ~ 2026/12/12 14:00" (같은 날이면 "2026/12/11 14:30 ~ 16:00", 끝이 없으면 시작만)
 export function fmtRange(startsAt: string, endsAt: string): string {
   if (!startsAt) return "날짜가 정해지면 알려 드려요";
-  const part = (iso: string) => ({ md: `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`, hm: iso.length >= 16 ? iso.slice(11, 16) : "" });
+  const part = (iso: string) => ({ md: fmtDate(iso), hm: iso.length >= 16 ? iso.slice(11, 16) : "" });
   const a = part(startsAt);
   const start = a.hm ? `${a.md} ${a.hm}` : a.md;
   if (!endsAt) return start;

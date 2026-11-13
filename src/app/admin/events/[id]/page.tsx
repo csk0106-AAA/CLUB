@@ -8,7 +8,7 @@ import { EventActivities } from "@/components/EventActivities";
 import { EventItems } from "@/components/EventItems";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
-import { api, fmtRange, won } from "@/lib/client";
+import { api, fmtDate, fmtRange, won } from "@/lib/client";
 import type { FeeRule } from "@/lib/fee";
 
 type Ev = {
@@ -48,7 +48,7 @@ function infoLines(ev: Ev, rules: FeeRule[], actNames: string[]): InfoLine[] {
   const one = oneFee(rules);
   if (one) out.push({ icon: "💰", label: "참가비", value: won(one) });
   else if (rules.length) out.push({ icon: "💰", label: "참가비", value: "앱 접속 후 내 회비 확인" });
-  if (rules.length && ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: ev.feeDeadline });
+  if (rules.length && ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: fmtDate(ev.feeDeadline) });
   if (one && ev.account) out.push({ icon: "🏦", label: "계좌", value: `${ev.account}${ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""}` });
   if (ev.booking?.trim()) out.push({ icon: "📢", label: "안내", value: ev.booking.trim(), multiline: true });
   return out;

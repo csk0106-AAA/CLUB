@@ -5,7 +5,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MineInfo } from "@/components/MineInfo";
 import { Sheet } from "@/components/Sheet";
-import { api, fmtRange, TYPE_TONE, won } from "@/lib/client";
+import { api, fmtDate, fmtRange, TYPE_TONE, won } from "@/lib/client";
 
 type Detail = {
   event: {
@@ -128,7 +128,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
           <b>내 참가비</b>
           {/* 한 줄에 정보 하나씩 */}
           <div className="small">금액: {won(e.fee)}</div>
-          {e.feeDeadline && <div className="small">입금 기한: {e.feeDeadline}</div>}
+          {e.feeDeadline && <div className="small">입금 기한: {fmtDate(e.feeDeadline)}</div>}
           {e.account && <div className="small">계좌: {e.account}{e.accountHolder ? ` (예금주 ${e.accountHolder})` : ""}</div>}
         </div>
       )}
