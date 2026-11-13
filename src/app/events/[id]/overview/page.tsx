@@ -5,7 +5,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MineInfo } from "@/components/MineInfo";
 import { Sheet } from "@/components/Sheet";
-import { api, fmtWhen, TYPE_TONE, won } from "@/lib/client";
+import { api, fmtRange, TYPE_TONE, won } from "@/lib/client";
 
 type Detail = {
   event: {
@@ -112,7 +112,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       <h1 className="title">{e.name}</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
 
-      <div className="card"><b>일시</b><div className="small">{e.startsAt ? fmtWhen(e.startsAt, e.endsAt, "").replace(/ · $/, "") : "날짜가 정해지면 알려 드려요"}</div></div>
+      <div className="card"><b>일시</b><div className="small">{fmtRange(e.startsAt, e.endsAt)}</div></div>
       {e.place && <div className="card"><b>장소</b><div className="small">{e.place}</div></div>}
       {d.activities.length > 0 && (
         <div className="card"><b>주요 활동</b><div className="small">{d.activities.map((a) => a.name).join(" · ")}</div></div>

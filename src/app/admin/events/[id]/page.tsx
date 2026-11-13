@@ -8,7 +8,7 @@ import { EventActivities } from "@/components/EventActivities";
 import { EventItems } from "@/components/EventItems";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
-import { api, fmtWhen, won } from "@/lib/client";
+import { api, fmtRange, won } from "@/lib/client";
 import type { FeeRule } from "@/lib/fee";
 
 type Ev = {
@@ -41,7 +41,7 @@ const oneFee = (rules?: FeeRule[]): string | null =>
 type InfoLine = { icon: string; label: string; value: string; note?: string; multiline?: boolean };
 function infoLines(ev: Ev, rules: FeeRule[], actNames: string[], withAccount: boolean): InfoLine[] {
   const out: InfoLine[] = [];
-  out.push({ icon: "📅", label: "일시", value: ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, "").replace(/ · $/, "") : "날짜가 정해지면 알려 드려요" });
+  out.push({ icon: "📅", label: "일시", value: fmtRange(ev.startsAt, ev.endsAt) });
   if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
   if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
   const one = oneFee(rules);
