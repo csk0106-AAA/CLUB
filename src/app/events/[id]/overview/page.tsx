@@ -129,7 +129,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
           <div className="small">{won(e.fee)}{e.account ? ` · 계좌 ${e.account}${e.accountHolder ? ` (예금주 ${e.accountHolder})` : ""}` : ""}{e.feeDeadline ? ` · 입금 기한 ${e.feeDeadline}` : ""}</div>
         </div>
       )}
-      {e.booking && <div className="card"><b>예약 안내</b><div className="small">{e.booking}</div></div>}
+      {e.booking && <div className="card"><b>예약 안내</b><div className="small" style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{e.booking}</div></div>}
       <MineInfo eventId={id} placeholder />
 
       {answer === "참석" && (

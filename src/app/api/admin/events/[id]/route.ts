@@ -58,7 +58,7 @@ const patch = z.object({
   startsAt: z.string().max(30).optional(),
   endsAt: z.string().max(30).optional(),
   place: z.string().max(120).optional(),
-  booking: z.string().max(300).optional(),
+  booking: z.string().max(2000).optional(), // 여러 줄 예약 안내
   status: z.string().max(30).optional(),
   published: z.boolean().optional(),
   fee: z.string().regex(/^\d{0,9}$/).optional(),

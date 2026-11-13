@@ -53,10 +53,12 @@ export function EventItems({ eventId, kind, canEdit }: { eventId: string; kind: 
     setItems(r.data.items);
     setDraft(Object.fromEntries(r.data.items.map((i) => [i.id, { ...i }])));
     if (kind === "costs") {
-      const e = await api<{ event: { fee: string }; rows: { answer: string }[] }>(`/api/admin/events/${eventId}`);
+      const e = await api<{ event: { fee: string; feeRules?: { days: string; kind: string; position: string; amount: string }[] }; rows: { answer: string }[] }>(`/api/admin/events/${eventId}`);
       if (e.ok) {
         setAttend(e.data.rows.filter((x) => x.answer === "참석").length);
-        setFee(e.data.event.fee);
+        // 현재 기본 회비 = 모두 "전체"인 회비 줄 금액(예전 fee 값이 남아 있으면 그 값)
+        const all = (e.data.event.feeRules ?? []).find((x) => !x.days && !x.kind && !x.position);
+        setFee(all?.amount ?? e.data.event.fee);
       }
     }
   }, [base, kind, eventId]);
@@ -95,9 +97,17 @@ export function EventItems({ eventId, kind, canEdit }: { eventId: string; kind: 
     load();
   }
 
+  // 제안 금액을 "모두 전체"인 회비 줄(모든 회원의 기본 회비)로 정한다. 다른 조건 줄은 그대로 둔다.
   async function applyFee(v: number) {
-    const r = await api(`/api/admin/events/${eventId}`, { method: "PATCH", body: { fee: String(v) } });
-    setNote(r.ok ? { tone: "info", text: `1인 회비를 ${won(v)}으로 정했어요. 회원 화면에 안내돼요.` } : { tone: "bad", text: r.error });
+    const cur = await api<{ event: { fee: string; feeRules: { days: string; kind: string; position: string; amount: string }[] } }>(`/api/admin/events/${eventId}`);
+    if (!cur.ok) return setNote({ tone: "bad", text: cur.error });
+    const rules = cur.data.event.feeRules ?? [];
+    const isAll = (x: { days: string; kind: string; position: string }) => !x.days && !x.kind && !x.position;
+    const next = rules.some(isAll)
+      ? rules.map((x) => (isAll(x) ? { ...x, amount: String(v) } : x))
+      : [...rules, { days: "", kind: "", position: "", amount: String(v) }];
+    const r = await api(`/api/admin/events/${eventId}`, { method: "PATCH", body: { feeRules: next, fee: "" } });
+    setNote(r.ok ? { tone: "info", text: `모든 회원의 기본 회비(“전체” 줄)를 ${won(v)}으로 정했어요. 조건별 줄이 있으면 그 금액이 먼저 적용돼요.` } : { tone: "bad", text: r.error });
     load();
   }
 
@@ -124,7 +134,7 @@ export function EventItems({ eventId, kind, canEdit }: { eventId: string; kind: 
           <div className="card">
             <span className="small">1인 회비 제안 (예산 ÷ 참석 {attend}명)</span>
             <div className="big">{suggest ? won(suggest) : "-"}</div>
-            <span className="small">현재 회비 {fee ? won(fee) : "미정"}</span>
+            <span className="small">현재 기본 회비(“전체” 줄) {fee ? won(fee) : "없음"}</span>
             {canEdit && suggest > 0 && <button className="mini" type="button" style={{ marginTop: 6 }} onClick={() => applyFee(suggest)}>이 금액으로 정하기</button>}
           </div>
         </div>

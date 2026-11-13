@@ -33,6 +33,9 @@ const TABS = [
   { key: "car", label: "카풀" },
   { key: "room", label: "숙박·방배정" },
 ];
+// 회비 줄이 "모두 전체" 한 줄뿐이면 모든 회원이 같은 금액(그 금액), 아니면 null
+const oneFee = (rules?: FeeRule[]): string | null =>
+  rules && rules.length === 1 && !rules[0].days && !rules[0].kind && !rules[0].position && Number(rules[0].amount) > 0 ? rules[0].amount : null;
 const dayText = (days: string) =>
   days ? days.split(",").map((d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`).join(", ") : "";
 
@@ -61,7 +64,11 @@ function Detail({ id }: { id: string }) {
       api<{ activities: { config: { name: string } }[] }>(`/api/admin/events/${id}/activities`),
     ]);
     if (r.ok) {
-      setEv(r.data.event);
+      // 예전 "기본 회비"가 남아 있으면 모두 "전체"인 회비 줄로 옮겨 보여 준다(저장하면 그대로 바뀐다).
+      const e = r.data.event;
+      const rs = e.feeRules ?? [];
+      if (e.fee && !rs.some((x) => !x.days && !x.kind && !x.position)) e.feeRules = [...rs, { days: "", kind: "", position: "", amount: e.fee }];
+      setEv(e);
       setRows(r.data.rows);
       setOpts(r.data.options);
     } else setMsg({ tone: "bad", text: r.error });
@@ -83,7 +90,8 @@ function Detail({ id }: { id: string }) {
     void _id; void _t; void _p;
     const r = await api(`/api/admin/events/${id}`, {
       method: "PATCH",
-      body: { ...fields, ...(published === undefined ? {} : { published }) },
+      // 기본 회비 칸은 없앴다: 회비는 모두 회비 줄(feeRules)로 저장하고 예전 fee 값은 비운다.
+      body: { ...fields, fee: "", ...(published === undefined ? {} : { published }) },
     });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
@@ -117,9 +125,11 @@ function Detail({ id }: { id: string }) {
       `· 일시: ${ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, "").replace(/ · $/, "") : "추후 안내"}`,
       ev.place ? `· 장소: ${ev.place}` : "",
       actNames.length ? `· 주요 활동: ${actNames.join(", ")}` : "",
-      ev.feeRules?.length
-        ? `· 참가비: 참석일·회원구분에 따라 달라요(앱에서 내 회비 확인)${ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}`
-        : ev.fee ? `· 참가비: 1인 ${won(ev.fee)}${ev.feeDeadline ? ` (입금 기한 ${ev.feeDeadline})` : ""}` : "",
+      oneFee(ev.feeRules)
+        ? `· 참가비: 1인 ${won(oneFee(ev.feeRules) as string)}${ev.feeDeadline ? ` (입금 기한 ${ev.feeDeadline})` : ""}`
+        : ev.feeRules?.length
+          ? `· 참가비: 회원구분·참석일에 따라 달라요(앱에서 내 회비 확인)${ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}`
+          : "",
       "",
       `원우회 앱에서 참석 여부를 알려 주세요 👉 ${window.location.origin}`,
       "로그인: 내 이름 선택 + 연락처 뒷자리 4자리",
@@ -151,7 +161,6 @@ function Detail({ id }: { id: string }) {
   const absent = rows.filter((r) => r.answer === "불참");
   const noAns = rows.filter((r) => r.answer === "");
   const paid = attend.filter((r) => r.paid);
-  const feeNum = Number(ev.fee) || 0;
   const rules = ev.feeRules ?? [];
   const setRules = (next: FeeRule[]) => setEv({ ...ev, feeRules: next });
   // 참석일 선택지: 행사 기간(최대 7일)
@@ -190,21 +199,28 @@ function Detail({ id }: { id: string }) {
             <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-start">시작 일시</label><input id="o-start" className="field" type="datetime-local" value={ev.startsAt} onChange={(e) => set("startsAt", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><input id="o-end" className="field" type="datetime-local" value={ev.endsAt} onChange={(e) => set("endsAt", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-book">예약 정보</label><input id="o-book" className="field" value={ev.booking} onChange={(e) => set("booking", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-status">진행 상태</label><input id="o-status" className="field" value={ev.status} onChange={(e) => set("status", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-fee">기본 회비 (숫자만, 없으면 비워 두기)</label><input id="o-fee" className="field" inputMode="numeric" value={ev.fee} onChange={(e) => set("fee", e.target.value.replace(/\D/g, ""))} /></div>
             <div><label className="l" htmlFor="o-dl">입금 기한</label><input id="o-dl" className="field" type="date" value={ev.feeDeadline} onChange={(e) => set("feeDeadline", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div>
           </div>
 
-          {/* 조건별 회비: 참석일 / 회원구분 / 직책 */}
-          <section className="card" aria-label="조건별 회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: "400 19px var(--display)" }}>조건별 회비 (선택)</b>
+          <div>
+            <label className="l" htmlFor="o-book">예약 정보 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
+            <textarea id="o-book" className="field" rows={6} maxLength={2000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
+              placeholder={"예)\n숙소: 대명 홍천 소노펠리체, 객실 10실 (예약번호 0000)\n체크인 15:00 / 체크아웃 11:00\n저녁: 18:30 ○○식당 (20명)"}
+              value={ev.booking} onChange={(e) => set("booking", e.target.value)} />
+            <span className="hint">{ev.booking.length}/2000자 · 회원 화면에도 줄바꿈 그대로 보여요.</span>
+          </div>
+
+          {/* 회비: 회원구분 / 직책 / 참석일 조건별 */}
+          <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <b style={{ font: "400 19px var(--display)" }}>회비</b>
             <span className="small">
-              회원구분, 직책, 참석일에 따라 회비가 다르면 줄을 추가하세요. “전체”는 조건 없음이고, 직책의 “일반회원”은 직책이 없는 회원이에요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고,
-              맞는 줄이 없으면 기본 회비를 써요. 0원은 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
+              회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
+              회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
             </span>
+            {rules.length === 0 && <span className="small">아직 회비가 없어요. 회비를 받는 행사라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
             {rules.length > 0 && (
               <div className="tblw">
                 <table className="tbl" style={{ minWidth: 620 }}>
@@ -252,7 +268,7 @@ function Detail({ id }: { id: string }) {
             )}
             <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: 17 }}
               onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>
-              + 조건 추가
+              + 회비 줄 추가
             </button>
             {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
             {dist.length > 0 && <span className="small">현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
@@ -268,9 +284,10 @@ function Detail({ id }: { id: string }) {
             <b style={{ font: "400 22px var(--display)" }}>{ev.name}</b>
             <div className="small">{ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, ev.place) : "날짜가 정해지면 알려 드려요"}</div>
             {actNames.length > 0 && <div className="small">주요 활동: {actNames.join(" · ")}</div>}
-            {rules.length > 0
-              ? <div className="small">참가비: 회원마다 본인 회비만 보여요(참석일·회원구분·직책 기준){ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>
-              : ev.fee && <div className="small">참가비 1인 {won(ev.fee)}{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
+            {oneFee(rules)
+              ? <div className="small">참가비 1인 {won(oneFee(rules) as string)}{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>
+              : rules.length > 0 && <div className="small">참가비: 회원마다 본인 회비만 보여요(회원구분·직책·참석일 기준){ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
+            {ev.booking && <div className="small" style={{ whiteSpace: "pre-wrap" }}>예약 안내: {ev.booking}</div>}
             {ev.account && <div className="small">계좌 {ev.account}{ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""} · 참석 신청한 회원에게만 보여요</div>}
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
@@ -348,9 +365,9 @@ function Detail({ id }: { id: string }) {
         <>
           <div className="cards">
             <div className="card">
-              <span className="small">{rules.length ? "회비 (조건별)" : "1인 회비"}</span>
-              <div className="big">{rules.length ? `${rules.length}개 조건` : feeNum ? won(feeNum) : "미정"}</div>
-              {rules.length > 0 && <span className="small">기본 {feeNum ? won(feeNum) : "없음"} · 개요에서 고쳐요</span>}
+              <span className="small">회비</span>
+              <div className="big">{oneFee(rules) ? won(oneFee(rules) as string) : rules.length ? `${rules.length}개 줄` : "없음"}</div>
+              <span className="small">{oneFee(rules) ? "모든 회원 같은 금액" : rules.length ? "회원구분·직책·참석일별" : ""} · 개요에서 고쳐요</span>
             </div>
             <div className="card"><span className="small">입금 완료</span><div className="big" style={{ color: "var(--green-t)" }}>{paid.length}명</div><span className="small">{won(totalPaid)} / {won(totalOwed)}</span></div>
             <div className="card"><span className="small">미입금</span><div className="big" style={{ color: "var(--red-t)" }}>{attend.length - paid.length}명</div></div>
