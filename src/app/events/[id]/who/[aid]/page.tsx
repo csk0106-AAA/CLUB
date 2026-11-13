@@ -389,7 +389,7 @@ function Write(props: {
           )}
 
           {/* 명리학: 성격·성향(소개 페이지 맨 끝에 공개, 뺄 수 있음) + 생애주기 풀이(나만) */}
-          {st.aiEnabled && <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />}
+          {st.aiEnabled && <SajuPanel aid={aid} r={reading} canWrite={open} published={approved} onChanged={reload} />}
 
           <div className="footer-actions">
             {approved ? (

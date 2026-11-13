@@ -99,14 +99,18 @@ export async function POST(req: Request, ctx: Ctx) {
   }
   if (!result) return bad("AI가 풀이를 만들지 못했어요. 잠시 후 다시 시도해 주세요.", 502);
 
+  // 소개가 이미 배포돼 있으면 성격·성향은 바로 공개하지 않는다(회원이 읽어 보고 "소개 페이지에 싣기"를 눌러야 공개).
+  // 아직 배포 전이면 싣기로 두고, 소개를 최종 배포할 때 함께 공개된다(배포 전 프로필은 아무에게도 보이지 않는다).
+  const published = profile.introStatus === "approved";
+  const traitsShown = !published;
   await s.update("Profiles", profile.id, {
     readingMd: result.full,
     traitsMd: result.traits,
-    traitsShown: "true",
+    traitsShown: String(traitsShown),
     readingStatus: "done",
     updatedAt: new Date().toISOString(),
   });
-  return NextResponse.json({ readingStatus: "done", traitsMd: result.traits, readingMd: result.full, traitsShown: true });
+  return NextResponse.json({ readingStatus: "done", traitsMd: result.traits, readingMd: result.full, traitsShown, published });
 }
 
 const patch = z.object({ traitsShown: z.boolean() });

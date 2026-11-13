@@ -25,7 +25,9 @@ export function Md({ text }: { text: string }) {
 const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`);
 
 // 명리학 풀이(선택). 인터뷰 마지막 단계에서 "사주 보기 / 사주 안 보기"를 고르고, 보기를 고르면 정보를 넣는다.
-export function SajuPanel({ aid, r, canWrite, onChanged }: { aid: string; r: Reading; canWrite: boolean; onChanged: () => Promise<void> }) {
+export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
+  aid: string; r: Reading; canWrite: boolean; published?: boolean; onChanged: () => Promise<void>;
+}) {
   const [form, setForm] = useState(false);
   const [gender, setGender] = useState<"남" | "여" | "">("");
   const [calendar, setCalendar] = useState<"solar" | "lunar">("solar");
@@ -76,7 +78,8 @@ export function SajuPanel({ aid, r, canWrite, onChanged }: { aid: string; r: Rea
         <div>
           <b>이렇게 쓰여요</b>
           <span className="t">
-            소개 페이지 맨 끝에는 <u>명리학으로 본 성격과 성향</u>만 실려요(원하지 않으면 소개 페이지에서 뺄 수 있어요).
+            소개 페이지 맨 끝에는 <u>명리학으로 본 성격과 성향</u>만 실려요
+            {published ? "(소개가 이미 배포돼 있어서, 만든 뒤 읽어 보고 직접 “소개 페이지에 싣기”를 눌러야 공개돼요)" : "(원하지 않으면 소개 페이지에서 뺄 수 있어요)"}.
             건강·재물·직업·연애·결혼·인간관계를 담은 생애주기 전체 풀이는 나만 볼 수 있어요.
             입력한 생년월일과 태어난 시간은 풀이를 만드는 데만 쓰고 저장하지 않아요.
           </span>
@@ -174,18 +177,30 @@ export function SajuPanel({ aid, r, canWrite, onChanged }: { aid: string; r: Rea
   }
 
   // 풀이가 있음: 성격·성향(공개) + 생애주기 풀이(나만)
+  // published: 소개가 이미 배포됐는지. 배포 뒤에는 "싣기"를 누르는 순간 다른 회원에게 보인다.
+  const state = r.traitsShown
+    ? published ? { tone: "ok", text: "소개 페이지에 공개 중" } : { tone: "ok", text: "최종 배포하면 소개 페이지 맨 끝에 실려요" }
+    : { tone: "warn", text: "아직 공개되지 않았어요" };
   return (
     <section aria-label="명리학 풀이" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, borderColor: r.traitsShown ? "var(--green)" : undefined }}>
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, borderColor: r.traitsShown ? "var(--green)" : "var(--orange-t)" }}>
         <div className="row" style={{ flexWrap: "wrap" }}>
           <b className="grow" style={{ font: "400 20px var(--display)" }}>명리학으로 본 성격과 성향</b>
-          <span className={`pill ${r.traitsShown ? "ok" : "gray"}`}>{r.traitsShown ? "소개 페이지 맨 끝에 실려요" : "소개 페이지에서 뺐어요"}</span>
+          <span className={`pill ${state.tone}`}>{state.text}</span>
         </div>
         <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.75 }}>{r.traitsMd}</p>
+        {!r.traitsShown && published && (
+          <span className="small">소개가 이미 배포돼 있어서 바로 공개하지 않았어요. 읽어 보고 괜찮으면 “소개 페이지에 싣기”를 눌러 주세요. 누르면 바로 다른 회원에게 보여요.</span>
+        )}
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="mini" type="button" disabled={busy} onClick={() => call("PATCH", { traitsShown: !r.traitsShown })}>
-            {r.traitsShown ? "소개 페이지에서 빼기" : "소개 페이지에 다시 넣기"}
-          </button>
+          {r.traitsShown ? (
+            <button className="mini" type="button" disabled={busy} onClick={() => call("PATCH", { traitsShown: false })}>소개 페이지에서 빼기</button>
+          ) : (
+            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 180, minHeight: 46, fontSize: 17 }}
+              onClick={() => { if (!published || window.confirm("성격·성향 글을 소개 페이지 맨 끝에 실을까요? 바로 다른 회원에게 보여요.")) call("PATCH", { traitsShown: true }); }}>
+              소개 페이지에 싣기
+            </button>
+          )}
         </div>
       </div>
       <details className="card">
