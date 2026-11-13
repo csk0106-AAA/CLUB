@@ -25,7 +25,8 @@ export const TABS = {
   EventSchedule: ["id", "eventId", "at", "title"],
   ActivityTemplates: ["id", "name", "version", "config", "origin"],
   // startsAt/endsAt: 이 활동이 진행되는 날짜와 시간(한국 시간, YYYY-MM-DDTHH:mm). 비어 있으면 시간 제한 없음.
-  EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt"],
+  // hostId: 사회자(회원 id), hostCode: 사회자 접속번호(이 번호로 로그인하면 활동 진행 화면만 보인다)
+  EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode"],
   // 활동별 출석 체크: 자동 명단(날짜 선택 기반)을 관리자가 고칠 때만 행이 생긴다. present: true(출석) / false(결석)
   Attendance: ["id", "eventActivityId", "memberId", "present"],
   Teams: ["id", "eventActivityId", "name", "memberIds"],

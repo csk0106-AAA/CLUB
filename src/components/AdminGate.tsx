@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
+import { MemberTabs } from "./MemberTabs";
 
 type Me = { name: string; perms: string[]; admin: boolean; consent: boolean };
 
@@ -49,21 +50,22 @@ export function AdminGate(props: {
   }
 
   if (!me) {
-    return <main className="app admin">{error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>}</main>;
+    return <main className="app admin with-tabs">{error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>}<MemberTabs on="admin" /></main>;
   }
 
   if (me.perms.length === 0) {
     return (
-      <main className="app admin">
+      <main className="app admin with-tabs">
         <div className="msg bad" role="alert">관리자 권한이 없는 계정이에요.</div>
         <button className="btn white" type="button" onClick={() => router.push("/events")}>회원 화면으로</button>
+        <MemberTabs on="settings" />
       </main>
     );
   }
 
   if (!me.admin) {
     return (
-      <main className="app">
+      <main className="app with-tabs">
         <h1 className="title">관리자 확인</h1>
         <p className="small" style={{ margin: 0 }}>{me.name} 님, 관리자 비밀번호를 한 번 더 입력해 주세요.</p>
         <form onSubmit={unlock} style={{ display: "contents" }}>
@@ -74,9 +76,9 @@ export function AdminGate(props: {
           {error && <div className="msg bad" role="alert">{error}</div>}
           <div className="footer-actions">
             <button className="btn" type="submit" disabled={busy || !code}>{busy ? "확인 중…" : "확인"}</button>
-            <button className="btn white" type="button" onClick={() => router.push("/events")}>회원 화면으로</button>
           </div>
         </form>
+        <MemberTabs on="admin" />
       </main>
     );
   }
@@ -92,7 +94,7 @@ export function AdminGate(props: {
         : [];
 
   return (
-    <main className="app admin">
+    <main className="app admin with-tabs">
       <div className="row" style={{ flexWrap: "wrap" }}>
         <nav className="modes" aria-label="관리자 구분">
           <Link href="/admin/members" className={props.mode === "members" ? "on" : ""}>회원관리</Link>
@@ -100,7 +102,6 @@ export function AdminGate(props: {
         </nav>
         <span className="grow" />
         <span className="pill blue">{me.name} · 관리자</span>
-        <button className="mini" type="button" onClick={() => router.push("/events")}>회원 화면</button>
         <button className="mini" type="button" onClick={logout}>로그아웃</button>
       </div>
       {sub.length > 0 && (
@@ -109,6 +110,7 @@ export function AdminGate(props: {
         </nav>
       )}
       {allowed ? props.children : <div className="msg bad" role="alert">이 화면을 볼 권한이 없어요.</div>}
+      <MemberTabs on="admin" />
     </main>
   );
 }

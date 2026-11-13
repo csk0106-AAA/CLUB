@@ -22,6 +22,14 @@ export function IconGear({ size = 26 }: P) {
     </svg>
   );
 }
+export function IconShield({ size = 26 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6z" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round" />
+      <path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 export function IconBook({ size = 34 }: P) {
   return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7a2 2 0 0 1 1 .3A2 2 0 0 1 13 4h7v15h-7a1.5 1.5 0 0 0-1 .4 1.5 1.5 0 0 0-1-.4H4z" fill="currentColor" /></svg>;
 }

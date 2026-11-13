@@ -37,6 +37,8 @@ export async function GET(_req: Request, ctx: Ctx) {
       endsAt: a.endsAt,
       rosterCount: rosterCounts[i],
       attendanceConfirmed: states[i].confirmed,
+      hostId: a.hostId ?? "",
+      hostCode: a.hostCode ?? "",
     }];
   });
   return NextResponse.json({ activities });

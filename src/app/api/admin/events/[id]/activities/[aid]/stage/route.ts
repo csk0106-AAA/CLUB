@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, guard, parseJson } from "@/lib/api";
+import { bad, parseJson, hostGuard } from "@/lib/api";
 import { liveView } from "@/lib/activities";
 import { currentRound, eligibleTargets, liveRow, loadStage, missingSteps, rounds, type RoundState } from "@/lib/rounds";
 import { joinSet } from "@/lib/participants";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 // 사회자 전체화면이 2초마다 읽는 곳. 이름과 정답은 공개 단계가 되기 전에는 내려주지 않는다.
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const st = await loadStage(id, aid);

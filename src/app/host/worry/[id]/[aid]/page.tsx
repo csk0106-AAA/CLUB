@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { HostBack, HostDenied } from "@/components/HostBack";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 
@@ -108,14 +108,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
     else el.requestFullscreen?.().catch(() => setError("이 화면에서는 전체화면을 켤 수 없어요. 브라우저의 전체화면(F11)을 사용해 주세요."));
   }
 
-  if (denied) {
-    return (
-      <div className="host" role="alert">
-        <h1>관리자 확인이 필요해요</h1>
-        <Link className="btn" href="/admin" style={{ width: "auto", alignSelf: "flex-start", textDecoration: "none" }}>관리자 화면으로</Link>
-      </div>
-    );
-  }
+  if (denied) return <HostDenied />;
   if (!st) return <div className="host">{error ? <p role="alert">{error}</p> : <p className="sub">불러오는 중이에요…</p>}</div>;
 
   const c = st.current;
@@ -131,7 +124,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
         <span className="sub">{st.event.name} · 진행 {st.counts.drawn}개 · 남은 고민 {st.counts.remaining}개{st.activity.participants === "selected" ? " · 선택된 회원의 고민만" : ""}</span>
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
-        <Link className="mini" href={`/admin/events/${id}`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>관리자로 돌아가기</Link>
+        <HostBack eventId={id} />
       </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}

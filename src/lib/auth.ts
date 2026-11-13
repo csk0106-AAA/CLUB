@@ -9,6 +9,8 @@ export type Session = {
   name: string;
   perms: string[]; // 관리자 권한 목록. 비어 있으면 일반 회원
   admin: boolean; // 관리자 2차 비밀번호까지 통과했는지
+  // 사회자 접속번호로 로그인했을 때만: 진행할 수 있는 활동 id 목록. 이 세션은 활동 진행 화면만 쓸 수 있다.
+  host?: string[];
 };
 
 function secret(): Uint8Array {
@@ -46,6 +48,7 @@ export async function getSession(): Promise<Session | null> {
       name: String(payload.name),
       perms: Array.isArray(payload.perms) ? (payload.perms as string[]) : [],
       admin: payload.admin === true,
+      ...(Array.isArray(payload.host) ? { host: (payload.host as unknown[]).map(String) } : {}),
     };
   } catch {
     return null;
@@ -59,7 +62,7 @@ export async function clearSession(): Promise<void> {
 
 // 권한 확인: 'all' 은 모든 권한. 관리자 2차 비밀번호를 통과해야 한다.
 export function can(s: Session | null, perm: string): boolean {
-  if (!s || !s.admin) return false;
+  if (!s || !s.admin || s.host) return false;
   return s.perms.includes("all") || s.perms.includes(perm);
 }
 

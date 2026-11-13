@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, hostGuard } from "@/lib/api";
 import { liveView, readConfig } from "@/lib/activities";
 import { onsiteGate } from "@/lib/participants";
 import { getStore } from "@/lib/store";
@@ -13,7 +13,7 @@ const body = z.discriminatedUnion("action", [
 
 // 사회자 컨트롤. 어떤 버튼이 있는지, 누르면 회원 화면이 무엇으로 바뀌는지는 모두 템플릿 설정이 정한다.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

@@ -9,7 +9,7 @@ import { api } from "@/lib/client";
 
 type Me = { name: string; perms: string[]; consent: boolean; gender: string };
 
-// 회원 설정 탭: 내 정보, 원우회 정보(조직도·회칙), 관리자 화면, 로그아웃
+// 회원 설정 탭: 내 정보, 원우회 정보(조직도·회칙), 로그아웃. 관리자 화면은 하단 "관리자" 탭으로 옮겼다.
 export default function SettingsPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
@@ -74,12 +74,6 @@ export default function SettingsPage() {
             <span><b style={{ font: "400 19px var(--display)" }}>원우회 정보</b><span className="small" style={{ display: "block" }}>조직도와 확정된 회칙</span></span>
             <span aria-hidden="true" style={{ color: "var(--blue-t)", fontWeight: 700 }}>›</span>
           </Link>
-          {me.perms.length > 0 && (
-            <Link href="/admin" className="card" style={linkCard}>
-              <span><b style={{ font: "400 19px var(--display)" }}>관리자 화면</b><span className="small" style={{ display: "block" }}>관리자 비밀번호를 한 번 더 입력해요</span></span>
-              <span aria-hidden="true" style={{ color: "var(--blue-t)", fontWeight: 700 }}>›</span>
-            </Link>
-          )}
           <div className="card">
             <b style={{ font: "400 19px var(--display)" }}>개인정보</b>
             <div className="small">

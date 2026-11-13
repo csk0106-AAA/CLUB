@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guard, hostGuard } from "@/lib/api";
 import { capsuleRows, loadTeamActivity, makeTeams, saveTeamsState, teams, teamsState } from "@/lib/capsule";
 import { isLimited, participantPool, rosterSet } from "@/lib/participants";
 import { getStore } from "@/lib/store";
@@ -20,7 +20,7 @@ async function locked(aid: string): Promise<boolean> {
 }
 
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await loadTeamActivity(aid, id);

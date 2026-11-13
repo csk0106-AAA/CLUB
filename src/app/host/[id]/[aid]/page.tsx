@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
+import { HostBack, HostDenied } from "@/components/HostBack";
 import { api } from "@/lib/client";
 
 type Stage = {
@@ -89,15 +89,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
     else el.requestFullscreen?.().catch(() => setError("이 화면에서는 전체화면을 켤 수 없어요. 브라우저의 전체화면(F11)을 사용해 주세요."));
   }
 
-  if (denied) {
-    return (
-      <div className="host" role="alert">
-        <h1>관리자 확인이 필요해요</h1>
-        <p className="sub">관리자로 로그인하고 관리자 비밀번호를 입력한 뒤 다시 열어 주세요.</p>
-        <Link className="btn" href="/admin" style={{ width: "auto", alignSelf: "flex-start", textDecoration: "none" }}>관리자 화면으로</Link>
-      </div>
-    );
-  }
+  if (denied) return <HostDenied />;
   if (!st) return <div className="host">{error ? <p role="alert">{error}</p> : <p className="sub">불러오는 중이에요…</p>}</div>;
 
   const r = st.round;
@@ -110,7 +102,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => setBoard(!board)}>{board ? "진행 화면" : "점수판"}</button>
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
-        <Link className="mini" href={`/admin/events/${id}`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>관리자로 돌아가기</Link>
+        <HostBack eventId={id} />
       </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}

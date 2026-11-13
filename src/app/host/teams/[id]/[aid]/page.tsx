@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { HostBack, HostDenied } from "@/components/HostBack";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 
@@ -31,7 +31,7 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
     return () => clearInterval(t);
   }, [load]);
 
-  if (denied) return <div className="host" role="alert"><h1>관리자 확인이 필요해요</h1><Link className="btn" href="/admin" style={{ width: "auto", alignSelf: "flex-start", textDecoration: "none" }}>관리자 화면으로</Link></div>;
+  if (denied) return <HostDenied />;
 
   return (
     <div className="host" ref={wrap}>
@@ -40,7 +40,7 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
         {teams && teams.length > 0 && <span className={`pill ${published ? "ok" : "warn"}`}>{published ? "배포됨" : "배포 전 초안"}</span>}
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : wrap.current?.requestFullscreen?.())}>전체화면 ⛶</button>
-        <Link className="mini" href={`/admin/events/${id}`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>관리자로 돌아가기</Link>
+        <HostBack eventId={id} />
       </header>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!teams && !error && <p className="sub">불러오는 중이에요…</p>}

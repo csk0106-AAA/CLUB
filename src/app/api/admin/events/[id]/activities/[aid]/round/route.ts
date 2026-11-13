@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, hostGuard } from "@/lib/api";
 import { doAction, loadStage } from "@/lib/rounds";
 
 const body = z.object({
@@ -10,7 +10,7 @@ const body = z.object({
 
 // 사회자 버튼(소개 열기, 추측 결과, 저예요 열기, 이름 공개, 투표, 마감, 정답 공개, 한 단계 되돌리기)
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

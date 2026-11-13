@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { liveView } from "@/lib/activities";
-import { bad, guard } from "@/lib/api";
+import { bad, hostGuard } from "@/lib/api";
 import { joinSet } from "@/lib/participants";
 import { liveRow } from "@/lib/rounds";
 import {
@@ -13,7 +13,7 @@ type Ctx = { params: Promise<{ id: string; aid: string }> };
 
 // 사회자 전체화면이 읽는 곳. 뽑히기 전 고민과 작성자는 내려주지 않는다.
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const w = await loadWorry(aid, id);
@@ -59,7 +59,7 @@ const body = z.object({
 
 // 사회자 버튼: 고민 뽑기(카테고리 지정 가능), 일시정지, 재개, 연장, 건너뛰기, 이름 오픈, AI 관점
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const w = await loadWorry(aid, id);

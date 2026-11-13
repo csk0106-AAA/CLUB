@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomInt } from "node:crypto";
-import { bad, guard, parseJson } from "@/lib/api";
+import { bad, parseJson, hostGuard } from "@/lib/api";
 import { computeScores, liveRow, loadStage, setLive, topOf } from "@/lib/rounds";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ type Payload = { lottery?: { A?: Lottery; B?: Lottery } } & Record<string, unkno
 
 // 점수판: A) 누구인지 가장 많이 맞힌 사람, B) 거짓을 가장 많이 맞힌 사람. 동점자는 룰렛 대상.
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const st = await loadStage(id, aid);
@@ -37,7 +37,7 @@ const body = z.object({ category: z.enum(["A", "B"]), redo: z.boolean().optional
 
 // 동점자 룰렛: 동점자만으로 추첨한다. 결과는 서버가 정해서 저장하므로 화면을 새로 고쳐도 같다.
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const st = await loadStage(id, aid);

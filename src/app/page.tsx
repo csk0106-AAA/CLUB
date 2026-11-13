@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
+import { resetTabsCache } from "@/components/MemberTabs";
 
 type Club = { clubName: string; members: { id: string; name: string }[] };
 
@@ -40,7 +41,9 @@ export default function LoginPage() {
         setError(d.error ?? "로그인하지 못했어요.");
         return;
       }
-      router.push("/events");
+      resetTabsCache();
+      // 사회자 접속번호로 들어오면 활동 진행 화면만 쓴다.
+      router.push(d.host ? "/host" : "/events");
     } catch {
       setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
     } finally {
@@ -91,7 +94,7 @@ export default function LoginPage() {
               onChange={(e) => setCode(e.target.value)}
             />
           </div>
-          <p className="hint">연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
+          <p className="hint">사회자로 지정되었다면 받은 사회자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
           {error && <div className="msg bad" role="alert">{error}</div>}
           <div className="footer-actions">
             <button className="btn" type="submit" disabled={busy || !code}>

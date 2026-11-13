@@ -21,6 +21,8 @@ type Act = {
   endsAt: string;
   rosterCount: number;
   attendanceConfirmed: boolean;
+  hostId: string;
+  hostCode: string;
 };
 type Tpl = { id: string; origin?: string; config: TemplateConfig };
 // 템플릿 이름(행사 템플릿이면 "이름 (행사명_날짜)")
@@ -38,6 +40,73 @@ const PRE_TEXT: Record<string, string> = {
   open: "사전 작성 중",
   closed: "사전 작성 마감",
 };
+
+// 사회자 지정: 회원 중 한 명 + 사회자 접속번호. 사회자는 이 번호로 로그인하면 활동 진행 화면만 보고,
+// 평소 초대코드로 로그인하면 일반 회원으로 활동에 참여한다.
+function HostSetting({ eventId, a, canEdit, members, onChange }: {
+  eventId: string; a: Act; canEdit: boolean; members: { id: string; name: string }[]; onChange: () => void;
+}) {
+  const [hostId, setHostId] = useState(a.hostId);
+  const [code, setCode] = useState(a.hostCode);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const dirty = hostId !== a.hostId || code !== a.hostCode;
+  const hostName = members.find((m) => m.id === a.hostId)?.name ?? "";
+
+  async function save(clear = false) {
+    setBusy(true);
+    setMsg(null);
+    const body = clear ? { hostId: "", hostCode: "" } : { hostId, hostCode: code };
+    const r = await api<{ hostId: string; hostCode: string }>(`/api/admin/events/${eventId}/activities/${a.id}/host`, { method: "PUT", body });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setHostId(r.data.hostId);
+    setCode(r.data.hostCode);
+    setMsg({ tone: "info", text: clear ? "사회자 지정을 풀었어요." : "사회자를 저장했어요. 사회자에게 접속번호를 알려 주세요." });
+    onChange();
+  }
+
+  function suggest() {
+    setCode(String(Math.floor(100000 + Math.random() * 900000)));
+  }
+
+  return (
+    <div style={{ borderTop: "2px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      <b style={{ font: "400 17px var(--display)" }}>사회자</b>
+      <span className="small">
+        사회자가 로그인 화면에서 자기 이름을 고르고 <b>사회자 접속번호</b>를 넣으면 이 활동의 진행 화면만 보여요.
+        평소 초대코드(연락처 뒷자리)로 들어오면 일반 회원으로 활동에 참여해요.
+      </span>
+      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <div className="grid2">
+        <div>
+          <label className="l" htmlFor={`hs-${a.id}`}>사회자 (회원 중 선택)</label>
+          <select id={`hs-${a.id}`} className="field" value={hostId} disabled={!canEdit || busy} onChange={(e) => setHostId(e.target.value)}>
+            <option value="">정하지 않음</option>
+            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="l" htmlFor={`hc-${a.id}`}>사회자 접속번호 (숫자 4~8자리)</label>
+          <div className="row">
+            <input id={`hc-${a.id}`} className="field" inputMode="numeric" maxLength={8} value={code} disabled={!canEdit || busy || !hostId}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))} />
+            {canEdit && <button className="mini" type="button" disabled={busy || !hostId} style={{ minHeight: 54, whiteSpace: "nowrap" }} onClick={suggest}>자동 생성</button>}
+          </div>
+        </div>
+      </div>
+      {canEdit && (
+        <div className="row" style={{ flexWrap: "wrap" }}>
+          <button className="btn" type="button" disabled={busy || !dirty || (Boolean(hostId) && code.length < 4)} style={{ width: "auto", minWidth: 140, minHeight: 46, fontSize: 16 }} onClick={() => save()}>
+            {busy ? "저장 중…" : "사회자 저장"}
+          </button>
+          {a.hostId && <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={() => save(true)}>지정 풀기</button>}
+        </div>
+      )}
+      {a.hostId && !dirty && <span className="small">지금 사회자: {hostName} · 접속번호 {a.hostCode}</span>}
+    </div>
+  );
+}
 
 // 활동의 날짜와 진행 시간. 회원에게 알려 주는 안내용 정보이고, 참여 대상과는 연결하지 않는다.
 function Schedule({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; canEdit: boolean; onChange: () => void }) {
@@ -190,6 +259,10 @@ function Progress({ eventId, aid }: { eventId: string; aid: string }) {
 export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
   const [acts, setActs] = useState<Act[] | null>(null);
   const [tpls, setTpls] = useState<Tpl[]>([]);
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    api<{ members: { id: string; name: string }[] }>("/api/public/club").then((r) => r.ok && setMembers(r.data.members));
+  }, []);
   const [pick, setPick] = useState("");
   const [edit, setEdit] = useState<{ id: string; value: EditableConfig } | null>(null);
   const [guideFor, setGuideFor] = useState<Act | null>(null); // AI 지침을 고치는 활동
@@ -329,6 +402,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           </span>
           {a.config.participants === "selected" && <Attendance eventId={eventId} a={a} canEdit={canEdit} onChange={load} />}
           <Schedule eventId={eventId} a={a} canEdit={canEdit} onChange={load} />
+          <HostSetting eventId={eventId} a={a} canEdit={canEdit} members={members} onChange={load} />
           {a.config.preEvent.steps.includes("worry_write") && (
             <Link href={`/host/worry/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 50, fontSize: 18, textDecoration: "none" }}>
               사회자 전체화면 열기 (고민 뽑기) ⛶
