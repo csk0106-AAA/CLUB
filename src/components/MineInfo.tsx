@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ScheduleView } from "./ScheduleBoard";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 
 type Data = {
@@ -40,11 +41,8 @@ export function MineInfo({ eventId, placeholder = false }: { eventId: string; pl
       {d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
           <b style={{ font: "400 19px var(--display)" }}>일정</b>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
-            {d.schedule.map((s, i) => (
-              <div key={i} className="row" style={{ alignItems: "flex-start" }}><b className="num" style={{ minWidth: 148, whiteSpace: "nowrap" }}>{when(s.at)}</b><span>{s.title}</span></div>
-            ))}
-          </div>
+          {/* 날짜 제목 아래 시간순 */}
+          <ScheduleView items={d.schedule} />
         </section>
       )}
       {d.groups.map((g, i) => (
