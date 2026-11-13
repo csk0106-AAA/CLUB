@@ -409,11 +409,6 @@ function Detail({ id }: { id: string }) {
       {tab === "fee" && (
         <>
           <div className="cards">
-            <div className="card">
-              <span className="small">회비</span>
-              <div className="big">{oneFee(rules) ? won(oneFee(rules) as string) : rules.length ? `${rules.length}개 줄` : "없음"}</div>
-              <span className="small">{oneFee(rules) ? "모든 회원 같은 금액" : rules.length ? "회원구분·직책·참석일별" : ""} · 개요에서 고쳐요</span>
-            </div>
             <div className="card"><span className="small">입금 완료</span><div className="big" style={{ color: "var(--green-t)" }}>{paid.length}명</div><span className="small">{won(totalPaid)} / {won(totalOwed)}</span></div>
             <div className="card"><span className="small">미입금</span><div className="big" style={{ color: "var(--red-t)" }}>{attend.length - paid.length}명</div></div>
           </div>
