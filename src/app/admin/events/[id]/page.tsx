@@ -140,7 +140,7 @@ function Detail({ id }: { id: string }) {
   async function copyAnnounce() {
     if (!ev) return;
     const body = infoLines(ev, rules, actNames).flatMap((x) =>
-      x.multiline ? [`${x.icon} ${x.label}:`, ...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
+      x.multiline ? [`${x.icon} ${x.label}`,...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
     );
     const lines = [
       `[${ev.type}] ${ev.name}`,
