@@ -7,7 +7,7 @@ import { Mascot } from "@/components/Mascot";
 import { MemberTabs } from "@/components/MemberTabs";
 import { api } from "@/lib/client";
 
-type Me = { name: string; perms: string[]; consent: boolean };
+type Me = { name: string; perms: string[]; consent: boolean; gender: string };
 
 // 회원 설정 탭: 내 정보, 원우회 정보(조직도·회칙), 관리자 화면, 로그아웃
 export default function SettingsPage() {
@@ -24,6 +24,16 @@ export default function SettingsPage() {
     });
     api<{ clubName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.clubName));
   }, [router]);
+
+  const [saving, setSaving] = useState(false);
+  async function saveGender(gender: "남" | "여") {
+    if (!me || me.gender === gender) return;
+    setSaving(true);
+    const r = await api<{ gender: string }>("/api/me", { method: "PATCH", body: { gender } });
+    setSaving(false);
+    if (r.ok) setMe({ ...me, gender: r.data.gender });
+    else setError(r.error);
+  }
 
   async function logout() {
     await api("/api/auth/logout", { method: "POST", body: {} });
@@ -46,6 +56,19 @@ export default function SettingsPage() {
               {club && <div className="small">{club}</div>}
             </div>
           </div>
+
+          <section className="card" aria-label="내 정보" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <b style={{ font: "400 19px var(--display)" }}>내 정보</b>
+            <span className="l" id="g-l" style={{ marginBottom: 0 }}>성별</span>
+            <div className="row" role="group" aria-labelledby="g-l">
+              {(["남", "여"] as const).map((x) => (
+                <button key={x} type="button" className="opt rowopt" aria-pressed={me.gender === x} disabled={saving} onClick={() => saveGender(x)}>
+                  <span className="name grow">{x}</span><span className="tick" />
+                </button>
+              ))}
+            </div>
+            <span className="small">{me.gender ? "명리학 풀이 등에 이 성별을 써요. 바꾸면 바로 저장돼요." : "아직 성별이 없어요. 명리학 풀이를 보려면 골라 주세요."}</span>
+          </section>
 
           <Link href="/club" className="card" style={linkCard}>
             <span><b style={{ font: "400 19px var(--display)" }}>원우회 정보</b><span className="small" style={{ display: "block" }}>조직도와 확정된 회칙</span></span>

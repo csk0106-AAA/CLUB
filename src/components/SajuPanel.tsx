@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { Mascot } from "./Mascot";
 
@@ -35,6 +35,11 @@ export function SajuPanel({ aid, r, canWrite, onChanged }: { aid: string; r: Rea
   const [time, setTime] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // 회원정보의 성별(있으면 확인만, 없으면 양식에서 고른다)
+  const [memberGender, setMemberGender] = useState("");
+  useEffect(() => {
+    if (form) api<{ gender: string }>("/api/me").then((m) => m.ok && setMemberGender(m.data.gender));
+  }, [form]);
 
   async function call(method: string, body?: unknown) {
     setBusy(true);
@@ -51,7 +56,10 @@ export function SajuPanel({ aid, r, canWrite, onChanged }: { aid: string; r: Rea
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await call("POST", { gender, calendar, leap: calendar === "lunar" && leap, date, time: timeKnown ? time : null });
+    const ok = await call("POST", {
+      ...(memberGender ? {} : { gender }), // 회원정보에 성별이 있으면 서버가 그 값을 쓴다
+      calendar, leap: calendar === "lunar" && leap, date, time: timeKnown ? time : null,
+    });
     if (ok) {
       setForm(false);
       setDate("");
@@ -59,7 +67,7 @@ export function SajuPanel({ aid, r, canWrite, onChanged }: { aid: string; r: Rea
     }
   }
 
-  const ready = gender && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!timeKnown || /^\d{2}:\d{2}$/.test(time));
+  const ready = (memberGender || gender) && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!timeKnown || /^\d{2}:\d{2}$/.test(time));
 
   const formView = (
     <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -70,17 +78,28 @@ export function SajuPanel({ aid, r, canWrite, onChanged }: { aid: string; r: Rea
           <span className="t">
             소개 페이지 맨 끝에는 <u>명리학으로 본 성격과 성향</u>만 실려요(원하지 않으면 소개 페이지에서 뺄 수 있어요).
             건강·재물·직업·연애·결혼·인간관계를 담은 생애주기 전체 풀이는 나만 볼 수 있어요.
-            입력한 생년월일·시간·성별은 풀이를 만드는 데만 쓰고 저장하지 않아요.
+            입력한 생년월일과 태어난 시간은 풀이를 만드는 데만 쓰고 저장하지 않아요.
           </span>
         </div>
       </div>
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="l">성별</legend>
-        <div className="row">
-          {(["남", "여"] as const).map((x) => (
-            <button key={x} type="button" className="opt rowopt" aria-pressed={gender === x} onClick={() => setGender(x)}><span className="name grow">{x}</span><span className="tick" /></button>
-          ))}
-        </div>
+        {memberGender ? (
+          <div className="card row" style={{ background: "var(--soft)", flexWrap: "wrap" }}>
+            <b style={{ font: "400 20px var(--display)" }}>{memberGender}</b>
+            <span className="small grow">회원정보에 등록된 성별이에요. 바꾸려면 설정 › 내 정보에서 고쳐 주세요.</span>
+          </div>
+        ) : (
+          <>
+            <div className="row">
+              {(["남", "여"] as const).map((x) => (
+                <button key={x} type="button" className="opt rowopt" aria-pressed={gender === x} onClick={() => setGender(x)}><span className="name grow">{x}</span><span className="tick" /></button>
+              ))}
+            </div>
+            <span className="small">고른 성별은 회원정보에도 저장돼요.</span>
+          </>
+        )}
+        <span className="small" style={{ display: "block", marginTop: 4 }}>성별은 대운(10년 단위 운의 흐름)의 방향과 결혼·자녀 해석에 쓰여요.</span>
       </fieldset>
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="l">생년월일</legend>

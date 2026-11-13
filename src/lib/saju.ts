@@ -5,13 +5,13 @@ import { z } from "zod";
 // AI에는 계산 결과만 넘겨 풀이 글을 쓰게 한다. 입력 원본(생년월일·시간·성별)은 어디에도 저장하지 않는다.
 
 export const sajuInput = z.object({
-  gender: z.enum(["남", "여"]),
+  gender: z.enum(["남", "여"]).optional(), // 회원정보에 성별이 있으면 서버가 그 값을 쓴다
   calendar: z.enum(["solar", "lunar"]),
   leap: z.boolean().default(false), // 음력 윤달
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/).nullable(), // 모르면 null
 });
-export type SajuInput = z.infer<typeof sajuInput>;
+export type SajuInput = z.infer<typeof sajuInput> & { gender: "남" | "여" };
 
 const GAN: Record<string, string> = { 甲: "갑", 乙: "을", 丙: "병", 丁: "정", 戊: "무", 己: "기", 庚: "경", 辛: "신", 壬: "임", 癸: "계" };
 const ZHI: Record<string, string> = { 子: "자", 丑: "축", 寅: "인", 卯: "묘", 辰: "진", 巳: "사", 午: "오", 未: "미", 申: "신", 酉: "유", 戌: "술", 亥: "해" };
@@ -33,6 +33,11 @@ export type Saju = {
 
 export function computeSaju(input: SajuInput, now = new Date()): Saju {
   const [y, m, d] = input.date.split("-").map(Number);
+  // 양력은 라이브러리가 없는 날짜(예: 2월 30일)를 다음 달로 넘겨 버리므로 직접 막는다.
+  if (input.calendar === "solar") {
+    const t = new Date(Date.UTC(y, m - 1, d));
+    if (t.getUTCFullYear() !== y || t.getUTCMonth() !== m - 1 || t.getUTCDate() !== d) throw new Error("invalid solar date");
+  }
   const [hh, mm] = input.time ? input.time.split(":").map(Number) : [12, 0]; // 시간을 모르면 시주는 빼고 정오로 계산
   const lunar = input.calendar === "solar"
     ? Solar.fromYmdHms(y, m, d, hh, mm, 0).getLunar()

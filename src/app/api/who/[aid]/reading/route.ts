@@ -14,7 +14,8 @@ type Ctx = { params: Promise<{ aid: string }> };
 // 명리학 풀이(선택).
 //  POST { skip: true }      → 사주 안 보기
 //  POST { gender, calendar, leap, date, time } → 사주 계산 → AI 풀이 → 저장
-//    · 생년월일·시간·성별 원본은 계산에만 쓰고 저장하지 않는다(풀이 글만 저장).
+//    · 생년월일·시간 원본은 계산에만 쓰고 저장하지 않는다(풀이 글만 저장).
+//    · 성별은 회원정보 값을 쓴다(없으면 입력받아 회원정보에 저장).
 //    · traitsMd(성격·성향)는 소개 페이지 끝에 공개, readingMd(생애주기 전체)는 본인만.
 //  PATCH { traitsShown }    → 소개 페이지에서 성격·성향 빼기/다시 넣기 (언제든 가능)
 //  DELETE                   → 풀이 지우기(다시 고를 수 있게) (언제든 가능)
@@ -57,18 +58,26 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const parsed = sajuInput.safeParse(raw);
-  if (!parsed.success) return bad("성별, 생년월일(양력/음력), 태어난 시간을 확인해 주세요. 시간을 모르면 '모름'을 골라 주세요.");
+  if (!parsed.success) return bad("생년월일(양력/음력)과 태어난 시간을 확인해 주세요. 시간을 모르면 '모름'을 골라 주세요.");
   if (!isAiEnabled()) return bad("AI가 아직 연결되지 않아 명리 풀이를 만들 수 없어요.", 503);
+
+  // 성별: 회원정보에 있으면 항상 그 값을 쓰고, 없으면 여기서 고른 값을 쓰면서 회원정보에도 저장한다.
+  const me = (await s.list("Members")).find((m) => m.id === g.s.mid);
+  const known = me?.gender === "남" || me?.gender === "여" ? me.gender : "";
+  const gender = (known || parsed.data.gender) as "남" | "여" | undefined;
+  if (!gender) return bad("성별을 골라 주세요.");
+  if (!known && me) await s.update("Members", me.id, { gender });
+  const input = { ...parsed.data, gender };
 
   let saju;
   try {
-    saju = computeSaju(parsed.data);
+    saju = computeSaju(input);
   } catch {
     return bad("날짜를 확인해 주세요. 음력이라면 그 해에 있는 날짜인지, 윤달 여부가 맞는지 봐 주세요.");
   }
 
   const terms = termsFrom(await s.list("Members"));
-  const p = readingPrompt(await guidelinesFor("reading"), sajuSummary(saju, parsed.data.gender));
+  const p = readingPrompt(await guidelinesFor("reading"), sajuSummary(saju, gender));
   const messages = [...p.messages];
   let result: { traits: string; full: string } | null = null;
   for (let attempt = 0; attempt < 2 && !result; attempt++) {
