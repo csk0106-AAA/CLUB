@@ -8,7 +8,10 @@ import { api } from "@/lib/client";
 export default function ProfilePage({ params }: { params: Promise<{ pid: string }> }) {
   const { pid } = use(params);
   const router = useRouter();
-  const [p, setP] = useState<{ alias: string; name: string; introMd: string; mine: boolean } | null>(null);
+  const [p, setP] = useState<{
+    alias: string; name: string; introMd: string; mine: boolean;
+    truthLies: { statements: string[]; lieIndex: number } | null;
+  } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -30,6 +33,21 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
           <div className="row"><Mascot size={56} /><div><h1 className="title" style={{ fontSize: 26 }}>{p.name || `“${p.alias}”`}</h1>{p.name && <div className="small">별칭 “{p.alias}”</div>}</div></div>
           {p.mine && <span className="pill blue" style={{ alignSelf: "flex-start" }}>내 소개</span>}
           <article className="card" style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{p.introMd}</article>
+          {p.truthLies && p.truthLies.statements.length === 3 && (
+            <section className="card" aria-label="2진실 1거짓" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <b style={{ font: "400 20px var(--display)" }}>2진실 1거짓</b>
+              <span className="small">활동이 끝나 정답과 함께 공개해요.</span>
+              {p.truthLies.statements.map((t, i) => {
+                const lie = i === p.truthLies!.lieIndex;
+                return (
+                  <div key={i} className="row" style={{ alignItems: "flex-start" }}>
+                    <span className={`pill ${lie ? "bad" : "ok"}`} style={{ flex: "none", marginTop: 3 }}>{lie ? "거짓" : "진실"}</span>
+                    <span style={{ fontWeight: 700 }}>{t}</span>
+                  </div>
+                );
+              })}
+            </section>
+          )}
         </>
       )}
     </main>

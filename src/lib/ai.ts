@@ -23,9 +23,11 @@ async function callOnce(system: string, messages: Msg[], maxTokens: number): Pro
       messages,
     }),
   });
-  if (!res.ok) throw new Error(`AI ${res.status}`);
-  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
-  return (data.content ?? []).map((c) => c.text ?? "").join("").trim();
+  if (!res.ok) throw new Error(`AI ${res.status} ${(await res.text().catch(() => "")).slice(0, 300)}`);
+  const data = (await res.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string };
+  const text = (data.content ?? []).filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim();
+  if (!text) console.warn(`[ai] 빈 응답 (stop_reason=${data.stop_reason}, 블록=${(data.content ?? []).map((c) => c.type).join(",")})`);
+  return text;
 }
 
 // 재시도 1회. 그래도 실패하면 null 을 돌려주고, 호출한 쪽이 수동 모드로 바꾼다.
@@ -35,8 +37,9 @@ export async function ask(system: string, messages: Msg[], maxTokens = 1500): Pr
     try {
       const out = await callOnce(system, messages, maxTokens);
       if (out) return out;
-    } catch {
-      /* 다시 시도 */
+    } catch (e) {
+      // 다시 시도. 원인은 서버 기록에 남긴다(키 값은 남기지 않는다).
+      console.warn("[ai] 호출 실패:", e instanceof Error ? e.message : String(e));
     }
   }
   return null;
@@ -59,11 +62,34 @@ export function draftPrompt(guidelines: string, answers: string[]): { system: st
   };
 }
 
-export function truthLiesPrompt(guidelines: string, intro: string, unusedAnswers: string[]): { system: string; messages: Msg[] } {
+// 2진실 1거짓: 인터뷰 답변 전체를 보고 만든다. 진실 2개는 답변에 실제로 있는 사실 중 소개 글에 쓰지 않은 것,
+// 거짓 1개는 그럴듯하게 지어낸 것. 활동 중에는 소개 글과 겹치면 정답이 드러나므로 겹치지 않게 한다.
+export function truthLiesPrompt(guidelines: string, intro: string, qa: { q: string; a: string }[]): { system: string; messages: Msg[] } {
   return {
-    system: `${BASE(guidelines)}\n\n소개 글에 쓰지 않은 내용으로 '2진실 1거짓' 문장 3개를 만드세요. JSON 한 줄로만 답하세요: {"statements":["...","...","..."],"lieIndex":0}`,
-    messages: [{ role: "user", content: `소개 글:\n${intro}\n\n쓰지 않은 답변:\n${unusedAnswers.join("\n")}` }],
+    system: `${BASE(guidelines)}
+
+회원의 인터뷰 답변으로 '2진실 1거짓' 게임 문장 3개를 만드세요.
+- 진실 2개: 인터뷰 답변에 실제로 나온 사실로만 만듭니다. 소개 글에 이미 쓴 내용은 쓰지 않습니다(소개 글을 읽은 사람이 바로 맞히면 안 됩니다).
+- 거짓 1개: 답변에 없는 내용을 진실과 비슷한 말투와 길이로, 그럴듯하게 지어냅니다. 너무 뻔하거나 실례가 되는 거짓은 피합니다.
+- 각 문장은 한 문장, 40자 안팎의 평서문("~했다", "~이다")으로 씁니다. 이름·회사명·직함·학교 등 신원이 드러나는 말은 쓰지 않습니다.
+- 거짓 문장의 위치(lieIndex, 0~2)는 무작위로 정합니다.
+반드시 JSON 하나만 출력합니다. 코드 블록이나 다른 글은 쓰지 않습니다: {"statements":["...","...","..."],"lieIndex":1}`,
+    messages: [{ role: "user", content: `소개 글:\n${intro || "(아직 없음)"}\n\n인터뷰 질문과 답변:\n${qa.map((x) => `질문: ${x.q}\n답: ${x.a}`).join("\n\n")}` }],
   };
+}
+
+// AI 답에서 JSON 객체 하나를 꺼낸다(코드 블록·앞뒤 글이 붙어 와도 읽는다).
+export function extractJson(text: string | null): unknown {
+  if (!text) return null;
+  const t = text.replace(/```(?:json)?/gi, "");
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    return JSON.parse(t.slice(start, end + 1));
+  } catch {
+    return null;
+  }
 }
 
 export function revisePrompt(guidelines: string, current: string, request: string): { system: string; messages: Msg[] } {

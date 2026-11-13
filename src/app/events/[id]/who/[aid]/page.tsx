@@ -204,6 +204,28 @@ function Write(props: {
     await reload();
   });
 
+  // 2진실 1거짓을 인터뷰 답변으로 AI가 만든다(소개 글과 겹치지 않게). 버튼으로 다시 만들 수도 있다.
+  const [tlBusy, setTlBusy] = useState(false);
+  const autoTried = useRef(false);
+  const makeTruthLies = useCallback(async () => {
+    setTlBusy(true);
+    const r = await api<{ statements: string[]; lieIndex: number }>(`/api/who/${aid}/truthlies`, { body: { introMd: intro } });
+    setTlBusy(false);
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setStmts(r.data.statements);
+    setLie(r.data.lieIndex);
+    setNote({ tone: "info", text: "AI가 인터뷰 답변으로 2진실 1거짓을 만들었어요. 읽어 보고 필요하면 고쳐 주세요." });
+  }, [aid, intro, setNote]);
+  const tlEmpty = stmts.every((x) => !x.trim());
+  const canAutoTl = open && inAct && st.aiEnabled && st.interview.status === "done" && st.profile.introStatus !== "approved"
+    && (st.profile.introStatus === "draft" || intro.trim().length > 0);
+  useEffect(() => {
+    if (canAutoTl && tlEmpty && !autoTried.current) {
+      autoTried.current = true;
+      makeTruthLies();
+    }
+  }, [canAutoTl, tlEmpty, makeTruthLies]);
+
   if (!open) {
     return (
       <div className="msg info">
@@ -334,8 +356,19 @@ function Write(props: {
 
           {inAct && (
             <>
-              <b style={{ font: "400 21px var(--display)" }}>2진실 1거짓</b>
-              <span className="small">소개 글에 쓰지 않은 내용으로 문장 3개를 적고, 거짓인 문장 하나를 골라 주세요. 너무 뻔하거나 실례가 되는 거짓은 피해 주세요.</span>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <b className="grow" style={{ font: "400 21px var(--display)" }}>2진실 1거짓</b>
+                {!approved && st.aiEnabled && (
+                  <button className="mini" type="button" disabled={tlBusy || busy} onClick={makeTruthLies}>{tlBusy ? "만드는 중…" : tlEmpty ? "AI로 만들기" : "AI로 다시 만들기"}</button>
+                )}
+              </div>
+              <span className="small">
+                {st.aiEnabled
+                  ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들어요. 진실은 소개 글에 쓰지 않은 내용이라 활동 중에는 소개 글에 나오지 않아요. 필요하면 직접 고치고, 거짓인 문장을 확인해 주세요."
+                  : "소개 글에 쓰지 않은 내용으로 문장 3개를 적고, 거짓인 문장 하나를 골라 주세요. 너무 뻔하거나 실례가 되는 거짓은 피해 주세요."}
+                {" "}활동이 끝나면 정답과 함께 프로필 북의 내 소개에 실려요.
+              </span>
+              {tlBusy && tlEmpty && <div className="msg info" role="status">AI가 2진실 1거짓을 만드는 중이에요…</div>}
               {stmts.map((t, i) => (
                 <div key={i} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, borderColor: lie === i ? "var(--red)" : undefined }}>
                   <label className="l" htmlFor={`st-${i}`}>문장 {i + 1}</label>

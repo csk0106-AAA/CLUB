@@ -129,7 +129,7 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     const out = await ask(
       `당신은 원우회 대화를 돕는 진행 도우미입니다. 한국어로, 아래 고민에 대한 서로 다른 관점 3가지를 각각 한 문장으로 짧게 제시하세요. 줄바꿈으로 구분하고 번호나 기호는 붙이지 마세요.\n\n[관리자 지침]\n${gl}`,
       [{ role: "user", content: current.body }],
-      500,
+      2000,
     );
     if (!out) return { ok: false, error: "AI가 응답하지 않았어요.", status: 503 };
     cur.tips = out.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 3);

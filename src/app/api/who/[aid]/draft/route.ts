@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ask, draftPrompt, isAiEnabled, truthLiesPrompt } from "@/lib/ai";
-import { bad, guard, parseJson } from "@/lib/api";
+import { ask, draftPrompt, isAiEnabled } from "@/lib/ai";
+import { bad, guard } from "@/lib/api";
+import { generateTruthLies, qaPairs } from "@/lib/truthlies";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
 import { canJoin } from "@/lib/participants";
 import { getStore } from "@/lib/store";
@@ -43,14 +44,13 @@ export async function POST(_req: Request, ctx: Ctx) {
     if (out) {
       mode = "ai";
       intro = generalize(out, terms);
-      const tp = truthLiesPrompt(await guidelinesFor("truthlies"), intro, tlAns);
-      const tj = await ask(tp.system, tp.messages, 600);
-      const parsed = z.object({ statements: z.array(z.string()).length(3), lieIndex: z.number().int().min(0).max(2) }).safeParse(parseJson(tj ?? "", null));
-      if (parsed.success) {
-        statements = parsed.data.statements.map((x) => generalize(x, terms));
-        lieIndex = parsed.data.lieIndex;
-      }
     }
+  }
+  // 2진실 1거짓은 인터뷰 답변 전체로 AI가 바로 만든다(소개 글에 쓴 내용과 겹치지 않게).
+  const tl = await generateTruthLies(intro, qaPairs(messages, terms), terms);
+  if (tl) {
+    statements = tl.statements;
+    lieIndex = tl.lieIndex;
   }
 
   const now = new Date().toISOString();

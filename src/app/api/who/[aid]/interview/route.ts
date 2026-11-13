@@ -55,7 +55,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
       return acc;
     }, []);
     const p = followUpPrompt(await guidelinesFor("followup"), qa);
-    const next = await ask(p.system, p.messages, 200);
+    // 한도를 너무 작게 잡으면 빈 응답이 와서 인터뷰가 일찍 끝나므로 넉넉히 둔다(질문은 한 문장).
+    const next = await ask(p.system, p.messages, 2000);
     if (!next || next.replace(/[\s."]/g, "") === "없음") done = true;
     else messages = [...messages, { role: "ai", text: next }];
   } else {
