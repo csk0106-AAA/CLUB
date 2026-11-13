@@ -36,6 +36,25 @@ const TABS = [
 // 회비 줄이 "모두 전체" 한 줄뿐이면 모든 회원이 같은 금액(그 금액), 아니면 null
 const oneFee = (rules?: FeeRule[]): string | null =>
   rules && rules.length === 1 && !rules[0].days && !rules[0].kind && !rules[0].position && Number(rules[0].amount) > 0 ? rules[0].amount : null;
+// 행사 정보 줄(한 줄에 하나씩, 아이콘 포함). "회원에게 보이는 모습"과 대화방 안내 문구가 같이 쓴다.
+// withAccount: 계좌 줄 포함 여부(대화방 문구에는 넣지 않는다)
+type InfoLine = { icon: string; label: string; value: string; note?: string; multiline?: boolean };
+function infoLines(ev: Ev, rules: FeeRule[], actNames: string[], withAccount: boolean): InfoLine[] {
+  const out: InfoLine[] = [];
+  out.push({ icon: "📅", label: "일시", value: ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, "").replace(/ · $/, "") : "날짜가 정해지면 알려 드려요" });
+  if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
+  if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
+  const one = oneFee(rules);
+  if (one) out.push({ icon: "💰", label: "참가비", value: `1인 ${won(one)}` });
+  else if (rules.length) out.push({ icon: "💰", label: "참가비", value: "원우회 앱에 로그인한 뒤 회비 안내 화면에서 내 회비를 확인해 주세요" });
+  if (rules.length && ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: ev.feeDeadline });
+  if (withAccount && ev.account) {
+    out.push({ icon: "🏦", label: "계좌", value: `${ev.account}${ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""}`, note: "참석 신청한 회원에게만 보여요" });
+  }
+  if (ev.booking?.trim()) out.push({ icon: "📢", label: "안내", value: ev.booking.trim(), multiline: true });
+  return out;
+}
+
 const dayText = (days: string) =>
   days ? days.split(",").map((d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`).join(", ") : "";
 
@@ -117,23 +136,21 @@ function Detail({ id }: { id: string }) {
     load();
   }
 
-  // 행사 공지 문구(단체 대화방용). 계좌는 참석 신청자에게만 앱에서 보여 주므로 넣지 않는다.
+  // 행사 공지 문구(단체 대화방용). "회원에게 보이는 모습"과 같은 순서·아이콘을 쓴다.
+  // 계좌는 참석 신청자에게만 앱에서 보여 주므로 넣지 않는다.
   async function copyAnnounce() {
     if (!ev) return;
+    const body = infoLines(ev, rules, actNames, false).flatMap((x) =>
+      x.multiline ? [`${x.icon} ${x.label}:`, ...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
+    );
     const lines = [
       `[${ev.type}] ${ev.name}`,
-      `· 일시: ${ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, "").replace(/ · $/, "") : "추후 안내"}`,
-      ev.place ? `· 장소: ${ev.place}` : "",
-      actNames.length ? `· 주요 활동: ${actNames.join(", ")}` : "",
-      oneFee(ev.feeRules)
-        ? `· 참가비: 1인 ${won(oneFee(ev.feeRules) as string)}${ev.feeDeadline ? ` (입금 기한 ${ev.feeDeadline})` : ""}`
-        : ev.feeRules?.length
-          ? `· 참가비: 회원구분·참석일에 따라 달라요(앱에서 내 회비 확인)${ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}`
-          : "",
+      "",
+      ...body,
       "",
       `원우회 앱에서 참석 여부를 알려 주세요 👉 ${window.location.origin}`,
       "로그인: 내 이름 선택 + 연락처 뒷자리 4자리",
-    ].filter((x, i) => x !== "" || i === 5);
+    ];
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
       setAnnounced(true);
@@ -281,20 +298,19 @@ function Detail({ id }: { id: string }) {
           <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="pill gray" style={{ alignSelf: "flex-start" }}>회원에게 보이는 모습</span>
             <b style={{ font: "400 22px var(--display)" }}>{ev.name}</b>
-            {/* 한 줄에 정보 하나씩 */}
-            <div className="small">일시: {ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, "").replace(/ · $/, "") : "날짜가 정해지면 알려 드려요"}</div>
-            {ev.place && <div className="small">장소: {ev.place}</div>}
-            {actNames.length > 0 && <div className="small">주요 활동: {actNames.join(" · ")}</div>}
-            {oneFee(rules)
-              ? <div className="small">참가비: 1인 {won(oneFee(rules) as string)}</div>
-              : rules.length > 0 && <div className="small">참가비: 원우회 앱에 로그인한 뒤 회비 안내 화면에서 내 회비를 확인해 주세요</div>}
-            {rules.length > 0 && ev.feeDeadline && <div className="small">입금 기한: {ev.feeDeadline}</div>}
-            {ev.account && <div className="small">계좌: {ev.account}{ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""} <span style={{ opacity: 0.8 }}>· 참석 신청한 회원에게만 보여요</span></div>}
-            {ev.booking && (
-              <div className="small">
-                <div>안내:</div>
-                <div style={{ whiteSpace: "pre-wrap", paddingLeft: 10 }}>{ev.booking}</div>
-              </div>
+            {/* 한 줄에 정보 하나씩(대화방 안내 문구와 같은 순서·아이콘) */}
+            {infoLines(ev, rules, actNames, true).map((x) =>
+              x.multiline ? (
+                <div key={x.label} className="small">
+                  <div><span aria-hidden="true">{x.icon}</span> {x.label}:</div>
+                  <div style={{ whiteSpace: "pre-wrap", paddingLeft: 26 }}>{x.value}</div>
+                </div>
+              ) : (
+                <div key={x.label} className="small">
+                  <span aria-hidden="true">{x.icon}</span> {x.label}: {x.value}
+                  {x.note && <span style={{ opacity: 0.8 }}> · {x.note}</span>}
+                </div>
+              ),
             )}
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
