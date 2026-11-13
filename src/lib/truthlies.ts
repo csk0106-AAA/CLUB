@@ -9,15 +9,30 @@ const shape = z.object({
   lieIndex: z.number().int().min(0).max(2),
 });
 
-// 인터뷰 대화를 "질문-답" 쌍으로 바꾼다(사용 안 함으로 고른 답은 뺀다). 신원이 드러나는 말은 일반화한다.
+// 인터뷰 대화를 "질문-답" 쌍으로 바꾼다(모든 답을 쓴다). 신원이 드러나는 말은 일반화한다.
 export function qaPairs(messages: ChatMsg[], terms: IdentityTerms): { q: string; a: string }[] {
   const out: { q: string; a: string }[] = [];
   messages.forEach((m, i) => {
-    if (m.role !== "me" || m.scope === "none") return;
+    if (m.role !== "me") return;
     const q = messages.slice(0, i).reverse().find((x) => x.role === "ai")?.text ?? "";
     out.push({ q, a: generalize(m.text, terms) });
   });
   return out;
+}
+
+// 2진실 1거짓 문장에서 소개 글에 나오면 안 되는 핵심 단어를 뽑는다(3자 이상, 조사·서술어 제외).
+// 예: "망기스타우 사막에서 별을 보며 밤을 새웠다" → ["망기스타우"]
+const PARTICLE = /(에서|으로|에게|까지|부터|처럼|이라|라는|하고|이나|이고|이며|을|를|이|가|은|는|에|의|와|과|로|도|만)$/;
+const COMMON = new Set(["있었다", "적이", "있다", "했다", "한다", "이다", "번이나", "사람", "처음", "가장", "직접", "함께", "매일", "모두"]);
+export function keyWords(statements: string[]): string[] {
+  const out = new Set<string>();
+  for (const s of statements) {
+    for (const raw of s.replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/)) {
+      const w = raw.replace(PARTICLE, "");
+      if (w.length >= 3 && !/다$/.test(w) && !COMMON.has(w)) out.add(w);
+    }
+  }
+  return [...out];
 }
 
 // AI로 2진실 1거짓을 만든다. 형식이 틀리거나 신원이 드러나면 한 번 더 시도하고, 그래도 안 되면 null.

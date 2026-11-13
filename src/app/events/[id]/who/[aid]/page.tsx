@@ -33,8 +33,6 @@ const WHEN: Record<string, string> = {
 };
 // 사전 추측 후보 동그라미 색(돌아가며). 글자색은 globals.css .avatar 의 어두운 색이라 대비 4.5:1 이상.
 const AVATAR = ["#1CB0F6", "#FF9600", "#CE82FF", "#FF4B4B", "#58CC02"];
-// 답변 사용 방법: 소개 글과 2진실 1거짓을 만들 때 각 답변을 어디에 쓸지
-const SCOPE_LABEL = { intro: "소개 글에 사용", truthlie: "2진실 1거짓에만 사용", none: "사용 안 함" } as const;
 
 export default function WhoPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
@@ -104,7 +102,6 @@ function Write(props: {
   const [intro, setIntro] = useState(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
   const [stmts, setStmts] = useState<string[]>(st.truthLies.statements);
   const [lie, setLie] = useState(st.truthLies.lieIndex);
-  const [scopes, setScopes] = useState<Record<string, "intro" | "truthlie" | "none">>({});
   const [reviseText, setReviseText] = useState("");
   const [lastReq, setLastReq] = useState(""); // 마지막 수정 요청(말풍선으로 보여 줌)
   const [refusal, setRefusal] = useState(""); // 지침 때문에 반영하지 못한 이유
@@ -153,18 +150,18 @@ function Write(props: {
   });
 
   const makeDraft = () => run(async () => {
-    const r = await api<{ mode: string; draftMd: string; statements: string[]; lieIndex: number; remaining: string[] }>(`/api/who/${aid}/draft`, { body: { scopes } });
+    const r = await api<{ mode: string; draftMd: string; statements: string[]; lieIndex: number; leaked: string[]; remaining: string[] }>(`/api/who/${aid}/draft`, { body: {} });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setIntro(r.data.draftMd);
     setStmts(r.data.statements);
     setLie(r.data.lieIndex);
-    setScopes({}); // 저장된 설정은 다시 불러온 인터뷰에 들어 있다
-    setNote({
-      tone: "info",
-      text: r.data.mode === "manual"
-        ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬은 뒤, 2진실 1거짓 문장 3개를 적어 주세요."
-        : "별칭과 소개 글을 만들었어요. 별칭이 마음에 들지 않으면 “바꾸기”로 고치고, 글도 읽어 보고 고칠 부분을 알려 주세요.",
-    });
+    setNote(
+      r.data.mode === "manual"
+        ? { tone: "info", text: "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬은 뒤, 2진실 1거짓 문장 3개를 적어 주세요." }
+        : r.data.leaked?.length
+          ? { tone: "bad", text: `소개 글에 2진실 1거짓 내용(${r.data.leaked.join(", ")})이 남아 있어요. 소개 글에서 지우거나 “다시 만들기”를 눌러 주세요.` }
+          : { tone: "info", text: "별칭, 소개 글, 2진실 1거짓을 만들었어요. 2진실 1거짓 내용은 소개 글에 넣지 않았어요. 읽어 보고 고칠 부분을 알려 주세요." },
+    );
     await reload();
   });
 
@@ -209,27 +206,11 @@ function Write(props: {
     await reload();
   });
 
-  // 2진실 1거짓을 인터뷰 답변으로 AI가 만든다(소개 글과 겹치지 않게). 버튼으로 다시 만들 수도 있다.
-  const [tlBusy, setTlBusy] = useState(false);
-  const autoTried = useRef(false);
-  const makeTruthLies = useCallback(async () => {
-    setTlBusy(true);
-    const r = await api<{ statements: string[]; lieIndex: number }>(`/api/who/${aid}/truthlies`, { body: { introMd: intro } });
-    setTlBusy(false);
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setStmts(r.data.statements);
-    setLie(r.data.lieIndex);
-    setNote({ tone: "info", text: "AI가 인터뷰 답변으로 2진실 1거짓을 만들었어요. 읽어 보고 필요하면 고쳐 주세요." });
-  }, [aid, intro, setNote]);
+  // 다시 만들기: 2진실 1거짓과 소개 글을 항상 함께 새로 만든다(둘이 겹치지 않게). 별칭은 그대로.
+  const redo = () => {
+    if (window.confirm(`인터뷰 답변으로 ${inAct ? "2진실 1거짓과 소개 글을" : "소개 글을"} 함께 다시 만들까요? 지금 고친 내용은 새로 만든 내용으로 바뀌어요. 별칭은 그대로예요.`)) makeDraft();
+  };
   const tlEmpty = stmts.every((x) => !x.trim());
-  const canAutoTl = open && inAct && st.aiEnabled && st.interview.status === "done" && st.profile.introStatus !== "approved"
-    && (st.profile.introStatus === "draft" || intro.trim().length > 0);
-  useEffect(() => {
-    if (canAutoTl && tlEmpty && !autoTried.current) {
-      autoTried.current = true;
-      makeTruthLies();
-    }
-  }, [canAutoTl, tlEmpty, makeTruthLies]);
 
   if (!open) {
     return (
@@ -245,57 +226,6 @@ function Write(props: {
   const interviewDone = iv.status === "done";
   const inInterview = !interviewDone && iv.messages.length > 0;
   const hasDraft = st.profile.introStatus === "draft" || approved || intro.trim().length > 0;
-
-  // 답변 사용 방법: 소개 글·2진실 1거짓을 "만들 때" 쓰는 설정이다.
-  // 만들기 전에는 고른 뒤 만들고, 이미 만든 뒤에 바꾸면 "다시 만들기"를 눌러야 반영된다.
-  const scopeOf = (i: number) => scopes[String(i)] ?? iv.messages[i]?.scope ?? "intro";
-  const scopeChanged = Object.entries(scopes).some(([k, v]) => (iv.messages[Number(k)]?.scope ?? "intro") !== v);
-  function scopeEditor(afterDraft: boolean) {
-    if (!iv.messages.some((m) => m.role === "me")) return null;
-    const list = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-        <span className="small">
-          각 답변을 어디에 쓸지 골라 주세요. <b>소개 글에 사용</b>: 소개 글 재료로 써요. <b>2진실 1거짓에만 사용</b>: 소개 글에는 넣지 않고 2진실 1거짓 재료로만 써요(활동 전에 들키지 않게). <b>사용 안 함</b>: 어디에도 쓰지 않아요.
-        </span>
-        {iv.messages.map((m, i) => m.role === "me" ? (
-          <div key={i} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div className="small">{iv.messages[i - 1]?.text}</div>
-            <div style={{ fontWeight: 700 }}>{m.text}</div>
-            <select className="field" aria-label="이 답변 사용 방법" value={scopeOf(i)} disabled={busy}
-              onChange={(e) => setScopes({ ...scopes, [String(i)]: e.target.value as "intro" | "truthlie" | "none" })}>
-              {Object.entries(SCOPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </div>
-        ) : null)}
-      </div>
-    );
-    if (!afterDraft) {
-      return (
-        <details className="card">
-          <summary style={{ fontWeight: 700, cursor: "pointer" }}>답변 사용 방법 고르기 (선택 · 기본은 모두 소개 글에 사용)</summary>
-          {list}
-        </details>
-      );
-    }
-    return (
-      <details className="card" open={scopeChanged || undefined}>
-        <summary style={{ fontWeight: 700, cursor: "pointer" }}>답변 사용 방법 바꾸기 (선택)</summary>
-        {list}
-        {scopeChanged && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-            <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>다시 만들어야 반영돼요</b><span className="t">바꾼 설정으로 소개 글{inAct ? "과 2진실 1거짓을" : "을"} 새로 만들어요. 지금 고친 내용은 새로 만든 글로 바뀌어요.</span></div></div>
-            <div className="row" style={{ flexWrap: "wrap" }}>
-              <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }}
-                onClick={() => { if (window.confirm("바꾼 설정으로 다시 만들까요? 지금 고친 소개 글과 2진실 1거짓은 새로 만든 내용으로 바뀌어요.")) makeDraft(); }}>
-                {busy ? "만드는 중…" : "이 설정으로 다시 만들기"}
-              </button>
-              <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minWidth: 120 }} onClick={() => setScopes({})}>되돌리기</button>
-            </div>
-          </div>
-        )}
-      </details>
-    );
-  }
 
   return (
     <>
@@ -355,7 +285,6 @@ function Write(props: {
       {interviewDone && !hasDraft && (
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 별칭과 소개 글{inAct ? ", 2진실 1거짓을" : "을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
-          {scopeEditor(false)}
           <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : inAct ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
         </section>
       )}
@@ -367,10 +296,7 @@ function Write(props: {
             <h2 className="title grow" style={{ fontSize: 23, margin: 0 }}>{hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
             <span className={`pill ${approved ? "ok" : "warn"}`}>{approved ? "배포됨 ✓" : "초안 (나만 보여요)"}</span>
             {!approved && (
-              <button className="mini" type="button" disabled={busy}
-                onClick={() => { if (window.confirm(`인터뷰 답변으로 소개 글${inAct ? "과 2진실 1거짓을" : "을"} 다시 만들까요? 지금 고친 내용은 새로 만든 내용으로 바뀌어요. 별칭은 그대로예요.`)) makeDraft(); }}>
-                {busy ? "만드는 중…" : "다시 만들기"}
-              </button>
+              <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "다시 만들기"}</button>
             )}
           </div>
 
@@ -425,16 +351,16 @@ function Write(props: {
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <b className="grow" style={{ font: "400 21px var(--display)" }}>2진실 1거짓</b>
                 {!approved && st.aiEnabled && (
-                  <button className="mini" type="button" disabled={tlBusy || busy} onClick={makeTruthLies}>{tlBusy ? "만드는 중…" : tlEmpty ? "AI로 만들기" : "AI로 다시 만들기"}</button>
+                  <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글과 함께 다시 만들기"}</button>
                 )}
               </div>
               <span className="small">
                 {st.aiEnabled
-                  ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들어요. 진실은 소개 글에 쓰지 않은 내용이라 활동 중에는 소개 글에 나오지 않아요. 필요하면 직접 고치고, 거짓인 문장을 확인해 주세요."
+                  ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들고, 소개 글은 이 내용을 빼고 써요(소개 글을 읽고 정답을 알 수 없게). 다시 만들면 소개 글도 함께 바뀌어요. 직접 고칠 때는 진실 내용이 소개 글에 들어가지 않게 해 주세요."
                   : "소개 글에 쓰지 않은 내용으로 문장 3개를 적고, 거짓인 문장 하나를 골라 주세요. 너무 뻔하거나 실례가 되는 거짓은 피해 주세요."}
                 {" "}활동이 끝나면 정답과 함께 프로필 북의 내 소개에 실려요.
               </span>
-              {tlBusy && tlEmpty && <div className="msg info" role="status">AI가 2진실 1거짓을 만드는 중이에요…</div>}
+              {!approved && st.aiEnabled && tlEmpty && <div className="msg info" role="status">2진실 1거짓이 비어 있어요. “소개 글과 함께 다시 만들기”를 눌러 주세요.</div>}
               {stmts.map((t, i) => (
                 <div key={i} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, borderColor: lie === i ? "var(--red)" : undefined }}>
                   <label className="l" htmlFor={`st-${i}`}>문장 {i + 1}</label>
@@ -448,7 +374,6 @@ function Write(props: {
             </>
           )}
 
-          {!approved && scopeEditor(true)}
 
           <div className="footer-actions">
             {approved ? (

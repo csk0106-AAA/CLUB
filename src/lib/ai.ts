@@ -57,7 +57,14 @@ export function followUpPrompt(guidelines: string, qa: { q: string; a: string }[
 
 // 소개 글과 별칭을 함께 만든다. alias 가 있으면 그 별칭을 그대로 쓰고, 없으면 인터뷰 내용으로 별칭을 제안한다.
 // 소개 글 첫 줄 제목에 같은 별칭을 넣어 둘이 어긋나지 않게 한다.
-export function introAliasPrompt(guidelines: string, answers: string[], alias: string, taken: string[]): { system: string; messages: Msg[] } {
+// avoid: 소개 글에 쓰면 안 되는 내용(2진실 1거짓 문장). banned: 쓰면 안 되는 단어(검사에서 걸린 것).
+export function introAliasPrompt(
+  guidelines: string, answers: string[], alias: string, taken: string[], avoid: string[] = [], banned: string[] = [],
+): { system: string; messages: Msg[] } {
+  const avoidRule = avoid.length
+    ? `\n- 아래 문장들은 행사에서 '2진실 1거짓' 게임에 씁니다. 소개 글을 읽고 정답을 알 수 없도록, 이 문장들에 나온 사실·장소·사물·경험은 소개 글에 전혀 쓰지 않습니다(돌려 말하거나 암시하지도 않습니다):\n${avoid.map((x) => `  · ${x}`).join("\n")}`
+    : "";
+  const bannedRule = banned.length ? `\n- 다음 단어는 소개 글에 절대 쓰지 않습니다: ${banned.join(", ")}` : "";
   const aliasRule = alias
     ? `별칭은 반드시 "${alias}" 를 그대로 씁니다.`
     : `인터뷰 내용에서 이 사람을 잘 드러내는 별칭을 지어 주세요(2~12자, 이름·회사명·직함·업종을 짐작할 수 없게). 이미 쓰는 별칭과 겹치면 안 됩니다: ${taken.length ? taken.join(", ") : "(없음)"}`;
@@ -66,7 +73,7 @@ export function introAliasPrompt(guidelines: string, answers: string[], alias: s
 
 아래 인터뷰 답변으로 별칭 소개 글(약 2페이지)을 쓰세요.
 - ${aliasRule}
-- 소개 글 첫 줄은 마크다운 제목으로 "# {이 사람을 그리는 짧은 수식어}, '{별칭}'입니다." 형식으로 씁니다.
+- 소개 글 첫 줄은 마크다운 제목으로 "# {이 사람을 그리는 짧은 수식어}, '{별칭}'입니다." 형식으로 씁니다.${avoidRule}${bannedRule}
 반드시 JSON 하나만 출력합니다. 코드 블록이나 다른 글은 쓰지 않습니다: {"alias":"...","intro":"..."}`,
     messages: [{ role: "user", content: answers.join("\n\n") }],
   };
