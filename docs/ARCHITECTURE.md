@@ -36,7 +36,7 @@
 | EventPrep / EventSchedule | 준비물, 일정 |
 | EventActivities | event_id, template_id, template_version, 설정 덮어쓰기(JSON), 상태 |
 | ActivityTemplates | id, 이름, 버전, 설정(JSON), 만든방식(기본/AI) |
-| Teams / Carpools | 조편성(활동별), 카풀(왕복/갈때/올때) |
+| Teams / Carpools | 조편성(활동별), 카풀(차량별 갈 때·올 때 운행 여부, 구간별 일정·탑승자) |
 | LiveState | event_activity_id, 단계, 투표열림, 작성열림, 현재 대상, 타이머 |
 | Profiles / TruthLies / Guesses / Votes / Worries / Capsule* | PRD 7장 데이터 모델 |
 

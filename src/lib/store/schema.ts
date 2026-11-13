@@ -31,8 +31,13 @@ export const TABS = {
   Teams: ["id", "eventActivityId", "name", "memberIds"],
   // 행사 조편성(여러 개 가능, 예: 저녁 게임 3개 조). teams 는 [{name, memberIds}] JSON. published 가 true 여야 회원에게 보인다.
   Groupings: ["id", "eventId", "title", "teams", "published", "updatedAt"],
-  // from/to: 출발·도착 장소, departAt/arriveAt: 출발·도착 예상 시간
-  Carpools: ["id", "eventId", "leg", "driverId", "seats", "from", "departAt", "riders", "to", "arriveAt", "plate", "name"],
+  // 갈 때: from/to 출발·도착 장소, departAt/arriveAt 출발·도착 예상 시간, riders 탑승자(JSON)
+  // 올 때: backFrom/backTo/backDepartAt/backArriveAt/backRiders (같은 뜻)
+  // goOn/backOn: 갈 때·올 때 운행 여부("true"/"false"). leg(왕복/갈 때/올 때)는 예전 코드 호환용으로 goOn/backOn 에서 만든다.
+  Carpools: [
+    "id", "eventId", "leg", "driverId", "seats", "from", "departAt", "riders", "to", "arriveAt", "plate", "name",
+    "goOn", "backOn", "backFrom", "backDepartAt", "backTo", "backArriveAt", "backRiders",
+  ],
   // 숙박 방배정: date(YYYY-MM-DD) 날짜별 방, guests 는 회원 id 배열 JSON
   Rooms: ["id", "eventId", "date", "name", "capacity", "memo", "guests"],
   LiveState: ["id", "eventActivityId", "step", "memberUnlocked", "payload", "updatedAt"],

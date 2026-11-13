@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
-import { carpoolState, cars } from "@/lib/carpool";
+import { DIRS, DIR_LABEL, carpoolState, cars } from "@/lib/carpool";
 import { roomState, rooms } from "@/lib/rooms";
 import { gTeams } from "@/lib/groups";
 import { getStore } from "@/lib/store";
@@ -28,13 +28,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       return t ? [{ title: x.title, team: t.name, members: t.memberIds.map(nm) }] : [];
     });
 
+  // 구간별(갈 때 → 올 때)로 내가 운전하거나 타는 차량
   const myCars = state.published
-    ? all
-        .filter((c) => c.driverId === g.s.mid || c.riders.includes(g.s.mid))
-        .map((c) => ({
-          name: c.name, plate: c.plate, leg: c.leg, from: c.from, to: c.to, departAt: c.departAt, arriveAt: c.arriveAt, driver: nm(c.driverId), iDrive: !!c.driverId && c.driverId === g.s.mid,
-          riders: c.riders.map(nm), seats: c.seats,
-        }))
+    ? DIRS.flatMap((d) =>
+        all
+          .filter((c) => c[d].on && (c.driverId === g.s.mid || c[d].riders.includes(g.s.mid)))
+          .map((c) => ({
+            dir: d, leg: DIR_LABEL[d], name: c.name, plate: c.plate, from: c[d].from, to: c[d].to, departAt: c[d].departAt, arriveAt: c[d].arriveAt,
+            driver: nm(c.driverId), iDrive: !!c.driverId && c.driverId === g.s.mid, riders: c[d].riders.filter((x) => x !== g.s.mid).map(nm), seats: c.seats,
+          })),
+      )
     : [];
 
   const [roomSt, allRooms] = await Promise.all([roomState(id), rooms(id)]);

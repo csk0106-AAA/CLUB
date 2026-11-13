@@ -827,14 +827,16 @@ Check 'carpool: seats limit enforced' ((Call 'PATCH' "$CP/$($car1.json.id)" @{ s
 Check 'carpool: unknown rider rejected' ((Call 'PATCH' "$CP/$($car1.json.id)" @{ riders = @('nope') } $a).code -eq 400)
 $cd = (Call 'GET' $CP $null $a).json
 Check 'carpool: free list (nobody left for either leg)' ($cd.cars.Count -eq 3 -and $cd.free.go.Count -eq 0 -and $cd.free.back.Count -eq 0 -and $cd.published -eq $false)
-Check 'carpool: remove rider, then auto-assign fills free seat' (((Call 'PATCH' "$CP/$($car1.json.id)" @{ riders = @() } $a).code -eq 200) -and ((Call 'POST' "$CP/publish" @{ action = 'auto' } $a).json.added -eq 1))
+Check 'carpool: remove rider, then auto-assign fills free seat' (((Call 'PATCH' "$CP/$($car1.json.id)" @{ riders = @() } $a).code -eq 200) -and ((Call 'POST' "$CP/publish" @{ action = 'auto' } $a).json.added -eq 2))
 $cd2 = (Call 'GET' $CP $null $a).json
-Check 'carpool: auto-assign put the free attendee into the round-trip car' ((($cd2.cars | Where-Object { $_.id -eq $car1.json.id }).riders) -contains $idL)
+$cd2c1 = $cd2.cars | Where-Object { $_.id -eq $car1.json.id }
+Check 'carpool: auto-assign put the free attendee into both legs of the round-trip car' ((@($cd2c1.go.riders) -contains $idL) -and (@($cd2c1.back.riders) -contains $idL))
+Check 'carpool: car running neither leg rejected' (((Call 'POST' $CP @{ go = @{ on = $false }; back = @{ on = $false } } $a).code -eq 409))
 Check 'carpool: UNPUBLISHED hidden from members' ((Call 'GET' '/api/events/evt-workshop/mine' $null $sL).json.carpool.mine.Count -eq 0)
 Check 'carpool: confirm publishes' ((Call 'POST' "$CP/publish" @{ action = 'publish' } $a).code -eq 200)
 $mL = (Call 'GET' '/api/events/evt-workshop/mine' $null $sL).json.carpool
-Check 'carpool: PUBLISHED rider sees driver, place, time' ($mL.published -eq $true -and $mL.mine.Count -eq 1 -and $mL.mine[0].driver -eq '일반회원' -and $mL.mine[0].from -eq '강남역' -and $mL.mine[0].iDrive -eq $false)
-Check 'carpool: PUBLISHED rider sees departure + arrival place/time and rider list' ($mL.mine[0].to -eq '소노펠리체' -and $mL.mine[0].departAt -eq '2026-12-11T11:30' -and $mL.mine[0].arriveAt -eq '2026-12-11T13:40' -and (@($mL.mine[0].riders) -contains '이도윤'))
+Check 'carpool: PUBLISHED rider sees driver, place, time (go + back entries)' ($mL.published -eq $true -and $mL.mine.Count -eq 2 -and $mL.mine[0].leg -eq '갈 때' -and $mL.mine[1].leg -eq '올 때' -and $mL.mine[0].driver -eq '일반회원' -and $mL.mine[0].from -eq '강남역' -and $mL.mine[0].iDrive -eq $false)
+Check 'carpool: PUBLISHED rider sees departure + arrival place/time and rider list' ($mL.mine[0].to -eq '소노펠리체' -and $mL.mine[0].departAt -eq '2026-12-11T11:30' -and $mL.mine[0].arriveAt -eq '2026-12-11T13:40' -and -not (@($mL.mine[0].riders) -contains '이도윤') -and $mL.mine[1].from -eq '소노펠리체')
 Check 'carpool: arrival earlier than departure rejected on edit' ((Call 'PATCH' "$CP/$($car1.json.id)" @{ departAt = '2026-12-11T14:00'; arriveAt = '2026-12-11T13:00' } $a).code -eq 400)
 $mJ = (Call 'GET' '/api/events/evt-workshop/mine' $null $sJ).json.carpool
 Check 'carpool: driver of two cars sees both' ($mJ.mine.Count -eq 2 -and (($mJ.mine | Where-Object { $_.iDrive }).Count -eq 2))

@@ -8,7 +8,7 @@ type Data = {
   schedule: { at: string; title: string }[];
   groups: { title: string; team: string; members: string[] }[];
   rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[] }[] };
-  carpool: { published: boolean; mine: { name: string; plate: string; leg: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number }[] };
+  carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number }[] };
 };
 
 const when = (at: string) => fmtDateTime(at); // "2026/12/11 14:00"
@@ -67,11 +67,12 @@ export function MineInfo({ eventId, placeholder = false }: { eventId: string; pl
       {d.carpool.published && d.carpool.mine.length > 0 && (
         <section className="card" aria-label="내 카풀" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <b style={{ font: "400 19px var(--display)" }}>내 카풀</b>
+          {/* 갈 때 / 올 때 구간별로 내가 탄(운전하는) 차 */}
           {d.carpool.mine.map((c, i) => (
             <div key={i} style={{ borderTop: i ? "2px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
-              <div className="row" style={{ flexWrap: "wrap" }}><b>{c.name}</b><span className="pill ok">{c.leg}</span><span className="pill gray">{c.iDrive ? "내가 운전해요" : "동승"}</span></div>
+              <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{c.leg}</span><b>{c.name}</b><span className="pill gray">{c.iDrive ? "내가 운전해요" : "탑승"}</span></div>
               <div>운전자: <b>{c.driver || "미정"}</b>{c.plate ? ` · 차량번호 ${c.plate}` : ""}</div>
-              <div className="small">출발: {c.from || "장소 미정"}{c.departAt ? ` · ${when(c.departAt)} 예상` : ""}</div>
+              <div className="small">출발: {c.from || "장소 미정"}{c.departAt ? ` · ${when(c.departAt)}` : ""}</div>
               <div className="small">도착: {c.to || "장소 미정"}{c.arriveAt ? ` · ${when(c.arriveAt)} 예상` : ""}</div>
               <div className="small">동승자: {c.riders.length ? c.riders.join(", ") : "없음"}</div>
             </div>
