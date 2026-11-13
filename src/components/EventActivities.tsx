@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/client";
+import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import type { TemplateConfig } from "@/lib/template-schema";
 import { CapsuleAdmin } from "./CapsuleAdmin";
+import { DateField } from "./DateField";
 import { SCREEN_LABELS, TemplateEditor, type EditableConfig } from "./TemplateEditor";
 
 type Act = {
@@ -50,8 +51,8 @@ function Schedule({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; 
       <b style={{ font: "400 17px var(--display)" }}>활동 날짜와 진행 시간</b>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="grid2">
-        <div><label className="l" htmlFor={`as-${a.id}`}>시작 일시</label><input id={`as-${a.id}`} className="field" type="datetime-local" value={s} disabled={!canEdit} onChange={(x) => setS(x.target.value)} /></div>
-        <div><label className="l" htmlFor={`ae-${a.id}`}>끝나는 일시</label><input id={`ae-${a.id}`} className="field" type="datetime-local" value={e} disabled={!canEdit} onChange={(x) => setE(x.target.value)} /></div>
+        <div><label className="l" htmlFor={`as-${a.id}`}>시작 일시</label><DateField id={`as-${a.id}`} mode="datetime" value={s} disabled={!canEdit} onChange={setS} /></div>
+        <div><label className="l" htmlFor={`ae-${a.id}`}>끝나는 일시</label><DateField id={`ae-${a.id}`} mode="datetime" value={e} disabled={!canEdit} onChange={setE} /></div>
       </div>
       <span className="small">회원에게 보여 주는 안내용 정보예요. 참여 대상은 아래 “출석 체크”에서 따로 정해요.</span>
       {canEdit && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={save}>일시 저장</button>}
@@ -155,7 +156,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
             : <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={() => confirm(false)}>완료 취소</button>}
         </div>
       )}
-      {att.confirmed && <span className="small">{att.confirmedAt.slice(0, 16).replace("T", " ")} · {att.by} 님이 완료했어요. 늦게 온 분은 선택해서 저장하면 바로 참여할 수 있어요.</span>}
+      {att.confirmed && <span className="small">{fmtDateTime(att.confirmedAt)} ·{att.by} 님이 완료했어요. 늦게 온 분은 선택해서 저장하면 바로 참여할 수 있어요.</span>}
     </div>
   );
 }
@@ -275,7 +276,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               </>
             )}
           </div>
-          <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${a.pre.opensAt} ~ ${a.pre.closesAt}` : ""}</span>
+          <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${fmtDate(a.pre.opensAt)} ~ ${fmtDate(a.pre.closesAt)}` : ""}</span>
           {a.config.preEvent.steps.includes("ai_interview") && <Progress eventId={eventId} aid={a.id} />}
           <span className={`pill ${a.config.participants === "selected" ? "warn" : "gray"}`} style={{ alignSelf: "flex-start" }}>
             참여 대상: {a.config.participants === "selected" ? `관리자 선택 회원 (${a.rosterCount}명${a.attendanceConfirmed ? " · 출석 체크 완료" : " · 출석 체크 필요"})` : "전체 회원"}

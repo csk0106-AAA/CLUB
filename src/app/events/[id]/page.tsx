@@ -7,7 +7,7 @@ import { IconStar } from "@/components/Icons";
 import { LiveActivities } from "@/components/LiveActivities";
 import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
-import { api, fmtWhen, TYPE_TONE, won } from "@/lib/client";
+import { api, fmtDaySpan, fmtWhen, TYPE_TONE, won } from "@/lib/client";
 
 type Detail = {
   event: {
@@ -30,11 +30,7 @@ function dday(startsAt: string, endsAt: string): string {
   if (today <= end) return "오늘 진행";
   return "";
 }
-const days = (list: string[]) => {
-  const ds = list.map((iso) => Number(iso.slice(8, 10))).sort((a, b) => a - b);
-  if (ds.length === 0) return "";
-  return ds.length > 1 && ds[ds.length - 1] - ds[0] === ds.length - 1 ? `${ds[0]}~${ds[ds.length - 1]}일` : ds.map((x) => `${x}일`).join(", ");
-};
+const days = (list: string[]) => fmtDaySpan(list);
 
 // ⑥ 행사 홈: D-day, 회비 알림, 활동 길
 export default function EventHomePage({ params }: { params: Promise<{ id: string }> }) {

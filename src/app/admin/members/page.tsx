@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
-import { api } from "@/lib/client";
+import { DateField } from "@/components/DateField";
+import { api, fmtDate } from "@/lib/client";
 import { parseMembers } from "@/lib/member-import";
 
 type M = {
@@ -236,7 +237,7 @@ function Members() {
                   <thead><tr><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th></tr></thead>
                   <tbody>
                     {preview.rows.slice(0, 5).map((r, i) => (
-                      <tr key={i}><td><b>{r.name}</b></td><td>{r.kind}</td><td>{r.position}</td><td>{r.gender}</td><td>{r.company}</td><td>{r.title}</td><td className="num">{r.birth}</td><td className="num">{r.phone}</td></tr>
+                      <tr key={i}><td><b>{r.name}</b></td><td>{r.kind}</td><td>{r.position}</td><td>{r.gender}</td><td>{r.company}</td><td>{r.title}</td><td className="num">{fmtDate(r.birth)}</td><td className="num">{r.phone}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -270,7 +271,7 @@ function Members() {
           </div>
           <div><label className="l" htmlFor="f-co">회사명</label><input id="f-co" className="field" value={form.company} onChange={(e) => set("company", e.target.value)} /></div>
           <div><label className="l" htmlFor="f-ti">직위</label><input id="f-ti" className="field" value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
-          <div><label className="l" htmlFor="f-birth">생년월일</label><input id="f-birth" className="field" placeholder="1970-01-01" value={form.birth} onChange={(e) => set("birth", e.target.value)} /></div>
+          <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
           <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
           <div><label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label><input id="f-age" className="field" placeholder="50대" value={form.ageGroup} onChange={(e) => set("ageGroup", e.target.value)} /></div>
           {custom.map((c, i) => (
@@ -316,13 +317,13 @@ function Members() {
                     {m.genderEdit && (
                       <span style={{ display: "inline-flex", gap: 4, alignItems: "center", marginLeft: 6, flexWrap: "wrap" }}>
                         <span className="pill warn" title="회원이 설정에서 직접 바꾼 성별이에요">
-                          회원 수정 ({m.genderEdit.from || "없음"}→{m.genderEdit.to}, {Number(m.genderEdit.at.slice(5, 7))}/{Number(m.genderEdit.at.slice(8, 10))})
+                          회원 수정 ({m.genderEdit.from || "없음"}→{m.genderEdit.to}, {fmtDate(m.genderEdit.at)})
                         </span>
                         <button className="mini" type="button" style={{ minHeight: 32 }} onClick={() => ackGender(m)}>확인</button>
                       </span>
                     )}
                   </td>
-                  <td>{m.company}</td><td>{m.title}</td><td className="num">{m.birth}</td><td className="num">{m.phone}</td>
+                  <td>{m.company}</td><td>{m.title}</td><td className="num">{fmtDate(m.birth)}</td><td className="num">{m.phone}</td>
                   {custom.map((c) => <td key={c}>{m.fields[c] ?? ""}</td>)}
                   <td>{m.perms.map((p) => <span key={p} className="pill blue" style={{ marginRight: 4 }}>{PERM_LABELS[p]}</span>)}</td>
                   <td style={{ whiteSpace: "nowrap" }}>

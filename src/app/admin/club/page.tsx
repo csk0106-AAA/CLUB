@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminGate } from "@/components/AdminGate";
+import { DateField } from "@/components/DateField";
 import { OrgChart } from "@/components/OrgChart";
-import { api } from "@/lib/client";
+import { api, fmtDateTime } from "@/lib/client";
 
 type Note = { tone: "bad" | "info"; text: string } | null;
 type Member = { id: string; name: string };
@@ -216,10 +217,7 @@ function RulesPaste({ onDone }: { onDone: () => void }) {
   );
 }
 
-const fmtAt = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("ko-KR", { year: "2-digit", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-};
+const fmtAt = (iso: string) => fmtDateTime(iso);
 
 function RulesEditor() {
   const { items, setItems, note, create, save, remove, reload } = useClub<Rule>("rules");
@@ -359,7 +357,7 @@ function MinuteForm({ v, onChange, record, labels }: { v: Omit<Min, "id">; onCha
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div className="grid2">
-        <div><label className="l">일시</label><input aria-label="일시" className="field" type="datetime-local" value={v.heldAt} onChange={(e) => onChange({ ...v, heldAt: e.target.value })} /></div>
+        <div><label className="l">일시</label><DateField mode="datetime" ariaLabel="일시" value={v.heldAt} onChange={(x) => onChange({ ...v, heldAt: x })} /></div>
         <div><label className="l">장소</label><input aria-label="장소" className="field" value={v.place} onChange={(e) => onChange({ ...v, place: e.target.value })} /></div>
         <div><label className="l">참석자</label><input aria-label="참석자" className="field" value={v.attendees} onChange={(e) => onChange({ ...v, attendees: e.target.value })} /></div>
       </div>
@@ -418,7 +416,7 @@ function MinutesEditor() {
       {items?.map((m) => (
         <details key={m.id} className="card">
           <summary style={{ fontWeight: 700, cursor: "pointer" }}>
-            {m.heldAt.replace("T", " ")} · {m.place || "장소 미정"} · 안건 {m.agenda.length}개{" "}
+            {fmtDateTime(m.heldAt)} ·{m.place || "장소 미정"} · 안건 {m.agenda.length}개{" "}
             <span className={`pill ${m.phase === "완료" ? "ok" : "warn"}`}>{m.phase === "완료" ? "기록 완료" : `예정·진행 중${m.agenda.some((a) => a.status === "논의 전") ? ` · ${label(L, "논의 전")} ${m.agenda.filter((a) => a.status === "논의 전").length}개` : ""}`}</span>
           </summary>
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Sheet } from "@/components/Sheet";
-import { api } from "@/lib/client";
+import { api, fmtDateTime } from "@/lib/client";
 
 type Data = {
   revealed: boolean; revealAt: string;
@@ -77,7 +77,7 @@ export default function ProfilesPage() {
       {d && (
         <>
           <p className="small" style={{ margin: 0 }}>
-            {d.revealed ? "회원이 공개로 승인한 소개를 실명으로 보여 드려요." : `회원이 공개로 승인한 소개예요. 지금은 별칭으로만 보여요${d.revealAt ? ` (${d.revealAt.replace("T", " ")}부터 실명)` : ""}.`}
+            {d.revealed ? "회원이 공개로 승인한 소개를 실명으로 보여 드려요." : `회원이 공개로 승인한 소개예요. 지금은 별칭으로만 보여요${d.revealAt ? ` (${fmtDateTime(d.revealAt)}부터 실명)` : ""}.`}
           </p>
           {d.items.length === 0 && <div className="msg info">아직 공개된 소개가 없어요. 회원이 작성하고 배포하면 여기에 나타나요.</div>}
           <div className="pick">

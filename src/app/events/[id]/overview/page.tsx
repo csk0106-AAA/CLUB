@@ -5,7 +5,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MineInfo } from "@/components/MineInfo";
 import { Sheet } from "@/components/Sheet";
-import { api, fmtDate, fmtRange, TYPE_TONE, won } from "@/lib/client";
+import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, TYPE_TONE, won } from "@/lib/client";
 
 type Detail = {
   event: {
@@ -31,7 +31,7 @@ function eventDays(startsAt: string, endsAt: string): string[] {
   }
   return out;
 }
-const dayLabel = (iso: string) => `${Number(iso.slice(5, 7))}월 ${Number(iso.slice(8, 10))}일`;
+const dayLabel = (iso: string) => fmtDateDow(iso); // "2026/12/11 (목)"
 
 // ③ 행사 개요: 행사를 누르면 먼저 보이는 화면. 참석 신청 → (워크숍) 날짜 선택 → 회비 안내 → 홈
 export default function OverviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -137,7 +137,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
 
       {answer === "참석" && (
         <div className="msg info">
-          참석 신청했어요{d.apply && d.apply.days.length > 0 ? ` · ${d.apply.days.map(dayLabel).join(", ")}` : ""}
+          참석 신청했어요{d.apply && d.apply.days.length > 0 ? ` · ${fmtDays(d.apply.days)}` : ""}
           {d.apply?.paid ? " · 회비 입금 확인됨 ✓" : ""}
         </div>
       )}

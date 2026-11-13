@@ -41,6 +41,10 @@ export type PreStatus = {
 
 const ymd = (t: number) => new Date(t + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+// 서버 안내 문구용 기간 표시: " (2026/11/27 ~ 2026/12/10)". 값 자체(opensAt/closesAt)는 YYYY-MM-DD 그대로 둔다.
+export const periodText = (p: Pick<PreStatus, "opensAt" | "closesAt">): string =>
+  p.opensAt ? ` (${p.opensAt.replace(/-/g, "/")} ~ ${p.closesAt.replace(/-/g, "/")})` : "";
+
 // 템플릿의 사전 작성 설정과 행사 날짜로 지금 상태를 계산한다.
 type Win = { enabled: boolean; opensBeforeDays?: number; closesBeforeDays?: number };
 

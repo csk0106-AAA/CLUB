@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { DateField } from "./DateField";
 
 type Car = { id: string; name: string; plate: string; leg: string; driverId: string; seats: number; from: string; to: string; departAt: string; arriveAt: string; riders: string[] };
 type Data = {
@@ -101,9 +102,9 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
                 <div><label className="l" htmlFor={`pl-${c.id}`}>차량번호</label><input id={`pl-${c.id}`} className="field" value={x.plate} disabled={!canEdit} onChange={(e) => set(c.id, { plate: e.target.value })} /></div>
                 <div><label className="l" htmlFor={`se-${c.id}`}>좌석 수(동승 가능)</label><input id={`se-${c.id}`} className="field" type="number" min={1} max={12} value={x.seats} disabled={!canEdit} onChange={(e) => set(c.id, { seats: Number(e.target.value) })} /></div>
                 <div><label className="l" htmlFor={`fr-${c.id}`}>출발 장소</label><input id={`fr-${c.id}`} className="field" value={x.from} disabled={!canEdit} onChange={(e) => set(c.id, { from: e.target.value })} /></div>
-                <div><label className="l" htmlFor={`dp-${c.id}`}>출발 예상 시간</label><input id={`dp-${c.id}`} className="field" type="datetime-local" value={x.departAt} disabled={!canEdit} onChange={(e) => set(c.id, { departAt: e.target.value })} /></div>
+                <div><label className="l" htmlFor={`dp-${c.id}`}>출발 예상 시간</label><DateField id={`dp-${c.id}`} mode="datetime" value={x.departAt} disabled={!canEdit} onChange={(v) => set(c.id, { departAt: v })} /></div>
                 <div><label className="l" htmlFor={`to-${c.id}`}>도착 장소</label><input id={`to-${c.id}`} className="field" value={x.to} disabled={!canEdit} onChange={(e) => set(c.id, { to: e.target.value })} /></div>
-                <div><label className="l" htmlFor={`ar-${c.id}`}>도착 예상 시간</label><input id={`ar-${c.id}`} className="field" type="datetime-local" value={x.arriveAt} disabled={!canEdit} onChange={(e) => set(c.id, { arriveAt: e.target.value })} /></div>
+                <div><label className="l" htmlFor={`ar-${c.id}`}>도착 예상 시간</label><DateField id={`ar-${c.id}`} mode="datetime" value={x.arriveAt} disabled={!canEdit} onChange={(v) => set(c.id, { arriveAt: v })} /></div>
               </div>
               <div className="checks" aria-label="동승자">
                 {x.riders.map((r) => (
@@ -146,9 +147,9 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
               <div><label className="l" htmlFor="nc-nm">그룹명 (비우면 자동)</label><input id="nc-nm" className="field" value={nu.name} onChange={(e) => setNu({ ...nu, name: e.target.value })} /></div>
               <div><label className="l" htmlFor="nc-se">좌석 수(동승 가능)</label><input id="nc-se" className="field" type="number" min={1} max={12} value={nu.seats} onChange={(e) => setNu({ ...nu, seats: Number(e.target.value) })} /></div>
               <div><label className="l" htmlFor="nc-fr">출발 장소</label><input id="nc-fr" className="field" value={nu.from} onChange={(e) => setNu({ ...nu, from: e.target.value })} /></div>
-              <div><label className="l" htmlFor="nc-dp">출발 예상 시간</label><input id="nc-dp" className="field" type="datetime-local" value={nu.departAt} onChange={(e) => setNu({ ...nu, departAt: e.target.value })} /></div>
+              <div><label className="l" htmlFor="nc-dp">출발 예상 시간</label><DateField id="nc-dp" mode="datetime" value={nu.departAt} onChange={(v) => setNu((n) => ({ ...n, departAt: v }))} /></div>
               <div><label className="l" htmlFor="nc-to">도착 장소</label><input id="nc-to" className="field" value={nu.to} onChange={(e) => setNu({ ...nu, to: e.target.value })} /></div>
-              <div><label className="l" htmlFor="nc-ar">도착 예상 시간</label><input id="nc-ar" className="field" type="datetime-local" value={nu.arriveAt} onChange={(e) => setNu({ ...nu, arriveAt: e.target.value })} /></div>
+              <div><label className="l" htmlFor="nc-ar">도착 예상 시간</label><DateField id="nc-ar" mode="datetime" value={nu.arriveAt} onChange={(v) => setNu((n) => ({ ...n, arriveAt: v }))} /></div>
             </div>
             <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>차량 등록</button>
           </form>

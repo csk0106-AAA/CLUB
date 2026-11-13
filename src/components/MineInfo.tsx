@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/client";
+import { api, fmtDate, fmtDateTime } from "@/lib/client";
 
 type Data = {
   schedule: { at: string; title: string }[];
@@ -10,7 +10,7 @@ type Data = {
   carpool: { published: boolean; mine: { name: string; plate: string; leg: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number }[] };
 };
 
-const when = (at: string) => (at.includes("T") ? `${Number(at.slice(5, 7))}/${Number(at.slice(8, 10))} ${at.slice(11, 16)}` : at);
+const when = (at: string) => fmtDateTime(at); // "2026/12/11 14:00"
 
 // 회원이 보는 행사 정보: 일정, 내 조편성(배포된 것), 내 카풀(배포된 것)
 // placeholder: 조편성·카풀이 아직 배포되지 않았을 때 "조 편성 후 알려 드려요" 카드를 보여 준다.
@@ -42,7 +42,7 @@ export function MineInfo({ eventId, placeholder = false }: { eventId: string; pl
           <b style={{ font: "400 19px var(--display)" }}>일정</b>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
             {d.schedule.map((s, i) => (
-              <div key={i} className="row"><b className="num" style={{ minWidth: 92 }}>{when(s.at)}</b><span>{s.title}</span></div>
+              <div key={i} className="row" style={{ alignItems: "flex-start" }}><b className="num" style={{ minWidth: 148, whiteSpace: "nowrap" }}>{when(s.at)}</b><span>{s.title}</span></div>
             ))}
           </div>
         </section>
@@ -59,7 +59,7 @@ export function MineInfo({ eventId, placeholder = false }: { eventId: string; pl
           <b style={{ font: "400 19px var(--display)" }}>내 숙소</b>
           {d.rooms.mine.map((r, i) => (
             <div key={i} style={{ borderTop: i ? "2px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
-              <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{Number(r.date.slice(5, 7))}/{Number(r.date.slice(8, 10))} 숙박</span><b>{r.name}</b></div>
+              <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{fmtDate(r.date)} 숙박</span><b>{r.name}</b></div>
               {r.memo && <div className="small">{r.memo}</div>}
               <div className="small">같은 방: {r.mates.length ? r.mates.join(", ") : "혼자 써요"}</div>
             </div>

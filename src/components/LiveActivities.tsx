@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/client";
+import { api, fmtDate, fmtRange } from "@/lib/client";
 import { IconBook, IconChat, IconLock, IconQuestion, IconStar } from "./Icons";
 
 type Worry = {
@@ -51,8 +51,8 @@ const SCREEN_NOTE: Record<string, string> = {
 
 function preBadge(p: Live["pre"]): { tone: string; text: string } {
   if (!p.enabled) return { tone: "warn", text: "현장에서 진행" };
-  if (p.status === "open") return { tone: "ok", text: `사전 작성 중 · ${p.closesAt}까지` };
-  if (p.status === "before") return { tone: "gray", text: `사전 작성 ${p.opensAt}부터` };
+  if (p.status === "open") return { tone: "ok", text: `사전 작성 중 · ${fmtDate(p.closesAt)}까지` };
+  if (p.status === "before") return { tone: "gray", text: `사전 작성 ${fmtDate(p.opensAt)}부터` };
   if (p.status === "closed") return { tone: "gray", text: "사전 작성 마감" };
   return { tone: "gray", text: "사전 작성 · 날짜 미정" };
 }
@@ -67,8 +67,8 @@ function nodeOf(eventId: string, a: Live): Node {
     : "";
   if (a.participants === "selected" && !a.canJoin) return { tone: "lock", sub: "참여 대상이 아니에요", href: page };
   if (a.live.active || a.round || a.worry) return { tone: "now", sub: "지금 진행 중", href: page };
-  if (a.pre.status === "open") return { tone: "now", sub: `작성 중 · ${a.pre.closesAt}까지`, href: page };
-  if (a.kind === "who" && a.guess.status === "open") return { tone: "now", sub: `맞히기 · ${a.guess.closesAt}까지`, href: page };
+  if (a.pre.status === "open") return { tone: "now", sub: `작성 중 · ${fmtDate(a.pre.closesAt)}까지`, href: page };
+  if (a.kind === "who" && a.guess.status === "open") return { tone: "now", sub: `맞히기 · ${fmtDate(a.guess.closesAt)}까지`, href: page };
   if (a.pre.status === "closed") return { tone: "done", sub: "사전 작성 마감", href: page };
   return { tone: "lock", sub: preBadge(a.pre).text, href: a.kind === "capsule" ? page : "" };
 }
@@ -172,7 +172,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
             {a.description && <span className="small">{a.description}</span>}
             {a.startsAt && (
               <span className="small">
-                활동 시간: {a.startsAt.slice(5, 10).replace("-", "/")} {a.startsAt.slice(11, 16)}{a.endsAt ? ` ~ ${a.endsAt.slice(11, 16)}` : ""}
+                활동 시간: {fmtRange(a.startsAt, a.endsAt)}
               </span>
             )}
             {a.participants === "selected" && (

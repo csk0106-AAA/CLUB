@@ -11,7 +11,7 @@ type Detail = {
   feeDue: boolean;
 };
 
-const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+const md = (iso: string) => fmtDate(iso); // 입금 알림 시각(UTC) → 한국 날짜 "2026/11/14"
 
 // ⑤ 회비 안내. 회원이 "입금했어요"를 누르면 관리자에게 먼저 알리고,
 // 관리자가 입금을 확인하면 알림이 사라지고 '입금 확인됨'으로 바뀐다.

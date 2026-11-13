@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/client";
+import { api, fmtDate } from "@/lib/client";
+import { DateField } from "./DateField";
 import { Mascot } from "./Mascot";
 
 export type SajuInfo = {
@@ -11,7 +12,7 @@ export type SajuInfo = {
 };
 export type Reading = { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean; sajuInfo?: SajuInfo | null };
 
-const ymd = (iso: string) => `${Number(iso.slice(0, 4))}년 ${Number(iso.slice(5, 7))}월 ${Number(iso.slice(8, 10))}일`;
+const ymd = (iso: string) => fmtDate(iso);
 const WX_COLOR: Record<string, string> = { 목: "#2b7a00", 화: "#b3261e", 토: "#8f5200", 금: "#5a6b74", 수: "#0f6ea3" };
 
 // 생애주기 풀이 첫머리: 내가 입력한 정보와 사주 원국(본인에게만 보인다)
@@ -195,7 +196,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
           <button type="button" className="opt rowopt" aria-pressed={calendar === "solar"} onClick={() => setCalendar("solar")}><span className="name grow">양력</span><span className="tick" /></button>
           <button type="button" className="opt rowopt" aria-pressed={calendar === "lunar"} onClick={() => setCalendar("lunar")}><span className="name grow">음력</span><span className="tick" /></button>
         </div>
-        <input className="field" type="date" aria-label="생년월일" min="1900-01-01" max="2025-12-31" value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateField mode="date" ariaLabel="생년월일" value={date} onChange={setDate} />
         {calendar === "lunar" && (
           <label className="row" style={{ gap: 8, marginTop: 8 }}>
             <input type="checkbox" checked={leap} onChange={(e) => setLeap(e.target.checked)} style={{ width: 22, height: 22 }} />

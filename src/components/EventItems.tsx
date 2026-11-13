@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, won } from "@/lib/client";
+import { api, fmtDate, won } from "@/lib/client";
+import { DateField } from "./DateField";
 
 type Kind = "schedule" | "prep" | "costs";
 type Item = Record<string, string | number | boolean> & { id: string };
@@ -26,8 +27,7 @@ function Timeline({ items }: { items: Item[] }) {
         const [day, time = ""] = at.split("T");
         let label = time || "시간 미정";
         if (day && day !== prevDay) {
-          const [, m, d] = day.split("-");
-          label = `${Number(m)}/${Number(d)} ${time}`.trim();
+          label = `${fmtDate(day)} ${time}`.trim();
         }
         prevDay = day;
         return <li key={i.id}><b>{at ? label : "시간 미정"}</b><span>{String(i.title) || "(내용 없음)"}</span></li>;
@@ -158,7 +158,7 @@ export function EventItems({ eventId, kind, canEdit }: { eventId: string; kind: 
                 <tr key={i.id}>
                   {kind === "schedule" && (
                     <>
-                      <td><input aria-label="일시" className="field" type="datetime-local" style={{ minHeight: 42 }} value={String(d.at)} disabled={!canEdit} onChange={(e) => set(i.id, "at", e.target.value)} /></td>
+                      <td><DateField mode="datetime" ariaLabel="일시" style={{ minWidth: 230 }} inputStyle={{ minHeight: 44 }} value={String(d.at)} disabled={!canEdit} onChange={(v) => set(i.id, "at", v)} /></td>
                       <td><input aria-label="내용" className="field" style={{ minHeight: 42 }} value={String(d.title)} disabled={!canEdit} onChange={(e) => set(i.id, "title", e.target.value)} /></td>
                     </>
                   )}
@@ -198,7 +198,7 @@ export function EventItems({ eventId, kind, canEdit }: { eventId: string; kind: 
           <div className="grid2">
             {kind === "schedule" && (
               <>
-                <div><label className="l" htmlFor="n-at">일시</label><input id="n-at" className="field" type="datetime-local" value={String(add.at)} onChange={(e) => setAdd({ ...add, at: e.target.value })} /></div>
+                <div><label className="l" htmlFor="n-at">일시</label><DateField id="n-at" mode="datetime" value={String(add.at)} onChange={(v) => setAdd({ ...add, at: v })} /></div>
                 <div><label className="l" htmlFor="n-title">내용</label><input id="n-title" className="field" value={String(add.title)} onChange={(e) => setAdd({ ...add, title: e.target.value })} /></div>
               </>
             )}

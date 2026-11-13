@@ -325,3 +325,13 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .adm1 { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-bottom: 2px solid var(--line); }
 .adm1 .grow { min-width: 0; font-weight: 700; }
 .adm1 .avatar { width: 34px; height: 34px; font-size: 16px; }
+/* 날짜·일시 입력칸(DateField): 글자 입력 + 달력 버튼 */
+.df-wrap { display: flex; flex-direction: column; min-width: 0; }
+.df { position: relative; display: flex; gap: 6px; align-items: stretch; min-width: 0; }
+.df .field { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.df .field[aria-invalid="true"] { border-color: var(--red-t); }
+.df-btn { min-width: 44px; min-height: 44px; padding: 0 10px; display: grid; place-items: center; flex: none; }
+.df-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.df-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; pointer-events: none; }
+.df-hint { font-size: 14px; font-weight: 700; color: var(--red-t); min-height: 0; }
+.df-hint:not(:empty) { margin-top: 4px; }

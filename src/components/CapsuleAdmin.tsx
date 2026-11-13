@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/client";
+import { api, fmtDateTime } from "@/lib/client";
+import { DateField } from "./DateField";
 import { TeamBoard } from "./TeamBoard";
 
 type Cfg = { openAt: string; selfView: boolean; log: { at: string; by: string; from: string; to: string }[]; opened: boolean; counts: { goals: number; pacts: number; teams: number } };
@@ -49,7 +50,7 @@ export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: 
       <span className="small">열림 일시 전에는 관리자도 내용을 볼 수 없고, 서버가 회원에게도 내용을 내려주지 않아요. 내년 송년회 일정이 정해지면 열림 일시를 등록해 주세요(한국 시간).</span>
       {canEdit && (
         <div className="grid2">
-          <div><label className="l" htmlFor={`oa-${aid}`}>열림 일시</label><input id={`oa-${aid}`} className="field" type="datetime-local" value={openAt} disabled={cfg.opened} onChange={(e) => setOpenAt(e.target.value)} /></div>
+          <div><label className="l" htmlFor={`oa-${aid}`}>열림 일시</label><DateField id={`oa-${aid}`} mode="datetime" value={openAt} disabled={cfg.opened} onChange={setOpenAt} /></div>
           <div className="checks" style={{ alignSelf: "end" }}>
             <label><input type="checkbox" checked={selfView} disabled={cfg.opened} onChange={(e) => setSelfView(e.target.checked)} />작성 직후 본인이 자기 목표를 볼 수 있게 하기</label>
           </div>
@@ -58,7 +59,7 @@ export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: 
       {canEdit && <button className="btn" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} disabled={cfg.opened} onClick={saveOpen}>열림 설정 저장</button>}
       {cfg.log.length > 0 && (
         <details className="card"><summary style={{ fontWeight: 700, cursor: "pointer" }}>열림 일시 변경 기록 ({cfg.log.length})</summary>
-          {cfg.log.map((l, i) => <div key={i} className="small">{l.at.slice(0, 16).replace("T", " ")} · {l.by} · {l.from ? l.from.replace("T", " ") : "(없음)"} → {l.to ? l.to.replace("T", " ") : "(취소)"}</div>)}
+          {cfg.log.map((l, i) => <div key={i} className="small">{fmtDateTime(l.at)} · {l.by} · {l.from ? fmtDateTime(l.from) : "(없음)"} → {l.to ? fmtDateTime(l.to) : "(취소)"}</div>)}
         </details>
       )}
     </div>

@@ -10,9 +10,10 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ aid: string }> };
 
 const tripText = (days: string): string => {
-  const ds = days.split(",").filter(Boolean).map((d) => Number(d.slice(8, 10)));
+  // 화면 표시용: "2026/12/11" 또는 "2026/12/11 ~ 2026/12/12"
+  const ds = days.split(",").map((d) => d.trim().slice(0, 10)).filter(Boolean).sort().map((d) => d.replace(/-/g, "/"));
   if (ds.length === 0) return "";
-  return ds.length === 1 ? `${ds[0]}일` : `${ds[0]}~${ds[ds.length - 1]}일`;
+  return ds.length === 1 ? ds[0] : `${ds[0]} ~ ${ds[ds.length - 1]}`;
 };
 
 // 사전 추측 목록: 승인된 소개만, 별칭으로만 보여 준다. 본인 글은 제외한다.

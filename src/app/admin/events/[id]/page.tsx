@@ -8,7 +8,8 @@ import { EventActivities } from "@/components/EventActivities";
 import { EventItems } from "@/components/EventItems";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
-import { api, fmtDate, fmtRange, won } from "@/lib/client";
+import { DateField } from "@/components/DateField";
+import { api, fmtDate, fmtDays, fmtRange, won } from "@/lib/client";
 import type { FeeRule } from "@/lib/fee";
 
 type Ev = {
@@ -54,8 +55,7 @@ function infoLines(ev: Ev, rules: FeeRule[], actNames: string[]): InfoLine[] {
   return out;
 }
 
-const dayText = (days: string) =>
-  days ? days.split(",").map((d) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`).join(", ") : "";
+const dayText = (days: string) => (days ? fmtDays(days) : "");
 
 function Detail({ id }: { id: string }) {
   const [ev, setEv] = useState<Ev | null>(null);
@@ -162,7 +162,7 @@ function Detail({ id }: { id: string }) {
   // 미응답 회원에게 보낼 안내 문구를 복사한다(단체 대화방 등에 붙여 넣기).
   async function copyReminder(names: string[]) {
     if (!ev) return;
-    const when = ev.startsAt ? ` (${ev.startsAt.slice(5, 10).replace("-", "/")})` : "";
+    const when = ev.startsAt ? ` (${fmtDate(ev.startsAt)})` : "";
     const text = `[${ev.name}${when}] 참석 여부를 알려 주세요.\n${names.join(", ")} 님, 원우회 앱에서 “참석 신청하기” 또는 “참석 안함”을 눌러 주세요. 고맙습니다.`;
     try {
       await navigator.clipboard.writeText(text);
@@ -213,9 +213,9 @@ function Detail({ id }: { id: string }) {
           <div className="grid2">
             <div><label className="l" htmlFor="o-name">행사 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-start">시작 일시</label><input id="o-start" className="field" type="datetime-local" value={ev.startsAt} onChange={(e) => set("startsAt", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-end">끝나는 일시</label><input id="o-end" className="field" type="datetime-local" value={ev.endsAt} onChange={(e) => set("endsAt", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-dl">입금 기한</label><input id="o-dl" className="field" type="date" value={ev.feeDeadline} onChange={(e) => set("feeDeadline", e.target.value)} /></div>
+            <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
+            <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
+            <div><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
             <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div>
           </div>
@@ -406,9 +406,9 @@ function Detail({ id }: { id: string }) {
                       <td className="num">{r.feePending ? <span className="small">날짜 선택 전</span> : owed(r) ? owed(r).toLocaleString("ko-KR") : "-"}</td>
                       <td>
                         <span className={`pill ${r.paid ? "ok" : "warn"}`}>{r.paid ? "입금" : "미입금"}</span>
-                        {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {Number(r.payNotice.slice(5, 7))}/{Number(r.payNotice.slice(8, 10))}</span>}
+                        {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {fmtDate(r.payNotice)}</span>}
                       </td>
-                      <td className="num">{r.paidAt}</td>
+                      <td className="num">{fmtDate(r.paidAt)}</td>
                       <td><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "취소" : "입금 확인"}</button></td>
                     </tr>
                   ))}

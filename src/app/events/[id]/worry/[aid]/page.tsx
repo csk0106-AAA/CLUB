@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
-import { api } from "@/lib/client";
+import { api, fmtDate } from "@/lib/client";
 
 type Mine = { id: string; body: string; category: string; anonymous: boolean; drawn: boolean };
 type Data = {
@@ -98,7 +98,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 행사에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 사회자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
-      {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${d.pre.opensAt} ~ ${d.pre.closesAt} 예요.` : ""}</div>}
+      {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDate(d.pre.opensAt)} ~ ${fmtDate(d.pre.closesAt)} 예요.` : ""}</div>}
 
       {d.mine.length > 0 && (
         <section aria-label="내 고민" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -179,7 +179,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
             <span className="ic" aria-hidden="true">✓</span>
             <div>
               <b>고민 {d.mine.length}개가 저장돼 있어요</b>
-              <span className="t">따로 제출하지 않아도 돼요. {open ? `작성 기간(${d.pre.closesAt}까지)에는 다시 들어와 고치거나 더 쓸 수 있어요.` : "뽑히기 전까지는 아무에게도 보이지 않아요."}</span>
+              <span className="t">따로 제출하지 않아도 돼요. {open ? `작성 기간(${fmtDate(d.pre.closesAt)}까지)에는 다시 들어와 고치거나 더 쓸 수 있어요.` : "뽑히기 전까지는 아무에게도 보이지 않아요."}</span>
             </div>
           </div>
           <button className="btn" type="button" onClick={() => router.push(`/events/${id}`)}>작성 완료 · 행사로 돌아가기</button>

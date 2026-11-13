@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/client";
+import { api, fmtDate } from "@/lib/client";
 
 type Room = { id: string; date: string; name: string; capacity: number; memo: string; guests: string[] };
 type Data = {
@@ -9,7 +9,7 @@ type Data = {
   rooms: Room[]; free: Record<string, string[]>;
 };
 
-export const dayLabel = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
+export const dayLabel = (d: string) => fmtDate(d); // "2026/12/11"
 
 // 숙박 방배정: 날짜별로 방을 만들고 투숙자를 배정한다. 확인을 눌러야 회원에게 배포된다.
 export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {

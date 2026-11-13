@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { preStatus } from "@/lib/activities";
+import { periodText, preStatus } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
 import { NOT_ATTENDEE, canJoin } from "@/lib/participants";
 import { getStore } from "@/lib/store";
@@ -43,7 +43,7 @@ export async function POST(req: Request, ctx: Ctx) {
   // 고민은 이 활동에 참석하는 분만 쓴다. 불참하는 분은 AI 인터뷰로 프로필 북 소개만 작성한다.
   if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) return bad(`${NOT_ATTENDEE} 참여 대상이 아니면 고민은 쓰지 않고 프로필 소개만 작성해 주세요.`, 403);
   const pre = preStatus(w.cfg, w.ev.startsAt);
-  if (pre.status !== "open") return bad(`${WHY[pre.status]}${pre.opensAt ? ` (${pre.opensAt} ~ ${pre.closesAt})` : ""}`, 403);
+  if (pre.status !== "open") return bad(`${WHY[pre.status]}${periodText(pre)}`, 403);
 
   const parsed = worryBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("고민은 2~500자로 적고, 카테고리와 익명 여부를 골라 주세요.");

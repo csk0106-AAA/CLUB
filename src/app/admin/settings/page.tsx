@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
+import { DateField } from "@/components/DateField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 
@@ -118,7 +119,7 @@ function ProfileReveal() {
       <span className="small">행사가 끝난 뒤 별칭 대신 실명으로 보여 줄 시점이에요(한국 시간). 비워 두면 계속 별칭으로만 보여요.</span>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <input aria-label="실명 공개 시점" className="field" type="datetime-local" style={{ maxWidth: 280 }} value={at} onChange={(e) => setAt(e.target.value)} />
+        <DateField mode="datetime" ariaLabel="실명 공개 시점" style={{ width: 300, maxWidth: "100%" }} value={at} onChange={setAt} />
         <button className="mini" type="button" style={{ minHeight: 54 }} onClick={save}>저장</button>
       </div>
     </div>

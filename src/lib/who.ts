@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { guessStatus, isWhoAmI, preStatus, readConfig, type PreStatus } from "./activities";
+import { guessStatus, isWhoAmI, periodText, preStatus, readConfig, type PreStatus } from "./activities";
 import { getSetting, getStore, DEFAULT_GUIDELINES, DEFAULT_QUESTIONS } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
@@ -32,14 +32,14 @@ const WHY: Record<string, string> = {
 export function writeClosed(ctx: WhoCtx): NextResponse | null {
   const p = preStatus(ctx.cfg, ctx.ev.startsAt);
   if (p.status === "open") return null;
-  return NextResponse.json({ error: `${WHY[p.status]}${p.opensAt ? ` (${p.opensAt} ~ ${p.closesAt})` : ""}` }, { status: 403 });
+  return NextResponse.json({ error: `${WHY[p.status]}${periodText(p)}` }, { status: 403 });
 }
 
 // 사전 추측 기간
 export function guessClosed(ctx: WhoCtx): NextResponse | null {
   const p = guessStatus(ctx.cfg, ctx.ev.startsAt);
   if (p.status === "open") return null;
-  return NextResponse.json({ error: `${WHY[p.status]}${p.opensAt ? ` (${p.opensAt} ~ ${p.closesAt})` : ""}` }, { status: 403 });
+  return NextResponse.json({ error: `${WHY[p.status]}${periodText(p)}` }, { status: 403 });
 }
 
 export function windows(ctx: WhoCtx): { pre: PreStatus; guess: PreStatus } {

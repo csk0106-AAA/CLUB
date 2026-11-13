@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { IconLock } from "@/components/Icons";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
-import { api } from "@/lib/client";
+import { api, fmtDateTime } from "@/lib/client";
 
 type Data = {
   activity: { id: string; name: string };
@@ -81,7 +81,7 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
       <div className={`fb ${d.opened ? "good" : "info"}`}>
         <span className="ic" aria-hidden="true"><IconLock size={16} /></span>
         <div>
-          <b>{d.opened ? "타임캡슐이 열렸어요" : d.openAt ? `${d.openAt.replace("T", " ")}에 열려요` : "열림 날짜가 정해지면 알려 드려요"}</b>
+          <b>{d.opened ? "타임캡슐이 열렸어요" : d.openAt ? `${fmtDateTime(d.openAt)}에 열려요` : "열림 날짜가 정해지면 알려 드려요"}</b>
           <span className="t">{d.opened ? "함께 확인해 보세요." : "열리기 전에는 누구도 볼 수 없어요."}</span>
         </div>
       </div>
