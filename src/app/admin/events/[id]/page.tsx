@@ -281,13 +281,21 @@ function Detail({ id }: { id: string }) {
           <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="pill gray" style={{ alignSelf: "flex-start" }}>회원에게 보이는 모습</span>
             <b style={{ font: "400 22px var(--display)" }}>{ev.name}</b>
-            <div className="small">{ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, ev.place) : "날짜가 정해지면 알려 드려요"}</div>
+            {/* 한 줄에 정보 하나씩 */}
+            <div className="small">일시: {ev.startsAt ? fmtWhen(ev.startsAt, ev.endsAt, "").replace(/ · $/, "") : "날짜가 정해지면 알려 드려요"}</div>
+            {ev.place && <div className="small">장소: {ev.place}</div>}
             {actNames.length > 0 && <div className="small">주요 활동: {actNames.join(" · ")}</div>}
             {oneFee(rules)
-              ? <div className="small">참가비 1인 {won(oneFee(rules) as string)}{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>
-              : rules.length > 0 && <div className="small">참가비: 원우회 앱에 로그인한 뒤 회비 안내 화면에서 내 회비를 확인해 주세요{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
-            {ev.booking && <div className="small" style={{ whiteSpace: "pre-wrap" }}>안내: {ev.booking}</div>}
-            {ev.account && <div className="small">계좌 {ev.account}{ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""} · 참석 신청한 회원에게만 보여요</div>}
+              ? <div className="small">참가비: 1인 {won(oneFee(rules) as string)}</div>
+              : rules.length > 0 && <div className="small">참가비: 원우회 앱에 로그인한 뒤 회비 안내 화면에서 내 회비를 확인해 주세요</div>}
+            {rules.length > 0 && ev.feeDeadline && <div className="small">입금 기한: {ev.feeDeadline}</div>}
+            {ev.account && <div className="small">계좌: {ev.account}{ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""} <span style={{ opacity: 0.8 }}>· 참석 신청한 회원에게만 보여요</span></div>}
+            {ev.booking && (
+              <div className="small">
+                <div>안내:</div>
+                <div style={{ whiteSpace: "pre-wrap", paddingLeft: 10 }}>{ev.booking}</div>
+              </div>
+            )}
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="submit" disabled={busy} style={{ width: "auto", minWidth: 160 }}>임시 저장</button>

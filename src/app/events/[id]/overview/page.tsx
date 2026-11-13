@@ -126,7 +126,10 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       {e.fee && (
         <div className="card">
           <b>내 참가비</b>
-          <div className="small">{won(e.fee)}{e.account ? ` · 계좌 ${e.account}${e.accountHolder ? ` (예금주 ${e.accountHolder})` : ""}` : ""}{e.feeDeadline ? ` · 입금 기한 ${e.feeDeadline}` : ""}</div>
+          {/* 한 줄에 정보 하나씩 */}
+          <div className="small">금액: {won(e.fee)}</div>
+          {e.feeDeadline && <div className="small">입금 기한: {e.feeDeadline}</div>}
+          {e.account && <div className="small">계좌: {e.account}{e.accountHolder ? ` (예금주 ${e.accountHolder})` : ""}</div>}
         </div>
       )}
       {e.booking && <div className="card"><b>안내</b><div className="small" style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{e.booking}</div></div>}
