@@ -37,20 +37,19 @@ const TABS = [
 const oneFee = (rules?: FeeRule[]): string | null =>
   rules && rules.length === 1 && !rules[0].days && !rules[0].kind && !rules[0].position && Number(rules[0].amount) > 0 ? rules[0].amount : null;
 // 행사 정보 줄(한 줄에 하나씩, 아이콘 포함). "회원에게 보이는 모습"과 대화방 안내 문구가 같이 쓴다.
-// withAccount: 계좌 줄 포함 여부(대화방 문구에는 넣지 않는다)
-type InfoLine = { icon: string; label: string; value: string; note?: string; multiline?: boolean };
-function infoLines(ev: Ev, rules: FeeRule[], actNames: string[], withAccount: boolean): InfoLine[] {
+// 회비가 "전체·전체·전체" 한 줄뿐(모두 같은 금액)일 때만 금액과 계좌를 보여 주고,
+// 여러 줄이면 회원마다 금액이 다르므로 "앱 접속 후 내 회비 확인"만 쓴다(계좌는 앱의 회비 안내에서).
+type InfoLine = { icon: string; label: string; value: string; multiline?: boolean };
+function infoLines(ev: Ev, rules: FeeRule[], actNames: string[]): InfoLine[] {
   const out: InfoLine[] = [];
   out.push({ icon: "📅", label: "일시", value: fmtRange(ev.startsAt, ev.endsAt) });
   if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
   if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
   const one = oneFee(rules);
-  if (one) out.push({ icon: "💰", label: "참가비", value: `1인 ${won(one)}` });
+  if (one) out.push({ icon: "💰", label: "참가비", value: won(one) });
   else if (rules.length) out.push({ icon: "💰", label: "참가비", value: "앱 접속 후 내 회비 확인" });
   if (rules.length && ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: ev.feeDeadline });
-  if (withAccount && ev.account) {
-    out.push({ icon: "🏦", label: "계좌", value: `${ev.account}${ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""}`, note: "참석 신청한 회원에게만 보여요" });
-  }
+  if (one && ev.account) out.push({ icon: "🏦", label: "계좌", value: `${ev.account}${ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""}` });
   if (ev.booking?.trim()) out.push({ icon: "📢", label: "안내", value: ev.booking.trim(), multiline: true });
   return out;
 }
@@ -137,10 +136,10 @@ function Detail({ id }: { id: string }) {
   }
 
   // 행사 공지 문구(단체 대화방용). "회원에게 보이는 모습"과 같은 순서·아이콘을 쓴다.
-  // 계좌는 참석 신청자에게만 앱에서 보여 주므로 넣지 않는다.
+  // 계좌는 모든 회원 회비가 같을 때만 넣는다(infoLines 참고).
   async function copyAnnounce() {
     if (!ev) return;
-    const body = infoLines(ev, rules, actNames, false).flatMap((x) =>
+    const body = infoLines(ev, rules, actNames).flatMap((x) =>
       x.multiline ? [`${x.icon} ${x.label}:`, ...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
     );
     const lines = [
@@ -299,7 +298,7 @@ function Detail({ id }: { id: string }) {
             <span className="pill gray" style={{ alignSelf: "flex-start" }}>회원에게 보이는 모습</span>
             <b style={{ font: "400 22px var(--display)" }}>{ev.name}</b>
             {/* 한 줄에 정보 하나씩(대화방 안내 문구와 같은 순서·아이콘) */}
-            {infoLines(ev, rules, actNames, true).map((x) =>
+            {infoLines(ev, rules, actNames).map((x) =>
               x.multiline ? (
                 <div key={x.label} className="small">
                   <div><span aria-hidden="true">{x.icon}</span> {x.label}</div>
@@ -308,7 +307,6 @@ function Detail({ id }: { id: string }) {
               ) : (
                 <div key={x.label} className="small">
                   <span aria-hidden="true">{x.icon}</span> {x.label}: {x.value}
-                  {x.note && <span style={{ opacity: 0.8 }}> · {x.note}</span>}
                 </div>
               ),
             )}
@@ -321,7 +319,7 @@ function Detail({ id }: { id: string }) {
             {ev.published === "true" && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minWidth: 160 }} onClick={() => save(false)}>공개 취소</button>}
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
           </div>
-          <span className="small">계좌번호는 참석을 신청한 회원에게만 보여요. “대화방 안내 문구 복사”는 단체 대화방에 붙여 넣을 공지를 만들어 줘요(계좌는 넣지 않아요).</span>
+          <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회원마다 회비가 다르면 금액과 계좌 대신 “앱 접속 후 내 회비 확인”으로 나가요.</span>
         </form>
       )}
 
