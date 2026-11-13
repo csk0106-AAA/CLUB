@@ -67,7 +67,7 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
-            <span className="small">{me.gender ? "명리학 풀이 등에 이 성별을 써요. 바꾸면 바로 저장돼요." : "아직 성별이 없어요. 명리학 풀이를 보려면 골라 주세요."}</span>
+            <span className="small">{me.gender ? "바꾸면 바로 저장돼요." : "아직 성별이 없어요. 명리학 풀이를 보려면 골라 주세요."}</span>
           </section>
 
           <Link href="/club" className="card" style={linkCard}>
