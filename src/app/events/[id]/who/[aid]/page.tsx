@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { IconMic } from "@/components/Icons";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
+import { SajuPanel } from "@/components/SajuPanel";
 import { api } from "@/lib/client";
 import { useVoice } from "@/lib/voice";
 
@@ -17,7 +18,10 @@ type State = {
   aiEnabled: boolean;
   inActivity: boolean; // 이 활동의 참여 대상인지(아니면 프로필 북용 소개만 작성)
   participants: string;
-  profile: { alias: string; draftMd: string; introMd: string; introStatus: string };
+  profile: {
+    alias: string; draftMd: string; introMd: string; introStatus: string;
+    readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean;
+  };
   interview: { messages: Msg[]; status: string; answered: number; required: number };
   truthLies: { statements: string[]; lieIndex: number; status: string };
 };
@@ -226,6 +230,11 @@ function Write(props: {
   const interviewDone = iv.status === "done";
   const inInterview = !interviewDone && iv.messages.length > 0;
   const hasDraft = st.profile.introStatus === "draft" || approved || intro.trim().length > 0;
+  const reading = {
+    readingStatus: st.profile.readingStatus, readingMd: st.profile.readingMd,
+    traitsMd: st.profile.traitsMd, traitsShown: st.profile.traitsShown,
+  };
+  const readingChosen = st.profile.readingStatus === "done" || st.profile.readingStatus === "skipped";
 
   return (
     <>
@@ -281,8 +290,13 @@ function Write(props: {
         </section>
       )}
 
+      {/* 인터뷰 마지막 단계: 명리학 사주 보기 / 안 보기 (고르기 전에는 소개 글 만들기를 보여 주지 않는다) */}
+      {interviewDone && !hasDraft && st.aiEnabled && (
+        <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />
+      )}
+
       {/* 2. 초안 만들기: AI가 별칭·소개 글·2진실 1거짓을 함께 만든다 */}
-      {interviewDone && !hasDraft && (
+      {interviewDone && !hasDraft && (!st.aiEnabled || readingChosen) && (
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 별칭과 소개 글{inAct ? ", 2진실 1거짓을" : "을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
           <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : inAct ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
@@ -374,6 +388,8 @@ function Write(props: {
             </>
           )}
 
+          {/* 명리학: 성격·성향(소개 페이지 맨 끝에 공개, 뺄 수 있음) + 생애주기 풀이(나만) */}
+          {st.aiEnabled && <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />}
 
           <div className="footer-actions">
             {approved ? (

@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
+import { Md } from "@/components/SajuPanel";
 import { api } from "@/lib/client";
 
 export default function ProfilePage({ params }: { params: Promise<{ pid: string }> }) {
@@ -11,6 +12,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
   const [p, setP] = useState<{
     alias: string; name: string; introMd: string; mine: boolean;
     truthLies: { statements: string[]; lieIndex: number } | null;
+    traitsMd: string; readingMd: string;
   } | null>(null);
   const [error, setError] = useState("");
 
@@ -47,6 +49,19 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
                 );
               })}
             </section>
+          )}
+          {p.traitsMd && (
+            <section className="card" aria-label="명리학으로 본 성격과 성향" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <b style={{ font: "400 20px var(--display)" }}>명리학으로 본 성격과 성향</b>
+              <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{p.traitsMd}</p>
+            </section>
+          )}
+          {p.mine && p.readingMd && (
+            <details className="card" style={{ borderStyle: "dashed" }}>
+              <summary style={{ fontWeight: 700, cursor: "pointer" }}>나만 보는 생애주기 명리 풀이 <span className="pill gray">나만 보기</span></summary>
+              <div style={{ marginTop: 10 }}><Md text={p.readingMd} /></div>
+              <span className="small" style={{ display: "block", marginTop: 8 }}>다른 회원에게는 보이지 않아요. 성격·성향 글을 소개 페이지에서 빼거나 풀이를 지우려면 “내가 누굴까요?”의 내 소개 화면에서 할 수 있어요.</span>
+            </details>
           )}
         </>
       )}

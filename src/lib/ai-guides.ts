@@ -7,6 +7,7 @@ export const AI_POINTS = [
   { key: "truthlies", label: "2진실 1거짓 문장 만들기", hint: "소개 글에 쓰지 않은 내용으로 만드는 문장의 난이도·종류" },
   { key: "revise", label: "소개 글 수정 요청 반영", hint: "회원의 수정 요청을 받아들이거나 거절하는 기준" },
   { key: "worry", label: "고민 관점 제안 (진행 도우미)", hint: "고민에 대해 AI가 제시하는 관점의 톤과 금지 사항" },
+  { key: "reading", label: "명리학 풀이", hint: "사주 풀이의 말투·분량, 소개 페이지에 싣는 성격·성향 글의 기준, 금지 표현" },
 ] as const;
 export type AiPoint = (typeof AI_POINTS)[number]["key"];
 

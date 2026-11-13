@@ -28,6 +28,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
       draftMd: profile?.draftMd ?? "",
       introMd: profile?.introMd ?? "",
       introStatus: profile?.introStatus || "none",
+      // 명리 풀이(본인 화면이므로 전체 풀이까지 내려준다)
+      readingStatus: profile?.readingStatus ?? "",
+      readingMd: profile?.readingMd ?? "",
+      traitsMd: profile?.traitsMd ?? "",
+      traitsShown: profile?.traitsShown === "true",
     },
     interview: interviewView(iv.messages, iv.row?.status ?? "", qs.length),
     truthLies: {

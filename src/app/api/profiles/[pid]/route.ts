@@ -34,5 +34,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }>
     .sort((a, b) => (b.approvedAt ?? "").localeCompare(a.approvedAt ?? ""))[0];
   const truthLies = tl ? { statements: parseJson<string[]>(tl.statements, []), lieIndex: Number(tl.lieIndex) } : null;
 
-  return NextResponse.json({ alias: p.alias, name, introMd: p.introMd, mine: p.memberId === g.s.mid, truthLies });
+  const mine = p.memberId === g.s.mid;
+  return NextResponse.json({
+    alias: p.alias, name, introMd: p.introMd, mine, truthLies,
+    // 명리학: 성격·성향은 본인이 소개 페이지에 싣기로 한 경우만, 생애주기 전체 풀이는 본인에게만
+    traitsMd: p.traitsShown === "true" ? p.traitsMd ?? "" : "",
+    readingMd: mine ? p.readingMd ?? "" : "",
+  });
 }

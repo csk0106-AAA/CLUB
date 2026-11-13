@@ -38,6 +38,9 @@ export const TABS = {
   Profiles: [
     "id", "memberId", "alias", "draftMd", "introMd", "introStatus", "publicFields",
     "readingMd", "readingStatus", "approvedAt", "updatedAt",
+    // 명리학: readingMd(생애주기 전체 풀이, 본인만), readingStatus(""=아직 안 고름 / skipped / done),
+    // traitsMd(성격·성향, 소개 페이지 끝에 공개), traitsShown("true"면 소개 페이지에 싣는다). 생년월일 원본은 저장하지 않는다.
+    "traitsMd", "traitsShown",
   ],
   Interviews: ["id", "memberId", "eventActivityId", "messages", "status", "updatedAt"],
   TruthLies: ["id", "memberId", "eventActivityId", "statements", "lieIndex", "status", "approvedAt"],
