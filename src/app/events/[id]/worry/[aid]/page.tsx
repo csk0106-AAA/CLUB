@@ -171,6 +171,20 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
           </div>
         </form>
       )}
+
+      {/* 다 썼으면 여기서 마무리: 고민은 저장할 때마다 이미 저장돼 있다 */}
+      {d.mine.length > 0 && edit === null && (
+        <div className="footer-actions">
+          <div className="fb good">
+            <span className="ic" aria-hidden="true">✓</span>
+            <div>
+              <b>고민 {d.mine.length}개가 저장돼 있어요</b>
+              <span className="t">따로 제출하지 않아도 돼요. {open ? `작성 기간(${d.pre.closesAt}까지)에는 다시 들어와 고치거나 더 쓸 수 있어요.` : "뽑히기 전까지는 아무에게도 보이지 않아요."}</span>
+            </div>
+          </div>
+          <button className="btn" type="button" onClick={() => router.push(`/events/${id}`)}>작성 완료 · 행사로 돌아가기</button>
+        </div>
+      )}
     </main>
   );
 }
