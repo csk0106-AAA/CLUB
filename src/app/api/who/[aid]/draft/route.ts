@@ -12,7 +12,10 @@ import { loadWho, myInterview, myProfile, myTruthLies, writeClosed, type ChatMsg
 type Ctx = { params: Promise<{ aid: string }> };
 
 // 결과 생성(초안). AI가 켜져 있으면 AI가 쓰고, 아니면 '수동 모드'로 내 답변을 모아 초안을 만들어 주고 직접 고치게 한다.
-export async function POST(_req: Request, ctx: Ctx) {
+// body.scopes 가 있으면 답변별 사용 방법을 먼저 저장하고 그 설정대로 만든다(이미 만든 초안은 새로 만든 것으로 바뀐다).
+const makeBody = z.object({ scopes: z.record(z.string(), z.enum(["intro", "truthlie", "none"])).optional() });
+
+export async function POST(req: Request, ctx: Ctx) {
   const g = await guard();
   if ("err" in g) return g.err;
   const { aid } = await ctx.params;
@@ -25,8 +28,16 @@ export async function POST(_req: Request, ctx: Ctx) {
   const profile = await myProfile(g.s.mid);
   if (!profile?.alias) return bad("별칭을 먼저 정해 주세요.");
   if (profile.introStatus === "approved") return bad("승인된 소개가 있어요. 승인을 취소한 뒤 다시 만들 수 있어요.", 409);
-  const { row, messages } = await myInterview(g.s.mid, aid);
+  const iv = await myInterview(g.s.mid, aid);
+  const row = iv.row;
   if (!row || row.status !== "done") return bad("인터뷰를 끝낸 뒤에 소개 글을 만들 수 있어요.");
+  let messages = iv.messages;
+  const mb = makeBody.safeParse(await req.json().catch(() => ({})));
+  const sc = mb.success ? mb.data.scopes : undefined;
+  if (sc && Object.keys(sc).length) {
+    messages = messages.map((m, i) => (m.role === "me" && sc[String(i)] ? { ...m, scope: sc[String(i)] as Scope } : m));
+    await s.update("Interviews", row.id, { messages: JSON.stringify(messages), updatedAt: new Date().toISOString() });
+  }
 
   const terms = termsFrom(await s.list("Members"));
   const mine = messages.filter((m) => m.role === "me");

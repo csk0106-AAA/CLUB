@@ -33,7 +33,8 @@ const WHEN: Record<string, string> = {
 };
 // 사전 추측 후보 동그라미 색(돌아가며). 글자색은 globals.css .avatar 의 어두운 색이라 대비 4.5:1 이상.
 const AVATAR = ["#1CB0F6", "#FF9600", "#CE82FF", "#FF4B4B", "#58CC02"];
-const SCOPE_LABEL ={ intro: "소개 페이지에 공개", truthlie: "2진실 1거짓용으로만", none: "사용 안 함" } as const;
+// 답변 사용 방법: 소개 글과 2진실 1거짓을 만들 때 각 답변을 어디에 쓸지
+const SCOPE_LABEL = { intro: "소개 글에 사용", truthlie: "2진실 1거짓에만 사용", none: "사용 안 함" } as const;
 
 export default function WhoPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
@@ -149,11 +150,12 @@ function Write(props: {
   });
 
   const makeDraft = () => run(async () => {
-    const r = await api<{ mode: string; draftMd: string; statements: string[]; lieIndex: number; remaining: string[] }>(`/api/who/${aid}/draft`, { body: {} });
+    const r = await api<{ mode: string; draftMd: string; statements: string[]; lieIndex: number; remaining: string[] }>(`/api/who/${aid}/draft`, { body: { scopes } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setIntro(r.data.draftMd);
     setStmts(r.data.statements);
     setLie(r.data.lieIndex);
+    setScopes({}); // 저장된 설정은 다시 불러온 인터뷰에 들어 있다
     setNote({
       tone: "info",
       text: r.data.mode === "manual"
@@ -164,7 +166,7 @@ function Write(props: {
   });
 
   const saveDraft = (silent = false) => run(async () => {
-    const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, scopes, ...(inAct ? { statements: stmts, lieIndex: lie } : {}) } });
+    const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, ...(inAct ? { statements: stmts, lieIndex: lie } : {}) } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     if (!silent) setNote({ tone: "info", text: "저장했어요. 승인하기 전에는 다른 회원에게 보이지 않아요." });
     await reload();
@@ -241,6 +243,57 @@ function Write(props: {
   const inInterview = hasAlias && !interviewDone && iv.messages.length > 0;
   const hasDraft = st.profile.introStatus === "draft" || approved || intro.trim().length > 0;
 
+  // 답변 사용 방법: 소개 글·2진실 1거짓을 "만들 때" 쓰는 설정이다.
+  // 만들기 전에는 고른 뒤 만들고, 이미 만든 뒤에 바꾸면 "다시 만들기"를 눌러야 반영된다.
+  const scopeOf = (i: number) => scopes[String(i)] ?? iv.messages[i]?.scope ?? "intro";
+  const scopeChanged = Object.entries(scopes).some(([k, v]) => (iv.messages[Number(k)]?.scope ?? "intro") !== v);
+  function scopeEditor(afterDraft: boolean) {
+    if (!iv.messages.some((m) => m.role === "me")) return null;
+    const list = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+        <span className="small">
+          각 답변을 어디에 쓸지 골라 주세요. <b>소개 글에 사용</b>: 소개 글 재료로 써요. <b>2진실 1거짓에만 사용</b>: 소개 글에는 넣지 않고 2진실 1거짓 재료로만 써요(활동 전에 들키지 않게). <b>사용 안 함</b>: 어디에도 쓰지 않아요.
+        </span>
+        {iv.messages.map((m, i) => m.role === "me" ? (
+          <div key={i} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="small">{iv.messages[i - 1]?.text}</div>
+            <div style={{ fontWeight: 700 }}>{m.text}</div>
+            <select className="field" aria-label="이 답변 사용 방법" value={scopeOf(i)} disabled={busy}
+              onChange={(e) => setScopes({ ...scopes, [String(i)]: e.target.value as "intro" | "truthlie" | "none" })}>
+              {Object.entries(SCOPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+        ) : null)}
+      </div>
+    );
+    if (!afterDraft) {
+      return (
+        <details className="card">
+          <summary style={{ fontWeight: 700, cursor: "pointer" }}>답변 사용 방법 고르기 (선택 · 기본은 모두 소개 글에 사용)</summary>
+          {list}
+        </details>
+      );
+    }
+    return (
+      <details className="card" open={scopeChanged || undefined}>
+        <summary style={{ fontWeight: 700, cursor: "pointer" }}>답변 사용 방법 바꾸고 다시 만들기</summary>
+        {list}
+        {scopeChanged && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+            <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>다시 만들어야 반영돼요</b><span className="t">바꾼 설정으로 소개 글{inAct ? "과 2진실 1거짓을" : "을"} 새로 만들어요. 지금 고친 내용은 새로 만든 글로 바뀌어요.</span></div></div>
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }}
+                onClick={() => { if (window.confirm("바꾼 설정으로 다시 만들까요? 지금 고친 소개 글과 2진실 1거짓은 새로 만든 내용으로 바뀌어요.")) makeDraft(); }}>
+                {busy ? "만드는 중…" : "이 설정으로 다시 만들기"}
+              </button>
+              <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minWidth: 120 }} onClick={() => setScopes({})}>되돌리기</button>
+            </div>
+          </div>
+        )}
+      </details>
+    );
+  }
+
   return (
     <>
       {!inAct && (
@@ -315,8 +368,9 @@ function Write(props: {
       {/* 3. 초안 만들기 */}
       {hasAlias && interviewDone && !hasDraft && (
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="msg info">인터뷰를 마쳤어요. 이제 소개 글을 만들어요.</div>
-          <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : "소개 글 만들기"}</button>
+          <div className="msg info">인터뷰를 마쳤어요. 이제 소개 글{inAct ? "과 2진실 1거짓을" : "을"} 만들어요.</div>
+          {scopeEditor(false)}
+          <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : inAct ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
         </section>
       )}
 
@@ -382,23 +436,7 @@ function Write(props: {
             </>
           )}
 
-          {!approved && iv.messages.some((m) => m.role === "me") && (
-            <details className="card">
-              <summary style={{ fontWeight: 700, cursor: "pointer" }}>내 답변별 공개 범위 (선택)</summary>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-                {iv.messages.map((m, i) => m.role === "me" ? (
-                  <div key={i}>
-                    <div className="small">{iv.messages[i - 1]?.text}</div>
-                    <div style={{ fontWeight: 700 }}>{m.text}</div>
-                    <select className="field" aria-label="공개 범위" value={scopes[String(i)] ?? m.scope ?? "intro"} onChange={(e) => setScopes({ ...scopes, [String(i)]: e.target.value as "intro" })}>
-                      {Object.entries(SCOPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </div>
-                ) : null)}
-                <span className="small">저장하면 반영돼요. 다음에 소개 글을 다시 만들 때 이 범위대로 사용해요.</span>
-              </div>
-            </details>
-          )}
+          {!approved && scopeEditor(true)}
 
           <div className="footer-actions">
             {approved ? (
