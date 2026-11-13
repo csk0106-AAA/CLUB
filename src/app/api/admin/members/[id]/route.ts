@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MAX_ADMINS, bad, guard } from "@/lib/api";
 import { can } from "@/lib/auth";
+import { withGenderEdit } from "@/lib/gender-edit";
 import { fieldValues, withFields } from "@/lib/member-fields";
 import { getStore } from "@/lib/store";
 import { memberBody } from "@/lib/schemas";
@@ -31,7 +32,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 
   // fields 를 보내지 않으면(예: 관리자 권한만 바꿀 때) 추가 항목 값은 그대로 둔다.
-  const row = await s.update("Members", id, { ...d, perms: nextPerms, ...(fields ? { extra: withFields(cur.extra, fields) } : {}) });
+  // 회원 수정 화면에서 저장(fields 포함)하면 관리자가 성별을 확인한 것으로 보고 "회원 수정" 기록을 지운다.
+  const row = await s.update("Members", id, {
+    ...d, perms: nextPerms, ...(fields ? { extra: withGenderEdit(withFields(cur.extra, fields), null) } : {}),
+  });
   return NextResponse.json({ member: row });
 }
 

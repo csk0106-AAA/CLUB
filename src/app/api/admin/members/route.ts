@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MAX_ADMINS, bad, guard } from "@/lib/api";
 import { can } from "@/lib/auth";
+import { readGenderEdit } from "@/lib/gender-edit";
 import { fieldValues, readFields, withFields } from "@/lib/member-fields";
 import { memberBody } from "@/lib/schemas";
 import { getStore } from "@/lib/store";
@@ -16,6 +17,7 @@ export async function GET() {
     ...m,
     perms: m.perms ? m.perms.split("|").filter(Boolean) : [],
     fields: readFields({ extra: _extra }),
+    genderEdit: readGenderEdit(_extra), // 회원이 직접 성별을 바꾼 기록(관리자가 확인하면 사라짐)
   }));
   return NextResponse.json({ members });
 }

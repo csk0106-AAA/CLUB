@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ask, extractJson, isAiEnabled, readingPrompt } from "@/lib/ai";
 import { guidelinesFor } from "@/lib/ai-guides";
 import { bad, guard } from "@/lib/api";
+import { memberGenderPatch } from "@/lib/gender-edit";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
 import { computeSaju, sajuInput, sajuSummary } from "@/lib/saju";
 import { getStore } from "@/lib/store";
@@ -66,7 +67,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const known = me?.gender === "남" || me?.gender === "여" ? me.gender : "";
   const gender = (known || parsed.data.gender) as "남" | "여" | undefined;
   if (!gender) return bad("성별을 골라 주세요.");
-  if (!known && me) await s.update("Members", me.id, { gender });
+  if (!known && me) await s.update("Members", me.id, memberGenderPatch(me, gender)); // 회원이 처음 정한 것으로 기록
   const input = { ...parsed.data, gender };
 
   let saju;

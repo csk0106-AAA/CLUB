@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard, parseJson } from "@/lib/api";
+import { memberGenderPatch } from "@/lib/gender-edit";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export async function GET() {
 }
 
 // 내 정보 고치기: 회원이 직접 바꿀 수 있는 항목은 성별뿐이다(나머지는 관리자가 관리).
+// 바꾸면 관리자 회원 명단에 "회원 수정" 표시가 남는다.
 const patch = z.object({ gender: z.enum(["남", "여"]) });
 
 export async function PATCH(req: Request) {
@@ -29,7 +31,9 @@ export async function PATCH(req: Request) {
   if ("err" in g) return g.err;
   const parsed = patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("성별을 골라 주세요.");
-  const row = await (await getStore()).update("Members", g.s.mid, { gender: parsed.data.gender });
-  if (!row) return bad("회원 정보를 찾을 수 없어요.", 404);
+  const s = await getStore();
+  const me = (await s.list("Members")).find((m) => m.id === g.s.mid);
+  if (!me) return bad("회원 정보를 찾을 수 없어요.", 404);
+  if (me.gender !== parsed.data.gender) await s.update("Members", me.id, memberGenderPatch(me, parsed.data.gender));
   return NextResponse.json({ gender: parsed.data.gender });
 }

@@ -10,6 +10,7 @@ type M = {
   id: string; no: string; name: string; kind: string; position: string; gender: string;
   company: string; title: string; birth: string; phone: string; ageGroup: string; perms: string[];
   fields: Record<string, string>; // 관리자가 만든 추가 항목(열)의 값
+  genderEdit?: { from: string; to: string; at: string } | null; // 회원이 직접 바꾼 성별 기록
 };
 type Kind = { value: string; definition: string };
 
@@ -143,6 +144,14 @@ function Members() {
     load();
   }
 
+  // 회원이 직접 바꾼 성별을 확인했다(표시만 지우고 값은 그대로 둔다).
+  async function ackGender(m: M) {
+    const r = await api(`/api/admin/members/${m.id}/gender-ack`, { body: {} });
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setMsg({ tone: "info", text: `${m.name} 님의 성별 변경을 확인했어요.` });
+    load();
+  }
+
   async function remove(m: M) {
     if (!window.confirm(`${m.name} 님을 명단에서 지울까요?`)) return;
     const r = await api(`/api/admin/members/${m.id}`, { method: "DELETE" });
@@ -160,6 +169,11 @@ function Members() {
     <>
       <p className="small" style={{ margin: 0 }}>회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      {list && list.some((m) => m.genderEdit) && (
+        <div className="msg info" role="status">
+          회원이 직접 성별을 바꾼 회원이 {list.filter((m) => m.genderEdit).length}명 있어요({list.filter((m) => m.genderEdit).map((m) => m.name).join(", ")}). 명단의 “회원 수정” 표시를 보고 “확인”을 눌러 주세요.
+        </div>
+      )}
 
       <div className="cards">
         <div className="card"><span className="small">전체</span><div className="big">{list?.length ?? "-"}명</div></div>
@@ -296,7 +310,18 @@ function Members() {
             <tbody>
               {shown.map((m) => (
                 <tr key={m.id}>
-                  <td className="num">{m.no}</td><td><b>{m.name}</b></td><td>{m.kind}</td><td>{m.position}</td><td>{m.gender}</td>
+                  <td className="num">{m.no}</td><td><b>{m.name}</b></td><td>{m.kind}</td><td>{m.position}</td>
+                  <td>
+                    {m.gender}
+                    {m.genderEdit && (
+                      <span style={{ display: "inline-flex", gap: 4, alignItems: "center", marginLeft: 6, flexWrap: "wrap" }}>
+                        <span className="pill warn" title="회원이 설정에서 직접 바꾼 성별이에요">
+                          회원 수정 ({m.genderEdit.from || "없음"}→{m.genderEdit.to}, {Number(m.genderEdit.at.slice(5, 7))}/{Number(m.genderEdit.at.slice(8, 10))})
+                        </span>
+                        <button className="mini" type="button" style={{ minHeight: 32 }} onClick={() => ackGender(m)}>확인</button>
+                      </span>
+                    )}
+                  </td>
                   <td>{m.company}</td><td>{m.title}</td><td className="num">{m.birth}</td><td className="num">{m.phone}</td>
                   {custom.map((c) => <td key={c}>{m.fields[c] ?? ""}</td>)}
                   <td>{m.perms.map((p) => <span key={p} className="pill blue" style={{ marginRight: 4 }}>{PERM_LABELS[p]}</span>)}</td>
