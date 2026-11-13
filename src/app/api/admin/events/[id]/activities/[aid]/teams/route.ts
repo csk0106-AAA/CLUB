@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { capsuleRows, loadCapsule, makeTeams, saveTeamsState, teams, teamsState } from "@/lib/capsule";
+import { capsuleRows, loadTeamActivity, makeTeams, saveTeamsState, teams, teamsState } from "@/lib/capsule";
 import { isLimited, participantPool, rosterSet } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -23,7 +23,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const g = await guard(["activities", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
-  const c = await loadCapsule(aid, id);
+  const c = await loadTeamActivity(aid, id);
   if (typeof c === "string") return bad(c, 404);
   const [p, ts, state, lock] = await Promise.all([pool(c.cfg, c.act, c.ev), teams(aid), teamsState(aid), locked(aid)]);
   const byId = new Map(p.members.map((m) => [m.id, m]));
@@ -59,7 +59,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
-  const c = await loadCapsule(aid, id);
+  const c = await loadTeamActivity(aid, id);
   if (typeof c === "string") return bad(c, 404);
   const parsed = gen.safeParse(await req.json().catch(() => null));
   if (!parsed.success || (!parsed.data.count && !parsed.data.size)) return bad("방식을 고르고 팀 수나 팀당 인원 중 하나를 입력해 주세요.");
@@ -82,7 +82,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
-  const c = await loadCapsule(aid, id);
+  const c = await loadTeamActivity(aid, id);
   if (typeof c === "string") return bad(c, 404);
   const parsed = manual.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("팀 이름과 구성원을 확인해 주세요.");

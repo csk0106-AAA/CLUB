@@ -6,7 +6,9 @@ import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import type { TemplateConfig } from "@/lib/template-schema";
 import { CapsuleAdmin } from "./CapsuleAdmin";
 import { DateField } from "./DateField";
-import { SCREEN_LABELS, TemplateEditor, type EditableConfig } from "./TemplateEditor";
+import { AiGuidesEditor, aiPointKeys } from "./AiGuidesEditor";
+import { TeamBoard } from "./TeamBoard";
+import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "./TemplateEditor";
 
 type Act = {
   id: string;
@@ -20,7 +22,10 @@ type Act = {
   rosterCount: number;
   attendanceConfirmed: boolean;
 };
-type Tpl = { id: string; config: TemplateConfig };
+type Tpl = { id: string; origin?: string; config: TemplateConfig };
+// 템플릿 이름(행사 템플릿이면 "이름 (행사명_날짜)")
+const tplLabel = (t?: Tpl) =>
+  !t ? "" : t.origin === "event" && t.config.sourceEvent ? `${t.config.name} (${t.config.sourceEvent.name}_${t.config.sourceEvent.date})` : t.config.name;
 type Att = {
   confirmed: boolean; confirmedAt: string; by: string; selectedCount: number;
   members: { id: string; name: string; answer: string; days: string; selected: boolean }[];
@@ -186,6 +191,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   const [tpls, setTpls] = useState<Tpl[]>([]);
   const [pick, setPick] = useState("");
   const [edit, setEdit] = useState<{ id: string; value: EditableConfig } | null>(null);
+  const [guideFor, setGuideFor] = useState<Act | null>(null); // AI 지침을 고치는 활동
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -238,6 +244,33 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     load();
   }
 
+  if (guideFor) {
+    const t = tpls.find((x) => x.id === guideFor.templateId);
+    return (
+      <AiGuidesEditor
+        title={guideFor.config.name}
+        keys={aiPointKeys(guideFor.config)}
+        initial={t?.config.aiGuides ?? guideFor.config.aiGuides ?? {}}
+        scope="event"
+        templateName={tplLabel(t) || guideFor.config.name}
+        onClose={() => setGuideFor(null)}
+        onSave={async (guides, target) => {
+          const r = await api<{ label?: string; templateName?: string }>(`/api/admin/events/${eventId}/activities/${guideFor.id}/ai-guides`, { method: "PUT", body: { aiGuides: guides, target } });
+          if (!r.ok) return r.error;
+          setMsg({
+            tone: "info",
+            text: target === "template"
+              ? `AI 지침을 “${r.data.templateName ?? "원래"}” 템플릿에도 반영했어요. 이 템플릿을 쓰는 다른 행사 활동에도 적용돼요.`
+              : `AI 지침을 이 행사 활동에만 저장했어요.${r.data.label ? ` 템플릿 보관함에 “행사 템플릿 · ${r.data.label}”로 보여요.` : ""}`,
+          });
+          setGuideFor(null);
+          load();
+          return null;
+        }}
+      />
+    );
+  }
+
   if (edit) {
     return (
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -266,12 +299,20 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
         <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <b style={{ font: "400 21px var(--display)" }}>{a.config.name}</b>
-            <span className="pill gray">템플릿 v{a.templateVersion}</span>
+            <span className="pill gray">
+              {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.origin === "event" && t.config.sourceEvent ? `행사 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}` : `템플릿 v${a.templateVersion}`; })()}
+            </span>
             <span className={`pill ${a.pre.enabled ? "blue" : "warn"}`}>{a.pre.enabled ? "사전 작성 있음" : "현장에서만"}</span>
+            <span className="pill gray">{modeOf(a.config) === "team" ? "팀 활동" : "전체 활동"}</span>
             <span className="grow" />
             {canEdit && (
               <>
                 <button className="mini" type="button" onClick={() => { const { id: _i, version: _v, ...rest } = a.config; void _i; void _v; setEdit({ id: a.id, value: rest }); }}>수정</button>
+                {aiPointKeys(a.config).length > 0 && (
+                  <button className="mini" type="button" onClick={() => { setMsg(null); setGuideFor(a); }}>
+                    AI 지침{Object.values(tpls.find((x) => x.id === a.templateId)?.config.aiGuides ?? {}).some((v) => v.trim()) ? " ✓" : ""}
+                  </button>
+                )}
                 <button className="mini danger" type="button" onClick={() => remove(a)}>빼기</button>
               </>
             )}
@@ -288,8 +329,15 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               사회자 전체화면 열기 (고민 뽑기) ⛶
             </Link>
           )}
-          {!a.config.preEvent.steps.includes("ai_interview") && !a.config.preEvent.steps.includes("worry_write") && a.config.onsite.steps.some((s) => s.memberScreen === "write") && (
+          {!a.config.preEvent.steps.includes("ai_interview") && !a.config.preEvent.steps.includes("worry_write") && a.config.onsite.steps.some((s) => s.memberScreen === "write") ? (
             <CapsuleAdmin eventId={eventId} aid={a.id} canEdit={canEdit} />
+          ) : modeOf(a.config) === "team" && (
+            // 팀 활동: 팀 배정은 템플릿이 아니라 이 행사에서 한다
+            <section className="card" aria-label="팀 배정" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
+              <b style={{ font: "400 19px var(--display)" }}>팀 배정</b>
+              <span className="small">이 행사의 참여자로 팀을 나눠요. 팀은 이 행사의 이 활동에만 쓰여요.</span>
+              <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}/teams`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} />
+            </section>
           )}
           {a.config.preEvent.steps.includes("ai_interview") && (
             <Link href={`/host/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 50, fontSize: 18, textDecoration: "none" }}>
@@ -322,7 +370,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           <b style={{ font: "400 19px var(--display)" }}>+ 템플릿에서 활동 추가</b>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <select className="field" aria-label="활동 템플릿" style={{ flex: 1, minWidth: 220 }} value={pick} onChange={(e) => setPick(e.target.value)}>
-              {tpls.map((t) => <option key={t.id} value={t.id}>{t.config.name}</option>)}
+              {tpls.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}
             </select>
             <button className="btn" type="button" disabled={busy || !pick} style={{ width: "auto", minWidth: 140 }} onClick={add}>추가</button>
           </div>

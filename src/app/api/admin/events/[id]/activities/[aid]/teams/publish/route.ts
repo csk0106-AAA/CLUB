@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { capsuleRows, loadCapsule, saveTeamsState, teams } from "@/lib/capsule";
+import { capsuleRows, loadTeamActivity, saveTeamsState, teams } from "@/lib/capsule";
 import { participantPool } from "@/lib/participants";
 
 const body = z.object({ action: z.enum(["publish", "unpublish"]) });
@@ -11,7 +11,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; ai
   const g = await guard("activities");
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
-  const c = await loadCapsule(aid, id);
+  const c = await loadTeamActivity(aid, id);
   if (typeof c === "string") return bad(c, 404);
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청을 확인해 주세요.");

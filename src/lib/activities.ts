@@ -85,6 +85,11 @@ export function activityKind(cfg: TemplateConfig): Kind {
   return "";
 }
 
+// 활동 방식: 템플릿에 정한 값, 없으면 타임캡슐(현장 작성)은 팀 활동, 나머지는 전체 활동
+export function activityMode(cfg: TemplateConfig): "all" | "team" {
+  return cfg.mode ?? (activityKind(cfg) === "capsule" ? "team" : "all");
+}
+
 export type LiveView = {
   active: boolean; // 사회자가 현장 단계를 시작했는지
   stepKey: string;

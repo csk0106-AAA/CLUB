@@ -53,6 +53,12 @@ export const templateConfigSchema = z.object({
   // AI 지침(지점별). 키는 lib/ai-guides.ts 의 AI 지점(followup, draft, truthlies, revise, reading, worry).
   // 비어 있는 지점은 AI 설정 화면의 전체 지침을 쓴다.
   aiGuides: z.record(z.string(), z.string().max(4000)).optional(),
+  // 활동 방식: all(전체 활동) / team(팀 활동). 팀 배정은 템플릿에 넣지 않고 행사 > 활동에서 한다.
+  // 비어 있으면 타임캡슐(현장 작성)은 팀, 나머지는 전체로 본다(lib/activities.ts activityMode).
+  mode: z.enum(["all", "team"]).optional(),
+  // 행사 활동에서 AI 지침을 "이 행사에만" 저장할 때 만든 행사 템플릿의 출처
+  derivedFrom: z.string().optional(), // 원래 템플릿 id
+  sourceEvent: z.object({ id: z.string(), name: z.string(), date: z.string() }).optional(),
 });
 
 export type TemplateConfig = z.infer<typeof templateConfigSchema>;

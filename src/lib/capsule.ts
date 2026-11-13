@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { activityKind, liveView, readConfig } from "./activities";
+import { activityKind, activityMode, liveView, readConfig } from "./activities";
 import { parseJson } from "./api";
 import { liveRow } from "./rounds";
 import { getSetting, getStore, setSetting } from "./store";
@@ -21,6 +21,17 @@ export async function loadCapsule(aid: string, eventId?: string): Promise<Capsul
   const ev = act ? (await s.list("Events")).find((e) => e.id === act.eventId && (eventId ? true : e.published === "true")) : undefined;
   if (!act || !cfg || !ev) return "활동을 찾을 수 없어요.";
   if (activityKind(cfg) !== "capsule") return "타임캡슐 활동이 아니에요.";
+  return { act, ev, cfg };
+}
+
+// 팀 배정용: 타임캡슐이거나 "팀 활동"으로 정한 활동이면 팀을 짤 수 있다.
+export async function loadTeamActivity(aid: string, eventId?: string): Promise<CapsuleCtx | string> {
+  const s = await getStore();
+  const act = (await s.list("EventActivities")).find((a) => a.id === aid && (!eventId || a.eventId === eventId));
+  const cfg = act ? readConfig(act.config) : null;
+  const ev = act ? (await s.list("Events")).find((e) => e.id === act.eventId) : undefined;
+  if (!act || !cfg || !ev) return "활동을 찾을 수 없어요.";
+  if (activityMode(cfg) !== "team") return "팀 활동이 아니에요. 활동 템플릿에서 “팀 활동”으로 정해 주세요.";
   return { act, ev, cfg };
 }
 

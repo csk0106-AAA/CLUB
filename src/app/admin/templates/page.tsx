@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
+import { AiGuidesEditor, aiPointKeys } from "@/components/AiGuidesEditor";
 import { Mascot } from "@/components/Mascot";
-import { SCREEN_LABELS, TemplateEditor, type EditableConfig } from "@/components/TemplateEditor";
+import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "@/components/TemplateEditor";
 import { api } from "@/lib/client";
 import type { TemplateConfig } from "@/lib/template-schema";
 
@@ -68,7 +69,21 @@ function Templates() {
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
 
       {guideFor ? (
-        <AiGuidesEditor t={guideFor} onClose={(saved) => { setGuideFor(null); if (saved) { setMsg({ tone: "info", text: `“${guideFor.config.name}”의 AI 지침을 저장했어요. 이 템플릿으로 넣은 행사 활동에도 바로 적용돼요.` }); load(); } }} />
+        <AiGuidesEditor
+          title={guideFor.config.name}
+          keys={aiPointKeys(guideFor.config)}
+          initial={guideFor.config.aiGuides ?? {}}
+          scope="template"
+          onClose={() => setGuideFor(null)}
+          onSave={async (guides) => {
+            const r = await api(`/api/admin/templates/${guideFor.id}/ai-guides`, { method: "PUT", body: { aiGuides: guides } });
+            if (!r.ok) return r.error;
+            setMsg({ tone: "info", text: `“${guideFor.config.name}”의 AI 지침을 저장했어요. 이 템플릿으로 넣은 행사 활동에도 바로 적용돼요.` });
+            setGuideFor(null);
+            load();
+            return null;
+          }}
+        />
       ) : edit ? (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <b style={{ font: "400 21px var(--display)" }}>{edit.id ? "템플릿 수정" : "새 템플릿"}</b>
@@ -84,10 +99,14 @@ function Templates() {
           <div className="cards">
             {list?.map((t) => (
               <div key={t.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
-                <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "기본 템플릿" : "내가 만든 템플릿"} v{t.version}</span>
+                <span className={`pill ${t.origin === "default" ? "ok" : t.origin === "event" ? "warn" : "blue"}`}>
+                  {t.origin === "default" ? "기본 템플릿" : t.origin === "event" && t.config.sourceEvent
+                    ? `행사 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}`
+                    : "내가 만든 템플릿"} v{t.version}
+                </span>
                 <b style={{ font: "400 21px var(--display)" }}>{t.config.name}</b>
                 <span className="small">{t.config.description}</span>
-                <span className="small">{t.config.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}{t.config.preEvent.enabled ? `사전 작성 있음 (행사 ${t.config.preEvent.opensBeforeDays ?? 14}일 전 ~ ${t.config.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 {t.config.onsite.steps.length}단계</span>
+                <span className="small">{modeOf(t.config) === "team" ? "팀 활동 · " : "전체 활동 · "}{t.config.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}{t.config.preEvent.enabled ? `사전 작성 있음 (행사 ${t.config.preEvent.opensBeforeDays ?? 14}일 전 ~ ${t.config.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 {t.config.onsite.steps.length}단계</span>
                 <div className="row" style={{ flexWrap: "wrap" }}>
                   <button className="mini" type="button" onClick={() => setEdit({ id: t.id, value: strip(t.config) })}>수정</button>
                   <button className="mini" type="button" onClick={() => setEdit({ id: null, value: { ...strip(t.config), name: `${t.config.name} (복사본)` } })}>복제</button>
@@ -115,77 +134,6 @@ function Templates() {
         </>
       )}
     </>
-  );
-}
-
-// 템플릿의 AI 지침(지점별). 이 활동에서 AI가 쓰이는 지점만 보여 주고, 비워 두면 전체 지침(AI 설정 화면)을 쓴다.
-type Point = { key: string; label: string; hint: string };
-const pointsFor = (c: TemplateConfig): string[] =>
-  c.preEvent.steps.includes("ai_interview") ? ["followup", "draft", "truthlies", "revise", "reading"]
-  : c.preEvent.steps.includes("worry_write") ? ["worry"]
-  : [];
-
-function AiGuidesEditor({ t, onClose }: { t: T; onClose: (saved: boolean) => void }) {
-  const [info, setInfo] = useState<{ points: Point[]; pointGuides: Record<string, string>; guidelines: string } | null>(null);
-  const [guides, setGuides] = useState<Record<string, string>>({ ...(t.config.aiGuides ?? {}) });
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    api<{ points: Point[]; pointGuides: Record<string, string>; guidelines: string }>("/api/admin/interview-settings").then((r) => r.ok ? setInfo(r.data) : setErr(r.error));
-  }, []);
-
-  const keys = pointsFor(t.config);
-  async function save() {
-    setBusy(true);
-    setErr("");
-    const r = await api(`/api/admin/templates/${t.id}/ai-guides`, { method: "PUT", body: { aiGuides: guides } });
-    setBusy(false);
-    if (!r.ok) return setErr(r.error);
-    onClose(true);
-  }
-
-  return (
-    <section className="card" aria-label={`${t.config.name} AI 지침`} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <b className="grow" style={{ font: "400 21px var(--display)" }}>“{t.config.name}” AI 지침</b>
-        <button className="mini" type="button" onClick={() => onClose(false)}>닫기</button>
-      </div>
-      <span className="small">
-        이 활동 안에서 AI가 쓰이는 지점마다 지침을 정해요. 비워 두면 “AI 설정” 화면의 전체 지침을 써요.
-        모든 지점에는 공통 지침(신원 정보 금지 등)이 항상 함께 들어가요. 저장하면 이 템플릿으로 넣은 행사 활동에도 바로 적용돼요.
-      </span>
-      {err && <div className="msg bad" role="alert">{err}</div>}
-      {!info && !err && <p className="small">불러오는 중이에요…</p>}
-      {info && keys.length === 0 && <div className="msg info">이 활동에는 AI가 쓰이는 지점이 없어요.</div>}
-      {info && keys.map((k) => {
-        const p = info.points.find((x) => x.key === k);
-        if (!p) return null;
-        const fallback = info.pointGuides[k]?.trim();
-        return (
-          <div key={k} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label className="l" htmlFor={`ag-${k}`} style={{ marginBottom: 0 }}>{p.label}</label>
-            <span className="small">{p.hint}</span>
-            <textarea id={`ag-${k}`} className="field" rows={4} maxLength={4000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
-              placeholder={fallback ? `비워 두면 전체 지침을 써요:\n${fallback}` : "비워 두면 공통 지침만 써요."}
-              value={guides[k] ?? ""} onChange={(e) => setGuides({ ...guides, [k]: e.target.value })} />
-            <span className="hint">{(guides[k] ?? "").trim() ? "이 템플릿 지침을 써요" : fallback ? "지금은 전체 지침을 써요" : "지금은 공통 지침만 써요"}</span>
-          </div>
-        );
-      })}
-      {info && (
-        <details className="card" style={{ background: "var(--soft)" }}>
-          <summary style={{ fontWeight: 700, cursor: "pointer" }}>모든 지점에 함께 들어가는 공통 지침 보기</summary>
-          <p className="small" style={{ whiteSpace: "pre-wrap", margin: "8px 0 0" }}>{info.guidelines}</p>
-          <span className="small">공통 지침은 “AI 설정” 화면에서 고쳐요.</span>
-        </details>
-      )}
-      {keys.length > 0 && (
-        <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn" type="button" disabled={busy || !info} style={{ width: "auto", minWidth: 160 }} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
-          <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={() => onClose(false)}>취소</button>
-        </div>
-      )}
-    </section>
   );
 }
 
