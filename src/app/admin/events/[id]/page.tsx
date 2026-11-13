@@ -302,7 +302,7 @@ function Detail({ id }: { id: string }) {
             {infoLines(ev, rules, actNames, true).map((x) =>
               x.multiline ? (
                 <div key={x.label} className="small">
-                  <div><span aria-hidden="true">{x.icon}</span> {x.label}:</div>
+                  <div><span aria-hidden="true">{x.icon}</span> {x.label}</div>
                   <div style={{ whiteSpace: "pre-wrap", paddingLeft: 26 }}>{x.value}</div>
                 </div>
               ) : (
