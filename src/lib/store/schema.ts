@@ -41,6 +41,8 @@ export const TABS = {
     // 명리학: readingMd(생애주기 전체 풀이, 본인만), readingStatus(""=아직 안 고름 / skipped / done),
     // traitsMd(성격·성향, 소개 페이지 끝에 공개), traitsShown("true"면 소개 페이지에 싣는다). 생년월일 원본은 저장하지 않는다.
     "traitsMd", "traitsShown",
+    // sajuInfo: 본인이 입력한 정보와 사주 원국(JSON). 생애주기 풀이 첫머리에 본인에게만 보여 준다. 풀이를 지우면 함께 지운다.
+    "sajuInfo",
   ],
   Interviews: ["id", "memberId", "eventActivityId", "messages", "status", "updatedAt"],
   TruthLies: ["id", "memberId", "eventActivityId", "statements", "lieIndex", "status", "approvedAt"],

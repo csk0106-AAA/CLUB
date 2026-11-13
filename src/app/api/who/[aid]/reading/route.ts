@@ -5,7 +5,7 @@ import { guidelinesFor } from "@/lib/ai-guides";
 import { bad, guard } from "@/lib/api";
 import { memberGenderPatch } from "@/lib/gender-edit";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
-import { computeSaju, sajuInput, sajuSummary } from "@/lib/saju";
+import { computeSaju, sajuInfoOf, sajuInput, sajuSummary } from "@/lib/saju";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 import { loadWho, myProfile, writeClosed } from "@/lib/who";
@@ -15,7 +15,8 @@ type Ctx = { params: Promise<{ aid: string }> };
 // 명리학 풀이(선택).
 //  POST { skip: true }      → 사주 안 보기
 //  POST { gender, calendar, leap, date, time } → 사주 계산 → AI 풀이 → 저장
-//    · 생년월일·시간 원본은 계산에만 쓰고 저장하지 않는다(풀이 글만 저장).
+//    · 입력 정보(생년월일·양력/음력·시간·성별)와 사주 원국은 sajuInfo 에 저장해 본인에게만 보여 준다.
+//      다른 회원·관리자 화면·내보내기에는 나오지 않고, 풀이를 지우면 함께 지운다.
 //    · 성별은 회원정보 값을 쓴다(없으면 입력받아 회원정보에 저장).
 //    · traitsMd(성격·성향)는 소개 페이지 끝에 공개, readingMd(생애주기 전체)는 본인만.
 //  PATCH { traitsShown }    → 소개 페이지에서 성격·성향 빼기/다시 넣기 (언제든 가능)
@@ -105,6 +106,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const traitsShown = !published;
   await s.update("Profiles", profile.id, {
     readingMd: result.full,
+    sajuInfo: JSON.stringify(sajuInfoOf(input, saju)), // 본인에게만 보여 줌
     traitsMd: result.traits,
     traitsShown: String(traitsShown),
     readingStatus: "done",
@@ -132,7 +134,7 @@ export async function DELETE() {
   const profile = await myProfile(g.s.mid);
   if (!profile) return NextResponse.json({ ok: true });
   await (await getStore()).update("Profiles", profile.id, {
-    readingMd: "", traitsMd: "", traitsShown: "", readingStatus: "", updatedAt: new Date().toISOString(),
+    readingMd: "", sajuInfo: "", traitsMd: "", traitsShown: "", readingStatus: "", updatedAt: new Date().toISOString(),
   });
   return NextResponse.json({ ok: true });
 }

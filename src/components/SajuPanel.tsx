@@ -4,7 +4,56 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { Mascot } from "./Mascot";
 
-export type Reading = { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean };
+export type SajuInfo = {
+  gender: string; calendar: "solar" | "lunar"; leap: boolean; date: string; time: string | null; solarDate: string;
+  pillars: { label: string; ganZhi: string; ko: string; wuxing: string; tenGod: string }[];
+  dayMaster: string; elements: Record<string, number>; daeun: { age: number; ganZhi: string; ko: string }[];
+};
+export type Reading = { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean; sajuInfo?: SajuInfo | null };
+
+const ymd = (iso: string) => `${Number(iso.slice(0, 4))}년 ${Number(iso.slice(5, 7))}월 ${Number(iso.slice(8, 10))}일`;
+const WX_COLOR: Record<string, string> = { 목: "#2b7a00", 화: "#b3261e", 토: "#8f5200", 금: "#5a6b74", 수: "#0f6ea3" };
+
+// 생애주기 풀이 첫머리: 내가 입력한 정보와 사주 원국(본인에게만 보인다)
+export function SajuInfoView({ info }: { info: SajuInfo }) {
+  // 전통 표기 순서: 오른쪽부터 년·월·일·시 → 화면에는 시·일·월·년 순으로 왼쪽부터
+  const cols = [...info.pillars].reverse();
+  return (
+    <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <b style={{ font: "400 19px var(--display)" }}>내가 입력한 정보</b>
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 16 }}>
+        <span className="small">성별</span><b>{info.gender}</b>
+        <span className="small">생년월일</span>
+        <b>
+          {info.calendar === "lunar" ? "음력" : "양력"} {ymd(info.date)}{info.leap ? " (윤달)" : ""}
+          {info.calendar === "lunar" && <span className="small" style={{ fontWeight: 500 }}> · 양력 {ymd(info.solarDate)}</span>}
+        </b>
+        <span className="small">태어난 시간</span><b>{info.time ?? "모름 (시주 없이 풀이)"}</b>
+      </div>
+      <b style={{ font: "400 19px var(--display)", marginTop: 4 }}>사주 원국</b>
+      <div className="tblw" style={{ background: "#fff" }}>
+        <table className="tbl" style={{ minWidth: 0, textAlign: "center" }}>
+          <thead><tr>{cols.map((p) => <th key={p.label} style={{ textAlign: "center" }}>{p.label}</th>)}</tr></thead>
+          <tbody>
+            <tr>{cols.map((p) => <td key={p.label}><div style={{ font: "400 26px var(--display)" }}>{p.ganZhi}</div><div className="small">{p.ko}</div></td>)}</tr>
+            <tr>{cols.map((p) => (
+              <td key={p.label} className="small">
+                {p.wuxing.split("").map((w, i) => <span key={i} style={{ color: WX_COLOR[w] ?? "inherit", fontWeight: 700 }}>{w}</span>)}
+                <div>{p.tenGod}</div>
+              </td>
+            ))}</tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="small">
+        일간(나): <b>{info.dayMaster}</b> · 오행 분포: {Object.entries(info.elements).map(([k, v]) => `${k} ${v}`).join(", ")}
+      </div>
+      {info.daeun.length > 0 && (
+        <div className="small">대운: {info.daeun.map((d) => `${d.age}세 ${d.ko}`).join(" · ")}</div>
+      )}
+    </div>
+  );
+}
 
 // 마크다운을 간단히 보여 준다(# 제목, - 목록, 빈 줄 문단).
 export function Md({ text }: { text: string }) {
@@ -20,6 +69,42 @@ export function Md({ text }: { text: string }) {
       })}
     </div>
   );
+}
+
+// 나만 보는 생애주기 풀이를 내 기기로 내려받는다(.txt). 서버를 거치지 않고 화면에 있는 내용으로 만든다.
+export function downloadReading(info: SajuInfo | null | undefined, md: string) {
+  const lines: string[] = ["나의 생애주기 명리 풀이", ""];
+  if (info) {
+    lines.push(
+      "[내가 입력한 정보]",
+      `성별: ${info.gender}`,
+      `생년월일: ${info.calendar === "lunar" ? "음력" : "양력"} ${ymd(info.date)}${info.leap ? " (윤달)" : ""}${info.calendar === "lunar" ? ` / 양력 ${ymd(info.solarDate)}` : ""}`,
+      `태어난 시간: ${info.time ?? "모름"}`,
+      "",
+      "[사주 원국]",
+      ...info.pillars.map((p) => `${p.label}: ${p.ganZhi}(${p.ko}) · 오행 ${p.wuxing} · ${p.tenGod}`),
+      `일간(나): ${info.dayMaster}`,
+      `오행 분포: ${Object.entries(info.elements).map(([k, v]) => `${k} ${v}`).join(", ")}`,
+      `대운: ${info.daeun.map((d) => `${d.age}세 ${d.ko}`).join(" · ")}`,
+      "",
+      "[풀이]",
+    );
+  }
+  lines.push(md.replace(/\*\*/g, ""));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `나의-명리-풀이-${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// 입력 정보를 보관하기 전에 만든 풀이
+export function OldReadingNote() {
+  return <div className="msg info">이 풀이는 입력 정보를 보관하기 전에 만들어져서 성별과 생년월일을 보여 줄 수 없어요. “정보 다시 넣고 새로 풀이”를 누르면 첫머리에 함께 보여요.</div>;
 }
 
 const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`);
@@ -81,7 +166,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
             소개 페이지 맨 끝에는 <u>명리학으로 본 성격과 성향</u>만 실려요
             {published ? "(소개가 이미 배포돼 있어서, 만든 뒤 읽어 보고 직접 “소개 페이지에 싣기”를 눌러야 공개돼요)" : "(원하지 않으면 소개 페이지에서 뺄 수 있어요)"}.
             건강·재물·직업·연애·결혼·인간관계를 담은 생애주기 전체 풀이는 나만 볼 수 있어요.
-            입력한 생년월일과 태어난 시간은 풀이를 만드는 데만 쓰고 저장하지 않아요.
+            입력한 생년월일과 태어난 시간은 생애주기 풀이 첫머리에 나만 볼 수 있게 함께 보관하고, 다른 회원과 관리자에게는 보이지 않아요. 풀이를 지우면 함께 지워져요.
           </span>
         </div>
       </div>
@@ -205,8 +290,14 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
       </div>
       <details className="card">
         <summary style={{ fontWeight: 700, cursor: "pointer" }}>나만 보는 생애주기 명리 풀이 <span className="pill gray">나만 보기</span></summary>
-        <div style={{ marginTop: 10 }}><Md text={r.readingMd} /></div>
-        <span className="small" style={{ display: "block", marginTop: 8 }}>이 풀이는 나만 볼 수 있어요. 프로필 북의 내 프로필에서도 볼 수 있어요.</span>
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
+          {r.sajuInfo ? <SajuInfoView info={r.sajuInfo} /> : <OldReadingNote />}
+          <Md text={r.readingMd} />
+          <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: 17 }} onClick={() => downloadReading(r.sajuInfo, r.readingMd)}>
+            내 기기로 내려받기 (.txt)
+          </button>
+        </div>
+        <span className="small" style={{ display: "block", marginTop: 8 }}>이 풀이는 나만 볼 수 있고, 관리자도 내려받을 수 없어요. 프로필 북의 내 프로필에서도 볼 수 있어요.</span>
       </details>
       {form ? formView : (
         <div className="row" style={{ flexWrap: "wrap" }}>

@@ -61,6 +61,21 @@ export function computeSaju(input: SajuInput, now = new Date()): Saju {
   return { pillars, dayMaster: `${ec.getDayGan()}(${GAN[ec.getDayGan()] ?? ""})`, elements, daeun, timeKnown: Boolean(input.time), age };
 }
 
+// 본인에게만 보여 줄 입력 정보 + 사주 원국(풀이 첫머리 표시용). 나이는 넣지 않는다.
+export type SajuInfo = {
+  gender: string; calendar: "solar" | "lunar"; leap: boolean; date: string; time: string | null;
+  solarDate: string; // 음력으로 넣었으면 양력 환산 날짜
+  pillars: Saju["pillars"]; dayMaster: string; elements: Record<string, number>; daeun: Saju["daeun"];
+};
+export function sajuInfoOf(input: SajuInput, s: Saju): SajuInfo {
+  const [y, m, d] = input.date.split("-").map(Number);
+  const solarDate = input.calendar === "solar" ? input.date : Lunar.fromYmdHms(y, input.leap ? -m : m, d, 12, 0, 0).getSolar().toYmd();
+  return {
+    gender: input.gender, calendar: input.calendar, leap: input.calendar === "lunar" && input.leap, date: input.date, time: input.time,
+    solarDate, pillars: s.pillars, dayMaster: s.dayMaster, elements: s.elements, daeun: s.daeun,
+  };
+}
+
 // AI에 넘길 사주 요약(한 덩어리 글)
 export function sajuSummary(s: Saju, gender: string): string {
   return [

@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 //  - 인터뷰 원문(Interviews)은 통째로 제외
 //  - 타임캡슐 본문(Capsules.body)은 암호화된 값이라 비우고 작성 현황만 남김
 //  - 아직 뽑히지 않은 고민 본문, 승인 전 소개 초안, 승인 전 2진실 1거짓은 비움
+//  - 명리 생애주기 풀이와 입력 정보는 비움(본인만), 공개하지 않은 성격·성향도 비움
 //  - 초대코드는 제외
 const SKIP: TabName[] = ["Interviews"];
 
@@ -21,6 +22,10 @@ function redact(tab: TabName, r: Row): Row {
   if (tab === "Profiles") {
     x.draftMd = "";
     if (x.introStatus !== "approved") x.introMd = "";
+    // 명리: 생애주기 풀이와 입력 정보(생년월일·시간·성별·사주 원국)는 본인만 본다. 성격·성향은 공개한 경우만.
+    x.readingMd = "";
+    x.sajuInfo = "";
+    if (x.traitsShown !== "true") x.traitsMd = "";
   }
   if (tab === "TruthLies" && x.status !== "approved") {
     x.statements = "";

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { IconMic } from "@/components/Icons";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
-import { SajuPanel } from "@/components/SajuPanel";
+import { SajuPanel, type SajuInfo } from "@/components/SajuPanel";
 import { api } from "@/lib/client";
 import { useVoice } from "@/lib/voice";
 
@@ -21,6 +21,7 @@ type State = {
   profile: {
     alias: string; draftMd: string; introMd: string; introStatus: string;
     readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean;
+    sajuInfo: SajuInfo | null;
   };
   interview: { messages: Msg[]; status: string; answered: number; required: number };
   truthLies: { statements: string[]; lieIndex: number; status: string };
@@ -232,7 +233,7 @@ function Write(props: {
   const hasDraft = st.profile.introStatus === "draft" || approved || intro.trim().length > 0;
   const reading = {
     readingStatus: st.profile.readingStatus, readingMd: st.profile.readingMd,
-    traitsMd: st.profile.traitsMd, traitsShown: st.profile.traitsShown,
+    traitsMd: st.profile.traitsMd, traitsShown: st.profile.traitsShown, sajuInfo: st.profile.sajuInfo,
   };
   const readingChosen = st.profile.readingStatus === "done" || st.profile.readingStatus === "skipped";
 

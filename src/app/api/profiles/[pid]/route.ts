@@ -40,5 +40,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }>
     // 명리학: 성격·성향은 본인이 소개 페이지에 싣기로 한 경우만, 생애주기 전체 풀이는 본인에게만
     traitsMd: p.traitsShown === "true" ? p.traitsMd ?? "" : "",
     readingMd: mine ? p.readingMd ?? "" : "",
+    sajuInfo: mine ? parseJson<unknown>(p.sajuInfo, null) : null, // 입력 정보·사주 원국도 본인에게만
   });
 }

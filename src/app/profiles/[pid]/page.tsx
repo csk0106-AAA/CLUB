@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
-import { Md } from "@/components/SajuPanel";
+import { downloadReading, Md, OldReadingNote, SajuInfoView, type SajuInfo } from "@/components/SajuPanel";
 import { api } from "@/lib/client";
 
 export default function ProfilePage({ params }: { params: Promise<{ pid: string }> }) {
@@ -12,7 +12,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
   const [p, setP] = useState<{
     alias: string; name: string; introMd: string; mine: boolean;
     truthLies: { statements: string[]; lieIndex: number } | null;
-    traitsMd: string; readingMd: string;
+    traitsMd: string; readingMd: string; sajuInfo: SajuInfo | null;
   } | null>(null);
   const [error, setError] = useState("");
 
@@ -59,7 +59,13 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
           {p.mine && p.readingMd && (
             <details className="card" style={{ borderStyle: "dashed" }}>
               <summary style={{ fontWeight: 700, cursor: "pointer" }}>나만 보는 생애주기 명리 풀이 <span className="pill gray">나만 보기</span></summary>
-              <div style={{ marginTop: 10 }}><Md text={p.readingMd} /></div>
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
+                {p.sajuInfo ? <SajuInfoView info={p.sajuInfo} /> : <OldReadingNote />}
+                <Md text={p.readingMd} />
+                <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: 17 }} onClick={() => downloadReading(p.sajuInfo, p.readingMd)}>
+                  내 기기로 내려받기 (.txt)
+                </button>
+              </div>
               <span className="small" style={{ display: "block", marginTop: 8 }}>다른 회원에게는 보이지 않아요. 성격·성향 글을 소개 페이지에서 빼거나 풀이를 지우려면 “내가 누굴까요?”의 내 소개 화면에서 할 수 있어요.</span>
             </details>
           )}

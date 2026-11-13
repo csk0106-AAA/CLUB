@@ -33,6 +33,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
       readingMd: profile?.readingMd ?? "",
       traitsMd: profile?.traitsMd ?? "",
       traitsShown: profile?.traitsShown === "true",
+      sajuInfo: parseJson<unknown>(profile?.sajuInfo, null),
     },
     interview: interviewView(iv.messages, iv.row?.status ?? "", qs.length),
     truthLies: {
