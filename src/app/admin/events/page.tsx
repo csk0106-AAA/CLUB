@@ -12,8 +12,6 @@ type E = {
 };
 const TYPES = ["전체정기모임", "워크숍", "소모임"];
 const TONE: Record<string, string> = { 워크숍: "blue", 전체정기모임: "ok", 소모임: "warn" };
-// 진행 상태 pill 색: 초안·미정은 회색, 끝난 것은 초록, 그 밖(준비 중·모집 중 등)은 주황
-const statusTone = (s: string) => (!s || s === "초안" ? "gray" : /완료|종료|마감/.test(s) ? "ok" : "warn");
 
 function Events() {
   const router = useRouter();
@@ -74,7 +72,6 @@ function Events() {
             </div>
             <span className="small">참석 신청 {e.attend} / {e.total}명{e.absent ? ` · 불참 ${e.absent}명` : ""} · 회비 입금 {e.paid}명</span>
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-              <span className={`pill ${statusTone(e.status)}`}>{e.status || "상태 미정"}</span>
               <span className={`pill ${e.published === "true" ? "ok" : "gray"}`}>{e.published === "true" ? "회원에게 공개 중" : "회원에게 안 보임"}</span>
             </div>
           </Link>

@@ -199,14 +199,13 @@ function Detail({ id }: { id: string }) {
             <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-start">시작 일시</label><input id="o-start" className="field" type="datetime-local" value={ev.startsAt} onChange={(e) => set("startsAt", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><input id="o-end" className="field" type="datetime-local" value={ev.endsAt} onChange={(e) => set("endsAt", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-status">진행 상태</label><input id="o-status" className="field" value={ev.status} onChange={(e) => set("status", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-dl">입금 기한</label><input id="o-dl" className="field" type="date" value={ev.feeDeadline} onChange={(e) => set("feeDeadline", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div>
           </div>
 
           <div>
-            <label className="l" htmlFor="o-book">예약 정보 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
+            <label className="l" htmlFor="o-book">안내 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
             <textarea id="o-book" className="field" rows={6} maxLength={2000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
               placeholder={"예)\n숙소: 대명 홍천 소노펠리체, 객실 10실 (예약번호 0000)\n체크인 15:00 / 체크아웃 11:00\n저녁: 18:30 ○○식당 (20명)"}
               value={ev.booking} onChange={(e) => set("booking", e.target.value)} />
@@ -287,7 +286,7 @@ function Detail({ id }: { id: string }) {
             {oneFee(rules)
               ? <div className="small">참가비 1인 {won(oneFee(rules) as string)}{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>
               : rules.length > 0 && <div className="small">참가비: 회원마다 본인 회비만 보여요(회원구분·직책·참석일 기준){ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
-            {ev.booking && <div className="small" style={{ whiteSpace: "pre-wrap" }}>예약 안내: {ev.booking}</div>}
+            {ev.booking && <div className="small" style={{ whiteSpace: "pre-wrap" }}>안내: {ev.booking}</div>}
             {ev.account && <div className="small">계좌 {ev.account}{ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""} · 참석 신청한 회원에게만 보여요</div>}
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
