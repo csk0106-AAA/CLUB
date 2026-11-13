@@ -74,16 +74,17 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={d.canJoin ? d.mine.length : undefined} total={d.canJoin ? d.max : undefined} />
+      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기"
+        right={d.canJoin ? <span className={`pill ${d.mine.length ? "ok" : "gray"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
       <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: 24 }}>{d.activity.name}</h1></div>
-      <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 적어 주세요. 행사에서 뽑힌 고민은 큰 화면에 내용만 나오고, 작성자는 대화가 끝난 뒤에 공개돼요.</p>
+      <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 행사에서 뽑힌 고민은 큰 화면에 내용만 나오고, 작성자는 대화가 끝난 뒤에 공개돼요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
       {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${d.pre.opensAt} ~ ${d.pre.closesAt} 예요.` : ""}</div>}
 
       {d.mine.length > 0 && (
         <section aria-label="내 고민" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 20px var(--display)" }}>내가 쓴 고민 {d.mine.length}/{d.max}</b>
+          <b style={{ font: "400 20px var(--display)" }}>내가 쓴 고민 {d.mine.length}개 <span className="small">(최대 {d.max}개)</span></b>
           {d.mine.map((m) => (
             <div key={m.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div className="row" style={{ flexWrap: "wrap" }}>

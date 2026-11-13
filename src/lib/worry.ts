@@ -10,7 +10,7 @@ import { getStore, getSetting } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
 
-export const CATEGORIES = ["경영", "인재", "AI 도입", "가족·건강", "기타"] as const;
+export const CATEGORIES = ["경영", "인간관계", "AI 도입", "가족", "건강", "돈", "기타"] as const;
 
 // 고민 작성 입력. 익명/실명 여부는 작성할 때 미리 정한다.
 export const worryBody = z.object({
@@ -18,7 +18,7 @@ export const worryBody = z.object({
   category: z.enum(CATEGORIES),
   anonymous: z.boolean(),
 });
-export const MAX_WORRIES = 3; // 회원 1명이 적을 수 있는 고민 수
+export const MAX_WORRIES = 3; // 회원 1명이 적을 수 있는 고민 수(1~3개, 꼭 3개를 쓸 필요는 없다)
 export const WORRY_STEPS = ["draw", "talk", "reveal"] as const;
 
 // 진행 상태는 LiveState.payload.worry 에 저장한다(서버 메모리에 두지 않으므로 중단했다가 이어서 진행할 수 있다).
