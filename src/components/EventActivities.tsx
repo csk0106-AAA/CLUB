@@ -250,12 +250,16 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       <AiGuidesEditor
         title={guideFor.config.name}
         keys={aiPointKeys(guideFor.config)}
-        initial={t?.config.aiGuides ?? guideFor.config.aiGuides ?? {}}
+        initial={{
+          aiGuides: (t ?? guideFor).config.aiGuides ?? {},
+          aiCommon: (t ?? guideFor).config.aiCommon,
+          interview: (t ?? guideFor).config.interview,
+        }}
         scope="event"
         templateName={tplLabel(t) || guideFor.config.name}
         onClose={() => setGuideFor(null)}
-        onSave={async (guides, target) => {
-          const r = await api<{ label?: string; templateName?: string }>(`/api/admin/events/${eventId}/activities/${guideFor.id}/ai-guides`, { method: "PUT", body: { aiGuides: guides, target } });
+        onSave={async (ai, target) => {
+          const r = await api<{ label?: string; templateName?: string }>(`/api/admin/events/${eventId}/activities/${guideFor.id}/ai-guides`, { method: "PUT", body: { ...ai, target } });
           if (!r.ok) return r.error;
           setMsg({
             tone: "info",

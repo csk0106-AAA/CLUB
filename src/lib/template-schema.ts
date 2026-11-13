@@ -53,6 +53,10 @@ export const templateConfigSchema = z.object({
   // AI 지침(지점별). 키는 lib/ai-guides.ts 의 AI 지점(followup, draft, truthlies, revise, reading, worry).
   // 비어 있는 지점은 AI 설정 화면의 전체 지침을 쓴다.
   aiGuides: z.record(z.string(), z.string().max(4000)).optional(),
+  // 이 활동의 AI 공통 지침(모든 지점에 들어감). 비어 있으면 AI 설정 화면의 기본 공통 지침.
+  aiCommon: z.string().max(4000).optional(),
+  // AI 인터뷰(소개 작성 활동): 필수 질문과 후속 질문 최대 개수. 비어 있으면 AI 설정 화면의 기본값.
+  interview: z.object({ questions: z.array(z.string().max(300)).max(30), followUpMax: z.number().int().min(0).max(12) }).optional(),
   // 활동 방식: all(전체 활동) / team(팀 활동). 팀 배정은 템플릿에 넣지 않고 행사 > 활동에서 한다.
   // 비어 있으면 타임캡슐(현장 작성)은 팀, 나머지는 전체로 본다(lib/activities.ts activityMode).
   mode: z.enum(["all", "team"]).optional(),

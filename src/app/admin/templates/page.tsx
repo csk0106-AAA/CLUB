@@ -72,11 +72,11 @@ function Templates() {
         <AiGuidesEditor
           title={guideFor.config.name}
           keys={aiPointKeys(guideFor.config)}
-          initial={guideFor.config.aiGuides ?? {}}
+          initial={{ aiGuides: guideFor.config.aiGuides ?? {}, aiCommon: guideFor.config.aiCommon, interview: guideFor.config.interview }}
           scope="template"
           onClose={() => setGuideFor(null)}
-          onSave={async (guides) => {
-            const r = await api(`/api/admin/templates/${guideFor.id}/ai-guides`, { method: "PUT", body: { aiGuides: guides } });
+          onSave={async (ai) => {
+            const r = await api(`/api/admin/templates/${guideFor.id}/ai-guides`, { method: "PUT", body: ai });
             if (!r.ok) return r.error;
             setMsg({ tone: "info", text: `“${guideFor.config.name}”의 AI 지침을 저장했어요. 이 템플릿으로 넣은 행사 활동에도 바로 적용돼요.` });
             setGuideFor(null);
@@ -111,7 +111,7 @@ function Templates() {
                   <button className="mini" type="button" onClick={() => setEdit({ id: t.id, value: strip(t.config) })}>수정</button>
                   <button className="mini" type="button" onClick={() => setEdit({ id: null, value: { ...strip(t.config), name: `${t.config.name} (복사본)` } })}>복제</button>
                   <button className="mini" type="button" onClick={() => { setMsg(null); setGuideFor(t); }}>
-                    AI 지침{Object.values(t.config.aiGuides ?? {}).some((v) => v.trim()) ? " ✓" : ""}
+                    AI 지침{Object.values(t.config.aiGuides ?? {}).some((v) => v.trim()) || t.config.aiCommon?.trim() || t.config.interview?.questions?.length ? " ✓" : ""}
                   </button>
                   {t.origin !== "default" && <button className="mini danger" type="button" onClick={() => remove(t)}>삭제</button>}
                 </div>

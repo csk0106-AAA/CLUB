@@ -27,8 +27,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   // 별칭은 인터뷰가 끝난 뒤 AI가 소개 글과 함께 제안하므로, 인터뷰 전에는 필요 없다.
 
   const s = await getStore();
-  const qs = await questions();
-  const max = await followUpMax();
+  const qs = await questions(w.act);
+  const max = await followUpMax(w.act);
   let { row, messages } = await myInterview(g.s.mid, aid);
   if (row?.status === "done") return bad("인터뷰가 끝났어요. 소개 글 만들기로 넘어가 주세요.", 409);
 

@@ -36,9 +36,13 @@ function AiSettings() {
         {s.aiEnabled ? "AI가 연결되어 있어요. 아래 지침이 모든 AI 호출에 포함돼요." : "AI가 아직 연결되지 않았어요(API 키 없음). 지금은 정해진 질문과 직접 작성(수동 모드)으로 진행돼요. 지침은 연결 후에 적용돼요."}
       </div>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <div className="msg info" role="note">
+        AI 지침과 인터뷰 질문은 이제 각 활동 템플릿의 “AI 지침”에서 정해요(활동 템플릿 화면 → 템플릿 카드의 AI 지침).
+        이 화면의 값은 템플릿에 따로 정하지 않은 경우에만 쓰는 <b>기본값</b>이에요.
+      </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: "400 20px var(--display)" }}>인터뷰 필수 질문</b>
+        <b style={{ font: "400 20px var(--display)" }}>기본 인터뷰 질문</b>
         {s.questions.map((q, i) => (
           <div key={i} className="row">
             <input aria-label={`질문 ${i + 1}`} className="field" value={q} onChange={(e) => setQ(i, e.target.value)} />
@@ -53,7 +57,7 @@ function AiSettings() {
       </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: "400 20px var(--display)" }}>AI 지침</b>
+        <b style={{ font: "400 20px var(--display)" }}>기본 공통 지침</b>
         <span className="small">질문 주제, 말투, 금지 사항(신원 정보 등), 분량을 적어 주세요. 한 줄에 하나씩 적으면 읽기 쉬워요.</span>
         <label className="l" htmlFor="gl">관리자 지침</label>
         <textarea id="gl" className="field" rows={9} style={{ padding: 12, lineHeight: 1.6 }} value={s.guidelines} onChange={(e) => setS({ ...s, guidelines: e.target.value })} />

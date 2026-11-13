@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { newTemplateId, readConfig } from "@/lib/activities";
-import { AI_POINTS, aiPointsFor } from "@/lib/ai-guides";
+import { aiSettingsInput, cleanAiSettings } from "@/lib/ai-guides";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
 
 type Ctx = { params: Promise<{ id: string; aid: string }> };
-const KEYS = AI_POINTS.map((p) => p.key) as string[];
 
-const body = z.object({
-  aiGuides: z.record(z.string(), z.string().max(4000)),
+// 지점별 지침·활동 공통 지침·인터뷰 질문 + 반영 범위
+const body = aiSettingsInput.extend({
   // template: 원래 템플릿에도 반영 / event: 이 행사 활동에만(행사 템플릿으로 따로 저장)
   target: z.enum(["template", "event"]),
 });
@@ -22,7 +21,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return bad("지침은 지점마다 4000자까지 쓸 수 있어요.");
+  if (!parsed.success) return bad("지침은 4000자, 질문은 300자까지 쓸 수 있어요.");
 
   const s = await getStore();
   const [acts, events, tpls] = await Promise.all([s.list("EventActivities"), s.list("Events"), s.list("ActivityTemplates")]);
@@ -31,15 +30,12 @@ export async function PUT(req: Request, ctx: Ctx) {
   const cfg = readConfig(act?.config);
   if (!act || !ev || !cfg) return bad("활동을 찾을 수 없어요.", 404);
 
-  const allowed = new Set(aiPointsFor(cfg) as string[]);
-  const guides = Object.fromEntries(
-    Object.entries(parsed.data.aiGuides).map(([k, v]) => [k, v.trim()]).filter(([k, v]) => KEYS.includes(k) && allowed.has(k) && v),
-  );
+  const ai = cleanAiSettings(cfg, parsed.data);
 
   const cur = tpls.find((t) => t.id === act.templateId);
   const curCfg = readConfig(cur?.config);
   const setGuides = async (tplId: string, c: NonNullable<typeof curCfg>) =>
-    s.update("ActivityTemplates", tplId, { config: JSON.stringify({ ...c, aiGuides: guides }) });
+    s.update("ActivityTemplates", tplId, { config: JSON.stringify({ ...c, ...ai }) });
 
   if (parsed.data.target === "template") {
     // 원본 템플릿: 지금 템플릿이 행사 템플릿이면 그 원본, 아니면 지금 템플릿
@@ -49,14 +45,14 @@ export async function PUT(req: Request, ctx: Ctx) {
     if (!base || !baseCfg) return bad("원래 템플릿을 찾을 수 없어요. “이 행사 활동에만”으로 저장해 주세요.", 404);
     await setGuides(base.id, baseCfg);
     if (cur && curCfg && cur.id !== base.id) await setGuides(cur.id, curCfg);
-    await s.update("EventActivities", aid, { config: JSON.stringify({ ...cfg, aiGuides: guides }) });
+    await s.update("EventActivities", aid, { config: JSON.stringify({ ...cfg, ...ai }) });
     return NextResponse.json({ target: "template", templateId: act.templateId, templateName: baseCfg.name });
   }
 
   // 이 행사 활동에만: 이미 이 행사의 행사 템플릿을 쓰고 있으면 그것을 고치고, 아니면 새로 만든다.
   if (cur && curCfg && cur.origin === "event" && curCfg.sourceEvent?.id === id) {
     await setGuides(cur.id, curCfg);
-    await s.update("EventActivities", aid, { config: JSON.stringify({ ...cfg, aiGuides: guides }) });
+    await s.update("EventActivities", aid, { config: JSON.stringify({ ...cfg, ...ai }) });
     return NextResponse.json({ target: "event", templateId: cur.id });
   }
   const tid = newTemplateId();
@@ -64,11 +60,11 @@ export async function PUT(req: Request, ctx: Ctx) {
   const { id: _i, version: _v, ...rest } = cfg;
   void _i; void _v;
   const config = {
-    ...rest, id: tid, version: 1, aiGuides: guides,
+    ...rest, id: tid, version: 1, ...ai,
     derivedFrom: curCfg?.derivedFrom || act.templateId || undefined,
     sourceEvent: { id: ev.id, name: ev.name, date },
   };
   await s.insert("ActivityTemplates", { id: tid, name: config.name, version: "1", config: JSON.stringify(config), origin: "event" });
-  await s.update("EventActivities", aid, { templateId: tid, config: JSON.stringify({ ...cfg, aiGuides: guides }) });
+  await s.update("EventActivities", aid, { templateId: tid, config: JSON.stringify({ ...cfg, ...ai }) });
   return NextResponse.json({ target: "event", templateId: tid, label: `${ev.name}_${date}` });
 }

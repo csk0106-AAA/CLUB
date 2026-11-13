@@ -14,7 +14,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
 
-  const [profile, iv, tl, qs] = await Promise.all([myProfile(g.s.mid), myInterview(g.s.mid, aid), myTruthLies(g.s.mid, aid), questions()]);
+  const [profile, iv, tl, qs] = await Promise.all([myProfile(g.s.mid), myInterview(g.s.mid, aid), myTruthLies(g.s.mid, aid), questions(w.act)]);
   return NextResponse.json({
     activity: { id: aid, name: w.cfg.name },
     event: { id: w.ev.id, name: w.ev.name },

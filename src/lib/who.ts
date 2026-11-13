@@ -4,6 +4,7 @@ import { getSetting, getStore, DEFAULT_GUIDELINES, DEFAULT_QUESTIONS } from "./s
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
 import { parseJson } from "./api";
+import { activityAiConfig } from "./ai-guides";
 
 export type Scope = "intro" | "truthlie" | "none";
 export type ChatMsg = { role: "ai" | "me"; text: string; scope?: Scope };
@@ -46,12 +47,19 @@ export function windows(ctx: WhoCtx): { pre: PreStatus; guess: PreStatus } {
   return { pre: preStatus(ctx.cfg, ctx.ev.startsAt), guess: guessStatus(ctx.cfg, ctx.ev.startsAt) };
 }
 
-export async function questions(): Promise<string[]> {
+// 인터뷰 필수 질문: 활동 템플릿에 있으면 그것, 없으면 AI 설정 화면의 기본값
+export async function questions(act?: Row): Promise<string[]> {
+  const t = (await activityAiConfig(act))?.interview?.questions?.filter((q) => q.trim());
+  if (t && t.length) return t;
   const q = await getSetting<string[]>("interviewQuestions", DEFAULT_QUESTIONS);
   return q.length ? q : DEFAULT_QUESTIONS;
 }
 export const guidelines = () => getSetting<string>("aiGuidelines", DEFAULT_GUIDELINES);
-export const followUpMax = () => getSetting<number>("followUpMax", 6);
+// 후속 질문 최대 개수: 활동 템플릿에 있으면 그것, 없으면 기본값
+export async function followUpMax(act?: Row): Promise<number> {
+  const t = (await activityAiConfig(act))?.interview?.followUpMax;
+  return typeof t === "number" ? t : getSetting<number>("followUpMax", 6);
+}
 
 export async function myProfile(memberId: string): Promise<Row | undefined> {
   return (await (await getStore()).list("Profiles")).find((p) => p.memberId === memberId);

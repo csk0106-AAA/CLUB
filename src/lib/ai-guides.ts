@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { readConfig } from "./activities";
 import { DEFAULT_GUIDELINES, getSetting, getStore } from "./store";
 import type { Row } from "./store/types";
@@ -30,23 +31,45 @@ export async function pointGuides(): Promise<Record<AiPoint, string>> {
   return out;
 }
 
-// 이 행사 활동의 템플릿에 적힌 지점 지침(행사에 넣은 뒤 템플릿에서 고쳐도 바로 반영되도록 템플릿을 다시 읽는다).
-async function templateGuide(point: AiPoint, act?: Row): Promise<string> {
-  if (!act) return "";
-  const own = readConfig(act.config)?.aiGuides?.[point]?.trim();
+// 이 행사 활동이 따르는 설정: 템플릿(행사에 넣은 뒤 템플릿에서 고쳐도 바로 반영되도록 다시 읽는다) → 없으면 활동에 복사된 설정
+export async function activityAiConfig(act?: Row): Promise<TemplateConfig | null> {
+  if (!act) return null;
   if (act.templateId) {
     const t = (await (await getStore()).list("ActivityTemplates")).find((x) => x.id === act.templateId);
-    const fromTemplate = readConfig(t?.config)?.aiGuides?.[point]?.trim();
-    if (fromTemplate) return fromTemplate;
+    const c = readConfig(t?.config);
+    if (c) return c;
   }
-  return own ?? "";
+  return readConfig(act.config);
 }
 
-// 공통 지침 + 이 지점의 지침(활동 템플릿 지침이 있으면 그것, 없으면 전체 지점 지침)
+// 공통 지침(활동 템플릿 → 기본) + 이 지점의 지침(활동 템플릿 → 기본)
 export async function guidelinesFor(point: AiPoint, act?: Row): Promise<string> {
-  const common = await getSetting<string>("aiGuidelines", DEFAULT_GUIDELINES);
-  const extra = (await templateGuide(point, act)) || (await getSetting<string>(keyOf(point), "")).trim();
+  const cfg = await activityAiConfig(act);
+  const common = cfg?.aiCommon?.trim() || (await getSetting<string>("aiGuidelines", DEFAULT_GUIDELINES));
+  const extra = cfg?.aiGuides?.[point]?.trim() || (await getSetting<string>(keyOf(point), "")).trim();
   return extra ? `${common}\n\n[${AI_POINTS.find((p) => p.key === point)?.label} 단계 추가 지침]\n${extra}` : common;
 }
 
 export { keyOf as pointKey };
+
+// 템플릿 AI 설정 저장 입력(지점별 지침, 활동 공통 지침, 인터뷰 질문)
+export const aiSettingsInput = z.object({
+  aiGuides: z.record(z.string(), z.string().max(4000)),
+  aiCommon: z.string().max(4000).optional(),
+  interview: z.object({ questions: z.array(z.string().max(300)).max(30), followUpMax: z.number().int().min(0).max(12) }).optional(),
+});
+
+// 이 활동에 맞게 정리: 쓰이지 않는 지점·빈 값은 빼고, 인터뷰는 AI 인터뷰 활동에만 둔다.
+export function cleanAiSettings(cfg: TemplateConfig, input: z.infer<typeof aiSettingsInput>): Pick<TemplateConfig, "aiGuides" | "aiCommon" | "interview"> {
+  const allowed = new Set(aiPointsFor(cfg) as string[]);
+  const keys = AI_POINTS.map((p) => p.key) as string[];
+  const aiGuides = Object.fromEntries(
+    Object.entries(input.aiGuides).map(([k, v]) => [k, v.trim()]).filter(([k, v]) => keys.includes(k) && allowed.has(k) && v),
+  );
+  const aiCommon = input.aiCommon?.trim() || undefined;
+  const questions = input.interview?.questions.map((q) => q.trim()).filter(Boolean) ?? [];
+  const interview = cfg.preEvent.steps.includes("ai_interview") && input.interview && questions.length
+    ? { questions, followUpMax: input.interview.followUpMax }
+    : cfg.interview;
+  return { aiGuides, aiCommon, interview };
+}
