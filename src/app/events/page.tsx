@@ -56,6 +56,13 @@ export default function EventsPage() {
     else setError(r.ok ? "" : r.error);
   }
 
+  // 로그아웃: 로그인 화면으로 돌아가 이름과 초대코드를 다시 넣고 들어올 수 있다.
+  async function logout() {
+    if (!window.confirm("로그아웃할까요? 다시 들어오려면 이름과 초대코드(연락처 뒷자리 4자리)를 넣으면 돼요.")) return;
+    await api("/api/auth/logout", { method: "POST", body: {} });
+    router.replace("/");
+  }
+
   const locked = me ? !me.consent : true;
 
   // 참석 여부를 아직 안 알린 행사는 개요(③)부터, 알린 행사는 홈(⑥)으로 간다.
@@ -71,6 +78,9 @@ export default function EventsPage() {
           <b style={{ font: "400 20px var(--display)" }}>{me ? `${me.name} 대표님, 반갑습니다` : "반갑습니다"}</b>
           {club && <div className="small">{club}</div>}
         </div>
+        {me && (
+          <button className="mini" type="button" style={{ flex: "none", minHeight: 44 }} onClick={logout}>로그아웃</button>
+        )}
       </div>
       <h1 className="title" style={{ fontSize: 22 }}>예정된 모임과 행사</h1>
 
