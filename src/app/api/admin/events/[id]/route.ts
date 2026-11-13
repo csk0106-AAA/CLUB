@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { feeRules, memberFee, readRules } from "@/lib/fee";
+import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
 import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,11 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   // 조건별 회비 선택지: 회원구분(설정 값), 직책(명단에 있는 값)
   const kinds = (await getSetting<{ value: string }[]>("memberKinds", [])).map((k) => k.value);
-  const positions = [...new Set(members.map((m) => m.position).filter((p) => p && p !== "-"))].sort((a, b) => a.localeCompare(b, "ko"));
+  // 직책: 명단에 있는 직책 + "일반회원"(직책이 없는 회원)
+  const positions = [
+    ...[...new Set(members.map((m) => m.position?.trim()).filter((p) => p && p !== "-" && p !== GENERAL_POSITION))].sort((a, b) => a.localeCompare(b, "ko")),
+    GENERAL_POSITION,
+  ];
   return NextResponse.json({ event: { ...event, feeRules: readRules(event.feeRules) }, rows, options: { kinds, positions } });
 }
 

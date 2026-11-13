@@ -202,44 +202,54 @@ function Detail({ id }: { id: string }) {
           <section className="card" aria-label="조건별 회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <b style={{ font: "400 19px var(--display)" }}>조건별 회비 (선택)</b>
             <span className="small">
-              참석일, 회원구분, 직책에 따라 회비가 다르면 줄을 추가하세요. “전체”는 조건 없음이에요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고,
+              회원구분, 직책, 참석일에 따라 회비가 다르면 줄을 추가하세요. “전체”는 조건 없음이고, 직책의 “일반회원”은 직책이 없는 회원이에요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고,
               맞는 줄이 없으면 기본 회비를 써요. 0원은 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
             </span>
-            {rules.map((r, i) => {
-              const upd = (patch: Partial<FeeRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-              return (
-                <div key={i} className="row" style={{ flexWrap: "wrap", alignItems: "flex-end", gap: 8 }}>
-                  <div style={{ flex: "1 1 120px" }}>
-                    <label className="l" htmlFor={`fr-d-${i}`}>참석일</label>
-                    <select id={`fr-d-${i}`} className="field" value={r.days} onChange={(e) => upd({ days: e.target.value })}>
-                      <option value="">전체</option>
-                      {Array.from({ length: dayCount }, (_, d) => d + 1).map((d) => (
-                        <option key={d} value={String(d)}>{d === 1 ? "1일" : `${d}일 (${d - 1}박${d}일)`}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ flex: "1 1 130px" }}>
-                    <label className="l" htmlFor={`fr-k-${i}`}>회원구분</label>
-                    <select id={`fr-k-${i}`} className="field" value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
-                      <option value="">전체</option>
-                      {[...new Set([...opts.kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
-                    </select>
-                  </div>
-                  <div style={{ flex: "1 1 130px" }}>
-                    <label className="l" htmlFor={`fr-p-${i}`}>직책</label>
-                    <select id={`fr-p-${i}`} className="field" value={r.position} onChange={(e) => upd({ position: e.target.value })}>
-                      <option value="">전체</option>
-                      {[...new Set([...opts.positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <div style={{ flex: "1 1 130px" }}>
-                    <label className="l" htmlFor={`fr-a-${i}`}>금액(원)</label>
-                    <input id={`fr-a-${i}`} className="field" inputMode="numeric" value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} />
-                  </div>
-                  <button className="mini danger" type="button" style={{ minHeight: 54 }} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button>
-                </div>
-              );
-            })}
+            {rules.length > 0 && (
+              <div className="tblw">
+                <table className="tbl" style={{ minWidth: 620 }}>
+                  <thead>
+                    <tr><th>회원구분</th><th>직책</th><th>참석일</th><th>금액(원)</th><th style={{ width: 70 }}><span className="sr-only">삭제</span></th></tr>
+                  </thead>
+                  <tbody>
+                    {rules.map((r, i) => {
+                      const upd = (patch: Partial<FeeRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+                      const sel = { minHeight: 44, padding: "0 8px" } as const;
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 회원구분`} value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
+                              <option value="">전체</option>
+                              {[...new Set([...opts.kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 직책`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
+                              <option value="">전체</option>
+                              {[...new Set([...opts.positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 참석일`} value={r.days} onChange={(e) => upd({ days: e.target.value })}>
+                              <option value="">전체</option>
+                              {Array.from({ length: dayCount }, (_, d) => d + 1).map((d) => (
+                                <option key={d} value={String(d)}>{d === 1 ? "1일" : `${d}일 (${d - 1}박${d}일)`}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} />
+                          </td>
+                          <td>
+                            <button className="mini danger" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: 17 }}
               onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>
               + 조건 추가

@@ -21,11 +21,15 @@ export function readRules(json: string | undefined): FeeRule[] {
 type Who = { kind?: string; position?: string };
 const spec = (r: FeeRule) => (r.days ? 1 : 0) + (r.kind ? 1 : 0) + (r.position ? 1 : 0);
 
+// 직책 "일반회원" = 직책이 없는 회원(빈 값이나 "-")
+export const GENERAL_POSITION = "일반회원";
+const positionOf = (p?: string) => (!p || p.trim() === "" || p.trim() === "-" ? GENERAL_POSITION : p.trim());
+
 function best(rules: FeeRule[], m: Who, days: number | null): FeeRule | null {
   let pick: FeeRule | null = null;
   for (const r of rules) {
     if (r.kind && r.kind !== (m.kind ?? "")) continue;
-    if (r.position && r.position !== (m.position ?? "")) continue;
+    if (r.position && r.position !== positionOf(m.position)) continue;
     if (r.days && (days == null || Number(r.days) !== days)) continue;
     if (!pick || spec(r) > spec(pick)) pick = r;
   }
@@ -73,6 +77,6 @@ export const payable = (amount: string) => Number(amount) > 0;
 
 // 조건 줄을 사람이 읽는 말로 (관리자 화면·공지 문구용)
 export function ruleLabel(r: FeeRule): string {
-  const parts = [r.days ? (r.days === "1" ? "1일 참석" : `${r.days}일 참석(${Number(r.days) - 1}박${r.days}일)`) : "", r.kind, r.position].filter(Boolean);
+  const parts = [r.kind, r.position, r.days ? (r.days === "1" ? "1일 참석" : `${r.days}일 참석(${Number(r.days) - 1}박${r.days}일)`) : ""].filter(Boolean);
   return parts.length ? parts.join(" · ") : "전체";
 }
