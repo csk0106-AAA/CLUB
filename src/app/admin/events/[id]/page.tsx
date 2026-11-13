@@ -285,7 +285,7 @@ function Detail({ id }: { id: string }) {
             {actNames.length > 0 && <div className="small">주요 활동: {actNames.join(" · ")}</div>}
             {oneFee(rules)
               ? <div className="small">참가비 1인 {won(oneFee(rules) as string)}{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>
-              : rules.length > 0 && <div className="small">참가비: 회원마다 본인 회비만 보여요(회원구분·직책·참석일 기준){ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
+              : rules.length > 0 && <div className="small">참가비: 원우회 앱에 로그인한 뒤 회비 안내 화면에서 내 회비를 확인해 주세요{ev.feeDeadline ? ` · 입금 기한 ${ev.feeDeadline}` : ""}</div>}
             {ev.booking && <div className="small" style={{ whiteSpace: "pre-wrap" }}>안내: {ev.booking}</div>}
             {ev.account && <div className="small">계좌 {ev.account}{ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""} · 참석 신청한 회원에게만 보여요</div>}
           </div>
