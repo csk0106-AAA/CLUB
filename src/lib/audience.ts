@@ -50,20 +50,27 @@ export function readObservers(text: string | undefined): string[] {
 }
 
 // 행사를 보는 회원: id 와 Members.clubs(소모임 행사 판단용). 문자열(id)만 주면 소모임 회원 여부는 모르는 것으로 본다.
-export type Viewer = { id?: string; clubs?: string };
+// kind(회원구분)를 주면 회원대기인지 판단한다. 문자열(id)만 주면 소모임 회원 여부·회원구분은 모르는 것으로 본다.
+export type Viewer = { id?: string; clubs?: string; kind?: string };
+type Ev = { published?: string; audience?: string; club?: string; observers?: string };
 
-// 회원에게 이 행사가 보이는지: 공개(published) + 대상에 포함
-//  - 소모임 행사(e.club): 그 소모임 회원(Members.clubs 실시간) + 참관자(e.observers)
+// 회원에게 이 행사가 보이는지(읽기): 공개(published) + 대상에 포함
+//  - 소모임 행사(e.club): 회원대기가 아닌 모든 회원이 읽을 수 있다(개요·일정·안내).
+//    단, 참석 신청·회비 알림·활동 참여는 eventJoinable(소모임 회원 + 참관자)만 된다.
+//    회원 정보(Members 행) 없이 id 만 주면 소모임 회원·참관자만 본다.
 //  - 그 밖: 공개 대상(e.audience)
-export function eventVisible(
-  e: { published?: string; audience?: string; club?: string; observers?: string },
-  who: Viewer | string,
-): boolean {
+export function eventVisible(e: Ev, who: Viewer | string): boolean {
   if (e.published !== "true") return false;
   const v: Viewer = typeof who === "string" ? { id: who } : who;
   const club = (e.club ?? "").trim();
-  if (club) return inClubOrObserver(e, v);
+  if (club) return inClubOrObserver(e, v) || (typeof who !== "string" && !!v.id && v.kind !== "회원대기");
   return inAudience(readAudience(e.audience), v.id ?? "");
+}
+
+// 이 행사에 참석 신청·회비 알림·활동 참여를 할 수 있는지: 보이고 + (소모임 행사면) 소모임 회원 또는 참관자
+export function eventJoinable(e: Ev, who: Viewer | string): boolean {
+  const v: Viewer = typeof who === "string" ? { id: who } : who;
+  return eventVisible(e, who) && inClubOrObserver(e, v);
 }
 
 // 소모임 행사 대상인지(공개 여부와 상관없이). 소모임이 없는 행사면 true.

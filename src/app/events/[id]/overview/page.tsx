@@ -5,6 +5,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MineInfo } from "@/components/MineInfo";
 import { Sheet } from "@/components/Sheet";
+import { ClubRequestCard } from "../ClubRequestCard";
 import { clubLine, ObserversCard } from "../ObserversCard";
 import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, TYPE_TONE, won } from "@/lib/client";
 
@@ -13,6 +14,8 @@ type Detail = {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
+    canApply?: boolean; // false: 내가 속하지 않은 소모임 행사(읽기만)
+    requests?: { join: string; observe: string } | null; // 내 가입·참관 신청 상태
   };
   activities: { id: string; name: string }[];
   apply: { answer: string; days: string[]; paid: boolean } | null;
@@ -152,7 +155,12 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       )}
       {answer === "불참" && <div className="msg info">참석 안함으로 알렸어요. 마음이 바뀌면 언제든 바꿀 수 있어요.</div>}
 
-      {!e.startsAt && answer === "" ? (
+      {e.canApply === false && e.club ? (
+        <>
+          <ClubRequestCard eventId={id} club={e.club} requests={e.requests ?? null} onSent={load} />
+          <button className="btn white" type="button" onClick={() => router.push("/events")}>행사 목록으로</button>
+        </>
+      ) : !e.startsAt && answer === "" ? (
         <div className="footer-actions">
           <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>날짜가 정해지면 알려 드려요</b><span className="t">일정이 확정되면 그때 참석 여부를 받을게요.</span></div></div>
           <button className="btn white" type="button" onClick={() => router.push("/events")}>행사 목록으로</button>

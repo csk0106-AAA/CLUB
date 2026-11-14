@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconLogout, IconShield } from "@/components/Icons";
+import { headIcon, HEAD_ICON_SIZE } from "@/components/HeadIcon";
 import { Mascot } from "@/components/Mascot";
 import { MemberTabs } from "@/components/MemberTabs";
 import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS } from "@/components/ThemeBoot";
@@ -33,12 +34,6 @@ const ROLE_MSG = "소모임 직책이 있는 소모임은 관리자에게 변경
 const digits = (s: string) => s.replace(/\D/g, "");
 const sectionTitle = { font: "400 19px var(--display)" } as const;
 const col = { display: "flex", flexDirection: "column", gap: 8 } as const;
-// 위쪽 관리자 아이콘·로그아웃 아이콘 버튼(같은 크기로 세로 정렬)
-const headIcon = {
-  display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-  width: 72, minHeight: 52, padding: "4px 6px", borderRadius: 14, textDecoration: "none",
-  border: "2px solid var(--line)", background: "var(--card)", font: "700 12px var(--body)", flex: "none",
-} as const;
 
 // 켜기·끄기 스위치 한 줄
 function Switch({ id, label, sub, on, disabled, onChange }: { id: string; label: string; sub?: string; on: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
@@ -191,32 +186,34 @@ export default function SettingsPage() {
 
   return (
     <main className="app with-tabs">
-      <div className="row">
-        <h1 className="title grow">설정</h1>
-        {/* 관리자 권한이 있는 회원에게만: 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
-        {me && me.perms.length > 0 && (
-          <Link href="/admin" aria-label="관리자 화면" title="관리자 화면" style={{ ...headIcon, color: "var(--blue-t)" }}>
-            <IconShield size={24} />
-            관리자
-          </Link>
-        )}
+      {/* 홈 화면과 같은 윗줄: 캐릭터(왼쪽) + 관리자(권한이 있을 때만)·로그아웃 아이콘(오른쪽). 다음 줄: 이름 */}
+      <div className="say" style={{ alignItems: "center", justifyContent: "space-between" }}>
+        <Mascot size={52} />
+        <div style={{ display: "flex", gap: 6, flex: "none" }}>
+          {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
+          {me && me.perms.length > 0 && (
+            <Link href="/admin" aria-label="관리자 화면" title="관리자 화면" style={{ ...headIcon, color: "var(--blue-t)" }}>
+              <IconShield size={HEAD_ICON_SIZE} />
+              관리자
+            </Link>
+          )}
+          {me && (
+            <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ ...headIcon, color: "var(--red-t)" }}>
+              <IconLogout size={HEAD_ICON_SIZE} />
+              로그아웃
+            </button>
+          )}
+        </div>
       </div>
+      <div>
+        {me && <b style={{ font: "400 20px var(--display)", display: "block", overflowWrap: "anywhere" }}>{me.name} 님</b>}
+        {club && <div className="small">{club}</div>}
+      </div>
+      <h1 className="title" style={{ fontSize: 22 }}>설정</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!me && !error && <p className="small">불러오는 중이에요…</p>}
       {me && pr && (
         <>
-          <div className="say" style={{ alignItems: "center" }}>
-            <Mascot size={56} />
-            <div className="grow">
-              <b style={{ font: "400 20px var(--display)" }}>{me.name} 님</b>
-              {club && <div className="small">{club}</div>}
-            </div>
-            <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ ...headIcon, color: "var(--red-t)", cursor: "pointer" }}>
-              <IconLogout size={24} />
-              로그아웃
-            </button>
-          </div>
-
           <div aria-live="polite" role="status">
             {note && <div className={`msg ${note.tone === "bad" ? "bad" : "info"}`}>{note.text}</div>}
           </div>

@@ -22,6 +22,8 @@ export const TABS = {
     "audience",
     // club: 소모임 행사면 소모임 이름. 이때 대상은 그 소모임 회원(실시간) + observers(참관자 회원 id JSON 배열)
     "club", "observers",
+    // pinned: "true"면 회원 행사 목록 맨 위에 고정
+    "pinned",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
@@ -84,6 +86,12 @@ export const TABS = {
   PostResponses: ["id", "postId", "memberId", "answer", "createdAt"],
   // 휴대폰 알림(Web Push) 구독
   PushSubs: ["id", "memberId", "endpoint", "keys", "createdAt"],
+  // 소모임 가입 신청(kind=join) / 소모임 행사 1회 참관 신청(kind=observe, eventId 필수).
+  // status: pending | approved | declined. 처리는 그 소모임 직책자(lib/club-requests.ts).
+  // resultSeen: 신청한 회원이 결과 알림을 봤으면 "true"
+  ClubRequests: [
+    "id", "kind", "club", "eventId", "memberId", "message", "status", "createdAt", "handledBy", "handledAt", "resultSeen",
+  ],
 } as const;
 
 export type TabName = keyof typeof TABS;

@@ -58,7 +58,7 @@ export function AdminGate(props: {
     return (
       <main className="app admin with-tabs">
         <div className="msg bad" role="alert">관리자 권한이 없는 계정이에요.</div>
-        <button className="btn white" type="button" onClick={() => router.push("/events")}>회원 화면으로</button>
+        <button className="btn white" type="button" onClick={() => router.push("/board")}>회원 화면으로</button>
         <MemberTabs on="settings" />
       </main>
     );

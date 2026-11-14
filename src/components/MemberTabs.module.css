@@ -1,4 +1,4 @@
-/* 하단 탭 5개가 360px 화면에도 넉넉히 들어가도록 */
+/* 하단 탭 4개: 360px 화면에서도 넉넉히 들어가도록 */
 .many {
   gap: 4px;
   padding-left: 6px;
@@ -7,7 +7,7 @@
 .many :global(.tab) {
   min-width: 0;
   padding: 0 2px;
-  font-size: clamp(11.5px, 3.4vw, 13px);
+  font-size: clamp(13px, 3.8vw, 14.5px);
   letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
@@ -21,7 +21,7 @@
   letter-spacing: 0; box-shadow: 0 0 0 2px var(--bg, #fff);
 }
 .many :global(.tab) svg {
-  width: 25px;
-  height: 25px;
+  width: 28px;
+  height: 28px;
   flex: none;
 }

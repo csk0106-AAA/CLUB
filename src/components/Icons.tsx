@@ -4,6 +4,26 @@ type P = { size?: number };
 export function IconHome({ size = 26 }: P) {
   return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="currentColor" /></svg>;
 }
+// 행사 탭(달력)
+export function IconCalendar({ size = 26 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4.5" width="18" height="16.5" rx="3" fill="none" stroke="currentColor" strokeWidth="2.6" />
+      <path d="M3 9.5h18" stroke="currentColor" strokeWidth="2.6" />
+      <path d="M8 2.5v4M16 2.5v4" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+      <rect x="7" y="12.5" width="3.5" height="3.5" rx="0.8" fill="currentColor" />
+    </svg>
+  );
+}
+// 알림(종)
+export function IconBell({ size = 24 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 10a6 6 0 0 1 12 0c0 4.5 1.5 6 2 6.5H4c.5-.5 2-2 2-6.5z" />
+      <path d="M10 20a2.2 2.2 0 0 0 4 0" />
+    </svg>
+  );
+}
 export function IconProfileBook({ size = 26 }: P) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">

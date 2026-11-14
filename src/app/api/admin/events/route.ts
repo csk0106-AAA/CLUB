@@ -38,6 +38,7 @@ const body = z.object({
   type: z.enum(EVENT_TYPES),
   name: z.string().trim().min(1).max(80),
   club: z.string().trim().max(40).optional(), // 소모임 행사면 소모임 이름
+  pinned: z.boolean().optional(), // 회원 행사 목록 맨 위에 고정
 });
 
 export async function POST(req: Request) {
@@ -61,6 +62,6 @@ export async function POST(req: Request) {
   }
   const s = await getStore();
   // 새 행사는 초안이고 회원에게 공개되지 않는다. 개요를 채운 뒤 '회원에게 전달'로 공개한다.
-  const ev = await s.insert("Events", { type, name, club, account, accountHolder, status: "초안", published: "false" });
+  const ev = await s.insert("Events", { type, name, club, account, accountHolder, status: "초안", published: "false", pinned: String(parsed.data.pinned === true) });
   return NextResponse.json({ event: ev });
 }

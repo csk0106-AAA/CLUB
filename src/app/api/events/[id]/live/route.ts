@@ -4,7 +4,7 @@ import { activityKind, guessStatus, liveView, preStatus, readConfig } from "@/li
 import { canJoin, isLimited } from "@/lib/participants";
 import { memberWorry } from "@/lib/worry";
 import { memberRound } from "@/lib/rounds";
-import { eventVisible } from "@/lib/audience";
+import { eventJoinable, eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const me = members.find((m) => m.id === g.s.mid);
   const ev = events.find((e) => e.id === id && eventVisible(e, me ?? g.s.mid));
   if (!ev) return bad("행사를 찾을 수 없어요.", 404);
+  // 다른 소모임 행사는 개요만 읽을 수 있고 활동에는 들어갈 수 없다.
+  if (!eventJoinable(ev, me ?? g.s.mid)) return bad("이 소모임 회원만 활동에 참여할 수 있어요.", 403);
 
   const mine = acts
     .filter((a) => a.eventId === id)

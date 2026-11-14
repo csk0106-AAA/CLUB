@@ -44,7 +44,7 @@ export default function LoginPage() {
       }
       resetTabsCache();
       // 사회자 접속번호로 들어오면 활동 진행 화면만 쓴다.
-      router.push(d.host ? "/host" : "/events");
+      router.push(d.host ? "/host" : "/board");
     } catch {
       setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
     } finally {

@@ -9,7 +9,7 @@ import { api, fmtWhen } from "@/lib/client";
 
 type E = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
-  status: string; published: string; club?: string; attend: number; absent: number; paid: number; total: number;
+  status: string; published: string; pinned?: string; club?: string; attend: number; absent: number; paid: number; total: number;
 };
 const TYPES = ["전체정기모임", "워크숍", "소모임"];
 const TONE: Record<string, string> = { 워크숍: "blue", 전체정기모임: "ok", 소모임: "warn" };
@@ -21,6 +21,7 @@ function Events() {
   const [type, setType] = useState(TYPES[1]);
   const [name, setName] = useState("");
   const [club, setClub] = useState("");
+  const [pinned, setPinned] = useState(false);
   const [clubs, setClubs] = useState<string[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,7 +43,7 @@ function Events() {
     e.preventDefault();
     setBusy(true);
     setErr("");
-    const r = await api<{ event: { id: string } }>("/api/admin/events", { body: { type, name, ...(type === "소모임" ? { club } : {}) } });
+    const r = await api<{ event: { id: string } }>("/api/admin/events", { body: { type, name, pinned, ...(type === "소모임" ? { club } : {}) } });
     setBusy(false);
     if (!r.ok) return setErr(r.error);
     setOpen(false);
@@ -80,6 +81,7 @@ function Events() {
             <span className="small">참석 신청 {e.attend} / {e.total}명{e.absent ? ` · 불참 ${e.absent}명` : ""} · 회비 입금 {e.paid}명</span>
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
               <span className={`pill ${e.published === "true" ? "ok" : "gray"}`}>{e.published === "true" ? "회원에게 공개 중" : "회원에게 안 보임"}</span>
+              {e.pinned === "true" && <span className="pill blue">맨 위 고정</span>}
             </div>
           </Link>
         ))}
@@ -113,9 +115,15 @@ function Events() {
                 <option value="">소모임 고르기</option>
                 {clubs.map((c) => <option key={c}>{c}</option>)}
               </select>
-              <span className="hint">고른 소모임 회원에게만 보여요. 입금계좌는 소모임 계좌로 먼저 채워져요.</span>
+              <span className="hint">모든 회원이 볼 수 있지만, 참석 신청은 고른 소모임 회원과 참관자만 할 수 있어요. 입금계좌는 소모임 계좌로 먼저 채워져요.</span>
             </div>
           )}
+        </div>
+        <div className="checks">
+          <label htmlFor="n-pin">
+            <input id="n-pin" type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+            회원 행사 목록 맨 위에 고정
+          </label>
         </div>
         <span className="small">만들면 초안으로 시작해요. 개요를 채우고 “회원에게 전달”을 눌러야 회원에게 보여요.{type !== "소모임" ? " 입금계좌는 모임회비관리의 계좌로 먼저 채워져요." : ""}</span>
         <button className="btn" type="submit" disabled={busy || !name.trim() || (type === "소모임" && clubs.length > 0 && !club)} style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }}>만들기</button>

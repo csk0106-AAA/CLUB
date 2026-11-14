@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { eventVisible, inAudience, readAudience } from "./audience";
+import { eventJoinable, inAudience, readAudience } from "./audience";
 import { readPrefs, type Prefs } from "./prefs";
 import { getSetting, getStore } from "./store";
 import { countsFor, stampEvent, type Kind } from "./unread";
@@ -31,11 +31,13 @@ export function inQuiet(p: Prefs, now = new Date()): boolean {
   return a < b ? cur >= a && cur < b : cur >= a || cur < b;
 }
 
-const LABEL: Record<Kind, string> = { events: "행사", posts: "게시글", profiles: "프로필 북" };
-const URL_OF: Record<Kind, string> = { events: "/events", posts: "/board", profiles: "/profiles" };
+// alerts: 소모임 가입·참관 신청과 그 결과(받을 알림 종류 설정과 상관없이 알림 ON 이면 보낸다)
+export type PushKind = Kind | "alerts";
+const LABEL: Record<PushKind, string> = { events: "행사", posts: "게시글", profiles: "프로필 북", alerts: "알림" };
+const URL_OF: Record<PushKind, string> = { events: "/events", posts: "/board", profiles: "/profiles", alerts: "/board" };
 
 // 이 회원들에게 kind 종류 알림을 보낸다(조건에 맞는 사람만).
-export async function pushTo(memberIds: string[], kind: Kind, exceptId?: string): Promise<number> {
+export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: string): Promise<number> {
   if (!setup()) return 0;
   const s = await getStore();
   const [members, subs] = await Promise.all([s.list("Members"), s.list("PushSubs")]);
@@ -44,7 +46,7 @@ export async function pushTo(memberIds: string[], kind: Kind, exceptId?: string)
     const m = members.find((x) => x.id === mid);
     if (!m || m.kind === "회원대기") return false;
     const p = readPrefs(m.prefs);
-    return p.notifyOn && p.notify[kind] && !inQuiet(p) && subs.some((x) => x.memberId === mid);
+    return p.notifyOn && (kind === "alerts" || p.notify[kind]) && !inQuiet(p) && subs.some((x) => x.memberId === mid);
   });
   if (targets.length === 0) return 0;
   const counts = await countsFor(targets);
@@ -52,11 +54,11 @@ export async function pushTo(memberIds: string[], kind: Kind, exceptId?: string)
   let sent = 0;
   await Promise.all(targets.flatMap((mid) => {
     const c = counts.get(mid);
-    const total = c ? c.events + c.posts + c.profiles : 0;
+    const total = c ? c.events + c.posts + c.profiles + c.alerts : 0;
     const p = readPrefs(members.find((x) => x.id === mid)?.prefs);
     const payload = JSON.stringify({
       title,
-      body: total > 0 ? `새 게시물 ${total}개가 있어요. 앱에서 확인해 주세요.` : `새 ${LABEL[kind]} 소식이 있어요. 앱에서 확인해 주세요.`,
+      body: kind === "alerts" ? "새 알림이 있어요. 앱에서 확인해 주세요." : total > 0 ? `새 게시물 ${total}개가 있어요. 앱에서 확인해 주세요.` : `새 ${LABEL[kind]} 소식이 있어요. 앱에서 확인해 주세요.`,
       count: total,
       silent: !p.sound,
       url: URL_OF[kind],
@@ -84,7 +86,7 @@ export async function notifyEvent(eventId: string, _kind: "new" | "update"): Pro
     const [events, members] = await Promise.all([s.list("Events"), s.list("Members")]);
     const ev = events.find((e) => e.id === eventId);
     if (!ev) return;
-    await pushTo(members.filter((m) => eventVisible(ev, m)).map((m) => m.id), "events");
+    await pushTo(members.filter((m) => eventJoinable(ev, m)).map((m) => m.id), "events");
   } catch (e) {
     console.error("[push] 행사 알림 실패", e);
   }

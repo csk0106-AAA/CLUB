@@ -16,7 +16,7 @@ import type { FeeRule } from "@/lib/fee";
 
 type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; booking: string;
-  status: string; published: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
+  status: string; published: string; pinned?: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
   feeRules?: FeeRule[];
   club?: string; // 소모임 행사의 소모임
   audience?: string; // 공개 대상 JSON(소모임이 아닌 행사)
@@ -154,8 +154,9 @@ function Detail({ id }: { id: string }) {
     setBusy(true);
     setMsg(null);
     // 참관자는 참석 신청 탭에서 따로 저장하고, 공개 대상(audience)은 이 화면에서 바꾸지 않는다.
-    const { id: _id, type: _t, published: _p, observers: _o, audience: _a, ...fields } = ev as Ev & { observers?: unknown; audience?: unknown };
-    void _id; void _t; void _p; void _o; void _a;
+    // 맨 위 고정(pinned)은 스위치를 누를 때 바로 저장한다.
+    const { id: _id, type: _t, published: _p, observers: _o, audience: _a, pinned: _pin, ...fields } = ev as Ev & { observers?: unknown; audience?: unknown };
+    void _id; void _t; void _p; void _o; void _a; void _pin;
     const r = await api(`/api/admin/events/${id}`, {
       method: "PATCH",
       // 기본 회비 칸은 없앴다: 회비는 모두 회비 줄(feeRules)로 저장하고 예전 fee 값은 비운다.
@@ -165,6 +166,17 @@ function Detail({ id }: { id: string }) {
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setMsg({ tone: "info", text: published === true ? "회원에게 전달했어요. 이제 회원 화면에 보여요." : published === false ? "공개를 취소했어요." : "저장했어요." });
     load();
+  }
+
+  // 회원 행사 목록 맨 위 고정: 누르면 바로 저장(회원 알림은 보내지 않는다)
+  async function togglePin(next: boolean) {
+    if (!ev) return;
+    setBusy(true);
+    const r = await api(`/api/admin/events/${id}`, { method: "PATCH", body: { pinned: next } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setEv({ ...ev, pinned: String(next) });
+    setMsg({ tone: "info", text: next ? "회원 행사 목록 맨 위에 고정했어요." : "맨 위 고정을 풀었어요." });
   }
 
   async function pay(memberId: string, paid: boolean) {
@@ -279,6 +291,14 @@ function Detail({ id }: { id: string }) {
               {ev.club && !curClub && <span className="small" style={{ color: "var(--red-t)" }}>“{ev.club}” 소모임이 목록에 없어요. 다른 소모임을 골라 주세요.</span>}
             </div>
           )}
+          <div className="card switchrow">
+            <span className="grow">
+              <b id="o-pin-l">회원 행사 목록 맨 위에 고정</b>
+              <span className="small" style={{ display: "block" }} id="o-pin-d">켜면 회원의 행사 목록에서 가장 먼저 보여요. 누르면 바로 저장돼요.</span>
+            </span>
+            <button type="button" role="switch" className="switch" aria-checked={ev.pinned === "true"} aria-labelledby="o-pin-l" aria-describedby="o-pin-d"
+              disabled={busy} onClick={() => togglePin(ev.pinned !== "true")} />
+          </div>
           {!ev.club && <EventAudience key={ev.id} eventId={id} audience={ev.audience} onSaved={load} />}
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           <div className="grid2">
@@ -464,7 +484,7 @@ function Detail({ id }: { id: string }) {
           <span className="small">전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
           {ev.club && (
             <>
-              <span className="small">소모임 행사라 {ev.club} 회원과 참관자만 보여요. 행사 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
+              <span className="small">소모임 행사라 참석 신청 명단에는 {ev.club} 회원과 참관자만 보여요(다른 회원은 행사를 읽기만 할 수 있어요). 행사 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
               <ObserversCard key={ev.club} eventId={id} admin onChange={load} />
             </>
           )}

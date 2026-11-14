@@ -40,7 +40,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <main className="app with-tabs">
-      <Link href="/board" className="mini" style={{ alignSelf: "flex-start", textDecoration: "none" }}>‹ 게시글</Link>
+      <Link href="/board" className="mini" style={{ alignSelf: "flex-start", textDecoration: "none" }}>‹ 홈</Link>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!d && !error && <p className="small">불러오는 중이에요…</p>}
       {d && p && (
