@@ -104,6 +104,9 @@ export async function PATCH(req: Request) {
     const { clubs: options } = await getLists();
     const unknown = names.filter((n) => !options.includes(n) && !cur.some((c) => c.name === n));
     if (unknown.length) return bad(`목록에 없는 소모임이에요: ${unknown.join(", ")}`);
+    // 새 소모임 가입은 직접 못 한다: 소모임 임원 승인(가입 신청, /api/club-requests)을 거친다. 여기서는 빼기만.
+    const added = names.filter((n) => !cur.some((c) => c.name === n));
+    if (added.length) return bad("소모임 가입은 ‘+ 소모임 가입 신청’으로 신청하면 소모임 임원이 승인해요.", 403);
     const dropped = cur.filter((c) => c.role && !names.includes(c.name));
     if (dropped.length) return bad("소모임 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요.");
     const next = names.map((n) => ({ name: n, role: cur.find((c) => c.name === n)?.role ?? "" }));
