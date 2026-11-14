@@ -85,15 +85,16 @@ async function seedBase(s: Store): Promise<void> {
   const put = (id: string, value: unknown) =>
     s.insert("Settings", { id, value: JSON.stringify(value) });
 
-  await put("clubName", "AI 초격차 전략포럼(ASSF) 제6기 원우회");
-  await put("clubShortName", "ASSF 6기 원우회");
+  await put("clubName", "우리 모임");
+  await put("clubShortName", "");
+  await put("clubNameDisplay", "full");
   await put("inviteCode", process.env.INVITE_CODE ?? "123456");
   await put("memberKinds", [
-    { value: "정회원", definition: "교육이수 + 원우회" },
+    { value: "정회원", definition: "교육이수 + 모임 활동" },
     { value: "준회원", definition: "교육이수자 외 추천 등 합류 신청자 중 과반 찬성으로 자격을 얻은 분" },
     { value: "명예회원", definition: "교육과정 주관사 등" },
     { value: "회원대기", definition: "활동을 원치 않는 분 또는 합류 신청 후 대기 상태" },
-    { value: "행사참관", definition: "1회 원우회 활동 참석" },
+    { value: "행사참관", definition: "1회 모임 활동 참석" },
   ]);
 
   for (const t of DEFAULT_TEMPLATES) {
@@ -160,6 +161,29 @@ export async function getSetting<T>(id: string, fallback: T): Promise<T> {
   } catch {
     return fallback;
   }
+}
+
+export type ClubNameDisplay = "full" | "short";
+
+// 회원 화면에 보이는 모임 이름. 관리자 › 모임 설정에서 정식 이름/줄여 쓰는 이름 중 고른다.
+// "short"를 골랐어도 줄인 이름이 비어 있으면 정식 이름을 쓴다.
+export async function getClubNames(): Promise<{ clubName: string; clubShortName: string; clubNameDisplay: ClubNameDisplay; displayName: string }> {
+  const rows = await (await getStore()).list("Settings");
+  const read = (id: string): string => {
+    const row = rows.find((r) => r.id === id);
+    if (!row) return "";
+    try {
+      const v = JSON.parse(row.value);
+      return typeof v === "string" ? v.trim() : "";
+    } catch {
+      return String(row.value ?? "").trim();
+    }
+  };
+  const clubName = read("clubName");
+  const clubShortName = read("clubShortName");
+  const clubNameDisplay: ClubNameDisplay = read("clubNameDisplay") === "short" ? "short" : "full";
+  const displayName = (clubNameDisplay === "short" && clubShortName ? clubShortName : clubName) || clubShortName || "모임";
+  return { clubName, clubShortName, clubNameDisplay, displayName };
 }
 
 export async function setSetting(id: string, value: unknown): Promise<void> {

@@ -92,7 +92,7 @@ export function AdminGate(props: {
 
   const sub =
     props.mode === "members"
-      ? [{ href: "/admin/settings", label: "원우회 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/members", label: "회원 명단" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/dues", label: "회비관리" }, { href: "/admin/rules", label: "회칙" }]
+      ? [{ href: "/admin/settings", label: "모임 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/members", label: "회원 명단" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/dues", label: "회비관리" }, { href: "/admin/rules", label: "회칙" }]
       : props.mode === "templates"
         ? []
         : props.mode === "clubs"

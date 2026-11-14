@@ -6,7 +6,7 @@ import { FeeRulesFields } from "@/components/board/FormFields";
 import { won } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
-// 회비 설정 입력칸(원우회 회비관리·소모임 회비 공통). 모양은 lib/dues.ts 의 Dues 와 같다.
+// 회비 설정 입력칸(모임 회비관리·소모임 회비 공통). 모양은 lib/dues.ts 의 Dues 와 같다.
 export type DuesValue = {
   period: "annual" | "monthly";
   amount: string;

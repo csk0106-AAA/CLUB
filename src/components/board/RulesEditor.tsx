@@ -87,7 +87,7 @@ function RulesPaste({ onDone }: { onDone: () => void }) {
       <label className="l" htmlFor="rp-file">텍스트 파일 고르기 (선택)</label>
       <input id="rp-file" type="file" accept=".txt,text/plain" onChange={readFile} />
       <label className="l" htmlFor="rp-text">회칙 글</label>
-      <textarea id="rp-text" className="field" rows={8} style={{ padding: 12 }} value={text} placeholder={"제1장 총칙\n제1조 (명칭) 본 회는 ○○ 원우회라 한다.\n제2조 (목적) …"} onChange={(e) => setText(e.target.value)} />
+      <textarea id="rp-text" className="field" rows={8} style={{ padding: 12 }} value={text} placeholder={"제1장 총칙\n제1조 (명칭) 본 회는 ○○ 모임이라 한다.\n제2조 (목적) …"} onChange={(e) => setText(e.target.value)} />
       {rows.length > 0 && (
         <>
           <span className="small">조문 {rows.length}개로 나눴어요{skipped ? ` · 첫 조 앞의 ${skipped}줄은 넣지 않아요` : ""}. 미리 보기:</span>

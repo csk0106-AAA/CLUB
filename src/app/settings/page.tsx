@@ -119,7 +119,7 @@ export default function SettingsPage() {
       } else if (r.status === 401) router.replace("/");
       else setError(r.error);
     });
-    api<{ clubName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.clubName));
+    api<{ displayName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.displayName));
   }, [router]);
 
   async function patch(body: Record<string, unknown>, okText?: string): Promise<Me | null> {

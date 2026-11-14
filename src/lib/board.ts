@@ -151,7 +151,7 @@ export const templateInput = z.object({ title: t(100).default(""), body: t(10000
 export const DEFAULT_TEMPLATES: Record<Form, Template> = {
   rules: {
     title: "회칙",
-    body: "원우회 회칙이에요. 확정된 조문만 보여요. 궁금한 점은 사무국에 물어봐 주세요.",
+    body: "모임 회칙이에요. 확정된 조문만 보여요. 궁금한 점은 사무국에 물어봐 주세요.",
     data: {},
   },
   fee: {

@@ -16,7 +16,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 
 const PART = ["members", "events", "fees", "activities", "minutes", "board"];
 const PART_TEXT: Record<string, string> = {
-  members: "회원 명단, 원우회 설정, 회원 구분, 조직도",
+  members: "회원 명단, 모임 설정, 회원 구분, 조직도",
   events: "일정 개요, 참석 신청, 일정, 카풀·방배정",
   fees: "회비 입금 확인, 비용과 예산",
   activities: "활동 진행, 조편성, 팀 구성",

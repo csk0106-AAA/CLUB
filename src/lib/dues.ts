@@ -2,7 +2,7 @@ import { z } from "zod";
 import { feeFor, ruleLabel } from "./fee";
 import { getSetting, setSetting } from "./store";
 
-// 모임회비(연회비/월회비). 원우회 회비는 Settings "dues", 소모임 회비는 Settings "clubDues" = { [소모임]: Dues }.
+// 모임회비(연회비/월회비). 모임 회비는 Settings "dues", 소모임 회비는 Settings "clubDues" = { [소모임]: Dues }.
 //  period: annual(연회비) / monthly(월회비)
 //  amount: 기본 금액(숫자 문자열, "" = 없음) — 조건별 금액 줄에 맞지 않는 회원이 낸다
 //  rules : 조건별 금액 [{kind, position, amount}] — kind/position 이 "" 이면 "전체".

@@ -51,7 +51,7 @@ export default function BoardPage() {
     // 관리자 › 회원관리의 "처리할 일"에서 들어오면 알림 창을 바로 연다(/board?alerts=1)
     if (new URLSearchParams(window.location.search).get("alerts") === "1") setAlertsOpen(true);
     api<Me>("/api/me").then((r) => r.ok && setWho(r.data));
-    api<{ clubName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.clubName));
+    api<{ displayName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.displayName));
   }, [load]);
   // 종 아이콘 숫자: 처음 한 번, 그 뒤 1분마다(화면이 보일 때만)
   useEffect(() => {
@@ -86,13 +86,13 @@ export default function BoardPage() {
 
   return (
     <main className="app with-tabs" style={{ gap: 8 }}>
-      {/* 윗줄: 캐릭터(왼쪽) + 알림·조직도·로그아웃 아이콘(오른쪽). 다음 줄: 인사 */}
+      {/* 윗줄: 캐릭터(왼쪽) + 모임 이름·회원 이름 + 알림·조직도·로그아웃 아이콘(오른쪽) */}
       <header className="topbar">
         <div className="row">
           {who ? <Avatar member={who} size={40} fallback="mascot" /> : <Mascot size={40} />}
           <div className="who">
             {club && <span>{club}</span>}
-            <b>{who ? `${who.name} 대표님, 반갑습니다` : "반갑습니다"}</b>
+            {who && <b>{who.name}</b>}
           </div>
           <div className="icons">
             <button type="button" onClick={() => setAlertsOpen(true)} aria-haspopup="dialog" title="알림"

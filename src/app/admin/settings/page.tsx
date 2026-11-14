@@ -10,7 +10,7 @@ import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 // 회원구분·직책·소모임 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
-type S = { clubName: string; clubShortName: string; inviteCode: string };
+type S = { clubName: string; clubShortName: string; clubNameDisplay: "full" | "short"; inviteCode: string };
 
 function Settings() {
   const [s, setS] = useState<S | null>(null);
@@ -45,10 +45,24 @@ function Settings() {
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: `700 ${fs(17)} var(--display)` }}>원우회 이름</b>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>모임 이름</b>
         <div className="grid2">
-          <div><label className="l" htmlFor="s-name">원우회 이름 (회원 첫 화면에 표시)</label><input id="s-name" className="field" value={s.clubName} onChange={(e) => setS({ ...s, clubName: e.target.value })} /></div>
+          <div><label className="l" htmlFor="s-name">모임 이름 (정식 이름)</label><input id="s-name" className="field" value={s.clubName} onChange={(e) => setS({ ...s, clubName: e.target.value })} /></div>
           <div><label className="l" htmlFor="s-short">줄여 쓰는 이름</label><input id="s-short" className="field" value={s.clubShortName} onChange={(e) => setS({ ...s, clubShortName: e.target.value })} /></div>
+        </div>
+        <fieldset style={{ border: 0, margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <legend className="l">회원 화면에 보일 이름 (로그인 화면·홈·설정·알림·앱 이름)</legend>
+          <div className="row" style={{ flexWrap: "wrap", gap: 16 }}>
+            {([["full", "정식 이름"], ["short", "줄여 쓰는 이름"]] as const).map(([v, label]) => (
+              <label key={v} className="row" style={{ gap: 6, cursor: "pointer" }}>
+                <input type="radio" name="s-display" value={v} checked={s.clubNameDisplay === v} onChange={() => setS({ ...s, clubNameDisplay: v })} />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+          {s.clubNameDisplay === "short" && !s.clubShortName.trim() && <span className="small">줄여 쓰는 이름이 비어 있어 정식 이름이 보여요.</span>}
+        </fieldset>
+        <div className="grid2">
           <div>
             <label className="l" htmlFor="s-code">공통 초대코드 (연락처가 없는 회원용, 4자 이상)</label>
             <PasswordField id="s-code" autoComplete="off" value={s.inviteCode} onChange={(v) => setS({ ...s, inviteCode: v })} />
@@ -59,7 +73,7 @@ function Settings() {
           <span className="pill gray">회원 첫 화면 미리보기</span>
           <div className="say" style={{ alignItems: "center", marginTop: 8 }}>
             <Mascot size={56} />
-            <b style={{ font: `700 ${fs(18)}/1.3 var(--display)` }}>{s.clubName || "원우회 이름"}</b>
+            <b style={{ font: `700 ${fs(18)}/1.3 var(--display)` }}>{(s.clubNameDisplay === "short" && s.clubShortName.trim() ? s.clubShortName : s.clubName) || "모임 이름"}</b>
           </div>
         </div>
       </div>

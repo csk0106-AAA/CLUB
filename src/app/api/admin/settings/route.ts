@@ -1,23 +1,26 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { getSetting, setSetting } from "@/lib/store";
+import { getClubNames, getSetting, setSetting } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 const body = z.object({
   clubName: z.string().trim().min(1).max(80),
   clubShortName: z.string().trim().max(40).default(""),
+  clubNameDisplay: z.enum(["full", "short"]).default("full"),
   inviteCode: z.string().trim().min(4).max(32),
 });
 
-// 원우회 이름, 초대코드. (회원구분·직책·소모임 목록은 /api/admin/lists 에서 다룬다)
+// 모임 이름(정식·줄인 이름, 회원 화면에 보일 이름), 초대코드. (회원구분·직책·소모임 목록은 /api/admin/lists 에서 다룬다)
 export async function GET() {
   const g = await guard("members");
   if ("err" in g) return g.err;
+  const n = await getClubNames();
   return NextResponse.json({
-    clubName: await getSetting("clubName", ""),
-    clubShortName: await getSetting("clubShortName", ""),
+    clubName: n.clubName,
+    clubShortName: n.clubShortName,
+    clubNameDisplay: n.clubNameDisplay,
     inviteCode: await getSetting("inviteCode", ""),
   });
 }
@@ -30,6 +33,7 @@ export async function PUT(req: Request) {
   const d = parsed.data;
   await setSetting("clubName", d.clubName);
   await setSetting("clubShortName", d.clubShortName);
+  await setSetting("clubNameDisplay", d.clubNameDisplay);
   await setSetting("inviteCode", d.inviteCode);
   return NextResponse.json({ ok: true });
 }

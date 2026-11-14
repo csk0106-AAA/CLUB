@@ -8,14 +8,14 @@ import { notifyPost } from "./notify";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 
-// 관리 화면에서 만들어 게시판에 "올리는" 글: 원우회 회비(관리자 › 회비관리), 회칙(관리자 › 회칙), 소모임 회비(소모임 회비 관리).
+// 관리 화면에서 만들어 게시판에 "올리는" 글: 모임 회비(관리자 › 회비관리), 회칙(관리자 › 회칙), 소모임 회비(소모임 회비 관리).
 //  - 올릴 때 그 순간의 내용을 글(Posts.data)에 그대로 담는다(스냅숏). 그 뒤에 설정을 바꿔도 다시 올리기 전까지 글은 그대로다.
 //  - 글 작성자(authorId)·수정 시각(updatedAt)은 마지막으로 올린 사람·시각이다.
 //  - 지금 연결된 글: Settings "publishLinks" = { dues: 글 id, rules: 글 id, "club:<이름>": 글 id }
 //  - 게시판 글쓰기·수정으로는 이 글을 만들거나 고칠 수 없다(관리 화면에서만).
 //
 // Posts.data 스냅숏
-//  fee(원우회)  : { v:2, period, defaultAmount, rules:[{kind,position,amount}], periodStart, periodEnd, monthDay,
+//  fee(모임)  : { v:2, period, defaultAmount, rules:[{kind,position,amount}], periodStart, periodEnd, monthDay,
 //                  account("은행 계좌"), accountHolder, note, deadline:"" }
 //  fee(소모임)  : 위와 같고 club: "<소모임 이름>"
 //  rules        : { v:2, rules:[{id, chapter, article, body, version}] }

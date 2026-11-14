@@ -9,7 +9,7 @@ import { getStore, setSetting } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-// 원우회 회비(연회비·월회비) 설정, 선택지(직책·회원구분), 금액별 회원 수, 올린 회비 글 목록. 권한: 회비(fees) 또는 모든 권한.
+// 모임 회비(연회비·월회비) 설정, 선택지(직책·회원구분), 금액별 회원 수, 올린 회비 글 목록. 권한: 회비(fees) 또는 모든 권한.
 export async function GET() {
   const g = await guard("fees");
   if ("err" in g) return g.err;

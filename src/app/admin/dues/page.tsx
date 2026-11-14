@@ -18,7 +18,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 
 const yearOf = (d: DuesValue) => (d.periodEnd || d.periodStart).slice(0, 4) || String(new Date().getFullYear());
 
-// 관리자 › 회원관리 › 회비관리: 원우회 회비(연회비·월회비)를 정하고, 게시판 글로 올린다.
+// 관리자 › 회원관리 › 회비관리: 모임 회비(연회비·월회비)를 정하고, 게시판 글로 올린다.
 function DuesEditor() {
   const [data, setData] = useState<Data | null>(null);
   const [d, setD] = useState<DuesValue | null>(null);
@@ -60,7 +60,7 @@ function DuesEditor() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <p className="small" style={{ margin: 0 }}>원우회 회비(연회비·월회비)를 정해요. 여기서 정한 입금계좌는 새 일정을 만들 때 일정 계좌로 먼저 들어가요(소모임 일정은 소모임 계좌). 회원에게 알리려면 저장한 뒤 아래에서 게시글로 올려 주세요.</p>
+      <p className="small" style={{ margin: 0 }}>모임 회비(연회비·월회비)를 정해요. 여기서 정한 입금계좌는 새 일정을 만들 때 일정 계좌로 먼저 들어가요(소모임 일정은 소모임 계좌). 회원에게 알리려면 저장한 뒤 아래에서 게시글로 올려 주세요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>

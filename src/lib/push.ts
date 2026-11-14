@@ -1,7 +1,7 @@
 import webpush from "web-push";
 import { eventJoinable, inAudience, readAudience } from "./audience";
 import { readPrefs, type Prefs } from "./prefs";
-import { getSetting, getStore } from "./store";
+import { getClubNames, getStore } from "./store";
 import { countsFor, stampEvent, type Kind } from "./unread";
 
 // 휴대폰 알림(Web Push).
@@ -50,7 +50,7 @@ export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: str
   });
   if (targets.length === 0) return 0;
   const counts = await countsFor(targets);
-  const title = (await getSetting<string>("clubShortName", "")) || (await getSetting<string>("clubName", "")) || "원우회";
+  const title = (await getClubNames()).displayName;
   let sent = 0;
   await Promise.all(targets.flatMap((mid) => {
     const c = counts.get(mid);

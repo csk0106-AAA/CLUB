@@ -46,7 +46,7 @@ export async function ask(system: string, messages: Msg[], maxTokens = 1500): Pr
 }
 
 const BASE = (guidelines: string) =>
-  `당신은 원우회 회원의 소개 글을 돕는 편집자입니다. 반드시 한국어로 답하세요.\n\n[관리자 지침]\n${guidelines}`;
+  `당신은 모임 회원의 소개 글을 돕는 편집자입니다. 반드시 한국어로 답하세요.\n\n[관리자 지침]\n${guidelines}`;
 
 export function followUpPrompt(guidelines: string, qa: { q: string; a: string }[]): { system: string; messages: Msg[] } {
   return {

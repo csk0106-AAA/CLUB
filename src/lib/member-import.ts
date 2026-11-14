@@ -10,7 +10,7 @@ type Key = keyof ImportRow;
 const HEADER: Record<string, Key> = {
   성명: "name", 이름: "name",
   회원구분: "kind", 구분: "kind",
-  직책: "position", 원우회직책: "position",
+  직책: "position", 원우회직책: "position", 모임직책: "position",
   성별: "gender",
   회사명: "company", 회사: "company",
   직위: "title",

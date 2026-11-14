@@ -241,7 +241,7 @@ function QuizFields({ data, onChange }: P<QuizData>) {
             <span className="grow" />
             <button className="mini danger" type="button" disabled={items.length <= 1} onClick={() => onChange({ ...data, items: items.filter((_, j) => j !== i) })}>문제 지우기</button>
           </div>
-          <input className="field" aria-label={`문제 ${i + 1}`} placeholder="문장 (예: 우리 원우회는 2020년에 만들어졌다)" maxLength={300} value={it.q} onChange={(e) => setI(i, { q: e.target.value })} />
+          <input className="field" aria-label={`문제 ${i + 1}`} placeholder="문장 (예: 우리 모임은 2020년에 만들어졌다)" maxLength={300} value={it.q} onChange={(e) => setI(i, { q: e.target.value })} />
           <div className="checks" role="radiogroup" aria-label={`문제 ${i + 1} 정답`}>
             <span className="l" style={{ margin: 0, alignSelf: "center" }}>정답</span>
             {(["O", "X"] as const).map((v) => (

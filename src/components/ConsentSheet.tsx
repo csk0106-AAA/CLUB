@@ -33,7 +33,7 @@ export function ConsentSheet({ consent, onAgreed }: { consent: boolean; onAgreed
   return (
     <Sheet title="개인정보 안내">
       <p style={{ margin: 0 }}>
-        작성하신 내용 중 본인이 공개로 선택한 부분은 원우회 회원들에게 보여집니다. 언제든 수정·삭제할 수 있습니다.
+        작성하신 내용 중 본인이 공개로 선택한 부분은 모임 회원들에게 보여집니다. 언제든 수정·삭제할 수 있습니다.
       </p>
       {error && <div className="msg bad" role="alert">{error}</div>}
       <button className="btn" type="button" disabled={busy} onClick={agree}>동의합니다</button>

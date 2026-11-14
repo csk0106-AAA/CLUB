@@ -78,7 +78,7 @@ export default function ProfilesPage() {
           </p>
           <div className="card" style={{ background: "var(--soft)" }}>
             <b>개인정보 안내</b>
-            <div className="small">작성하신 내용 중 본인이 공개로 선택한 부분은 원우회 회원들에게 보여집니다. 언제든 수정·삭제할 수 있습니다.</div>
+            <div className="small">작성하신 내용 중 본인이 공개로 선택한 부분은 모임 회원들에게 보여집니다. 언제든 수정·삭제할 수 있습니다.</div>
           </div>
           <button className="btn" type="button" disabled={busy} onClick={agree}>동의하고 프로필 북 보기</button>
           <button className="btn white" type="button" onClick={() => setPopup(false)}>동의하지 않음</button>

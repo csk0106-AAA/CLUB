@@ -220,7 +220,7 @@ function Detail({ id }: { id: string }) {
       "",
       ...body,
       "",
-      `원우회 앱에서 참석 여부를 알려 주세요 👉 ${window.location.origin}`,
+      `모임 앱에서 참석 여부를 알려 주세요 👉 ${window.location.origin}`,
       "로그인: 내 이름 선택 + 연락처 뒷자리 4자리",
     ];
     try {
@@ -236,7 +236,7 @@ function Detail({ id }: { id: string }) {
   async function copyReminder(names: string[]) {
     if (!ev) return;
     const when = ev.startsAt ? ` (${fmtDate(ev.startsAt)})` : "";
-    const text = `[${ev.name}${when}] 참석 여부를 알려 주세요.\n${names.join(", ")} 님, 원우회 앱에서 “참석 신청하기” 또는 “참석 안함”을 눌러 주세요. 고맙습니다.`;
+    const text = `[${ev.name}${when}] 참석 여부를 알려 주세요.\n${names.join(", ")} 님, 모임 앱에서 “참석 신청하기” 또는 “참석 안함”을 눌러 주세요. 고맙습니다.`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);

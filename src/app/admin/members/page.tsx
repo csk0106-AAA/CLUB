@@ -325,7 +325,7 @@ function Members() {
             <ListSelect id="f-kind" value={form.kind} options={kinds.map((k) => k.value)} onChange={(v) => set("kind", v)} />
           </div>
           <div>
-            <label className="l" htmlFor="f-pos">원우회 직책</label>
+            <label className="l" htmlFor="f-pos">모임 직책</label>
             <ListSelect id="f-pos" value={form.position} options={lists.positions} onChange={(v) => set("position", v)} />
           </div>
           <div>

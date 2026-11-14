@@ -4,7 +4,7 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-// 회원이 보는 원우회 정보: 조직도(이름과 직책만), 확정된 회칙. 회의록은 관리자만 본다.
+// 회원이 보는 모임 정보: 조직도(이름과 직책만), 확정된 회칙. 회의록은 관리자만 본다.
 export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }> }) {
   const g = await guard();
   if ("err" in g) return g.err;

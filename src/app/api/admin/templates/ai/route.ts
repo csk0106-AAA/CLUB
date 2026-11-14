@@ -15,7 +15,7 @@ const body = z.object({
 
 const examples = DEFAULT_TEMPLATES.map(({ id: _i, version: _v, ...c }) => c);
 
-const SYSTEM = `당신은 원우회(20명 안팎의 경영자 모임) 일정의 활동을 설계하는 도우미입니다. 반드시 한국어로 답합니다.
+const SYSTEM = `당신은 모임(20명 안팎의 회원) 일정의 활동을 설계하는 도우미입니다. 반드시 한국어로 답합니다.
 관리자의 설명을 듣고 이 앱의 "활동 템플릿" 설정(JSON)을 만듭니다.
 
 [앱이 실제로 동작시킬 수 있는 것]

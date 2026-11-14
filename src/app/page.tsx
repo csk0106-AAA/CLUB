@@ -7,7 +7,7 @@ import { resetTabsCache } from "@/components/MemberTabs";
 import { PasswordField } from "@/components/PasswordField";
 import { fs } from "@/lib/fs";
 
-type Club = { clubName: string; members: { id: string; name: string }[] };
+type Club = { clubName: string; displayName: string; members: { id: string; name: string }[] };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,9 +58,9 @@ export default function LoginPage() {
       <div style={{ paddingTop: 20, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
         <Mascot />
         <h1 className="title center" style={{ fontSize: fs(20) }}>
-          {club ? club.clubName : "원우회"}
+          {club ? club.displayName || club.clubName : "모임"}
         </h1>
-        <p className="small" style={{ margin: 0 }}>원우회 회원 전용</p>
+        <p className="small" style={{ margin: 0 }}>모임 회원 전용</p>
       </div>
 
       {loadError && (
