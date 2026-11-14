@@ -102,15 +102,15 @@ export function AdminGate(props: {
   return (
     <main className="app admin with-tabs">
       <header className="topbar adminbar">
-        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-          <button className="mini" type="button" onClick={goBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40 }}>
-            <IconBack size={16} /> 이전 페이지
+        {/* 윗줄(목업 C): ‹ 이전 페이지(아이콘) · 관리자 · (내 이름) · 내보내기 */}
+        <div className="row" style={{ gap: 4 }}>
+          <button className="iconbtn" type="button" onClick={goBack} aria-label="이전 페이지" title="이전 페이지">
+            <IconBack size={20} />
           </button>
           <h1>관리자</h1>
-          <span className="small" style={{ whiteSpace: "nowrap" }}>{me.name}</span>
-          <Link className="mini" href="/admin/export" aria-current={props.active === "/admin/export" ? "page" : undefined}
-            style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40, ...(props.active === "/admin/export" ? { borderColor: "var(--ink)", color: "var(--ink)", fontWeight: 700 } : {}) }}>
-            <IconExport size={16} /> 내보내기
+          <span className="me">{me.name}</span>
+          <Link className="exp" href="/admin/export" aria-current={props.active === "/admin/export" ? "page" : undefined}>
+            <IconExport size={14} /> 내보내기
           </Link>
         </div>
         <nav className="modes" aria-label="관리자 구분">

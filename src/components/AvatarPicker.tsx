@@ -48,9 +48,9 @@ async function squareJpeg(file: File): Promise<Blob> {
 
 const tabBtn = (on: boolean) => ({
   flex: 1, minHeight: 44, borderRadius: 8, cursor: "pointer",
-  border: `2px solid ${on ? "var(--blue)" : "var(--line)"}`,
-  background: on ? "var(--blue-bg)" : "var(--card)", color: on ? "var(--blue-t)" : "var(--ink)",
-  font: `700 ${fs(16)} var(--body)`,
+  border: `1px solid ${on ? "var(--violet)" : "var(--line)"}`,
+  background: on ? "var(--violet-bg)" : "var(--card)", color: on ? "var(--violet-t)" : "var(--ink2)",
+  font: `${on ? 700 : 500} ${fs(14)} var(--body)`,
 }) as const;
 
 export function AvatarPicker({ name, avatar, onChange }: { name: string; avatar: AvatarView; onChange: (a: AvatarView, text: string) => void }) {
@@ -122,15 +122,14 @@ export function AvatarPicker({ name, avatar, onChange }: { name: string; avatar:
   }
 
   return (
-    <div className="row" style={{ gap: 14 }}>
-      <Avatar member={{ name, avatar }} size={72} fallback="mascot" label={`${name} 님의 프로필 사진`} />
-      <div className="grow" style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-        <span className="l" style={{ marginBottom: 0 }}>프로필 사진</span>
-        <span className="small">{avatar?.type === "photo" ? "올린 사진" : avatar?.type === "character" ? `캐릭터 · ${CHARACTERS.find((c) => c.key === avatar.key)?.label ?? ""}` : "기본 모양"}</span>
+    <div className="row" style={{ gap: 12 }}>
+      <Avatar member={{ name, avatar }} size={44} fallback="mascot" label={`${name} 님의 프로필 사진`} />
+      <div className="grow" style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <span style={{ fontSize: fs(14) }}>프로필 사진</span>
+        <span className="small" style={{ fontSize: fs(13) }}>{avatar?.type === "photo" ? "올린 사진" : avatar?.type === "character" ? `캐릭터 · ${CHARACTERS.find((c) => c.key === avatar.key)?.label ?? ""}` : "기본 모양"}</span>
       </div>
-      <button className="btn white" type="button" aria-haspopup="dialog" onClick={start}
-        style={{ width: "auto", minHeight: 44, fontSize: fs(15), flex: "none" }}>
-        바꾸기
+      <button className="mini" type="button" aria-haspopup="dialog" onClick={start} style={{ flex: "none", minHeight: 40 }}>
+        바꾸기 ›
       </button>
 
       <Popup
@@ -163,7 +162,7 @@ export function AvatarPicker({ name, avatar, onChange }: { name: string; avatar:
                   <button key={c.key} type="button" aria-pressed={on} onClick={() => setPick(c.key)}
                     style={{
                       display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px", borderRadius: 8, cursor: "pointer",
-                      border: `3px solid ${on ? "var(--blue)" : "var(--line)"}`, background: on ? "var(--blue-bg)" : "var(--card)",
+                      border: `${on ? 2 : 1}px solid ${on ? "var(--violet)" : "var(--line)"}`, background: on ? "var(--blue-bg)" : "var(--card)",
                       color: on ? "var(--blue-t)" : "var(--ink)", font: `700 ${fs(14)} var(--body)`,
                     }}>
                     {c.render(56)}

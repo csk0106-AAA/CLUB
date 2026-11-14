@@ -235,7 +235,6 @@ function Members() {
 
   return (
     <>
-      <p className="small" style={{ margin: 0 }}>회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {list && list.some((m) => m.genderEdit) && (
         <div className="msg info" role="status">
@@ -243,20 +242,21 @@ function Members() {
         </div>
       )}
 
-      {/* 요약: 한 줄로 간단히 */}
-      {list && (
-        <div className="row" role="group" aria-label="회원 요약" style={{ flexWrap: "wrap", gap: 6 }}>
-          <span className="pill blue">전체 {list.length}명</span>
-          {[...counts.entries()].map(([k, n]) => <span key={k} className="pill gray">{k} {n}</span>)}
-          <span className="pill gray">남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}{list.some((m) => !m.gender) ? ` · 미입력 ${list.filter((m) => !m.gender).length}` : ""}</span>
-          <Link href="/admin/admins" className="pill gray" style={{ textDecoration: "none" }}>권한자 {admins.length} ›</Link>
+      {/* 요약(목업 C): 전체 N명 · 구분별 숫자 + 오른쪽 추가 버튼 */}
+      <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+        {list && (
+          <p className="small" role="group" aria-label="회원 요약" style={{ margin: 0, flex: "1 1 200px", fontSize: fs(13) }}>
+            전체 <b style={{ color: "var(--ink)" }}>{list.length}</b>명
+            {[...counts.entries()].map(([k, n]) => <span key={k}> · {k} {n}</span>)}
+            <span> · 남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}{list.some((m) => !m.gender) ? ` · 성별 미입력 ${list.filter((m) => !m.gender).length}` : ""}</span>
+            {" · "}<Link href="/admin/admins">권한자 {admins.length}</Link>
+          </p>
+        )}
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
+          <button className="mini" type="button" aria-expanded={importOpen} onClick={() => setImportOpen(!importOpen)} style={{ fontSize: fs(12) }}>{importOpen ? "붙여넣기 닫기" : "명단 붙여넣기"}</button>
+          <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }} style={{ fontSize: fs(12) }}>+ 항목 추가</button>
+          <button className="btn" type="button" aria-haspopup="dialog" onClick={startAdd} style={{ width: "auto", minHeight: 36, padding: "0 12px", fontSize: fs(12) }}>+ 회원 추가</button>
         </div>
-      )}
-
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <button className="mini" type="button" aria-expanded={importOpen} onClick={() => setImportOpen(!importOpen)}>{importOpen ? "붙여넣기 닫기" : "명단 붙여넣기 (CSV·엑셀)"}</button>
-        <button className="mini" type="button" aria-haspopup="dialog" onClick={startAdd}>+ 회원 추가</button>
-        <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }}>+ 항목 추가</button>
       </div>
 
       {colsOpen && (
@@ -350,28 +350,58 @@ function Members() {
         <div className="row">
           <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "auto", minWidth: 160 }}>{editId ? "저장" : "추가"}</button>
           <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>
+          {editId && (() => {
+            const m = list?.find((x) => x.id === editId);
+            return m ? <button className="btn red" type="button" style={{ width: "auto", marginLeft: "auto" }} onClick={() => { reset(); remove(m); }}>삭제</button> : null;
+          })()}
         </div>
       </form>
       </Popup>
 
       {/* 회원구분 보기: 한 줄, "전체" 외에는 여러 개를 함께 고를 수 있다(아무것도 안 고르면 전체) */}
-      <div className="subnav one" role="group" aria-label="회원구분 보기 (여러 개 선택 가능)">
-        <a className={filter.length === 0 ? "on" : ""} href="#" aria-pressed={filter.length === 0} onClick={(e) => { e.preventDefault(); setFilter([]); }}>전체</a>
+      <div className="fpills" role="group" aria-label="회원구분 보기 (여러 개 선택 가능)">
+        <button type="button" aria-pressed={filter.length === 0} onClick={() => setFilter([])}>전체</button>
         {[...kindTabs, "미지정"].map((k) => {
           const on = filter.includes(k);
           return (
-            <a key={k} className={on ? "on" : ""} href="#" aria-pressed={on}
-              onClick={(e) => { e.preventDefault(); setFilter(on ? filter.filter((x) => x !== k) : [...filter, k]); }}>
+            <button key={k} type="button" aria-pressed={on}
+              onClick={() => setFilter(on ? filter.filter((x) => x !== k) : [...filter, k])}>
               {on ? "✓ " : ""}{k}
-            </a>
+            </button>
           );
         })}
       </div>
 
       {!list && <p className="small">불러오는 중이에요…</p>}
       {list && shown.length === 0 && <div className="msg info">해당하는 회원이 없어요.</div>}
+      {/* 휴대폰: 한 줄 목록(아바타 · 이름/직책 · 회사·소모임 · 구분 칩 · 수정) */}
       {shown.length > 0 && (
-        <div className="tblw">
+        <ul className="rows bleed only-narrow" aria-label="회원 목록">
+          {shown.map((m) => (
+            <li key={m.id} className="mrow">
+              <Avatar member={m} size={36} />
+              <span className="who">
+                <b>{m.name}{m.position && <small>{m.position}</small>}</b>
+                <span>{[[m.company, m.title].filter(Boolean).join(" "), clubsText(m.clubs ?? [])].filter(Boolean).join(" · ") || "정보를 입력해 주세요"}</span>
+                {m.genderEdit && (
+                  <span style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>
+                    <span className="chip warn">성별 회원 수정 ({m.genderEdit.from || "없음"}→{m.genderEdit.to})</span>
+                    <button className="mini" type="button" style={{ minHeight: 32 }} onClick={() => ackGender(m)}>확인</button>
+                  </span>
+                )}
+              </span>
+              <span className="chip line">{m.kind || "미지정"}</span>
+              <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" onClick={() => startEdit(m)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>연필 아이콘으로 수정·삭제해요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
+      {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
+      {shown.length > 0 && (
+        <div className="tblw only-wide">
           <table className="tbl" style={{ minWidth: 1000 + custom.length * 110 }}>
             <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>권한</th><th></th></tr></thead>
             <tbody>

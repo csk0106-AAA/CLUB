@@ -36,16 +36,15 @@ const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string }[] = [
 const ROLE_MSG = "소모임 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요.";
 
 const digits = (s: string) => s.replace(/\D/g, "");
-const sectionTitle = { font: `700 ${fs(15)} var(--display)` } as const;
 const col = { display: "flex", flexDirection: "column", gap: 8 } as const;
 
-// 켜기·끄기 스위치 한 줄
+// 켜기·끄기 스위치 한 줄(목업 C: 왼쪽 이름, 오른쪽 스위치, 줄 사이 얇은 선)
 function Switch({ id, label, sub, on, disabled, onChange }: { id: string; label: string; sub?: string; on: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="switchrow">
-      <span className="grow">
-        <b id={`${id}-l`}>{label}</b>
-        {sub && <span className="small" style={{ display: "block" }} id={`${id}-d`}>{sub}</span>}
+    <div className="srow">
+      <span className="k">
+        <span id={`${id}-l`} style={{ display: "block" }}>{label}</span>
+        {sub && <span className="small" style={{ display: "block", fontSize: fs(12) }} id={`${id}-d`}>{sub}</span>}
       </span>
       <button
         type="button" role="switch" className="switch" aria-checked={on} aria-labelledby={`${id}-l`}
@@ -220,23 +219,23 @@ export default function SettingsPage() {
       {/* 홈 화면과 같은 윗줄: 캐릭터(왼쪽) + 관리자(권한이 있을 때만)·로그아웃 아이콘(오른쪽). 다음 줄: 이름 */}
       <header className="topbar">
         <div className="row">
-          {me ? <Avatar member={me} size={44} fallback="mascot" /> : <Mascot size={44} />}
+          {me ? <Avatar member={me} size={48} fallback="mascot" /> : <Mascot size={48} />}
           <div className="who">
-            {me && <b>{me.name} 님</b>}
-            {club && <span>{club}</span>}
+            {me && <b>{me.name}</b>}
+            {me && (me.title || me.clubs.length > 0)
+              ? <span>{[me.title, ...me.clubs.map((c) => (c.role ? `${c.name}(${c.role})` : c.name))].filter(Boolean).join(" · ")}</span>
+              : club && <span>{club}</span>}
           </div>
           <div className="icons">
             {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
             {me && me.perms.length > 0 && (
               <Link href="/admin" aria-label="관리자 화면" title="관리자 화면" style={headIcon}>
                 <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-                관리자
               </Link>
             )}
             {me && (
               <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={headIcon}>
                 <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-                로그아웃
               </button>
             )}
           </div>
@@ -252,21 +251,24 @@ export default function SettingsPage() {
           </div>
 
           {/* 1. 내 정보 */}
-          <section className="card" aria-labelledby="s-me" style={{ ...col, gap: 12 }}>
-            <b id="s-me" style={sectionTitle}>내 정보</b>
+          <section className="sect" aria-labelledby="s-me">
+            <h2 id="s-me">내 정보</h2>
+            <div className="sect-body" style={{ gap: 14 }}>
 
             <AvatarPicker name={me.name} avatar={me.avatar} onChange={(avatar, text) => { setMe((m) => (m ? { ...m, avatar } : m)); setNote({ tone: "ok", text }); }} />
 
-            <div style={col}>
-              <span className="l" id="g-l" style={{ marginBottom: 0 }}>성별</span>
-              <div className="row" role="group" aria-labelledby="g-l">
-                {(["남", "여"] as const).map((x) => (
-                  <button key={x} type="button" className="opt rowopt" aria-pressed={me.gender === x} disabled={saving} onClick={() => saveGender(x)}>
-                    <span className="name grow">{x}</span><span className="tick" />
-                  </button>
-                ))}
+            <div style={{ ...col, gap: 4 }}>
+              <div className="row">
+                <span id="g-l" className="grow" style={{ fontSize: fs(14) }}>성별</span>
+                <div className="seg" role="group" aria-labelledby="g-l" style={{ width: 132, flex: "none" }}>
+                  {(["남", "여"] as const).map((x) => (
+                    <button key={x} type="button" aria-pressed={me.gender === x} disabled={saving} onClick={() => saveGender(x)} style={{ minHeight: 40, fontSize: fs(13) }}>
+                      {x}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <span className="small">{me.gender ? "누르면 바로 저장돼요." : "아직 성별이 없어요. 명리학 풀이를 보려면 골라 주세요."}</span>
+              <span className="small" style={{ fontSize: fs(12) }}>{me.gender ? "누르면 바로 저장돼요." : "아직 성별이 없어요. 명리학 풀이를 보려면 골라 주세요."}</span>
             </div>
 
             <form onSubmit={saveInfo} style={{ ...col, gap: 10 }}>
@@ -354,33 +356,36 @@ export default function SettingsPage() {
                   : "가입 신청을 보내면 소모임 임원(대표·총무 등)이 승인해요. 승인되면 알림으로 알려 드려요. 소모임 직책은 관리자가 정해요."}
               </span>
             </div>
+            </div>
           </section>
 
-          {/* 2. 화면 모드 */}
-          <section className="card" aria-labelledby="s-theme" style={col}>
-            <b id="s-theme" style={sectionTitle}>화면 모드</b>
+          {/* 2. 화면: 화면 모드 + 글자 크기(이 기기만) */}
+          <section className="sect" aria-labelledby="s-screen">
+            <h2 id="s-screen">화면</h2>
+            <div className="sect-body">
             {/* 작은 선택 칸 3개를 가로로 */}
+            <span id="s-theme" className="sr-only">화면 모드</span>
             <div className="seg" role="group" aria-labelledby="s-theme">
               {THEME_OPTS.map((o) => {
                 const on = pr.theme === o.v;
                 return (
                   <button key={o.v} type="button" aria-pressed={on} title={o.sub} onClick={() => !on && savePrefs({ theme: o.v })}
-                    style={{ minHeight: 44 }}>
-                    <span aria-hidden="true">{o.v === "system" ? "◐" : o.v === "light" ? "☀" : "☾"}</span>
+                    style={{ minHeight: 40, fontSize: fs(13) }}>
                     {o.label}
                   </button>
                 );
               })}
             </div>
-            <span className="small">{THEME_OPTS.find((o) => o.v === pr.theme)?.sub}</span>
+            <span className="small" style={{ fontSize: fs(12), marginTop: -4 }}>{THEME_OPTS.find((o) => o.v === pr.theme)?.sub}</span>
+            </div>
           </section>
 
-          {/* 2-1. 글자 크기 (이 기기만) */}
-          <section className="card" aria-labelledby="s-scale" style={col}>
-            <b id="s-scale" style={sectionTitle}>글자 크기</b>
+          <section className="sect" aria-labelledby="s-scale">
+            <h2 id="s-scale">글자 크기</h2>
+            <div className="sect-body" style={{ gap: 6 }}>
             <div className="row" style={{ alignItems: "baseline" }}>
-              <span className="grow" style={{ fontSize: `calc(${fs(17)} * ${+(effScale(scale) / effScale(applied)).toFixed(4)})` }} aria-hidden="true">가나다 Aa 123</span>
-              <b className="num" aria-hidden="true">{scale}단계{scale === SCALE_DEFAULT ? " (보통)" : ""}</b>
+              <span className="grow" style={{ fontSize: `calc(${fs(16)} * ${+(effScale(scale) / effScale(applied)).toFixed(4)})` }} aria-hidden="true">가나다 Aa 123</span>
+              <span className="num small" style={{ fontSize: fs(13) }} aria-hidden="true">{scale}단계{scale === SCALE_DEFAULT ? " (보통)" : ""}</span>
             </div>
             <input
               type="range" className="scale-range" min={1} max={10} step={1} value={scale}
@@ -393,16 +398,18 @@ export default function SettingsPage() {
             <div className="scale-ticks" aria-hidden="true">
               {SCALE_LEVELS.map((_, i) => <span key={i} aria-current={scale === i + 1}>{i + 1}</span>)}
             </div>
-            <div className="row" style={{ flexWrap: "wrap" }}>
-              <span className="small grow">1 작게 · 5 보통 · 10 크게. 글자와 아이콘만 커지거나 작아지고 화면 너비·창 크기는 그대로예요. 띠를 끌다가 손을 떼면 화면 전체에 적용되고, 이 기기에만 저장돼요.</span>
+            <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-start" }}>
+              <span className="small grow" style={{ fontSize: fs(12) }}>1 작게 · 5 보통 · 10 크게. 글자와 아이콘만 커지거나 작아지고 화면 너비·창 크기는 그대로예요. 띠를 끌다가 손을 떼면 화면 전체에 적용되고, 이 기기에만 저장돼요.</span>
               {applied !== SCALE_DEFAULT && <button className="mini" type="button" onClick={() => { setScale(SCALE_DEFAULT); commitScale(SCALE_DEFAULT); }}>보통으로</button>}
             </div>
-            <span className="small">폭이 좁은 휴대폰(400px 미만)에서는 글자가 넘치지 않게 8단계(130%)보다 크게는 키우지 않아요. 하단 메뉴 글자는 칸에 맞게 조금만 커져요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
+            <span className="small" style={{ fontSize: fs(12) }}>폭이 좁은 휴대폰(400px 미만)에서는 글자가 넘치지 않게 8단계(130%)보다 크게는 키우지 않아요. 하단 메뉴 글자는 칸에 맞게 조금만 커져요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
+            </div>
           </section>
 
           {/* 3. 받을 알림 */}
-          <section className="card" aria-labelledby="s-notify" style={col}>
-            <b id="s-notify" style={sectionTitle}>받을 알림</b>
+          <section className="sect" aria-labelledby="s-notify">
+            <h2 id="s-notify">받을 알림</h2>
+            <div className="sect-body">
             <div className="checks" role="group" aria-labelledby="s-notify">
               {NOTIFY_OPTS.map((o) => (
                 <label key={o.k}>
@@ -411,29 +418,31 @@ export default function SettingsPage() {
                 </label>
               ))}
             </div>
-            <span className="small">새 글이 올라오거나 수정되면 알려 드려요. 하단 아이콘에도 숫자로 표시돼요.</span>
+            <span className="small" style={{ fontSize: fs(12) }}>새 글이 올라오거나 수정되면 알려 드려요. 하단 아이콘에도 숫자로 표시돼요.</span>
+            </div>
           </section>
 
           {/* 4. 알림 설정 */}
-          <section className="card" aria-labelledby="s-push" style={col}>
-            <b id="s-push" style={sectionTitle}>알림 설정</b>
-            <Switch id="sw-on" label="알림" sub={pr.notifyOn ? "켜져 있어요" : "꺼져 있어요. 알림을 보내지 않아요."} on={pr.notifyOn} onChange={toggleNotify} />
-            {pr.notifyOn && device === "off" && (
-              <button type="button" className="btn white" style={{ minHeight: 46, fontSize: fs(15) }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
-            )}
-            {pr.notifyOn && device === "unsupported" && (
-              <span className="small">이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 공유 버튼 → “홈 화면에 추가”로 설치한 앱에서 켜 주세요. 하단 아이콘 숫자는 그대로 보여요.</span>
+          <section className="sect" aria-labelledby="s-push">
+            <h2 id="s-push">알림</h2>
+            <Switch id="sw-on" label="알림 받기" sub={pr.notifyOn ? undefined : "꺼져 있어요. 알림을 보내지 않아요."} on={pr.notifyOn} onChange={toggleNotify} />
+            {pr.notifyOn && (device === "off" || device === "unsupported") && (
+              <div className="sect-body" style={{ paddingTop: 0, paddingBottom: 12 }}>
+                {device === "off"
+                  ? <button type="button" className="btn white" style={{ minHeight: 44, fontSize: fs(14) }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
+                  : <span className="small" style={{ fontSize: fs(12) }}>이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 공유 버튼 → “홈 화면에 추가”로 설치한 앱에서 켜 주세요. 하단 아이콘 숫자는 그대로 보여요.</span>}
+              </div>
             )}
             <Switch id="sw-sound" label="소리" sub={pr.notifyOn ? undefined : "알림을 켜면 고를 수 있어요"} on={pr.sound} disabled={!pr.notifyOn} onChange={(v) => savePrefs({ sound: v })} />
-            <Switch id="sw-quiet" label="방해 금지 시간" sub={pr.notifyOn ? "이 시간에는 알림을 보내지 않아요" : "알림을 켜면 고를 수 있어요"} on={pr.quiet.on} disabled={!pr.notifyOn} onChange={(v) => savePrefs({ quiet: { on: v } })} />
+            <Switch id="sw-quiet" label="방해 금지 시간" sub={pr.notifyOn ? (pr.quiet.on ? `${pr.quiet.from} ~ ${pr.quiet.to}에는 알림을 보내지 않아요` : "이 시간에는 알림을 보내지 않아요") : "알림을 켜면 고를 수 있어요"} on={pr.quiet.on} disabled={!pr.notifyOn} onChange={(v) => savePrefs({ quiet: { on: v } })} />
             {pr.quiet.on && (
-              <div className="timerange" role="group" aria-label="방해 금지 시간">
+              <div className="timerange sect-body" role="group" aria-label="방해 금지 시간" style={{ flexDirection: "row", paddingTop: 0, paddingBottom: 12 }}>
                 <input type="time" className="field" aria-label="시작 시각" value={pr.quiet.from} onChange={(e) => e.target.value && savePrefs({ quiet: { from: e.target.value } })} />
                 <span aria-hidden="true">~</span>
                 <input type="time" className="field" aria-label="끝 시각" value={pr.quiet.to} onChange={(e) => e.target.value && savePrefs({ quiet: { to: e.target.value } })} />
               </div>
             )}
-            <span className="small">휴대폰 화면에는 내용 없이 새 게시물 수와 새 게시물 안내만 보여요.</span>
+            <p className="small" style={{ fontSize: fs(12), margin: 0, padding: "10px var(--pr) 12px var(--pl)", borderTop: "1px solid var(--line2)" }}>휴대폰 화면에는 내용 없이 새 게시물 수와 새 게시물 안내만 보여요.</p>
           </section>
         </>
       )}

@@ -74,8 +74,13 @@ export default function BoardPage() {
     load();
   }, [load]);
 
+  const pinned = posts?.filter((p) => p.pinned) ?? [];
+  const rest = posts?.filter((p) => !p.pinned) ?? [];
+  const responseChip = (p: PostSummary) =>
+    p.responded ? <span className="chip violet">참여 ✓</span> : p.closed ? <span className="chip gray">마감</span> : <span className="chip red">참여 전</span>;
+
   return (
-    <main className="app with-tabs">
+    <main className="app with-tabs" style={{ gap: 8 }}>
       {/* 윗줄: 캐릭터(왼쪽) + 알림·조직도·로그아웃 아이콘(오른쪽). 다음 줄: 인사 */}
       <header className="topbar">
         <div className="row">
@@ -89,24 +94,21 @@ export default function BoardPage() {
               aria-label={bell > 0 ? `알림, 새 소식 ${bell}개` : "알림"} style={headIcon}>
               <IconBell size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
               {bell > 0 && <span className={tabsCss.badge} aria-hidden="true">{bell > 99 ? "99+" : bell}</span>}
-              알림
             </button>
             <button type="button" onClick={() => setOrgOpen(true)} aria-haspopup="dialog" aria-label="조직도" title="조직도" style={headIcon}>
               <IconOrg size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-              조직도
             </button>
             <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={headIcon}>
               <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-              로그아웃
             </button>
           </div>
         </div>
       </header>
-      <div className="row">
+      <div className="row" style={{ marginTop: 4 }}>
         <h1 className="title grow">게시글</h1>
         {me?.canWrite && (
           <a
-            href="/board/new" className="btn" aria-haspopup="dialog" style={{ width: "auto", minHeight: 40, padding: "0 14px", fontSize: fs(14), textDecoration: "none" }}
+            href="/board/new" className="btn" aria-haspopup="dialog" style={{ width: "auto", minHeight: 36, padding: "0 12px", gap: 4, fontSize: fs(13), fontWeight: 500, textDecoration: "none" }}
             onClick={(e) => {
               // 새 탭·창으로 열기(Ctrl/⌘/Shift/가운데 버튼)는 그대로 글쓰기 화면으로
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
@@ -121,33 +123,58 @@ export default function BoardPage() {
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!posts && !error && <p className="small">불러오는 중이에요…</p>}
       {posts && posts.length === 0 && <div className="msg info">아직 올라온 글이 없어요.</div>}
-      <ul className="rows" aria-label="게시글 목록">
-        {posts?.map((p) => (
-          <li key={p.id}>
-            <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none", alignItems: "flex-start" }}>
-              <span className="grow">
-                <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                  {p.pinned && <span className="pill red" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
-                  {p.notice && <span className="pill red" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={13} />공지</span>}
-                  {p.form !== "general" && <span className="pill gray">{FORM_LABEL[p.form]}</span>}
-                  {RESPONSE_FORMS.includes(p.form) && (p.responded ? <span className="pill ok">참여 ✓</span> : p.closed ? <span className="pill gray">마감</span> : <span className="pill bad">참여 전</span>)}
+      {/* 고정 글: 한 줄씩 짧게(칩 + 제목 + "고정") */}
+      {pinned.length > 0 && (
+        <ul className="rows bleed" aria-label="상단 고정 글">
+          {pinned.map((p) => (
+            <li key={p.id}>
+              <Link href={`/board/${p.id}`} className="pinrow">
+                {p.notice
+                  ? <span className="chip red"><IconMegaphone size={12} />공지</span>
+                  : <span className="chip line">{FORM_LABEL[p.form]}</span>}
+                <span className="t">{p.title}</span>
+                {RESPONSE_FORMS.includes(p.form) && responseChip(p)}
+                <span className="small" style={{ fontSize: fs(12), flex: "none", display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={12} />고정</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {/* 최근 글: 글쓴이·시각 → 제목 → 요약 → 첨부 */}
+      {rest.length > 0 && (
+        <ul className="rows bleed" aria-label="게시글 목록">
+          {rest.map((p) => (
+            <li key={p.id}>
+              <Link href={`/board/${p.id}`} className="post">
+                <span className="meta">
+                  <b>{p.authorName || "운영진"}</b><span>· {fmtDate(p.createdAt)}</span>
+                  {p.notice && <span className="chip red"><IconMegaphone size={12} />공지</span>}
+                  <span style={{ marginLeft: "auto", display: "inline-flex", gap: 4 }}>
+                    {RESPONSE_FORMS.includes(p.form) && responseChip(p)}
+                    <span className="chip line">{FORM_LABEL[p.form]}</span>
+                  </span>
                 </span>
-                <span className="name" style={{ overflowWrap: "anywhere" }}>{p.title}</span>
-                {p.excerpt && <span className="small" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.excerpt}</span>}
-                <span className="small" style={{ fontSize: fs(13), display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-                  {p.authorName || "운영진"} · {fmtDate(p.createdAt)}
-                  {p.fileCount > 0 && <><span aria-hidden="true">·</span><IconClip size={14} /><span>{p.fileCount}<span className="sr-only">개 첨부</span></span></>}
-                  {p.audienceText !== "전체 회원" && <> · {p.audienceText}</>}
+                <span style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                    <h2>{p.title}</h2>
+                    {p.excerpt && <p>{p.excerpt}</p>}
+                  </span>
+                  {p.thumb && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={fileUrl(p.thumb)} alt="" loading="lazy" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, flex: "none", border: "1px solid var(--line)" }} />
+                  )}
                 </span>
-              </span>
-              {p.thumb && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={fileUrl(p.thumb)} alt="" loading="lazy" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flex: "none", border: "1px solid var(--line)" }} />
-              )}
-            </Link>
-          </li>
-        ))}
-      </ul>
+                {(p.fileCount > 0 || p.audienceText !== "전체 회원") && (
+                  <span className="meta">
+                    {p.fileCount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconClip size={13} />첨부 {p.fileCount}</span>}
+                    {p.audienceText !== "전체 회원" && <span>{p.audienceText}</span>}
+                  </span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
       <Popup id="post-editor" width={760} title="글쓰기" open={writing} onClose={closeWriter} dirty={dirty}>
         <PostEditor
           onDirty={setDirty}

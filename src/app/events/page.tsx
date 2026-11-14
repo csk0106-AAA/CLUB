@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { ConsentSheet } from "@/components/ConsentSheet";
 import { EventCalendar } from "@/components/EventCalendar";
 import { EventCreate } from "@/components/EventCreate";
-import { IconCalendar, IconPin } from "@/components/Icons";
+import { IconPin } from "@/components/Icons";
 import { MemberTabs } from "@/components/MemberTabs";
-import { api, fmtWhen, TYPE_TONE } from "@/lib/client";
+import { api, fmtDate, fmtWhen, TYPE_TONE } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Ev = {
@@ -96,53 +96,70 @@ export default function EventsPage() {
   const upcoming = shown.filter((e) => !e.past);
   const past = shown.filter((e) => e.past);
 
-  const card = (e: Ev) => (
-    <button key={e.id} className="opt" type="button" disabled={locked} onClick={() => open(e)}
-      style={e.needsAnswer ? { boxShadow: "inset 3px 0 0 var(--red)" } : undefined}>
-      <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-        {e.pinned && !e.past && <span className="pill red" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
-        <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
-        {e.draft && <span className="pill gray">초안 · 회원에게 안 보임</span>}
-        {!e.canApply && !e.draft && <span className="pill gray">내 소모임 아님</span>}
-      </span>
-      <span className="name">{e.name}</span>
-      <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
-      {e.needsAnswer && <span className="pill bad">! 참석 여부를 체크해 주세요</span>}
-      {e.myAnswer === "불참" && <span className="pill gray">불참으로 알림</span>}
-      {e.feeDue && (e.payNotice ? <span className="pill warn">₩ 입금 확인 중</span> : <span className="pill bad">₩ 회비 미입금</span>)}
-      {e.feePaid && <span className="pill ok">회비 입금 ✓</span>}
-    </button>
-  );
-  // 일정 관리 권한이 있으면 줄 오른쪽에 "일정 관리"(관리 화면, 관리자 비밀번호를 아직 확인하지 않았으면 그 화면에서 묻는다)
-  const item = (e: Ev) =>
-    canManage && !e.draft ? (
-      <div key={e.id} style={{ display: "flex", alignItems: "stretch" }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex" }}>{card(e)}</div>
-        <a className="mini" href={`/admin/events/${e.id}`} onClick={(ev) => { ev.preventDefault(); router.push(`/admin/events/${e.id}`); }}
-          style={{ alignSelf: "center", margin: "0 10px", textDecoration: "none" }} aria-label={`${e.name} 일정 관리`}>일정 관리</a>
+  // 일정 카드(목업 C): 칩 줄(고정·유형 + 오른쪽 내 상태) → 왼쪽 날짜 칸(월/일/요일) | 이름·일시·장소
+  // 일정 관리 권한이 있으면 카드 아래 "일정 관리"(관리 화면, 관리자 비밀번호를 아직 확인하지 않았으면 그 화면에서 묻는다)
+  const item = (e: Ev) => {
+    const d = dateParts(e.startsAt);
+    const dim = !e.canApply && !e.draft;
+    const status = e.draft ? null
+      : e.needsAnswer ? <span className="st" style={{ color: "var(--red-t)" }}>참석 여부 체크 필요</span>
+      : e.myAnswer === "불참" ? <span className="st" style={{ color: "var(--sub)", fontWeight: 500 }}>불참으로 알림</span>
+      : e.myAnswer ? <span className="st" style={{ color: "var(--violet-t)" }}>{e.myAnswer}</span>
+      : dim ? <span className="st" style={{ color: "var(--sub)", fontWeight: 500 }}>내 소모임 아님 · 신청 가능</span>
+      : null;
+    return (
+      <div key={e.id} className={`evcard${dim ? " dim" : ""}`}>
+        <button type="button" disabled={locked} onClick={() => open(e)}>
+          <span className="top">
+            {e.pinned && !e.past && <span className="chip red"><IconPin size={12} />고정</span>}
+            <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
+            {e.draft && <span className="chip gray">초안 · 회원에게 안 보임</span>}
+            {status}
+          </span>
+          <span className="body">
+            <span className="date" aria-hidden="true">
+              {d ? <>{d.m}월<b>{d.d}</b>{d.w}</> : <>날짜<b>–</b>미정</>}
+            </span>
+            <span className="info">
+              <span className="n">{e.name}</span>
+              <span className="s">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
+              {(e.feeDue || e.feePaid) && (
+                <span style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
+                  {e.feeDue && (e.payNotice ? <span className="chip warn">₩ 입금 확인 중</span> : <span className="chip red">₩ 회비 미입금</span>)}
+                  {e.feePaid && <span className="chip violet">회비 입금 ✓</span>}
+                </span>
+              )}
+            </span>
+          </span>
+        </button>
+        {canManage && !e.draft && (
+          <div className="foot">
+            <a href={`/admin/events/${e.id}`} onClick={(ev) => { ev.preventDefault(); router.push(`/admin/events/${e.id}`); }} aria-label={`${e.name} 일정 관리`}>일정 관리 ›</a>
+          </div>
+        )}
       </div>
-    ) : (
-      card(e)
     );
+  };
 
   return (
     <main className="app with-tabs">
-      <div className="row" style={{ alignItems: "center", flexWrap: "wrap" }}>
-        <h1 className="title grow">예정된 일정</h1>
+      {/* 윗줄(목업 C): 제목 + 리스트|캘린더 보기 전환 (+ 일정 만들기) */}
+      <header className="topbar pagebar">
+        <h1 className="title">예정된 일정</h1>
         <div className="seg" role="group" aria-label="보기 방식" style={{ flex: "none" }}>
-          <button type="button" aria-pressed={view === "list"} onClick={() => view !== "list" && toggleView()} style={{ minHeight: 44, padding: "0 12px" }}>
-            <ListIcon />리스트
+          <button type="button" aria-pressed={view === "list"} onClick={() => view !== "list" && toggleView()} style={{ minHeight: 36, padding: "0 12px", fontSize: fs(13) }}>
+            리스트
           </button>
-          <button type="button" aria-pressed={view === "calendar"} onClick={() => view !== "calendar" && toggleView()} style={{ minHeight: 44, padding: "0 12px" }}>
-            <IconCalendar size={18} />캘린더
+          <button type="button" aria-pressed={view === "calendar"} onClick={() => view !== "calendar" && toggleView()} style={{ minHeight: 36, padding: "0 12px", fontSize: fs(13) }}>
+            캘린더
           </button>
         </div>
         {canCreate && (
-          <button type="button" className="btn" style={{ width: "auto", minHeight: 44, padding: "0 14px", flex: "none" }} aria-haspopup="dialog" disabled={locked} onClick={() => setCreating(true)}>
+          <button type="button" className="btn" style={{ width: "auto", minHeight: 36, padding: "0 12px", flex: "none", fontSize: fs(13), fontWeight: 500 }} aria-haspopup="dialog" disabled={locked} onClick={() => setCreating(true)}>
             + 일정 만들기
           </button>
         )}
-      </div>
+      </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}
@@ -150,23 +167,23 @@ export default function EventsPage() {
 
       {view === "calendar" && events && <EventCalendar events={shown} renderItem={item} hrefOf={hrefOf} />}
 
-      {view === "list" && upcoming.length > 0 && <div className="rows">{upcoming.map(item)}</div>}
-      {view === "list" && upcoming.length > 0 && <p className="hint">일정을 누르면 그 일정에 필요한 화면으로 이동해요. 다른 소모임 일정은 읽어 볼 수 있고, 가입이나 참관을 신청할 수 있어요.</p>}
+      {view === "list" && upcoming.length > 0 && <div className="evlist">{upcoming.map(item)}</div>}
 
       {view === "list" && past.length > 0 && (
-        <section aria-label="지난 일정" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button type="button" className="btn white" aria-expanded={showPast} aria-controls="past-list" onClick={() => setShowPast(!showPast)}>
-            {showPast ? "접기 ▴" : `지난 일정 ${past.length}개 보기 ▾`}
+        <section aria-label="지난 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button type="button" className="morebtn" aria-expanded={showPast} aria-controls="past-list" onClick={() => setShowPast(!showPast)}>
+            {showPast ? "지난 일정 접기 ▴" : `지난 일정 ${past.length}개 보기 ▾`}
           </button>
-          {showPast && <div id="past-list" className="rows">{past.map(item)}</div>}
+          {showPast && <div id="past-list" className="evlist">{past.map(item)}</div>}
         </section>
       )}
+      {view === "list" && upcoming.length > 0 && <p className="hint" style={{ fontSize: fs(12) }}>일정을 누르면 그 일정에 필요한 화면으로 이동해요. 다른 소모임 일정은 읽어 볼 수 있고, 가입이나 참관을 신청할 수 있어요.</p>}
 
       {drafts.length > 0 && (
         <section aria-label="공개 전 초안" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <b style={{ font: `700 ${fs(16)} var(--display)` }}>공개 전 초안 {drafts.length}개</b>
           <span className="small">관리 권한이 있는 회원에게만 보여요. 누르면 일정 관리 화면에서 내용을 채우고 “회원에게 전달”할 수 있어요.</span>
-          <div className="rows">{drafts.map(item)}</div>
+          <div className="evlist">{drafts.map(item)}</div>
         </section>
       )}
 
@@ -179,14 +196,14 @@ export default function EventsPage() {
   );
 }
 
-// 리스트로 보기 아이콘(줄 세 개)
-function ListIcon() {
-  return (
-    <svg width={18} height={18} style={{ width: fs(18), height: fs(18), flex: "none" }} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <path d="M8 6h12M8 12h12M8 18h12" />
-      <circle cx="3.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
-      <circle cx="3.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
-      <circle cx="3.5" cy="18" r="1.3" fill="currentColor" stroke="none" />
-    </svg>
-  );
+// 유형 칩 색(TYPE_TONE) → 작은 칩 모양. 회색 유형은 테두리만 있는 칩.
+const TYPE_CHIP: Record<string, string> = { red: "red", violet: "violet", warn: "warn", ink: "ink", gray: "line" };
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+// 날짜 칸(월/일/요일). fmtDate 가 한국 시간 "YYYY/MM/DD" 로 바꿔 준다.
+function dateParts(startsAt: string): { m: number; d: number; w: string } | null {
+  const v = fmtDate(startsAt);
+  const x = /^(\d{4})\/(\d{2})\/(\d{2})$/.exec(v);
+  if (!x) return null;
+  const [y, m, d] = [Number(x[1]), Number(x[2]), Number(x[3])];
+  return { m, d, w: DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] };
 }

@@ -8,7 +8,7 @@
 .many :global(.tab) {
   min-width: 0;
   padding: 0 2px;
-  font-size: calc(clamp(11.5px, 3.2vw, 12.5px) * min(var(--fs, 1), 1.2));
+  font-size: calc(11px * min(var(--fs, 1), 1.2));
   line-height: 1.25;
   letter-spacing: -0.01em;
   white-space: nowrap;

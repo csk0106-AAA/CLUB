@@ -266,13 +266,15 @@ function Detail({ id }: { id: string }) {
 
   return (
     <>
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <Link href={ev.published === "true" ? `/events/${id}/overview` : "/events"} className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-          {ev.published === "true" ? "‹ 회원 화면에서 보기" : "‹ 일정 목록"}
-        </Link>
-        <span className={`pill ${TYPE_TONE[ev.type] ?? "gray"}`}>{ev.type}</span>
-        <h1 className="title grow" style={{ fontSize: fs(20) }}>{ev.name}</h1>
-        <span className={`pill ${ev.published === "true" ? "ok" : "gray"}`}>{ev.published === "true" ? "회원에게 공개 중" : "초안"}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
+          <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "회원에게 공개 중" : "초안"}</span>
+          <Link href={ev.published === "true" ? `/events/${id}/overview` : "/events"} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
+            {ev.published === "true" ? "회원 화면에서 보기 ›" : "‹ 일정 목록"}
+          </Link>
+        </div>
+        <h1 className="title" style={{ overflowWrap: "anywhere" }}>{ev.name}</h1>
       </div>
 
       <div className="tabsx" role="tablist" aria-label="일정 관리 메뉴">

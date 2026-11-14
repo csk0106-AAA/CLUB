@@ -56,7 +56,9 @@ export default function ProfilesPage() {
 
   return (
     <main className="app with-tabs">
-      <h1 className="title">회원 프로필 북</h1>
+      <header className="topbar pagebar">
+        <h1 className="title">회원 프로필 북</h1>
+      </header>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!d && !error && !locked && <p className="small">불러오는 중이에요…</p>}
       {locked && !popup && (
@@ -84,11 +86,11 @@ export default function ProfilesPage() {
       )}
       {d && (
         <>
-          <p className="small" style={{ margin: 0 }}>
+          <p className="small" style={{ margin: 0, fontSize: fs(12) }}>
             {d.revealed ? "회원이 공개로 승인한 소개를 실명으로 보여 드려요." : `회원이 공개로 승인한 소개예요. 지금은 별칭으로만 보여요${d.revealAt ? ` (${fmtDateTime(d.revealAt)}부터 실명)` : ""}.`}
           </p>
           {d.items.length === 0 && <div className="msg info">아직 공개된 소개가 없어요. 회원이 작성하고 배포하면 여기에 나타나요.</div>}
-          <div className="rows">
+          <div className="rows bleed">
             {d.items.map((p) => (
               <button key={p.id} type="button" className="opt" onClick={() => router.push(`/profiles/${p.id}`)}
                 style={d.revealed && p.name ? { flexDirection: "row", alignItems: "center", gap: 12 } : undefined}>
@@ -100,7 +102,7 @@ export default function ProfilesPage() {
                     {d.revealed && p.name && details(p) && <span style={{ font: `400 ${fs(13)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
                   </span>
                   {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}
-                  {p.mine && <span className="pill blue">내 소개</span>}
+                  {p.mine && <span className="chip violet">내 소개</span>}
                 </span>
               </button>
             ))}
