@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 //   React 이벤트는 컴포넌트 트리를 따라 올라가므로 submit·click 은 창 밖으로 전달하지 않는다.
 // - dirty 이면 닫기 전에 확인한다. 닫히면 연 버튼으로 포커스를 돌려준다.
 
-type Geo = { x?: number; y?: number; w?: number; h?: number }; // CSS px (글자 크기 배율을 뺀 값)
+type Geo = { x?: number; y?: number; w?: number; h?: number }; // CSS px
 type Saved = { w?: number; h?: number; max?: boolean };
 
 const MIN_W = 320;
@@ -35,11 +35,6 @@ function writeSaved(id: string, v: Saved) {
   } catch {
     // 저장소를 못 쓰는 환경: 이번에만 적용
   }
-}
-// 설정의 "글자 크기"(body zoom) 배율. 포인터 좌표(화면 px)를 CSS px 로 바꿀 때 쓴다.
-function zoomOf(): number {
-  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--z"));
-  return z > 0 ? z : 1;
 }
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -77,7 +72,7 @@ function PopupWindow({ id, onClose, title, dirty, width = 560, children, footer 
   onCloseRef.current = onClose;
   const closingRef = useRef(false);
   const downOnBackdrop = useRef(false);
-  const drag = useRef<{ dir: string; px: number; py: number; x: number; y: number; w: number; h: number; z: number; pid: number } | null>(null);
+  const drag = useRef<{ dir: string; px: number; py: number; x: number; y: number; w: number; h: number; pid: number } | null>(null);
 
   // 닫기 요청: 작성 중이면 확인
   const requestClose = useCallback((): boolean => {
@@ -98,9 +93,8 @@ function PopupWindow({ id, onClose, title, dirty, width = 560, children, footer 
     const saved = readSaved(id);
     setMax(!!saved.max);
     if (saved.w || saved.h) {
-      const z = zoomOf();
-      const vw = window.innerWidth / z;
-      const vh = window.innerHeight / z;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
       setGeo({
         w: saved.w ? clamp(saved.w, MIN_W, vw - 16) : undefined,
         h: saved.h ? clamp(saved.h, MIN_H, vh - 16) : undefined,
@@ -159,9 +153,8 @@ function PopupWindow({ id, onClose, title, dirty, width = 560, children, footer 
   // 화면 크기가 줄면 창을 화면 안으로
   useEffect(() => {
     const fit = () => {
-      const z = zoomOf();
-      const vw = window.innerWidth / z;
-      const vh = window.innerHeight / z;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
       setGeo((g) => {
         if (g.x === undefined && g.w === undefined && g.h === undefined) return g;
         const w = g.w !== undefined ? clamp(g.w, Math.min(MIN_W, vw - 16), vw - 16) : undefined;
@@ -181,9 +174,8 @@ function PopupWindow({ id, onClose, title, dirty, width = 560, children, footer 
     const dlg = ref.current;
     if (!dlg) return;
     e.preventDefault();
-    const z = zoomOf();
     const r = dlg.getBoundingClientRect();
-    drag.current = { dir, px: e.clientX, py: e.clientY, x: r.left / z, y: r.top / z, w: r.width / z, h: r.height / z, z, pid: e.pointerId };
+    drag.current = { dir, px: e.clientX, py: e.clientY, x: r.left, y: r.top, w: r.width, h: r.height, pid: e.pointerId };
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
@@ -193,10 +185,10 @@ function PopupWindow({ id, onClose, title, dirty, width = 560, children, footer 
   function onDrag(e: React.PointerEvent<HTMLElement>) {
     const d = drag.current;
     if (!d || d.pid !== e.pointerId) return;
-    const vw = window.innerWidth / d.z;
-    const vh = window.innerHeight / d.z;
-    const dx = (e.clientX - d.px) / d.z;
-    const dy = (e.clientY - d.py) / d.z;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const dx = e.clientX - d.px;
+    const dy = e.clientY - d.py;
     if (d.dir === "move") {
       setGeo((g) => ({
         x: clamp(d.x + dx, 0, Math.max(0, vw - d.w)),
@@ -240,14 +232,13 @@ function PopupWindow({ id, onClose, title, dirty, width = 560, children, footer 
     e.preventDefault();
     const dlg = ref.current;
     if (!dlg) return;
-    const z = zoomOf();
     const r = dlg.getBoundingClientRect();
-    const vw = window.innerWidth / z;
-    const vh = window.innerHeight / z;
-    const x = r.left / z;
-    const y = r.top / z;
-    const w = clamp(r.width / z + dw, MIN_W, Math.max(MIN_W, vw - x));
-    const h = clamp(r.height / z + dh, MIN_H, Math.max(MIN_H, vh - y));
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const x = r.left;
+    const y = r.top;
+    const w = clamp(r.width + dw, MIN_W, Math.max(MIN_W, vw - x));
+    const h = clamp(r.height + dh, MIN_H, Math.max(MIN_H, vh - y));
     setGeo({ x, y, w, h });
     writeSaved(id, { w, h, max: false });
   }

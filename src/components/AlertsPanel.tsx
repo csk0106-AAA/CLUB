@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
 import { refreshUnread } from "./MemberTabs";
+import { fs } from "@/lib/fs";
 
 type Handle = {
   id: string; kind: string; kindLabel: string; club: string; eventId: string; eventName: string;
@@ -20,7 +21,7 @@ const STATUS: Record<string, { text: string; tone: string }> = {
   approved: { text: "승인됨", tone: "ok" },
   declined: { text: "거절됨", tone: "bad" },
 };
-const sectionTitle = { font: "400 18px var(--display)", margin: 0 } as const;
+const sectionTitle = { font: `400 ${fs(18)} var(--display)`, margin: 0 } as const;
 const what = (r: { kindLabel: string; club: string; eventName: string }) =>
   `${r.club} ${r.kindLabel}${r.eventName ? ` · ${r.eventName}` : ""}`;
 

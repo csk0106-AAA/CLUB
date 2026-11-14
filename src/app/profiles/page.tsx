@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Sheet } from "@/components/Sheet";
 import { api, fmtDateTime } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Data = {
   revealed: boolean; revealAt: string;
@@ -91,7 +92,7 @@ export default function ProfilesPage() {
               <button key={p.id} type="button" className="opt" onClick={() => router.push(`/profiles/${p.id}`)}>
                 <span className="name">
                   {d.revealed && p.name ? p.name : `“${p.alias}”`}
-                  {d.revealed && p.name && details(p) && <span style={{ font: "700 16px var(--body)", color: "var(--sub)" }}> / {details(p)}</span>}
+                  {d.revealed && p.name && details(p) && <span style={{ font: `700 ${fs(16)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
                 </span>
                 {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}
                 {p.mine && <span className="pill blue">내 소개</span>}

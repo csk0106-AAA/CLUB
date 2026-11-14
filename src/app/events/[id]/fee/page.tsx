@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { api, fmtDate, won } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Detail = {
   event: { name: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string };
@@ -73,13 +74,13 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
 
       {attending && e.fee && (
         <>
-          <div className="card center"><span className="small">내 회비</span><div className="title num" style={{ fontSize: 40 }}>{won(e.fee)}</div></div>
+          <div className="card center"><span className="small">내 회비</span><div className="title num" style={{ fontSize: fs(40) }}>{won(e.fee)}</div></div>
           <div className="card">
             <span className="small">입금 계좌</span>
-            <div className="num" style={{ font: "700 19px var(--body)" }}>{e.account || "계좌가 정해지면 알려 드려요"}</div>
+            <div className="num" style={{ font: `700 ${fs(19)} var(--body)` }}>{e.account || "계좌가 정해지면 알려 드려요"}</div>
             <div className="small">{e.accountHolder ? `예금주 ${e.accountHolder} · ` : ""}입금자명은 본인 이름으로 보내 주세요.</div>
           </div>
-          {e.feeDeadline && <div className="card"><span className="small">입금 기한</span><div style={{ font: "700 19px var(--body)" }}>{fmtDate(e.feeDeadline)}까지</div></div>}
+          {e.feeDeadline && <div className="card"><span className="small">입금 기한</span><div style={{ font: `700 ${fs(19)} var(--body)` }}>{fmtDate(e.feeDeadline)}까지</div></div>}
           {paid ? (
             <div className="fb good"><span className="ic" aria-hidden="true">✓</span><div><b>입금이 확인됐어요</b><span className="t">회비 알림이 사라졌어요. 고맙습니다!</span></div></div>
           ) : noticed ? (

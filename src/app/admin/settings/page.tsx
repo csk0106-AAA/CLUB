@@ -7,6 +7,7 @@ import { PasswordField } from "@/components/PasswordField";
 import { DateField } from "@/components/DateField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 // 회원구분·직책·소모임 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
 type S = { clubName: string; clubShortName: string; inviteCode: string };
@@ -44,7 +45,7 @@ function Settings() {
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 20px var(--display)" }}>원우회 이름</b>
+        <b style={{ font: `400 ${fs(20)} var(--display)` }}>원우회 이름</b>
         <div className="grid2">
           <div><label className="l" htmlFor="s-name">원우회 이름 (회원 첫 화면에 표시)</label><input id="s-name" className="field" value={s.clubName} onChange={(e) => setS({ ...s, clubName: e.target.value })} /></div>
           <div><label className="l" htmlFor="s-short">줄여 쓰는 이름</label><input id="s-short" className="field" value={s.clubShortName} onChange={(e) => setS({ ...s, clubShortName: e.target.value })} /></div>
@@ -58,7 +59,7 @@ function Settings() {
           <span className="pill gray">회원 첫 화면 미리보기</span>
           <div className="say" style={{ alignItems: "center", marginTop: 8 }}>
             <Mascot size={56} />
-            <b style={{ font: "400 21px/1.3 var(--display)" }}>{s.clubName || "원우회 이름"}</b>
+            <b style={{ font: `400 ${fs(21)}/1.3 var(--display)` }}>{s.clubName || "원우회 이름"}</b>
           </div>
         </div>
       </div>
@@ -84,7 +85,7 @@ function ProfileReveal() {
   }
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: "400 20px var(--display)" }}>프로필 북 실명 공개 시점</b>
+      <b style={{ font: `400 ${fs(20)} var(--display)` }}>프로필 북 실명 공개 시점</b>
       <span className="small">행사가 끝난 뒤 별칭 대신 실명으로 보여 줄 시점이에요(한국 시간). 비워 두면 계속 별칭으로만 보여요.</span>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="row" style={{ flexWrap: "wrap" }}>

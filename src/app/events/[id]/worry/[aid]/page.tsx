@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
 import { api, fmtDate } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Mine = { id: string; body: string; category: string; anonymous: boolean; drawn: boolean };
 type Data = {
@@ -94,7 +95,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
     <main className="app">
       <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기"
         right={d.canJoin ? <span className={`pill ${d.mine.length ? "ok" : "gray"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
-      <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: 24 }}>{d.activity.name}</h1></div>
+      <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: fs(24) }}>{d.activity.name}</h1></div>
       <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 행사에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 사회자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
@@ -102,13 +103,13 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
 
       {d.mine.length > 0 && (
         <section aria-label="내 고민" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 20px var(--display)" }}>내가 쓴 고민 {d.mine.length}개 <span className="small">(최대 {d.max}개)</span></b>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>내가 쓴 고민 {d.mine.length}개 <span className="small">(최대 {d.max}개)</span></b>
           {d.mine.map((m) => (
             <div key={m.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 {open && !m.drawn ? (
                   <select className="field" aria-label="이 고민의 카테고리" value={m.category} disabled={busy}
-                    style={{ width: "auto", minHeight: 40, padding: "0 10px", fontSize: 16, borderRadius: 12 }}
+                    style={{ width: "auto", minHeight: 40, padding: "0 10px", fontSize: fs(16), borderRadius: 12 }}
                     onChange={(e) => setCatOf(m, e.target.value)}>
                     {d.categories.map((c) => <option key={c}>{c}</option>)}
                     {!d.categories.includes(m.category) && <option>{m.category}</option>}
@@ -146,7 +147,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
 
       {open && (edit !== null || d.mine.length < d.max) && (
         <form className="card" onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <b style={{ font: "400 20px var(--display)" }}>{edit ? "고민 수정" : "새 고민 쓰기"}</b>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>{edit ? "고민 수정" : "새 고민 쓰기"}</b>
           <div>
             <label className="l" htmlFor="w-body">고민 또는 조언을 구하고 싶은 질문</label>
             <textarea id="w-body" className="field" rows={5} style={{ padding: 12, lineHeight: 1.6 }} maxLength={500} value={body} onChange={(e) => setBody(e.target.value)} />

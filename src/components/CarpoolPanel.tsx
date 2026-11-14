@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { DateField } from "./DateField";
 import { Popup } from "./Popup";
+import { fs } from "@/lib/fs";
 
 type Dir = "go" | "back";
 type LegInfo = { on: boolean; from: string; departAt: string; to: string; arriveAt: string; riders: string[] };
@@ -198,7 +199,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
 
       {canEdit && (
         <>
-          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 차량 등록</button>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setErr(""); setOpen(true); }}>+ 차량 등록</button>
           <Popup id="carpool-new" width={720} title="차량 등록" open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(nu) !== JSON.stringify(blank())}>
           <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {err && <div className="msg bad" role="alert">{err}</div>}
@@ -215,14 +216,14 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
                 <LegFields idp={`nc-${dir}`} leg={nu[dir]} onChange={(p) => setNu((n) => ({ ...n, [dir]: { ...n[dir], ...p } }))} />
               </section>
             ))}
-            <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>차량 등록</button>
+            <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }}>차량 등록</button>
           </form>
           </Popup>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => act("auto")}>빈 좌석 자동 배정</button>
+            <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => act("auto")}>빈 좌석 자동 배정</button>
             {!d.published
-              ? <button className="btn" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => act("publish")} disabled={d.cars.length === 0}>확인 (회원에게 배포)</button>
-              : <button className="btn red" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => act("unpublish")}>배포 취소</button>}
+              ? <button className="btn" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => act("publish")} disabled={d.cars.length === 0}>확인 (회원에게 배포)</button>
+              : <button className="btn red" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => act("unpublish")}>배포 취소</button>}
           </div>
           <span className="small">차량마다 갈 때·올 때 운행 여부를 고르고, 구간별로 일정과 탑승자를 정해요. 둘 다 운행하면 왕복이에요. 같은 사람이 같은 구간의 두 차량에 들어갈 수 없고, 운전자는 운행하는 구간 모두에 포함돼요. 운전자, 차량번호, 장소, 시간은 몰라도 등록할 수 있어요. 그룹명을 비우면 "카풀 1조"처럼 자동으로 붙어요. 바꾼 뒤에는 다시 확인을 눌러야 배포돼요.</span>
         </>

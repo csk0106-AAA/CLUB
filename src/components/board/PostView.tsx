@@ -5,6 +5,7 @@ import { fmtSize, isClosed, type FeeData, type FileMeta, type MinutesData, type 
 import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
 import { agendaTone } from "./FormFields";
 import { fileUrl, type PostDetail } from "./types";
+import { fs } from "@/lib/fs";
 
 const col = { display: "flex", flexDirection: "column", gap: 10 } as const;
 const Err = ({ text }: { text: string }) => (text ? <div className="msg bad" role="alert">{text}</div> : null);
@@ -64,7 +65,7 @@ export function RulesView({ rules }: { rules: NonNullable<PostDetail["rules"]> }
     <>
       {chapters.map(([ch, list]) => (
         <section key={ch} className="card" aria-label={ch} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 19px var(--display)" }}>{ch}</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>{ch}</b>
           {list.map((r) => (
             <div key={r.id}>
               {r.article && <b>{r.article}</b>}
@@ -96,17 +97,17 @@ export function FeeView({ data: raw, myFee, full }: { data: FeeData; myFee: NonN
     <>
       <div className="card center">
         <span className="small">내 {label}{who ? ` (${who})` : ""}</span>
-        <div className="title num" style={{ fontSize: 36 }}>{has ? won(myFee.amount) : "없어요"}</div>
+        <div className="title num" style={{ fontSize: fs(36) }}>{has ? won(myFee.amount) : "없어요"}</div>
       </div>
       {has && (
         <div className="card">
           <span className="small">입금 계좌</span>
-          <div className="num" style={{ font: "700 19px var(--body)", overflowWrap: "anywhere" }}>{data.account || "계좌가 정해지면 알려 드려요"}</div>
+          <div className="num" style={{ font: `700 ${fs(19)} var(--body)`, overflowWrap: "anywhere" }}>{data.account || "계좌가 정해지면 알려 드려요"}</div>
           <div className="small">{data.accountHolder ? `예금주 ${data.accountHolder} · ` : ""}입금자명은 본인 이름으로 보내 주세요.</div>
           {data.account && <button className="mini" type="button" style={{ marginTop: 8 }} onClick={copy}>{copied ? "복사했어요 ✓" : "계좌번호 복사"}</button>}
         </div>
       )}
-      {has && data.deadline && <div className="card"><span className="small">납부기한</span><div style={{ font: "700 19px var(--body)" }}>{fmtDate(data.deadline)}까지</div></div>}
+      {has && data.deadline && <div className="card"><span className="small">납부기한</span><div style={{ font: `700 ${fs(19)} var(--body)` }}>{fmtDate(data.deadline)}까지</div></div>}
       {data.dueText && <div className="card"><span className="small">납부 안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.dueText}</div></div>}
       {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 회원관리 › 모임회비관리에서 바꿀 수 있어요.</span>}
       {full && (
@@ -165,7 +166,7 @@ export function PollBox({ id, data, mine, results, onDone }: { id: string; data:
   return (
     <section className="card" aria-label="투표" style={col}>
       <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-        <b style={{ font: "400 19px var(--display)" }}>투표</b>
+        <b style={{ font: `400 ${fs(19)} var(--display)` }}>투표</b>
         <span className="pill gray">{data.multi ? "여러 개 고르기" : "하나만 고르기"}</span>
         {data.anonymous && <span className="pill gray">익명</span>}
         {data.deadline && <span className={`pill ${closed ? "bad" : "warn"}`}>{closed ? "마감됨" : `${fmtDateTime(data.deadline)} 마감`}</span>}
@@ -234,7 +235,7 @@ export function SurveyBox({ id, data, mine, results, onDone }: { id: string; dat
     <>
       <section className="card" aria-label="설문" style={col}>
         <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-          <b style={{ font: "400 19px var(--display)" }}>{mine && !edit ? "내 답" : "설문"}</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>{mine && !edit ? "내 답" : "설문"}</b>
           {data.deadline && <span className={`pill ${closed ? "bad" : "warn"}`}>{closed ? "마감됨" : `${fmtDateTime(data.deadline)} 마감`}</span>}
           {mine && <span className="pill ok">답했어요 ✓</span>}
         </div>
@@ -269,7 +270,7 @@ export function SurveyBox({ id, data, mine, results, onDone }: { id: string; dat
       </section>
       {results && (
         <section className="card" aria-label="설문 결과" style={col}>
-          <b style={{ font: "400 19px var(--display)" }}>결과 · {results.total}명 응답 (작성자·관리자만)</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>결과 · {results.total}명 응답 (작성자·관리자만)</b>
           {data.questions.map((q, qi) => {
             const r = results.questions.find((x) => x.id === q.id);
             return (
@@ -318,7 +319,7 @@ export function QuizBox({ id, data, mine, results, onDone }: { id: string; data:
     <>
       <section className="card" aria-label="OX 퀴즈" style={col}>
         <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-          <b style={{ font: "400 19px var(--display)" }}>OX 퀴즈</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>OX 퀴즈</b>
           {mine && <span className="pill ok">{data.items.length}문제 중 {score}개 맞혔어요</span>}
         </div>
         {data.items.map((it, i) => {
@@ -339,7 +340,7 @@ export function QuizBox({ id, data, mine, results, onDone }: { id: string; data:
                 <div className="row" role="radiogroup" aria-label={`${i + 1}번 문제 답`}>
                   {(["O", "X"] as const).map((v) => (
                     <button key={v} type="button" className="opt" role="radio" aria-checked={ans[i] === v} aria-pressed={ans[i] === v}
-                      style={{ alignItems: "center", minHeight: 56, font: "400 28px var(--display)" }} onClick={() => setAns(ans.map((x, j) => (j === i ? v : x)))}>
+                      style={{ alignItems: "center", minHeight: 56, font: `400 ${fs(28)} var(--display)` }} onClick={() => setAns(ans.map((x, j) => (j === i ? v : x)))}>
                       {v}
                     </button>
                   ))}
@@ -354,7 +355,7 @@ export function QuizBox({ id, data, mine, results, onDone }: { id: string; data:
       </section>
       {results && (
         <section className="card" aria-label="퀴즈 결과" style={col}>
-          <b style={{ font: "400 19px var(--display)" }}>점수 요약 (작성자·관리자만)</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>점수 요약 (작성자·관리자만)</b>
           <span>{results.total}명이 풀었어요 · 평균 {results.avg}점 / {results.items}점</span>
           {results.perItem.map((n, i) => <Bar key={i} label={`${i + 1}번 정답`} n={n} total={results.total} />)}
           {results.people.length > 0 && (

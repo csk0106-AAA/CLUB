@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
 import { Popup } from "./Popup";
+import { fs } from "@/lib/fs";
 
 type Room = { id: string; date: string; name: string; capacity: number; memo: string; guests: string[] };
 type Data = {
@@ -122,7 +123,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
 
       {canEdit && day && (
         <>
-          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ {dayLabel(day)} 방 만들기</button>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setErr(""); setOpen(true); }}>+ {dayLabel(day)} 방 만들기</button>
           <Popup id="room-new" title={`${dayLabel(day)} 방 만들기`} open={open} onClose={() => setOpen(false)} dirty={!!(nu.name.trim() || nu.memo.trim())}>
           <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {err && <div className="msg bad" role="alert">{err}</div>}
@@ -131,7 +132,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
               <div><label className="l" htmlFor="nr-cp">정원</label><input id="nr-cp" className="field" type="number" min={1} max={20} value={nu.capacity} onChange={(e) => setNu({ ...nu, capacity: Number(e.target.value) })} /></div>
               <div><label className="l" htmlFor="nr-mm">메모</label><input id="nr-mm" className="field" value={nu.memo} onChange={(e) => setNu({ ...nu, memo: e.target.value })} /></div>
             </div>
-            <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>방 만들기</button>
+            <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }}>방 만들기</button>
           </form>
           </Popup>
           {shown.length > 0 && otherDates.length > 0 && (
@@ -140,13 +141,13 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
                 <option value="">복사할 날짜</option>
                 {otherDates.map((x) => <option key={x} value={x}>{dayLabel(x)}</option>)}
               </select>
-              <button className="btn white" type="button" disabled={!copyTo} style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => act("copy")}>{dayLabel(day)} 배정 그대로 복사</button>
+              <button className="btn white" type="button" disabled={!copyTo} style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => act("copy")}>{dayLabel(day)} 배정 그대로 복사</button>
             </div>
           )}
           <div className="row" style={{ flexWrap: "wrap" }}>
             {!d.published
-              ? <button className="btn" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => act("publish")} disabled={d.rooms.length === 0}>확인 (회원에게 배포)</button>
-              : <button className="btn red" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => act("unpublish")}>배포 취소</button>}
+              ? <button className="btn" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => act("publish")} disabled={d.rooms.length === 0}>확인 (회원에게 배포)</button>
+              : <button className="btn red" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => act("unpublish")}>배포 취소</button>}
           </div>
           <span className="small">같은 날짜에 한 사람은 한 방에만 들어갈 수 있어요. 날짜마다 방 구성이 달라도 돼요. 방이나 투숙자를 바꾸면 다시 확인을 눌러야 배포돼요.</span>
         </>

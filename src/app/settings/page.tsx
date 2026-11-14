@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconLogout, IconShield } from "@/components/Icons";
-import { headIcon, HEAD_ICON_SIZE } from "@/components/HeadIcon";
+import { headIcon, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "@/components/HeadIcon";
 import { Mascot } from "@/components/Mascot";
 import { MemberTabs } from "@/components/MemberTabs";
-import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS } from "@/components/ThemeBoot";
+import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS, SCALE_NARROW_MAX } from "@/components/ThemeBoot";
 import { api } from "@/lib/client";
 import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
 import { disablePush, enablePush, pushSupported } from "@/lib/push-client";
+import { fs } from "@/lib/fs";
 
 type Me = {
   name: string; perms: string[]; admin: boolean; consent: boolean; gender: string;
@@ -32,7 +33,7 @@ const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string }[] = [
 const ROLE_MSG = "소모임 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요.";
 
 const digits = (s: string) => s.replace(/\D/g, "");
-const sectionTitle = { font: "400 19px var(--display)" } as const;
+const sectionTitle = { font: `400 ${fs(19)} var(--display)` } as const;
 const col = { display: "flex", flexDirection: "column", gap: 8 } as const;
 
 // 켜기·끄기 스위치 한 줄
@@ -67,11 +68,18 @@ export default function SettingsPage() {
   // 띠를 끄는 동안에는 미리보기만 바꾸고, 손을 떼면(또는 키보드로 바꾸면) 화면 전체에 적용한다.
   const [scale, setScale] = useState(SCALE_DEFAULT);
   const [applied, setApplied] = useState(SCALE_DEFAULT);
+  // 폭 400px 미만 휴대폰은 배율 상한(SCALE_NARROW_MAX)이 있어 미리보기도 같은 상한으로 계산한다.
+  const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     const v = readScale();
     setScale(v);
     setApplied(v);
+    setNarrow(window.innerWidth < 400);
   }, []);
+  const effScale = (lv: number) => {
+    const z = SCALE_LEVELS[lv - 1];
+    return narrow ? Math.min(z, SCALE_NARROW_MAX) : z;
+  };
   function commitScale(v: number) {
     if (v === applied) return;
     setApplied(v);
@@ -193,23 +201,23 @@ export default function SettingsPage() {
           {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
           {me && me.perms.length > 0 && (
             <Link href="/admin" aria-label="관리자 화면" title="관리자 화면" style={{ ...headIcon, color: "var(--blue-t)" }}>
-              <IconShield size={HEAD_ICON_SIZE} />
+              <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
               관리자
             </Link>
           )}
           {me && (
             <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ ...headIcon, color: "var(--red-t)" }}>
-              <IconLogout size={HEAD_ICON_SIZE} />
+              <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
               로그아웃
             </button>
           )}
         </div>
       </div>
       <div>
-        {me && <b style={{ font: "400 20px var(--display)", display: "block", overflowWrap: "anywhere" }}>{me.name} 님</b>}
+        {me && <b style={{ font: `400 ${fs(20)} var(--display)`, display: "block", overflowWrap: "anywhere" }}>{me.name} 님</b>}
         {club && <div className="small">{club}</div>}
       </div>
-      <h1 className="title" style={{ fontSize: 22 }}>설정</h1>
+      <h1 className="title" style={{ fontSize: fs(22) }}>설정</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!me && !error && <p className="small">불러오는 중이에요…</p>}
       {me && pr && (
@@ -259,9 +267,9 @@ export default function SettingsPage() {
                 </span>
               </div>
               {phoneChanged && phoneOk && (
-                <div className="msg info" style={{ fontSize: 15 }}>다음 로그인부터 초대코드가 <b>{phoneDigits.slice(-4)}</b>로 바뀌어요. 잊지 않게 기억해 주세요.</div>
+                <div className="msg info" style={{ fontSize: fs(15) }}>다음 로그인부터 초대코드가 <b>{phoneDigits.slice(-4)}</b>로 바뀌어요. 잊지 않게 기억해 주세요.</div>
               )}
-              <button className="btn" type="submit" style={{ minHeight: 50, fontSize: 18 }} disabled={saving || !infoChanged}>내 정보 저장</button>
+              <button className="btn" type="submit" style={{ minHeight: 50, fontSize: fs(18) }} disabled={saving || !infoChanged}>내 정보 저장</button>
             </form>
 
             {/* 소모임: 내가 가입한 소모임만 보여 주고, "+ 소모임 추가"로 더한다 */}
@@ -275,7 +283,7 @@ export default function SettingsPage() {
                       <b className="grow">{c.name}</b>
                       {c.role && <span className="pill warn">{c.role}</span>}
                       {c.role
-                        ? <span className="small" style={{ fontSize: 13 }}>관리자에게 변경 요청</span>
+                        ? <span className="small" style={{ fontSize: fs(13) }}>관리자에게 변경 요청</span>
                         : <button className="mini danger" type="button" disabled={saving} aria-label={`${c.name} 소모임에서 빠지기`}
                             onClick={() => window.confirm(`${c.name} 소모임에서 빠질까요?`) && toggleClub(c.name)}>빼기</button>}
                     </li>
@@ -284,7 +292,7 @@ export default function SettingsPage() {
               )}
               {!addingClub ? (
                 <button className="btn white" type="button" disabled={saving || joinable.length === 0} aria-expanded={false}
-                  style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => { setAddingClub(true); setClubPick(joinable[0] ?? ""); }}>
+                  style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(16) }} onClick={() => { setAddingClub(true); setClubPick(joinable[0] ?? ""); }}>
                   + 소모임 추가
                 </button>
               ) : (
@@ -292,9 +300,9 @@ export default function SettingsPage() {
                   <select className="field" aria-label="가입할 소모임" style={{ flex: "1 1 160px", width: "auto", minHeight: 46 }} value={clubPick} onChange={(e) => setClubPick(e.target.value)}>
                     {joinable.map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
-                  <button className="btn" type="button" disabled={saving || !clubPick} style={{ width: "auto", minHeight: 46, fontSize: 16 }}
+                  <button className="btn" type="button" disabled={saving || !clubPick} style={{ width: "auto", minHeight: 46, fontSize: fs(16) }}
                     onClick={async () => { await toggleClub(clubPick); setAddingClub(false); }}>추가</button>
-                  <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={() => setAddingClub(false)}>취소</button>
+                  <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(16) }} onClick={() => setAddingClub(false)}>취소</button>
                 </div>
               )}
               <span className="small">
@@ -318,7 +326,7 @@ export default function SettingsPage() {
                       minHeight: 44, padding: "6px 4px", borderRadius: 12, cursor: "pointer",
                       border: `2px solid ${on ? "var(--blue)" : "var(--line)"}`,
                       background: on ? "var(--blue-bg)" : "var(--card)", color: on ? "var(--blue-t)" : "var(--ink)",
-                      font: "700 15px var(--body)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      font: `700 ${fs(15)} var(--body)`, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     }}>
                     <span aria-hidden="true">{o.v === "system" ? "◐" : o.v === "light" ? "☀" : "☾"}</span>
                     {o.label}
@@ -333,7 +341,7 @@ export default function SettingsPage() {
           <section className="card" aria-labelledby="s-scale" style={col}>
             <b id="s-scale" style={sectionTitle}>글자 크기</b>
             <div className="row" style={{ alignItems: "baseline" }}>
-              <span className="grow" style={{ fontSize: Math.round(17 * SCALE_LEVELS[scale - 1] / SCALE_LEVELS[applied - 1]) }} aria-hidden="true">가나다 Aa 123</span>
+              <span className="grow" style={{ fontSize: `calc(${fs(17)} * ${+(effScale(scale) / effScale(applied)).toFixed(4)})` }} aria-hidden="true">가나다 Aa 123</span>
               <b className="num" aria-hidden="true">{scale}단계{scale === SCALE_DEFAULT ? " (보통)" : ""}</b>
             </div>
             <input
@@ -348,10 +356,10 @@ export default function SettingsPage() {
               {SCALE_LEVELS.map((_, i) => <span key={i} aria-current={scale === i + 1}>{i + 1}</span>)}
             </div>
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <span className="small grow">1 작게 · 5 보통 · 10 크게. 띠를 끌다가 손을 떼면 화면 전체에 적용되고, 이 기기에만 저장돼요.</span>
+              <span className="small grow">1 작게 · 5 보통 · 10 크게. 글자와 아이콘만 커지거나 작아지고 화면 너비·창 크기는 그대로예요. 띠를 끌다가 손을 떼면 화면 전체에 적용되고, 이 기기에만 저장돼요.</span>
               {applied !== SCALE_DEFAULT && <button className="mini" type="button" onClick={() => { setScale(SCALE_DEFAULT); commitScale(SCALE_DEFAULT); }}>보통으로</button>}
             </div>
-            <span className="small">폭이 좁은 휴대폰(400px 미만)에서는 화면이 넘치지 않게 7단계(120%)보다 크게는 키우지 않아요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
+            <span className="small">폭이 좁은 휴대폰(400px 미만)에서는 글자가 넘치지 않게 8단계(130%)보다 크게는 키우지 않아요. 하단 메뉴 글자는 칸에 맞게 조금만 커져요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
           </section>
 
           {/* 3. 받을 알림 */}
@@ -373,7 +381,7 @@ export default function SettingsPage() {
             <b id="s-push" style={sectionTitle}>알림 설정</b>
             <Switch id="sw-on" label="알림" sub={pr.notifyOn ? "켜져 있어요" : "꺼져 있어요. 알림을 보내지 않아요."} on={pr.notifyOn} onChange={toggleNotify} />
             {pr.notifyOn && device === "off" && (
-              <button type="button" className="btn white" style={{ minHeight: 46, fontSize: 16 }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
+              <button type="button" className="btn white" style={{ minHeight: 46, fontSize: fs(16) }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
             )}
             {pr.notifyOn && device === "unsupported" && (
               <span className="small">이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 공유 버튼 → “홈 화면에 추가”로 설치한 앱에서 켜 주세요. 하단 아이콘 숫자는 그대로 보여요.</span>

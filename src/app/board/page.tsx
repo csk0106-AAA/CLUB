@@ -10,13 +10,14 @@ import { Mascot } from "@/components/Mascot";
 import { MemberTabs } from "@/components/MemberTabs";
 import tabsCss from "@/components/MemberTabs.module.css";
 import { OrgView } from "@/components/OrgView";
-import { headIcon } from "@/components/HeadIcon";
+import { headIcon, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "@/components/HeadIcon";
 import { Popup } from "@/components/Popup";
 import { PostEditor } from "@/components/board/PostEditor";
 import { fileUrl, type BoardMe, type PostSummary } from "@/components/board/types";
 import { FORM_LABEL, RESPONSE_FORMS } from "@/lib/board";
 import { api, fmtDate } from "@/lib/client";
 import { disablePush } from "@/lib/push-client";
+import { fs } from "@/lib/fs";
 
 
 type Me = { name: string; consent: boolean };
@@ -80,29 +81,29 @@ export default function BoardPage() {
         <div style={{ display: "flex", gap: 6, flex: "none" }}>
           <button type="button" onClick={() => setAlertsOpen(true)} aria-haspopup="dialog" title="알림"
             aria-label={bell > 0 ? `알림, 새 소식 ${bell}개` : "알림"} style={{ ...headIcon, color: "var(--blue-t)" }}>
-            <IconBell size={20} />
+            <IconBell size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
             {bell > 0 && <span className={tabsCss.badge} aria-hidden="true">{bell > 99 ? "99+" : bell}</span>}
             알림
           </button>
           <button type="button" onClick={() => setOrgOpen(true)} aria-haspopup="dialog" aria-label="조직도" title="조직도" style={{ ...headIcon, color: "var(--blue-t)" }}>
-            <IconOrg size={20} />
+            <IconOrg size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
             조직도
           </button>
           <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ ...headIcon, color: "var(--red-t)" }}>
-            <IconLogout size={20} />
+            <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
             로그아웃
           </button>
         </div>
       </div>
       <div>
-        <b style={{ font: "400 20px var(--display)", overflowWrap: "anywhere" }}>{who ? `${who.name} 대표님, 반갑습니다.` : "반갑습니다."}</b>
+        <b style={{ font: `400 ${fs(20)} var(--display)`, overflowWrap: "anywhere" }}>{who ? `${who.name} 대표님, 반갑습니다.` : "반갑습니다."}</b>
         {club && <div className="small">{club}</div>}
       </div>
       <div className="row">
-        <h1 className="title grow" style={{ fontSize: 22 }}>게시글</h1>
+        <h1 className="title grow" style={{ fontSize: fs(22) }}>게시글</h1>
         {me?.canWrite && (
           <a
-            href="/board/new" className="btn" aria-haspopup="dialog" style={{ width: "auto", minHeight: 46, fontSize: 18, textDecoration: "none" }}
+            href="/board/new" className="btn" aria-haspopup="dialog" style={{ width: "auto", minHeight: 46, fontSize: fs(18), textDecoration: "none" }}
             onClick={(e) => {
               // 새 탭·창으로 열기(Ctrl/⌘/Shift/가운데 버튼)는 그대로 글쓰기 화면으로
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
@@ -130,7 +131,7 @@ export default function BoardPage() {
                 </span>
                 <span className="name" style={{ overflowWrap: "anywhere" }}>{p.title}</span>
                 {p.excerpt && <span className="small" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.excerpt}</span>}
-                <span className="small" style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                <span className="small" style={{ fontSize: fs(13), display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                   {p.authorName || "운영진"} · {fmtDate(p.createdAt)}
                   {p.fileCount > 0 && <><span aria-hidden="true">·</span><IconClip size={14} /><span>{p.fileCount}<span className="sr-only">개 첨부</span></span></>}
                   {p.audienceText !== "전체 회원" && <> · {p.audienceText}</>}

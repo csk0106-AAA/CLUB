@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { Audience } from "@/lib/audience";
 import { api, fmtDate } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 // 공개 대상 고르기 (게시글·행사 공통).
 //  전체 회원 / 회원 선택 / 행사 참석자 선택(여러 행사) / 소모임 선택(여러 소모임)
@@ -63,7 +64,7 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
 
   return (
     <fieldset className="card" style={{ display: "flex", flexDirection: "column", gap: 10, margin: 0 }}>
-      <legend style={{ font: "400 18px var(--display)", padding: "0 4px" }}>{legend}</legend>
+      <legend style={{ font: `400 ${fs(18)} var(--display)`, padding: "0 4px" }}>{legend}</legend>
       <div className="checks" role="radiogroup" aria-label={legend}>
         {MODES.map((m) => (
           <label key={m.k} style={value.mode === m.k ? { borderColor: "var(--blue)", background: "var(--blue-bg)", color: "var(--blue-t)" } : undefined}>

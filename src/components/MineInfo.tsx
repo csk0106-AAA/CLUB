@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ScheduleView } from "./ScheduleBoard";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Data = {
   schedule: { at: string; title: string }[];
@@ -36,25 +37,25 @@ export function MineInfo({ eventId, placeholder = false }: { eventId: string; pl
   return (
     <>
       {placeholder && nothingYet && (
-        <div className="card"><b style={{ font: "400 19px var(--display)" }}>내 조와 카풀</b><div className="small">조 편성 후 알려 드려요.</div></div>
+        <div className="card"><b style={{ font: `400 ${fs(19)} var(--display)` }}>내 조와 카풀</b><div className="small">조 편성 후 알려 드려요.</div></div>
       )}
       {d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
-          <b style={{ font: "400 19px var(--display)" }}>일정</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>일정</b>
           {/* 날짜 제목 아래 시간순 */}
           <ScheduleView items={d.schedule} />
         </section>
       )}
       {d.groups.map((g, i) => (
         <section key={i} className="card" aria-label={`내 조 ${g.title}`}>
-          <b style={{ font: "400 19px var(--display)" }}>{g.title}</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>{g.title}</b>
           <div><span className="pill blue">{g.team}</span></div>
           <div className="small">{g.members.join(", ")}</div>
         </section>
       ))}
       {d.rooms?.published && d.rooms.mine.length > 0 && (
         <section className="card" aria-label="내 숙소" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: "400 19px var(--display)" }}>내 숙소</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>내 숙소</b>
           {d.rooms.mine.map((r, i) => (
             <div key={i} style={{ borderTop: i ? "2px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
               <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{fmtDate(r.date)} 숙박</span><b>{r.name}</b></div>
@@ -66,7 +67,7 @@ export function MineInfo({ eventId, placeholder = false }: { eventId: string; pl
       )}
       {d.carpool.published && d.carpool.mine.length > 0 && (
         <section className="card" aria-label="내 카풀" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: "400 19px var(--display)" }}>내 카풀</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>내 카풀</b>
           {/* 갈 때 / 올 때 구간별로 내가 탄(운전하는) 차 */}
           {d.carpool.mine.map((c, i) => (
             <div key={i} style={{ borderTop: i ? "2px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>

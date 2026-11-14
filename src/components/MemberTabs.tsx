@@ -11,6 +11,9 @@ import css from "./MemberTabs.module.css";
 // 조직도는 홈 화면 위쪽 "조직도" 아이콘으로 연다(/org 로 바로 들어오면 "홈" 탭이 켜진다).
 // 관리자 화면은 설정 안(설정 화면 위쪽 관리자 아이콘)으로 들어가므로, 관리자 화면에서는 "설정" 탭이 켜진다.
 // 이 탭을 쓰는 화면은 <main className="app with-tabs"> 로 감싼다.
+// 하단 탭 칸 높이는 그대로: 아이콘·글자는 글자 크기 설정을 따르되 120%까지만 커진다(MemberTabs.module.css 와 같은 값).
+const TAB_ICON = 28;
+const TAB_MAX = 1.2;
 type Tab = "events" | "board" | "org" | "profiles" | "settings" | "admin";
 // alerts: 소모임 가입·참관 신청 알림(lib/unread.ts)
 type Counts = { events: number; posts: number; profiles: number; alerts: number };
@@ -49,10 +52,10 @@ export function MemberTabs({ on: tab }: { on: Tab }) {
   }, [on]);
 
   const items: { key: Tab; href: string; label: string; icon: React.ReactNode }[] = [
-    { key: "board", href: "/board", label: "홈", icon: <IconHome /> },
-    { key: "events", href: "/events", label: "행사", icon: <IconCalendar /> },
-    { key: "profiles", href: "/profiles", label: "프로필 북", icon: <IconProfileBook /> },
-    { key: "settings", href: "/settings", label: "설정", icon: <IconGear /> },
+    { key: "board", href: "/board", label: "홈", icon: <IconHome size={TAB_ICON} max={TAB_MAX} /> },
+    { key: "events", href: "/events", label: "행사", icon: <IconCalendar size={TAB_ICON} max={TAB_MAX} /> },
+    { key: "profiles", href: "/profiles", label: "프로필 북", icon: <IconProfileBook size={TAB_ICON} max={TAB_MAX} /> },
+    { key: "settings", href: "/settings", label: "설정", icon: <IconGear size={TAB_ICON} max={TAB_MAX} /> },
   ];
   return (
     <nav className={`tabs ${css.many}`} aria-label="메뉴">

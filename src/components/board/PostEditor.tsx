@@ -12,6 +12,7 @@ import { api } from "@/lib/client";
 import { FormFields } from "./FormFields";
 import { RulesEditor } from "./RulesEditor";
 import { fileUrl, type BoardMeta, type PostFull } from "./types";
+import { fs } from "@/lib/fs";
 
 type Note = { tone: "bad" | "info"; text: string } | null;
 const ALL_AUD: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
@@ -157,12 +158,12 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {!initial && (
         <fieldset className="card" style={{ margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-          <legend style={{ font: "400 18px var(--display)", padding: "0 4px" }}>양식</legend>
+          <legend style={{ font: `400 ${fs(18)} var(--display)`, padding: "0 4px" }}>양식</legend>
           <div className="pick" role="radiogroup" aria-label="양식" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
             {forms.map((f) => (
               <button key={f} type="button" role="radio" aria-checked={form === f} aria-pressed={form === f} className="opt" style={{ minHeight: 0, padding: "10px 12px" }} onClick={() => pickForm(f)}>
-                <span style={{ font: "400 18px var(--display)" }}>{FORM_LABEL[f]}</span>
-                <span className="small" style={{ fontSize: 13 }}>{FORM_HINT[f]}</span>
+                <span style={{ font: `400 ${fs(18)} var(--display)` }}>{FORM_LABEL[f]}</span>
+                <span className="small" style={{ fontSize: fs(13) }}>{FORM_HINT[f]}</span>
               </button>
             ))}
           </div>
@@ -192,7 +193,7 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
           </div>
 
           <section className="card" aria-label="사진과 파일" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: "400 18px var(--display)" }}>사진 · 파일</b>
+            <b style={{ font: `400 ${fs(18)} var(--display)` }}>사진 · 파일</b>
             <span className="small">사진(jpg, png, webp, gif)과 문서(pdf, 오피스, hwp, zip, txt)를 하나에 4MB까지, 글 하나에 {MAX_FILES}개까지 올릴 수 있어요.</span>
             {images.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

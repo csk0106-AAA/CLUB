@@ -10,6 +10,7 @@ import { AiGuidesEditor, aiPointKeys } from "./AiGuidesEditor";
 import { Popup } from "./Popup";
 import { TeamBoard } from "./TeamBoard";
 import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "./TemplateEditor";
+import { fs } from "@/lib/fs";
 
 type Act = {
   id: string;
@@ -73,7 +74,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
 
   return (
     <div style={{ borderTop: "2px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-      <b style={{ font: "400 17px var(--display)" }}>사회자</b>
+      <b style={{ font: `400 ${fs(17)} var(--display)` }}>사회자</b>
       <span className="small">
         사회자가 로그인 화면에서 자기 이름을 고르고 <b>사회자 접속번호</b>를 넣으면 이 활동의 진행 화면만 보여요.
         평소 초대코드(연락처 뒷자리)로 들어오면 일반 회원으로 활동에 참여해요.
@@ -98,10 +99,10 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
       </div>
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn" type="button" disabled={busy || !dirty || (Boolean(hostId) && code.length < 4)} style={{ width: "auto", minWidth: 140, minHeight: 46, fontSize: 16 }} onClick={() => save()}>
+          <button className="btn" type="button" disabled={busy || !dirty || (Boolean(hostId) && code.length < 4)} style={{ width: "auto", minWidth: 140, minHeight: 46, fontSize: fs(16) }} onClick={() => save()}>
             {busy ? "저장 중…" : "사회자 저장"}
           </button>
-          {a.hostId && <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={() => save(true)}>지정 풀기</button>}
+          {a.hostId && <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 46, fontSize: fs(16) }} onClick={() => save(true)}>지정 풀기</button>}
         </div>
       )}
       {a.hostId && !dirty && <span className="small">지금 사회자: {hostName} · 접속번호 {a.hostCode}</span>}
@@ -123,7 +124,7 @@ function Schedule({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; 
 
   return (
     <div style={{ borderTop: "2px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-      <b style={{ font: "400 17px var(--display)" }}>활동 날짜와 진행 시간</b>
+      <b style={{ font: `400 ${fs(17)} var(--display)` }}>활동 날짜와 진행 시간</b>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="grid2">
         <div><label className="l" htmlFor={`as-${a.id}`}>시작 일시</label><DateField id={`as-${a.id}`} mode="datetime" value={s} disabled={!canEdit} onChange={setS} /></div>
@@ -202,7 +203,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
   return (
     <div style={{ borderTop: "2px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <b style={{ font: "400 17px var(--display)" }}>출석 체크 (참여할 사람 선택)</b>
+        <b style={{ font: `400 ${fs(17)} var(--display)` }}>출석 체크 (참여할 사람 선택)</b>
         <span className="pill blue">선택 {sel.size}명</span>
         <span className={`pill ${att.confirmed ? "ok" : "warn"}`}>{att.confirmed ? "완료" : "활동 전에 완료해 주세요"}</span>
       </div>
@@ -226,7 +227,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
       </div>
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn" type="button" disabled={busy || (!dirty && att.confirmed === sel.size > 0)} style={{ width: "auto", minWidth: 160, minHeight: 46, fontSize: 16 }} onClick={onSave}>
+          <button className="btn" type="button" disabled={busy || (!dirty && att.confirmed === sel.size > 0)} style={{ width: "auto", minWidth: 160, minHeight: 46, fontSize: fs(16) }} onClick={onSave}>
             {busy ? "저장 중…" : "선택 저장"}
           </button>
           {dirty && <span className="small">저장하지 않은 변경이 있어요.</span>}
@@ -370,7 +371,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       {acts?.map((a) => (
         <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <b style={{ font: "400 21px var(--display)" }}>{a.config.name}</b>
+            <b style={{ font: `400 ${fs(21)} var(--display)` }}>{a.config.name}</b>
             <span className="pill gray">
               {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.origin === "event" && t.config.sourceEvent ? `행사 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}` : `템플릿 v${a.templateVersion}`; })()}
             </span>
@@ -398,7 +399,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           <Schedule eventId={eventId} a={a} canEdit={canEdit} onChange={load} />
           <HostSetting eventId={eventId} a={a} canEdit={canEdit} members={members} onChange={load} />
           {a.config.preEvent.steps.includes("worry_write") && (
-            <Link href={`/host/worry/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 50, fontSize: 18, textDecoration: "none" }}>
+            <Link href={`/host/worry/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 50, fontSize: fs(18), textDecoration: "none" }}>
               사회자 전체화면 열기 (고민 뽑기) ⛶
             </Link>
           )}
@@ -407,27 +408,27 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           ) : modeOf(a.config) === "team" && (
             // 팀 활동: 팀 배정은 템플릿이 아니라 이 행사에서 한다
             <section className="card" aria-label="팀 배정" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
-              <b style={{ font: "400 19px var(--display)" }}>팀 배정</b>
+              <b style={{ font: `400 ${fs(19)} var(--display)` }}>팀 배정</b>
               <span className="small">이 행사의 참여자로 팀을 나눠요. 팀은 이 행사의 이 활동에만 쓰여요.</span>
               <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}/teams`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} />
             </section>
           )}
           {a.config.preEvent.steps.includes("ai_interview") && (
-            <Link href={`/host/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 50, fontSize: 18, textDecoration: "none" }}>
+            <Link href={`/host/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 50, fontSize: fs(18), textDecoration: "none" }}>
               사회자 전체화면 열기 ⛶
             </Link>
           )}
 
           <div style={{ borderTop: "2px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            <b style={{ font: "400 17px var(--display)" }}>사회자 컨트롤</b>
+            <b style={{ font: `400 ${fs(17)} var(--display)` }}>사회자 컨트롤</b>
             <div className="row" style={{ flexWrap: "wrap" }}>
               {a.config.onsite.steps.filter((s) => s.hostButton).map((s) => (
-                <button key={s.key} className={`btn ${a.live.stepKey === s.key && a.live.unlocked ? "blue" : ""}`} type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: 18 }} onClick={() => live(a, { action: "activate", step: s.key })}>
+                <button key={s.key} className={`btn ${a.live.stepKey === s.key && a.live.unlocked ? "blue" : ""}`} type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(18) }} onClick={() => live(a, { action: "activate", step: s.key })}>
                   {s.hostButton}
                 </button>
               ))}
-              <button className="btn red" type="button" disabled={!a.live.active || !a.live.unlocked} style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: 18 }} onClick={() => live(a, { action: "lock" })}>잠그기</button>
-              <button className="btn white" type="button" disabled={!a.live.active} style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: 18 }} onClick={() => live(a, { action: "reset" })}>처음으로</button>
+              <button className="btn red" type="button" disabled={!a.live.active || !a.live.unlocked} style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(18) }} onClick={() => live(a, { action: "lock" })}>잠그기</button>
+              <button className="btn white" type="button" disabled={!a.live.active} style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(18) }} onClick={() => live(a, { action: "reset" })}>처음으로</button>
             </div>
             <div className="msg info" role="status">
               {a.live.active
@@ -440,7 +441,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
 
       {canEdit && tpls.length > 0 && (
         <>
-          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setAddErr(""); setAddOpen(true); }}>+ 템플릿에서 활동 추가</button>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setAddErr(""); setAddOpen(true); }}>+ 템플릿에서 활동 추가</button>
           <Popup id="activity-add" title="템플릿에서 활동 추가" open={addOpen} onClose={() => setAddOpen(false)}>
             <form onSubmit={(e) => { e.preventDefault(); add(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {addErr && <div className="msg bad" role="alert">{addErr}</div>}
@@ -459,7 +460,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                 ) : null;
               })()}
               <span className="small">템플릿 설정이 복사돼서 이 행사에서만 따로 고칠 수 있어요.</span>
-              <button className="btn" type="submit" disabled={busy || !pick} style={{ width: "auto", minWidth: 140, alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>추가</button>
+              <button className="btn" type="submit" disabled={busy || !pick} style={{ width: "auto", minWidth: 140, alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }}>추가</button>
             </form>
           </Popup>
         </>

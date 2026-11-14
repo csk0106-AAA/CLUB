@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { api } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Club = { name: string; count: number; leaders: { name: string; role: string }[]; account: string; cycle: string };
 
@@ -27,7 +28,7 @@ function Clubs() {
         {list?.map((c) => (
           <Link key={c.name} href={`/admin/clubs/${encodeURIComponent(c.name)}`} className="card"
             style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start", color: "inherit", textDecoration: "none" }}>
-            <b style={{ font: "400 21px var(--display)" }}>{c.name}</b>
+            <b style={{ font: `400 ${fs(21)} var(--display)` }}>{c.name}</b>
             <span className="small">회원 {c.count}명{c.cycle ? ` · ${c.cycle}` : ""}</span>
             <span className="small">{c.leaders.length ? c.leaders.map((l) => `${l.role} ${l.name}`).join(", ") : "회장을 아직 정하지 않았어요"}</span>
             <span className={`pill ${c.account ? "ok" : "gray"}`}>{c.account ? "입금계좌 있음" : "입금계좌 없음"}</span>

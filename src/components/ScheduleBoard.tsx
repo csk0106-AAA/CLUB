@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDateDow } from "@/lib/client";
 import { Popup } from "./Popup";
+import { fs } from "@/lib/fs";
 
 type Item = { id: string; at: string; title: string };
 type Note = { tone: "bad" | "info"; text: string } | null;
@@ -38,7 +39,7 @@ export function ScheduleView({ items }: { items: { at: string; title: string }[]
     <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
       {groupByDay(items).map(([day, list]) => (
         <div key={day || "none"}>
-          <b style={{ display: "block", fontSize: 16 }}>{day ? fmtDateDow(day) : "날짜 미정"}</b>
+          <b style={{ display: "block", fontSize: fs(16) }}>{day ? fmtDateDow(day) : "날짜 미정"}</b>
           <ol className="tl" style={{ marginTop: 4 }}>
             {list.map((s, i) => (
               <li key={i}><b className="num">{timeOf(s.at) || "시간 미정"}</b><span>{s.title || "(내용 없음)"}</span></li>
@@ -122,7 +123,7 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
 
       {groups.map(([day, list]) => (
         <section key={day || "none"} className="card" aria-label={day ? fmtDateDow(day) : "날짜 미정"} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: "400 19px var(--display)" }}>{day ? fmtDateDow(day) : "날짜 미정"}</b>
+          <b style={{ font: `400 ${fs(19)} var(--display)` }}>{day ? fmtDateDow(day) : "날짜 미정"}</b>
           {list.length === 0 && <span className="small">이 날의 일정이 아직 없어요.</span>}
           {list.map((i) => {
             const d = draft[i.id] ?? { time: timeOf(i.at), title: i.title };
@@ -147,7 +148,7 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
 
       {canEdit && (
         <>
-        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 일정 추가</button>
+        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setErr(""); setOpen(true); }}>+ 일정 추가</button>
         <Popup id="schedule-new" title="일정 추가" open={open} onClose={() => setOpen(false)} dirty={!!(addTime || addTitle.trim())}>
         <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {err && <div className="msg bad" role="alert">{err}</div>}
@@ -171,7 +172,7 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
               <label className="l" htmlFor="s-title">③ 내용</label>
               <input id="s-title" className="field" value={addTitle} onChange={(e) => setAddTitle(e.target.value)} />
             </div>
-            <button className="btn" type="submit" disabled={!addDay || !addTime || !addTitle.trim()} style={{ width: "auto", minWidth: 100, minHeight: 54, fontSize: 17 }}>추가</button>
+            <button className="btn" type="submit" disabled={!addDay || !addTime || !addTitle.trim()} style={{ width: "auto", minWidth: 100, minHeight: 54, fontSize: fs(17) }}>추가</button>
           </div>
         </form>
         </Popup>

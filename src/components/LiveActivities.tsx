@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate, fmtRange } from "@/lib/client";
 import { IconBook, IconChat, IconLock, IconQuestion, IconStar } from "./Icons";
+import { fs } from "@/lib/fs";
 
 type Worry = {
   canJoin: boolean; body: string; category: string; orderNo: number; paused: boolean; remainingMs: number;
@@ -145,7 +146,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
         </section>
         {live.length > 0 && (
           <section aria-label="지금 진행 중" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: "400 20px var(--display)" }}>지금 진행 중</b>
+            <b style={{ font: `400 ${fs(20)} var(--display)` }}>지금 진행 중</b>
             {live.map((a) => card(a))}
           </section>
         )}
@@ -155,7 +156,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
 
   return (
     <section aria-label="활동" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: "400 20px var(--display)" }}>활동</b>
+      <b style={{ font: `400 ${fs(20)} var(--display)` }}>활동</b>
       {offline && <div className="msg info" role="status">연결이 불안정해요. 다시 연결하는 중이에요…</div>}
       {list.map((a) => card(a))}
     </section>
@@ -166,7 +167,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
         return (
           <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <b style={{ font: "400 19px var(--display)" }}>{a.name}</b>
+              <b style={{ font: `400 ${fs(19)} var(--display)` }}>{a.name}</b>
               <span className={`pill ${b.tone}`}>{b.text}</span>
             </div>
             {a.description && <span className="small">{a.description}</span>}
@@ -184,15 +185,15 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
             {a.kind === "worry" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
                 {a.pre.status === "open" ? (
-                  <Link href={`/events/${eventId}/worry/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: 17, textDecoration: "none" }}>고민 작성하기</Link>
+                  <Link href={`/events/${eventId}/worry/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: fs(17), textDecoration: "none" }}>고민 작성하기</Link>
                 ) : (
-                  <Link href={`/events/${eventId}/worry/${a.id}`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: 17, textDecoration: "none" }}>내 고민 보기</Link>
+                  <Link href={`/events/${eventId}/worry/${a.id}`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: fs(17), textDecoration: "none" }}>내 고민 보기</Link>
                 )}
               </div>
             )}
             {a.kind === "capsule" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
-                <Link href={`/events/${eventId}/capsule/${a.id}`} className={`btn ${a.live.unlocked && a.live.memberScreen === "write" && a.canJoin ? "" : "white"}`} style={{ width: "auto", minHeight: 46, fontSize: 17, textDecoration: "none" }}>
+                <Link href={`/events/${eventId}/capsule/${a.id}`} className={`btn ${a.live.unlocked && a.live.memberScreen === "write" && a.canJoin ? "" : "white"}`} style={{ width: "auto", minHeight: 46, fontSize: fs(17), textDecoration: "none" }}>
                   {a.live.unlocked && a.live.memberScreen === "write" && a.canJoin ? "타임캡슐 작성하기" : "내 타임캡슐 보기"}
                 </Link>
               </div>
@@ -200,14 +201,14 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
             {a.kind === "who" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
                 {a.pre.status === "open" || a.guess.status === "open" || a.pre.status === "closed" ? (
-                  <Link href={`/events/${eventId}/who/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: 17, textDecoration: "none" }}>
+                  <Link href={`/events/${eventId}/who/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: fs(17), textDecoration: "none" }}>
                     {a.pre.status === "open" ? "소개 작성하기" : a.guess.status === "open" ? "누구일까요? 맞히기" : "내 소개 보기"}
                   </Link>
                 ) : (
                   <span className="small">작성 기간이 되면 여기에서 시작할 수 있어요.</span>
                 )}
                 {a.pre.status === "open" && a.guess.status === "open" && (
-                  <Link href={`/events/${eventId}/who/${a.id}`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: 17, textDecoration: "none" }}>누구일까요?</Link>
+                  <Link href={`/events/${eventId}/who/${a.id}`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: fs(17), textDecoration: "none" }}>누구일까요?</Link>
                 )}
               </div>
             )}
@@ -267,7 +268,7 @@ function WorryPanel({ aid, w, reload }: { aid: string; w: Worry; reload: () => P
       {!w.canJoin && <div className="msg info" role="status">이 활동의 참여 대상으로 선택되지 않았어요. 진행 모습은 큰 화면에서 볼 수 있어요.</div>}
       <p style={{ margin: 0, fontWeight: 700, lineHeight: 1.7 }}>{w.body}</p>
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <b className="num" style={{ font: "400 32px var(--display)" }} aria-label="남은 시간">{w.timeUp ? "00:00" : fmt(remaining)}</b>
+        <b className="num" style={{ font: `400 ${fs(32)} var(--display)` }} aria-label="남은 시간">{w.timeUp ? "00:00" : fmt(remaining)}</b>
         <span className="small">{w.timeUp ? "대화 시간이 끝났어요" : w.paused ? "일시정지 중" : "대화 중"}</span>
       </div>
       {w.nameRevealed && <div className="msg info" role="status">작성자: <b>{w.displayName}</b></div>}
@@ -312,7 +313,7 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
   const head = (
     <div className="row" style={{ flexWrap: "wrap" }}>
       <span className="pill blue">지금 소개</span>
-      <b style={{ font: "400 20px var(--display)" }}>“{round.alias}”</b>
+      <b style={{ font: `400 ${fs(20)} var(--display)` }}>“{round.alias}”</b>
       {round.nameRevealed && round.name && <span className="pill ok">{round.name} 님</span>}
       <span className="grow" />
       {round.canJoin && <span className={`pill ${status.tone}`} role="status">{status.text}</span>}
@@ -358,7 +359,7 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
       <div className="msg info">내 차례예요. 다른 분들이 투표하고 있어요. 투표는 하지 않아요.</div>
     ) : (
       <>
-        <b style={{ font: "400 21px var(--display)" }}>거짓은 어느 것일까요?</b>
+        <b style={{ font: `400 ${fs(21)} var(--display)` }}>거짓은 어느 것일까요?</b>
         <span className="small">두 개는 진실, 한 개는 거짓이에요. 한 번만 투표할 수 있어요.</span>
         {round.voted ? stmtList(round.myVote) : stmtList(sel, setSel)}
         {round.voted ? (
@@ -372,7 +373,7 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
     // 문장은 내려왔지만 사회자가 아직 회원 화면의 투표를 켜지 않은 경우: 미리 읽기만 할 수 있다.
     body = (
       <>
-        <b style={{ font: "400 21px var(--display)" }}>거짓은 어느 것일까요?</b>
+        <b style={{ font: `400 ${fs(21)} var(--display)` }}>거짓은 어느 것일까요?</b>
         <span className="small">두 개는 진실, 한 개는 거짓이에요.</span>
         {stmtList(-1)}
         <button className="btn" type="button" disabled>확인</button>

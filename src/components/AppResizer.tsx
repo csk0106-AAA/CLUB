@@ -12,18 +12,13 @@ import { ADMIN_W_KEY, APP_W_KEY } from "./ThemeBoot";
 const MIN = 420;
 const WIDE = "(min-width: 900px)";
 
-function zoomOf(): number {
-  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--z"));
-  return z > 0 ? z : 1;
-}
-
 type Pos = { x: number; w: number; max: number; admin: boolean };
 
 export function AppResizer() {
   const pathname = usePathname();
   const [pos, setPos] = useState<Pos | null>(null);
   const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ cx: number; z: number; pid: number; admin: boolean } | null>(null);
+  const drag = useRef<{ cx: number; pid: number; admin: boolean } | null>(null);
   const raf = useRef(0);
 
   const measure = useCallback(() => {
@@ -34,12 +29,11 @@ export function AppResizer() {
         setPos(null);
         return;
       }
-      const z = zoomOf();
       const r = main.getBoundingClientRect();
       const next: Pos = {
-        x: Math.round(r.right / z),
-        w: Math.round(r.width / z),
-        max: Math.round(window.innerWidth / z - 40),
+        x: Math.round(r.right),
+        w: Math.round(r.width),
+        max: Math.round(window.innerWidth - 40),
         admin: main.classList.contains("admin"),
       };
       setPos((p) => (p && p.x === next.x && p.w === next.w && p.max === next.max && p.admin === next.admin ? p : next));
@@ -102,7 +96,7 @@ export function AppResizer() {
         if (!main) return;
         e.preventDefault();
         const r = main.getBoundingClientRect();
-        drag.current = { cx: (r.left + r.right) / 2, z: zoomOf(), pid: e.pointerId, admin: pos.admin };
+        drag.current = { cx: (r.left + r.right) / 2, pid: e.pointerId, admin: pos.admin };
         document.body.classList.add("app-resizing");
         setDragging(true);
         try {
@@ -114,7 +108,7 @@ export function AppResizer() {
       onPointerMove={(e) => {
         const d = drag.current;
         if (!d || d.pid !== e.pointerId) return;
-        setWidth(d.admin, limit((2 * (e.clientX - d.cx)) / d.z), false);
+        setWidth(d.admin, limit(2 * (e.clientX - d.cx)), false);
       }}
       onPointerUp={(e) => {
         const d = drag.current;
@@ -122,7 +116,7 @@ export function AppResizer() {
         drag.current = null;
         setDragging(false);
         document.body.classList.remove("app-resizing");
-        setWidth(d.admin, limit((2 * (e.clientX - d.cx)) / d.z), true);
+        setWidth(d.admin, limit(2 * (e.clientX - d.cx)), true);
       }}
       onPointerCancel={() => {
         drag.current = null;

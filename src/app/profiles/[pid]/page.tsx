@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { downloadReading, Md, OldReadingNote, SajuInfoView, type SajuInfo } from "@/components/SajuPanel";
 import { api } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 export default function ProfilePage({ params }: { params: Promise<{ pid: string }> }) {
   const { pid } = use(params);
@@ -28,12 +29,12 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
 
   return (
     <main className="app">
-      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => router.push("/profiles")}>‹ 프로필 북</button>
+      <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(16) }} onClick={() => router.push("/profiles")}>‹ 프로필 북</button>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!p && !error && <p className="small">불러오는 중이에요…</p>}
       {p && (
         <>
-          <div className="row"><Mascot size={56} /><div><h1 className="title" style={{ fontSize: 26 }}>{p.name || `“${p.alias}”`}</h1>{p.name && <div className="small">별칭 “{p.alias}”</div>}</div></div>
+          <div className="row"><Mascot size={56} /><div><h1 className="title" style={{ fontSize: fs(26) }}>{p.name || `“${p.alias}”`}</h1>{p.name && <div className="small">별칭 “{p.alias}”</div>}</div></div>
           {p.name && (
             <p style={{ margin: 0, fontWeight: 700 }}>
               {[p.name, p.company, p.title, (p.clubs ?? []).join(", ")].filter((x) => x && x.trim()).join(" / ")}
@@ -43,7 +44,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
           <article className="card" style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{p.introMd}</article>
           {p.truthLies && p.truthLies.statements.length === 3 && (
             <section className="card" aria-label="2진실 1거짓" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <b style={{ font: "400 20px var(--display)" }}>2진실 1거짓</b>
+              <b style={{ font: `400 ${fs(20)} var(--display)` }}>2진실 1거짓</b>
               <span className="small">활동이 끝나 정답과 함께 공개해요.</span>
               {p.truthLies.statements.map((t, i) => {
                 const lie = i === p.truthLies!.lieIndex;
@@ -58,7 +59,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
           )}
           {p.traitsMd && (
             <section className="card" aria-label="명리학으로 본 성격과 성향" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <b style={{ font: "400 20px var(--display)" }}>명리학으로 본 성격과 성향</b>
+              <b style={{ font: `400 ${fs(20)} var(--display)` }}>명리학으로 본 성격과 성향</b>
               <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{p.traitsMd}</p>
             </section>
           )}
@@ -68,7 +69,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
                 {p.sajuInfo ? <SajuInfoView info={p.sajuInfo} /> : <OldReadingNote />}
                 <Md text={p.readingMd} />
-                <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: 17 }} onClick={() => downloadReading(p.sajuInfo, p.readingMd)}>
+                <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(17) }} onClick={() => downloadReading(p.sajuInfo, p.readingMd)}>
                   내 기기로 내려받기 (.txt)
                 </button>
               </div>

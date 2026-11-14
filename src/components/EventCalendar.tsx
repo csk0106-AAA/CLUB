@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import css from "./EventCalendar.module.css";
+import { fs } from "@/lib/fs";
 
 // 행사 달력(월간, 일~토). 구글 캘린더 월 보기와 비슷하게:
 //  - 날짜 칸 안에 행사 칩. 하루 행사는 "14:30 행사명", 여러 날 행사는 주(줄)마다 이어진 막대(줄 첫 칸에 제목).
@@ -165,7 +166,7 @@ export function EventCalendar<T extends CalEvent>({ events, renderItem, hrefOf }
         <span><i className={css.swAttend} aria-hidden="true" />내가 참석하는 행사가 있는 날</span>
       </div>
 
-      <h3 id="cal-day-h" tabIndex={-1} style={{ font: "400 18px var(--display)", margin: "4px 0 0", outline: "none" }}>
+      <h3 id="cal-day-h" tabIndex={-1} style={{ font: `400 ${fs(18)} var(--display)`, margin: "4px 0 0", outline: "none" }}>
         {sm}월 {sd}일 ({WD[new Date(sy, sm - 1, sd).getDay()]}) 행사
       </h3>
       {selEvents.length === 0 ? <p className="small" style={{ margin: 0 }}>이날은 행사가 없어요.</p> : <div className="pick">{selEvents.map(renderItem)}</div>}

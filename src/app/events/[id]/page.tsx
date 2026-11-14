@@ -9,6 +9,7 @@ import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
 import { clubLine, ObserversCard } from "./ObserversCard";
 import { api, fmtDaySpan, fmtWhen, TYPE_TONE, won } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Detail = {
   event: {
@@ -83,12 +84,12 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
       {d.feeDue && (
         d.apply?.payNotice ? (
           <button className="fb info" type="button" style={{ alignItems: "center" }} onClick={() => router.push(`/events/${id}/fee`)}>
-            <span className="ic" style={{ fontSize: 15 }} aria-hidden="true">₩</span>
+            <span className="ic" style={{ fontSize: fs(15) }} aria-hidden="true">₩</span>
             <span className="grow"><b>입금 확인을 기다리고 있어요</b><span className="t">{won(e.fee)} · 안내 보기 ›</span></span>
           </button>
         ) : (
           <button className="fb bad" type="button" style={{ alignItems: "center" }} onClick={() => router.push(`/events/${id}/fee`)}>
-            <span className="ic" style={{ fontSize: 15 }} aria-hidden="true">₩</span>
+            <span className="ic" style={{ fontSize: fs(15) }} aria-hidden="true">₩</span>
             <span className="grow"><b>회비를 아직 안 내셨어요</b><span className="t">{won(e.fee)} · 안내 보기 ›</span></span>
           </button>
         )
@@ -99,7 +100,7 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
       <Link href={`/events/${id}/overview`} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, textDecoration: "none", color: "inherit" }}>
         <div>
           <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.type}</span>
-          <b style={{ display: "block", font: "400 19px var(--display)" }}>{e.name}</b>
+          <b style={{ display: "block", font: `400 ${fs(19)} var(--display)` }}>{e.name}</b>
           <div className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</div>
           {e.club && <div className="small">소모임: {clubLine(e.club, e.clubLeaders)}</div>}
         </div>

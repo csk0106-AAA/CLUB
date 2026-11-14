@@ -2,6 +2,7 @@
 
 import type { TemplateConfig } from "@/lib/template-schema";
 import { DragHandle, useDragSort } from "./DragSort";
+import { fs } from "@/lib/fs";
 
 export type EditableConfig = Omit<TemplateConfig, "id" | "version">;
 
@@ -39,7 +40,7 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
       </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: "400 19px var(--display)" }}>참여 대상</b>
+        <b style={{ font: `400 ${fs(19)} var(--display)` }}>참여 대상</b>
         <label className="l" htmlFor="t-part">이 활동에 참여하는 사람</label>
         <select id="t-part" className="field" value={value.participants} onChange={(e) => onChange({ ...value, participants: e.target.value as "all" | "selected" })}>
           <option value="selected">관리자 선택 회원 (활동 전에 출석 체크)</option>
@@ -55,7 +56,7 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
       </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: "400 19px var(--display)" }}>행사 전 사전 작성</b>
+        <b style={{ font: `400 ${fs(19)} var(--display)` }}>행사 전 사전 작성</b>
         <div className="checks">
           <label>
             <input type="checkbox" checked={pre.enabled} onChange={(e) => onChange({ ...value, preEvent: { ...pre, enabled: e.target.checked } })} />
@@ -72,7 +73,7 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
       </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 19px var(--display)" }}>현장 진행 단계</b>
+        <b style={{ font: `400 ${fs(19)} var(--display)` }}>현장 진행 단계</b>
         {steps.length > 1 && <span className="small">단계 왼쪽 위 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
         {steps.map((st, i) => {
           const row = ds.item(i);

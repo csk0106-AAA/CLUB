@@ -7,6 +7,7 @@ import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
 import { parseMembers } from "@/lib/member-import";
+import { fs } from "@/lib/fs";
 
 type M = {
   id: string; no: string; name: string; kind: string; position: string; gender: string;
@@ -54,7 +55,7 @@ function ClubsPicker({ value, clubs, roles, onChange }: { value: Seat[]; clubs: 
               onChange={(e) => onChange(e.target.checked ? [...value, { name: n, role: "" }] : value.filter((c) => c.name !== n))} />
             {n}{clubs.includes(n) ? "" : OFF}
             {seat && (
-              <select aria-label={`${n} 소모임 직책`} value={seat.role} style={{ minHeight: 32, borderRadius: 8, border: "2px solid var(--line)", fontSize: 15 }}
+              <select aria-label={`${n} 소모임 직책`} value={seat.role} style={{ minHeight: 32, borderRadius: 8, border: "2px solid var(--line)", fontSize: fs(15) }}
                 onChange={(e) => onChange(value.map((c) => (c.name === n ? { ...c, role: e.target.value } : c)))}>
                 <option value="">일반 회원</option>
                 {seat.role && !roles.includes(seat.role) && <option value={seat.role}>{seat.role}{OFF}</option>}
@@ -261,7 +262,7 @@ function Members() {
 
       {colsOpen && (
         <section className="card" aria-label="항목(열) 관리" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 20px var(--display)" }}>항목(열) 관리</b>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>항목(열) 관리</b>
           <span className="small">기본 항목 외에 필요한 항목(예: 기수, 이메일, 차량 여부)을 더할 수 있어요. 회원 입력 칸과 명단 표에 함께 보이고, 붙여넣기 머리글에 같은 이름이 있으면 그 값도 읽어요. 항목을 지워도 이미 적은 값은 남아 있어서 다시 만들면 보여요.</span>
           <div className="checks" aria-label="추가 항목">
             {colsDraft.map((c) => (
@@ -274,15 +275,15 @@ function Members() {
             <button className="mini" type="submit" disabled={!newCol.trim()}>+ 항목 더하기</button>
           </form>
           <div className="row">
-            <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: 17 }} disabled={JSON.stringify(colsDraft) === JSON.stringify(custom)} onClick={() => saveCols(colsDraft)}>항목 저장</button>
-            <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => setColsOpen(false)}>닫기</button>
+            <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(17) }} disabled={JSON.stringify(colsDraft) === JSON.stringify(custom)} onClick={() => saveCols(colsDraft)}>항목 저장</button>
+            <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => setColsOpen(false)}>닫기</button>
           </div>
         </section>
       )}
 
       {importOpen && (
         <section className="card" aria-label="명단 붙여넣기" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 20px var(--display)" }}>명단 한 번에 넣기</b>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>명단 한 번에 넣기</b>
           <span className="small">
             엑셀이나 구글 시트에서 표를 복사해 붙여 넣거나, CSV 내용을 붙여 넣으세요. 첫 줄에 머리글(성명, 회원구분, 직책, 성별, 회사명, 직위, 생년월일, 연락처, 연령대)이 있으면 그 순서를 따르고,
             없으면 이 순서로 읽어요. 이미 있는 이름은 건너뛰고, 관리자 권한은 여기서 줄 수 없어요.

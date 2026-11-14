@@ -5,6 +5,7 @@ import { DateField } from "@/components/DateField";
 import { DragHandle, useDragSort } from "@/components/DragSort";
 import { AGENDA_STATUS, DEFAULT_TEMPLATES, type FeeData, type Form, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { won } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 // 양식별 입력칸(글쓰기 화면). data 는 Posts.data 와 같은 모양이다(lib/board.ts).
 type Data = Record<string, unknown>;
@@ -12,7 +13,7 @@ type P<T> = { data: T; onChange: (d: T) => void };
 
 const col = { display: "flex", flexDirection: "column", gap: 10 } as const;
 const sel = { minHeight: 44, padding: "0 8px" } as const;
-const addBtn = { width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 } as const;
+const addBtn = { width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(16) } as const;
 
 function withDefaults<T>(form: Form, data: Data): T {
   return { ...(DEFAULT_TEMPLATES[form].data as object), ...data } as T;
@@ -42,7 +43,7 @@ function FeeFields({ data, onChange, kinds, positions }: P<FeeData> & { kinds: s
   const setRules = (r: FeeData["rules"]) => onChange({ ...data, rules: r });
   return (
     <section className="card" aria-label="연회비" style={col}>
-      <b style={{ font: "400 19px var(--display)" }}>연회비</b>
+      <b style={{ font: `400 ${fs(19)} var(--display)` }}>연회비</b>
       <div className="msg info">기본 금액과 조건별 금액을 모두 비워 두면 관리자 › 회원관리 › 모임회비관리의 회비·계좌·납부 안내를 그대로 보여 줘요. 이 글에만 다른 금액을 쓰려면 아래에 적어 주세요.</div>
       <span className="small">기본 금액 위에 회원구분·직책별 금액을 줄로 더할 수 있어요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 기본 금액을 써요. 직책의 “일반회원”은 직책이 없는 회원이에요. 회원에게는 <b>본인 연회비만</b> 보여요.</span>
       <div>
@@ -101,7 +102,7 @@ function MinutesFields({ data, onChange, labels }: P<MinutesData> & { labels: Re
   const setA = (i: number, patch: Partial<MinutesData["agenda"][number]>) => onChange({ ...data, agenda: agenda.map((a, j) => (j === i ? { ...a, ...patch } : a)) });
   return (
     <section className="card" aria-label="회의록" style={col}>
-      <b style={{ font: "400 19px var(--display)" }}>회의 정보</b>
+      <b style={{ font: `400 ${fs(19)} var(--display)` }}>회의 정보</b>
       <div className="grid2">
         <div><label className="l" htmlFor={`${id}-at`}>일시</label><DateField id={`${id}-at`} mode="datetime" value={data.heldAt} onChange={(v) => onChange({ ...data, heldAt: v })} /></div>
         <div><label className="l" htmlFor={`${id}-pl`}>장소</label><input id={`${id}-pl`} className="field" maxLength={100} value={data.place} onChange={(e) => onChange({ ...data, place: e.target.value })} /></div>
@@ -168,7 +169,7 @@ function SurveyFields({ data, onChange }: P<SurveyData>) {
   const ds = useDragSort(qs, (next) => onChange({ ...data, questions: next }));
   return (
     <section className="card" aria-label="설문 질문" style={col}>
-      <b style={{ font: "400 19px var(--display)" }}>설문 질문</b>
+      <b style={{ font: `400 ${fs(19)} var(--display)` }}>설문 질문</b>
       {qs.length > 1 && <span className="small">⠿ 손잡이를 끌어서 질문 순서를 바꿔요.</span>}
       {qs.map((q, i) => {
         const row = ds.item(i);
@@ -206,7 +207,7 @@ function SurveyFields({ data, onChange }: P<SurveyData>) {
 function PollFields({ data, onChange }: P<PollData>) {
   return (
     <section className="card" aria-label="투표" style={col}>
-      <b style={{ font: "400 19px var(--display)" }}>투표 보기</b>
+      <b style={{ font: `400 ${fs(19)} var(--display)` }}>투표 보기</b>
       <Options label="투표 보기" list={data.options ?? []} onChange={(o) => onChange({ ...data, options: o })} />
       <div className="checks">
         <label><input type="radio" name="poll-multi" checked={!data.multi} onChange={() => onChange({ ...data, multi: false })} />하나만 고르기</label>
@@ -225,7 +226,7 @@ function QuizFields({ data, onChange }: P<QuizData>) {
   const setI = (i: number, patch: Partial<QuizData["items"][number]>) => onChange({ ...data, items: items.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
   return (
     <section className="card" aria-label="OX 퀴즈 문제" style={col}>
-      <b style={{ font: "400 19px var(--display)" }}>OX 문제</b>
+      <b style={{ font: `400 ${fs(19)} var(--display)` }}>OX 문제</b>
       {items.map((it, i) => (
         <div key={i} className="card" style={{ ...col, gap: 8, background: "var(--soft)" }}>
           <div className="row">

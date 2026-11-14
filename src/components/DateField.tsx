@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { fs } from "@/lib/fs";
 
 // 날짜·일시 입력칸. 화면에는 "2026/12/11" 또는 "2026/12/11 14:30" 으로 보이고,
 // 저장 값은 그대로 "2026-12-11" / "2026-12-11T14:30" 이다. 옆 달력 버튼으로 기기 달력에서 고를 수도 있다.
@@ -112,7 +113,7 @@ export function DateField({ id, value, onChange, mode, ariaLabel, disabled, styl
           onBlur={blur}
         />
         <button type="button" className="mini df-btn" aria-label="달력에서 고르기" title="달력에서 고르기" disabled={disabled} onClick={openPicker}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg width="22" height="22" style={{ width: fs(22), height: fs(22), flex: "none" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="3" y="5" width="18" height="16" rx="3" />
             <path d="M3 10h18M8 3v4M16 3v4" />
           </svg>

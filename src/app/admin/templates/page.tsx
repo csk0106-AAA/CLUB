@@ -8,6 +8,7 @@ import { Popup } from "@/components/Popup";
 import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "@/components/TemplateEditor";
 import { api } from "@/lib/client";
 import type { TemplateConfig } from "@/lib/template-schema";
+import { fs } from "@/lib/fs";
 
 type T = { id: string; origin: string; version: number; config: TemplateConfig };
 
@@ -102,7 +103,7 @@ function Templates() {
                     ? `행사 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}`
                     : "내가 만든 템플릿"} v{t.version}
                 </span>
-                <b style={{ font: "400 21px var(--display)" }}>{t.config.name}</b>
+                <b style={{ font: `400 ${fs(21)} var(--display)` }}>{t.config.name}</b>
                 <span className="small">{t.config.description}</span>
                 <span className="small">{modeOf(t.config) === "team" ? "팀 활동 · " : "전체 활동 · "}{t.config.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}{t.config.preEvent.enabled ? `사전 작성 있음 (행사 ${t.config.preEvent.opensBeforeDays ?? 14}일 전 ~ ${t.config.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 {t.config.onsite.steps.length}단계</span>
                 <div className="row" style={{ flexWrap: "wrap" }}>
@@ -200,15 +201,15 @@ function AiMaker({ onOpen, onSaved }: { onOpen: (v: EditableConfig) => void; onS
 
   return (
     <section className="card" aria-label="AI와 새 활동 만들기" style={{ display: "flex", flexDirection: "column", gap: 12, background: "var(--soft)" }}>
-      <div className="say" style={{ alignItems: "center" }}><Mascot size={46} /><b style={{ font: "400 19px var(--display)" }}>AI와 새 활동 만들기</b></div>
+      <div className="say" style={{ alignItems: "center" }}><Mascot size={46} /><b style={{ font: `400 ${fs(19)} var(--display)` }}>AI와 새 활동 만들기</b></div>
       <div role="log" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: 16 }}>어떤 활동을 만들고 싶으세요? 인원, 시간, 진행 방식을 알려 주세요.</div></div>
+        <div className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: fs(16) }}>어떤 활동을 만들고 싶으세요? 인원, 시간, 진행 방식을 알려 주세요.</div></div>
         {chat.map((c, i) =>
           c.role === "user"
-            ? <div key={i} className="mine" style={{ fontSize: 16 }}>{c.content}</div>
-            : <div key={i} className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: 16 }}>{shown(c)}</div></div>,
+            ? <div key={i} className="mine" style={{ fontSize: fs(16) }}>{c.content}</div>
+            : <div key={i} className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: fs(16) }}>{shown(c)}</div></div>,
         )}
-        {busy && <div className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: 16 }}>만드는 중이에요…</div></div>}
+        {busy && <div className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: fs(16) }}>만드는 중이에요…</div></div>}
         <div ref={end} />
       </div>
       {err && <div className="msg bad" role="alert">{err}</div>}
@@ -216,7 +217,7 @@ function AiMaker({ onOpen, onSaved }: { onOpen: (v: EditableConfig) => void; onS
       {draft && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span className="pill blue" style={{ alignSelf: "flex-start" }}>초안 미리보기</span>
-          <b style={{ font: "400 20px var(--display)" }}>{draft.name}</b>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>{draft.name}</b>
           {draft.description && <span className="small">{draft.description}</span>}
           <span className="small">
             {draft.participants === "selected" ? "관리자 선택 회원만" : "전체 회원"} · {draft.preEvent.enabled ? `사전 작성 (행사 ${draft.preEvent.opensBeforeDays ?? 14}일 전 ~ ${draft.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { resetTabsCache } from "@/components/MemberTabs";
 import { PasswordField } from "@/components/PasswordField";
+import { fs } from "@/lib/fs";
 
 type Club = { clubName: string; members: { id: string; name: string }[] };
 
@@ -56,7 +57,7 @@ export default function LoginPage() {
     <main className="app">
       <div style={{ paddingTop: 20, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
         <Mascot />
-        <h1 className="title center" style={{ fontSize: 23 }}>
+        <h1 className="title center" style={{ fontSize: fs(23) }}>
           {club ? club.clubName : "원우회"}
         </h1>
         <p className="small" style={{ margin: 0 }}>원우회 회원 전용</p>

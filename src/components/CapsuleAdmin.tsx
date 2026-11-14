@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, fmtDateTime } from "@/lib/client";
 import { DateField } from "./DateField";
 import { TeamBoard } from "./TeamBoard";
+import { fs } from "@/lib/fs";
 
 type Cfg = { openAt: string; selfView: boolean; log: { at: string; by: string; from: string; to: string }[]; opened: boolean; counts: { goals: number; pacts: number; teams: number } };
 
@@ -40,7 +41,7 @@ export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: 
     <div style={{ borderTop: "2px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
       <TeamBoard base={base} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${aid}`} />
 
-      <b style={{ font: "400 18px var(--display)" }}>봉인과 열림</b>
+      <b style={{ font: `400 ${fs(18)} var(--display)` }}>봉인과 열림</b>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="row" style={{ flexWrap: "wrap" }}>
         <span className={`pill ${cfg.opened ? "ok" : "gray"}`}>{cfg.opened ? "열렸어요" : cfg.openAt ? "봉인 중" : "열림 일시 미등록"}</span>
@@ -56,7 +57,7 @@ export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: 
           </div>
         </div>
       )}
-      {canEdit && <button className="btn" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} disabled={cfg.opened} onClick={saveOpen}>열림 설정 저장</button>}
+      {canEdit && <button className="btn" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} disabled={cfg.opened} onClick={saveOpen}>열림 설정 저장</button>}
       {cfg.log.length > 0 && (
         <details className="card"><summary style={{ fontWeight: 700, cursor: "pointer" }}>열림 일시 변경 기록 ({cfg.log.length})</summary>
           {cfg.log.map((l, i) => <div key={i} className="small">{fmtDateTime(l.at)} · {l.by} · {l.from ? fmtDateTime(l.from) : "(없음)"} → {l.to ? fmtDateTime(l.to) : "(취소)"}</div>)}

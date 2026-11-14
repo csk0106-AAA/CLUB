@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { Popup } from "./Popup";
 import { TeamBoard } from "./TeamBoard";
+import { fs } from "@/lib/fs";
 
 type G = { id: string; title: string; published: boolean; teamCount: number; memberCount: number };
 
@@ -64,7 +65,7 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
       {cur && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <b style={{ font: "400 20px var(--display)" }}>{cur.title}</b>
+            <b style={{ font: `400 ${fs(20)} var(--display)` }}>{cur.title}</b>
             <span className="grow" />
             {canEdit && <button className="mini danger" type="button" onClick={() => remove(cur)}>이 조편성 지우기</button>}
           </div>
@@ -74,13 +75,13 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
 
       {canEdit && (
         <>
-          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 조편성 만들기</button>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setErr(""); setOpen(true); }}>+ 조편성 만들기</button>
           <Popup id="group-new" width={480} title="조편성 만들기" open={open} onClose={() => setOpen(false)} dirty={!!title.trim()}>
             <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {err && <div className="msg bad" role="alert">{err}</div>}
               <div><label className="l" htmlFor="g-title">새 조편성 이름</label><input id="g-title" className="field" placeholder="예: 저녁 게임" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
               <span className="small">만든 뒤 조 수와 조원을 정해요.</span>
-              <button className="btn" type="submit" disabled={!title.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>만들기</button>
+              <button className="btn" type="submit" disabled={!title.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }}>만들기</button>
             </form>
           </Popup>
         </>

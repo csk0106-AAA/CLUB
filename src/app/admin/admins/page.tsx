@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
 import { api } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Seat = { name: string; role: string };
 type M = {
@@ -80,7 +81,7 @@ function GroupMatrix({ g, members, onSaved }: { g: G; members: M[]; onSaved: (t:
 
   return (
     <section className="card" aria-label="그룹별 권한" style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-      <b style={{ font: "400 20px var(--display)" }}>그룹별 권한</b>
+      <b style={{ font: `400 ${fs(20)} var(--display)` }}>그룹별 권한</b>
       <span className="small">직책과 소모임 직책마다 권한을 정해요. 그 직책인 회원은 이 권한을 모두 받아요. 소모임 직책자는 그룹 권한이 없어도 게시글 작성은 할 수 있어요.</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <div className="tblw">
@@ -113,8 +114,8 @@ function GroupMatrix({ g, members, onSaved }: { g: G; members: M[]; onSaved: (t:
       <span className="small">직책·소모임 직책 목록은 <Link href="/admin/kinds">회원 구분</Link>에서 바꿔요.</span>
       {g.canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: 17 }} disabled={busy || !dirty} onClick={save}>{busy ? "저장 중…" : "그룹 권한 저장"}</button>
-          {dirty && <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} disabled={busy} onClick={() => setDraft(g.groups)}>되돌리기</button>}
+          <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(17) }} disabled={busy || !dirty} onClick={save}>{busy ? "저장 중…" : "그룹 권한 저장"}</button>
+          {dirty && <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} disabled={busy} onClick={() => setDraft(g.groups)}>되돌리기</button>}
         </div>
       )}
     </section>
@@ -179,7 +180,7 @@ function Admins() {
 
       <div className="adm-two">
         <section style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }} aria-label="권한 종류">
-          <b style={{ font: "400 20px var(--display)" }}>권한 종류</b>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>권한 종류</b>
           <div className="card"><b>모든 권한</b><div className="small">회원관리, 행사관리, 소모임관리 전부와 권한 바꾸기</div></div>
           <div className="card">
             <b>부분 권한 (여러 개 선택)</b>
@@ -194,7 +195,7 @@ function Admins() {
         </section>
 
         <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }} aria-label="권한자 리스트">
-          <b style={{ font: "400 20px var(--display)" }}>권한자 리스트 <span className="num">{holders.length}명</span></b>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>권한자 리스트 <span className="num">{holders.length}명</span></b>
           {holders.map((m) => {
             const ed = editing[m.id];
             const roles = m.clubs.filter((c) => c.role).map((c) => `${c.name} ${c.role}`);
@@ -240,7 +241,7 @@ function Admins() {
           {holders.length === 0 && <span className="small">권한이 있는 회원이 없어요.</span>}
 
           {meAll && !adding && (
-            <button className="btn white" type="button" style={{ minHeight: 48, fontSize: 18 }} onClick={() => { setAdding(true); setPick(""); setPerms([]); }}>
+            <button className="btn white" type="button" style={{ minHeight: 48, fontSize: fs(18) }} onClick={() => { setAdding(true); setPick(""); setPerms([]); }}>
               + 회원에게 개인 권한 주기
             </button>
           )}
@@ -256,12 +257,12 @@ function Admins() {
               </div>
               <div><span className="l">권한</span><PermPicker idp="add" value={perms} disabled={busy} onChange={setPerms} /></div>
               <div className="row" style={{ flexWrap: "wrap" }}>
-                <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: 17 }} disabled={busy || !pick || perms.length === 0}
+                <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(17) }} disabled={busy || !pick || perms.length === 0}
                   onClick={async () => {
                     const m = others.find((x) => x.id === pick);
                     if (m && (await setOwn(m, { perms: norm(perms), custom: false }, `${m.name} 님에게 권한을 줬어요.`))) setAdding(false);
                   }}>추가</button>
-                <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => setAdding(false)}>취소</button>
+                <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={() => setAdding(false)}>취소</button>
               </div>
             </div>
           )}

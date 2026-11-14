@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { fs } from "@/lib/fs";
 
 // 끌어서 순서 바꾸기. 마우스·손가락(터치) 모두 되고, 손잡이에 초점을 두고 위·아래 방향키로도 옮길 수 있다.
 //   const ds = useDragSort(items, setItems);
@@ -112,7 +113,7 @@ export function DragHandle({ ref, label, active, ...on }: HandleProps) {
         color: active ? "var(--blue-t)" : "var(--sub)", cursor: active ? "grabbing" : "grab", touchAction: "none", userSelect: "none",
       }}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <svg width="18" height="18" style={{ width: fs(18), height: fs(18), flex: "none" }} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
         <circle cx="8" cy="5" r="2" /><circle cx="16" cy="5" r="2" />
         <circle cx="8" cy="12" r="2" /><circle cx="16" cy="12" r="2" />
         <circle cx="8" cy="19" r="2" /><circle cx="16" cy="19" r="2" />

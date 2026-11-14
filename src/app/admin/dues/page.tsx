@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { api, won } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Dues = {
   period: "annual" | "monthly"; amount: string;
@@ -71,7 +72,7 @@ function DuesEditor() {
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <section className="card" aria-label="회비 종류와 금액" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 20px var(--display)" }}>회비 종류와 금액</b>
+        <b style={{ font: `400 ${fs(20)} var(--display)` }}>회비 종류와 금액</b>
         <div className="checks" role="radiogroup" aria-label="회비 종류">
           {(["annual", "monthly"] as const).map((p) => (
             <label key={p}><input type="radio" name="period" checked={d.period === p} onChange={() => set("period", p)} />{PERIOD[p]}</label>
@@ -91,7 +92,7 @@ function DuesEditor() {
       </section>
 
       <section className="card" aria-label="직책별 회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: "400 20px var(--display)" }}>직책별 회비</b>
+        <b style={{ font: `400 ${fs(20)} var(--display)` }}>직책별 회비</b>
         <span className="small">직책마다 금액이 다르면 줄을 더해 주세요. “일반회원”은 직책이 없는 회원이에요.</span>
         {d.rules.map((r, i) => (
           <div key={i} className="row" style={{ flexWrap: "wrap", gap: 6 }}>
@@ -107,7 +108,7 @@ function DuesEditor() {
             <button className="mini danger" type="button" onClick={() => set("rules", d.rules.filter((_, j) => j !== i))}>삭제</button>
           </div>
         ))}
-        <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: 17 }}
+        <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(17) }}
           onClick={() => set("rules", [...d.rules, { position: data.options.positions.find((p) => !usedPos.has(p)) ?? "", amount: "" }])}>+ 직책별 회비 추가</button>
       </section>
 
@@ -134,7 +135,7 @@ function DuesEditor() {
       </details>
 
       <section className="card" aria-label="입금계좌" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 20px var(--display)" }}>입금계좌</b>
+        <b style={{ font: `400 ${fs(20)} var(--display)` }}>입금계좌</b>
         <div className="grid2">
           <div><label className="l" htmlFor="d-bank">은행</label><input id="d-bank" className="field" maxLength={40} placeholder="예) 국민은행" value={d.bank} onChange={(e) => set("bank", e.target.value)} /></div>
           <div><label className="l" htmlFor="d-acc">계좌번호</label><input id="d-acc" className="field" maxLength={80} inputMode="text" placeholder="예) 123-456-789012" value={d.account} onChange={(e) => set("account", e.target.value)} /></div>

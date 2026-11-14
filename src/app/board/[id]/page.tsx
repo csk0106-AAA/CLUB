@@ -9,6 +9,7 @@ import { Attachments, FeeView, MinutesView, PollBox, QuizBox, RulesView, SurveyB
 import type { PostDetail } from "@/components/board/types";
 import { FORM_LABEL, type FeeData, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDateTime } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Any = never;
 
@@ -68,8 +69,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
           {d.canEdit && (
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <Link href={`/board/${p.id}/edit`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: 17, textDecoration: "none" }}>{p.form === "rules" ? "글·회칙 고치기" : "고치기"}</Link>
-              <button className="btn red" type="button" style={{ width: "auto", minHeight: 46, fontSize: 17 }} onClick={remove}>지우기</button>
+              <Link href={`/board/${p.id}/edit`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: fs(17), textDecoration: "none" }}>{p.form === "rules" ? "글·회칙 고치기" : "고치기"}</Link>
+              <button className="btn red" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(17) }} onClick={remove}>지우기</button>
             </div>
           )}
         </article>

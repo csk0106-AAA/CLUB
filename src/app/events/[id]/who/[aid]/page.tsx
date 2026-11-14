@@ -8,6 +8,7 @@ import { Mascot } from "@/components/Mascot";
 import { SajuPanel, type SajuInfo } from "@/components/SajuPanel";
 import { api, fmtDate } from "@/lib/client";
 import { useVoice } from "@/lib/voice";
+import { fs } from "@/lib/fs";
 
 type Msg = { role: "ai" | "me"; text: string; scope?: "intro" | "truthlie" | "none" };
 type State = {
@@ -78,7 +79,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   return (
     <main className="app">
       <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={progress?.done} total={progress?.total} />
-      <h1 className="title" style={{ fontSize: 24 }}>{st.activity.name}</h1>
+      <h1 className="title" style={{ fontSize: fs(24) }}>{st.activity.name}</h1>
       <div className="subnav" role="tablist" aria-label="내가 누굴까요? 메뉴" style={{ display: "flex", gap: 6 }}>
         <a href="#" role="tab" aria-selected={tab === "write"} className={tab === "write" ? "on" : ""} onClick={(e) => { e.preventDefault(); setTab("write"); }}>내 소개 작성</a>
         <a href="#" role="tab" aria-selected={tab === "guess"} className={tab === "guess" ? "on" : ""} onClick={(e) => { e.preventDefault(); setTab("guess"); }}>누구일까요?</a>
@@ -308,7 +309,7 @@ function Write(props: {
       {interviewDone && hasDraft && (
         <section aria-label="미리보기와 승인" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <h2 className="title grow" style={{ fontSize: 23, margin: 0 }}>{hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
+            <h2 className="title grow" style={{ fontSize: fs(23), margin: 0 }}>{hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
             <span className={`pill ${approved ? "ok" : "warn"}`}>{approved ? "배포됨 ✓" : "초안 (나만 보여요)"}</span>
             {!approved && (
               <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "다시 만들기"}</button>
@@ -329,7 +330,7 @@ function Write(props: {
           ) : (
             <div className="card row" style={{ flexWrap: "wrap" }}>
               <span className="small">{approved ? "내 별칭" : "AI가 제안한 별칭"}</span>
-              <b style={{ font: "400 20px var(--display)" }}>{st.profile.alias}</b>
+              <b style={{ font: `400 ${fs(20)} var(--display)` }}>{st.profile.alias}</b>
               <span className="grow" />
               {!approved && <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>}
             </div>
@@ -364,7 +365,7 @@ function Write(props: {
           {inAct && (
             <>
               <div className="row" style={{ flexWrap: "wrap" }}>
-                <b className="grow" style={{ font: "400 21px var(--display)" }}>2진실 1거짓</b>
+                <b className="grow" style={{ font: `400 ${fs(21)} var(--display)` }}>2진실 1거짓</b>
                 {!approved && st.aiEnabled && (
                   <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글과 함께 다시 만들기"}</button>
                 )}

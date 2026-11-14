@@ -7,6 +7,7 @@ import { EventCalendar } from "@/components/EventCalendar";
 import { IconCalendar, IconPin } from "@/components/Icons";
 import { MemberTabs } from "@/components/MemberTabs";
 import { api, fmtWhen, TYPE_TONE } from "@/lib/client";
+import { fs } from "@/lib/fs";
 
 type Ev = {
   id: string;
@@ -105,7 +106,7 @@ export default function EventsPage() {
   return (
     <main className="app with-tabs">
       <div className="row" style={{ alignItems: "center" }}>
-        <h1 className="title grow" style={{ fontSize: 22 }}>예정된 행사</h1>
+        <h1 className="title grow" style={{ fontSize: fs(22) }}>예정된 행사</h1>
         <button type="button" className="mini" onClick={toggleView} style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 44, flex: "none" }}>
           {view === "list" ? <><IconCalendar size={20} />캘린더로 보기</> : <><ListIcon />리스트로 보기</>}
         </button>
@@ -139,7 +140,7 @@ export default function EventsPage() {
 // 리스트로 보기 아이콘(줄 세 개)
 function ListIcon() {
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+    <svg width={20} height={20} style={{ width: fs(20), height: fs(20), flex: "none" }} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
       <path d="M8 6h12M8 12h12M8 18h12" />
       <circle cx="3.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
       <circle cx="3.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
