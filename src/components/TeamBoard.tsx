@@ -18,10 +18,10 @@ const MODE_TEXT: Record<Mode, { label: string; hint: string }> = {
   mix: { label: "연령대 섞기", hint: "연령대를 고르게 섞어서 나눠요. 회원 명단의 연령대를 사용해요." },
   random: { label: "랜덤 배정", hint: "무작위로 나눠요." },
 };
-const POOL_TEXT: Record<string, string> = { selected: "관리자 선택 회원", attending: "행사 참석 신청자", all: "전체 회원" };
+const POOL_TEXT: Record<string, string> = { selected: "관리자 선택 회원", attending: "일정 참석 신청자", all: "전체 회원" };
 
 // 팀(조) 구성 보드: 관리자 배정 / 연령대 섞기 / 랜덤 배정 → 끌어서 옮기기 → 확인으로 회원에게 배포.
-// base 는 `.../teams`, `.../teams/publish` 를 가진 API 주소다(타임캡슐 팀 구성과 행사 조편성이 같이 쓴다).
+// base 는 `.../teams`, `.../teams/publish` 를 가진 API 주소다(타임캡슐 팀 구성과 일정 조편성이 같이 쓴다).
 export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: string; canEdit: boolean; unit?: string; screenHref?: string }) {
   const [td, setTd] = useState<TeamsData | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);

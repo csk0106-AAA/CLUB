@@ -47,8 +47,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
       {d && p && (
         <article style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-            {p.pinned && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
-            {p.notice && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={13} />공지</span>}
+            {p.pinned && <span className="pill red" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
+            {p.notice && <span className="pill red" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={13} />공지</span>}
             <span className="pill gray">{FORM_LABEL[p.form]}</span>
           </div>
           <h1 className="title" style={{ overflowWrap: "anywhere" }}>{p.title}</h1>

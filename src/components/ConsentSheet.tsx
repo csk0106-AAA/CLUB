@@ -4,8 +4,8 @@ import { useState } from "react";
 import { api } from "@/lib/client";
 import { Sheet } from "./Sheet";
 
-// 개인정보 안내 동의(처음 들어온 회원). 홈과 행사 화면이 같이 쓴다.
-// 동의하기 전에는 행사 화면의 목록이 잠긴다(행사 화면이 consent 로 판단).
+// 개인정보 안내 동의(처음 들어온 회원). 홈과 일정 화면이 같이 쓴다.
+// 동의하기 전에는 일정 화면의 목록이 잠긴다(일정 화면이 consent 로 판단).
 export function ConsentSheet({ consent, onAgreed }: { consent: boolean; onAgreed: () => void }) {
   const [declined, setDeclined] = useState(false);
   const [busy, setBusy] = useState(false);

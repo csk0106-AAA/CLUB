@@ -28,7 +28,7 @@ export const stepSchema = z.object({
 });
 
 export const preEventSchema = z.object({
-  enabled: z.boolean(), // false면 행사 전 사전 작성 단계가 없다(현장에서만 진행)
+  enabled: z.boolean(), // false면 일정 전 사전 작성 단계가 없다(현장에서만 진행)
   opensBeforeDays: z.number().int().min(0).optional(),
   closesBeforeDays: z.number().int().min(0).optional(),
   steps: z.array(z.string()).default([]),
@@ -57,10 +57,10 @@ export const templateConfigSchema = z.object({
   aiCommon: z.string().max(4000).optional(),
   // AI 인터뷰(소개 작성 활동): 필수 질문과 후속 질문 최대 개수. 비어 있으면 AI 설정 화면의 기본값.
   interview: z.object({ questions: z.array(z.string().max(300)).max(30), followUpMax: z.number().int().min(0).max(12) }).optional(),
-  // 활동 방식: all(전체 활동) / team(팀 활동). 팀 배정은 템플릿에 넣지 않고 행사 > 활동에서 한다.
+  // 활동 방식: all(전체 활동) / team(팀 활동). 팀 배정은 템플릿에 넣지 않고 일정 > 활동에서 한다.
   // 비어 있으면 타임캡슐(현장 작성)은 팀, 나머지는 전체로 본다(lib/activities.ts activityMode).
   mode: z.enum(["all", "team"]).optional(),
-  // 행사 활동에서 AI 지침을 "이 행사에만" 저장할 때 만든 행사 템플릿의 출처
+  // 일정 활동에서 AI 지침을 "이 일정에만" 저장할 때 만든 일정 템플릿의 출처
   derivedFrom: z.string().optional(), // 원래 템플릿 id
   sourceEvent: z.object({ id: z.string(), name: z.string(), date: z.string() }).optional(),
 });

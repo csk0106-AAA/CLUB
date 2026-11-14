@@ -13,7 +13,7 @@ async function load(id: string, aid: string) {
   return act ? { s, act } : null;
 }
 
-// 출석 체크: 이 활동에 참여할 사람(관리자가 선택). 행사 참석 신청 여부는 참고용으로만 보여 준다.
+// 출석 체크: 이 활동에 참여할 사람(관리자가 선택). 일정 참석 신청 여부는 참고용으로만 보여 준다.
 export async function GET(_req: Request, ctx: Ctx) {
   const g = await guard(["activities", "events"]);
   if ("err" in g) return g.err;
@@ -39,7 +39,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
 const body = z.union([
   z.object({ selected: z.array(z.string()).max(500) }), // 선택한 사람 전체를 저장
-  z.object({ preset: z.literal("applicants") }), // 편의: 행사 참석 신청자로 채우기(한 번 채우는 것일 뿐, 이후 자동 연동은 없다)
+  z.object({ preset: z.literal("applicants") }), // 편의: 일정 참석 신청자로 채우기(한 번 채우는 것일 뿐, 이후 자동 연동은 없다)
 ]);
 
 export async function PUT(req: Request, ctx: Ctx) {

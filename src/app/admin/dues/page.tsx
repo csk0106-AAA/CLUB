@@ -68,7 +68,7 @@ function DuesEditor() {
 
   return (
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <p className="small" style={{ margin: 0 }}>원우회 모임회비(연회비·월회비)를 정해요. 여기서 정한 입금계좌는 새 행사를 만들 때 행사 계좌로 먼저 들어가요(소모임 행사는 소모임 계좌).</p>
+      <p className="small" style={{ margin: 0 }}>원우회 모임회비(연회비·월회비)를 정해요. 여기서 정한 입금계좌는 새 일정을 만들 때 일정 계좌로 먼저 들어가요(소모임 일정은 소모임 계좌).</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <section className="card" aria-label="회비 종류와 금액" style={{ display: "flex", flexDirection: "column", gap: 12 }}>

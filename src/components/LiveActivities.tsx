@@ -109,7 +109,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
 
   if (!list) return null;
   if (list.length === 0) {
-    return layout === "path" ? <div className="msg info">이 행사에는 아직 활동이 없어요. 정해지면 여기에 나타나요.</div> : null;
+    return layout === "path" ? <div className="msg info">이 일정에는 아직 활동이 없어요. 정해지면 여기에 나타나요.</div> : null;
   }
 
   if (layout === "path") {
@@ -120,7 +120,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
       <>
         <section aria-label="활동 길" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div className="unit">
-            <div><span>이번 행사</span><b>함께할 활동 {list.length}가지</b></div>
+            <div><span>이번 일정</span><b>함께할 활동 {list.length}가지</b></div>
             <span style={{ color: "var(--red-t)", display: "inline-flex" }}><IconBook size={26} /></span>
           </div>
           {offline && <div className="msg info" role="status">연결이 불안정해요. 다시 연결하는 중이에요…</div>}

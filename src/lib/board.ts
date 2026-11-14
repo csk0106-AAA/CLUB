@@ -19,6 +19,9 @@ import { z } from "zod";
 export const FORMS = ["rules", "fee", "minutes", "general", "survey", "poll", "quiz"] as const;
 export type Form = (typeof FORMS)[number];
 export const isForm = (f: string): f is Form => (FORMS as readonly string[]).includes(f);
+// 글쓰기에서 고를 수 있는 양식. 회의록(minutes)은 이제 "회의" 일정의 회의록에서 쓴다(예전 회의록 글은 읽기만).
+export const WRITE_FORMS: Form[] = FORMS.filter((f) => f !== "minutes");
+export const isWriteForm = (f: string): f is Form => (WRITE_FORMS as string[]).includes(f);
 
 export const FORM_LABEL: Record<Form, string> = {
   rules: "회칙",
@@ -32,7 +35,7 @@ export const FORM_LABEL: Record<Form, string> = {
 export const FORM_HINT: Record<Form, string> = {
   rules: "확정된 회칙 조문을 그대로 보여 줘요 (전체 관리자만)",
   fee: "회원구분·직책별 연회비, 납부기한, 계좌",
-  minutes: "일시, 장소, 참석자, 안건, 후속 조치",
+  minutes: "일시, 장소, 참석자, 안건, 후속 조치 (이제 일정 › 회의 일정에서 써요)",
   general: "제목과 내용",
   survey: "질문 여러 개 (주관식·하나 고르기·여러 개 고르기)",
   poll: "보기 중 하나 또는 여러 개 고르기",

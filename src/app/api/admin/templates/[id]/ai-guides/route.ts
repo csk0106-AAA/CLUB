@@ -7,7 +7,7 @@ import { getStore } from "@/lib/store";
 type Ctx = { params: Promise<{ id: string }> };
 
 // 활동 템플릿의 AI 설정(지점별 지침, 이 활동 공통 지침, 인터뷰 질문)만 바꾼다.
-// 템플릿 버전은 올리지 않고, 이 템플릿으로 넣은 행사 활동에도 바로 적용된다.
+// 템플릿 버전은 올리지 않고, 이 템플릿으로 넣은 일정 활동에도 바로 적용된다.
 export async function PUT(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;

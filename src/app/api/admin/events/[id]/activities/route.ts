@@ -8,7 +8,7 @@ import { getStore } from "@/lib/store";
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
-// 행사에 들어간 활동 + 현재 사전 작성 상태 + 현장 진행 상태
+// 일정에 들어간 활동 + 현재 사전 작성 상태 + 현장 진행 상태
 export async function GET(_req: Request, ctx: Ctx) {
   const g = await guard(["activities", "events"]);
   if ("err" in g) return g.err;
@@ -16,7 +16,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const s = await getStore();
   const [events, acts, lives] = await Promise.all([s.list("Events"), s.list("EventActivities"), s.list("LiveState")]);
   const ev = events.find((e) => e.id === id);
-  if (!ev) return bad("행사를 찾을 수 없어요.", 404);
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
 
   const mine = acts.filter((a) => a.eventId === id).sort((a, b) => Number(a.order) - Number(b.order));
   const rosterCounts = await Promise.all(mine.map(async (a) => (await rosterSet(a)).size));
@@ -46,7 +46,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
 const addBody = z.object({ templateId: z.string().min(1) });
 
-// 템플릿에서 활동을 골라 행사에 넣는다. 설정은 그 시점 것을 복사해 행사별로 따로 수정할 수 있다.
+// 템플릿에서 활동을 골라 일정에 넣는다. 설정은 그 시점 것을 복사해 일정별로 따로 수정할 수 있다.
 export async function POST(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;
@@ -54,7 +54,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const parsed = addBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("템플릿을 골라 주세요.");
   const s = await getStore();
-  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("행사를 찾을 수 없어요.", 404);
+  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
   const tpl = (await s.list("ActivityTemplates")).find((t) => t.id === parsed.data.templateId);
   if (!tpl || !readConfig(tpl.config)) return bad("템플릿을 찾을 수 없어요.", 404);
 

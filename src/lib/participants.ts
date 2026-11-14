@@ -2,7 +2,7 @@ import { inAudience, inClubOrObserver, readAudience } from "./audience";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
-export const NOT_ATTENDEE = "이 활동의 참여 대상이 아니에요(행사 대상 회원 중 관리자가 고른 회원만 참여할 수 있어요).";
+export const NOT_ATTENDEE = "이 활동의 참여 대상이 아니에요(일정 대상 회원 중 관리자가 고른 회원만 참여할 수 있어요).";
 
 // 관리자가 고른 회원만 참여하는 활동인지
 export const isLimited = (cfg: TemplateConfig): boolean => cfg.participants === "selected";
@@ -24,12 +24,12 @@ export const attendanceState = (aid: string): Promise<AttendanceState> =>
   getSetting<AttendanceState>(key(aid), { confirmed: false, confirmedAt: "", by: "" });
 export const saveAttendanceState = (aid: string, s: AttendanceState): Promise<void> => setSetting(key(aid), s);
 
-// 행사 대상이 정해져 있는지(소모임 행사이거나 공개 대상을 고른 행사)
+// 일정 대상이 정해져 있는지(소모임 일정이거나 공개 대상을 고른 일정)
 function eventRestricted(ev: Row): boolean {
   return Boolean((ev.club ?? "").trim()) || readAudience(ev.audience).mode !== "all";
 }
 
-// 행사 대상에 포함되는지(공개 여부는 따로 본다): 소모임 행사는 소모임 회원 + 참관자, 그 밖에는 공개 대상
+// 일정 대상에 포함되는지(공개 여부는 따로 본다): 소모임 일정은 소모임 회원 + 참관자, 그 밖에는 공개 대상
 function inEvent(ev: Row, member: Row): boolean {
   const v = { id: member.id ?? "", clubs: member.clubs };
   if ((ev.club ?? "").trim()) return inClubOrObserver(ev, v);
@@ -41,7 +41,7 @@ async function eventOf(act: Row, ev?: Row): Promise<Row | undefined> {
 }
 
 // 이 회원이 활동에 참여할 수 있는지.
-//  - 행사 대상(소모임 회원·참관자 또는 공개 대상)에 들어 있어야 한다.
+//  - 일정 대상(소모임 회원·참관자 또는 공개 대상)에 들어 있어야 한다.
 //  - selected 이면 관리자가 선택한 회원(출석 체크)만 가능하다.
 export async function canJoin(cfg: TemplateConfig, act: Row, ev: Row, memberId: string): Promise<boolean> {
   const e = await eventOf(act, ev);
@@ -54,7 +54,7 @@ export async function canJoin(cfg: TemplateConfig, act: Row, ev: Row, memberId: 
 }
 
 // 참여 대상 회원 번호 집합. 제한이 없으면 null(전체 회원).
-//  selected: 출석 체크한 회원(행사 대상 안에서), 그 밖에는 행사 대상이 정해진 경우 그 회원들.
+//  selected: 출석 체크한 회원(일정 대상 안에서), 그 밖에는 일정 대상이 정해진 경우 그 회원들.
 export async function joinSet(cfg: TemplateConfig, act: Row, ev?: Row): Promise<Set<string> | null> {
   const e = await eventOf(act, ev);
   const roster = isLimited(cfg) ? await rosterSet(act) : null;
@@ -75,10 +75,10 @@ export async function onsiteGate(cfg: TemplateConfig, act: Row): Promise<string 
 
 // 팀 구성 등에서 쓰는 참여자 명단.
 //  selected: 관리자가 선택한 회원
-//  all     : 행사에 참석을 신청한 회원(없으면 전체 회원)
+//  all     : 일정에 참석을 신청한 회원(없으면 전체 회원)
 export async function participantPool(cfg: TemplateConfig, act: Row, ev: Row): Promise<{ members: Row[]; kind: "selected" | "attending" | "all" }> {
   const s = await getStore();
-  // 소모임 행사·공개 대상이 정해진 행사는 그 대상 회원 안에서만 고른다.
+  // 소모임 일정·공개 대상이 정해진 일정은 그 대상 회원 안에서만 고른다.
   const members = (await s.list("Members")).filter((m) => m.kind !== "회원대기" && (!eventRestricted(ev) || inEvent(ev, m)));
   if (isLimited(cfg)) {
     const set = await rosterSet(act);

@@ -7,13 +7,14 @@ import { clubAccount, clubLeaders, readAllClubInfo } from "@/lib/clubs";
 import { duesAccount, readDues } from "@/lib/dues";
 import { getLists, memberClubs } from "@/lib/lists";
 import { notifyEvent } from "@/lib/push";
+import { fixLegacyTypes } from "@/lib/event-migrate";
 import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// 행사 상세: 개요, 회원별 신청·회비 현황(미응답 회원 포함)
+// 일정 상세: 개요, 회원별 신청·회비 현황(미응답 회원 포함)
 export async function GET(_req: Request, ctx: Ctx) {
   const g = await guard(["events", "fees"]);
   if ("err" in g) return g.err;
@@ -24,10 +25,11 @@ export async function GET(_req: Request, ctx: Ctx) {
     s.list("Members"),
     s.list("EventApplies"),
   ]);
+  await fixLegacyTypes(events);
   const event = events.find((e) => e.id === id);
-  if (!event) return bad("행사를 찾을 수 없어요.", 404);
+  if (!event) return bad("일정을 찾을 수 없어요.", 404);
 
-  // 소모임 행사: 그 소모임 회원 + 참관자만 보여 준다(참관자·회장 표시).
+  // 소모임 일정: 그 소모임 회원 + 참관자만 보여 준다(참관자·회장 표시).
   const club = (event.club ?? "").trim();
   const observers = readObservers(event.observers);
   const rows = members
@@ -93,8 +95,8 @@ const patch = z.object({
   accountHolder: z.string().max(60).optional(),
   feeRules: feeRules.optional(), // 조건별 회비
   audience: audienceInput.optional(), // 공개 대상(비우면 전체 회원)
-  club: z.string().trim().max(40).optional(), // 소모임 행사의 소모임(""= 없음)
-  pinned: z.boolean().optional(), // 회원 행사 목록 맨 위에 고정
+  club: z.string().trim().max(40).optional(), // 소모임 일정의 소모임(""= 없음)
+  pinned: z.boolean().optional(), // 회원 일정 목록 맨 위에 고정
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -106,7 +108,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { published, pinned, feeRules: rules, audience, ...rest } = parsed.data;
   const s = await getStore();
   const before = (await s.list("Events")).find((e) => e.id === id);
-  if (!before) return bad("행사를 찾을 수 없어요.", 404);
+  if (!before) return bad("일정을 찾을 수 없어요.", 404);
   if (rest.club !== undefined) {
     if (before.type !== "소모임") rest.club = "";
     else if (rest.club && rest.club !== (before.club ?? "") && !(await getLists()).clubs.includes(rest.club)) return bad("소모임을 목록에서 골라 주세요.");
@@ -118,8 +120,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
     ...(pinned === undefined ? {} : { pinned: String(pinned) }),
     ...(audience === undefined ? {} : { audience: audience.mode === "all" ? "" : JSON.stringify(audience) }),
   });
-  if (!row) return bad("행사를 찾을 수 없어요.", 404);
-  // 회원에게 공개된 행사가 새로 공개되거나 내용이 바뀌면 알림(배지·휴대폰)
+  if (!row) return bad("일정을 찾을 수 없어요.", 404);
+  // 회원에게 공개된 일정이 새로 공개되거나 내용이 바뀌면 알림(배지·휴대폰)
   // (진행 상태·맨 위 고정만 바꾼 것은 알리지 않는다)
   const changed = Object.keys(parsed.data).some((k) => k !== "status" && k !== "pinned");
   if (row.published === "true" && changed) {

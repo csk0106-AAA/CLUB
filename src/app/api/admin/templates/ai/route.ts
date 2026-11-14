@@ -15,7 +15,7 @@ const body = z.object({
 
 const examples = DEFAULT_TEMPLATES.map(({ id: _i, version: _v, ...c }) => c);
 
-const SYSTEM = `당신은 원우회(20명 안팎의 경영자 모임) 행사의 활동을 설계하는 도우미입니다. 반드시 한국어로 답합니다.
+const SYSTEM = `당신은 원우회(20명 안팎의 경영자 모임) 일정의 활동을 설계하는 도우미입니다. 반드시 한국어로 답합니다.
 관리자의 설명을 듣고 이 앱의 "활동 템플릿" 설정(JSON)을 만듭니다.
 
 [앱이 실제로 동작시킬 수 있는 것]
@@ -28,7 +28,7 @@ const SYSTEM = `당신은 원우회(20명 안팎의 경영자 모임) 행사의 
 
 [설정 규칙]
 - name(필수), description(한두 문장), participants: "all"(전체 회원) 또는 "selected"(관리자가 고른 회원)
-- preEvent: { enabled, opensBeforeDays, closesBeforeDays, steps } — 행사 며칠 전부터 며칠 전까지 사전 작성. 없으면 { "enabled": false, "steps": [] }
+- preEvent: { enabled, opensBeforeDays, closesBeforeDays, steps } — 일정 며칠 전부터 며칠 전까지 사전 작성. 없으면 { "enabled": false, "steps": [] }
 - guessPhase: 소개 엔진에서만 사용(사전 맞히기). 아니면 넣지 않습니다.
 - onsite.steps: 1개 이상. 각 단계 { key(영문 소문자, 겹치지 않게), label, memberScreen, unlock, hostButton }
   memberScreen: wait(대기) | write(작성) | vote(투표) | iam_button("저예요") | pick_person(사람 고르기) | view(결과 보기)

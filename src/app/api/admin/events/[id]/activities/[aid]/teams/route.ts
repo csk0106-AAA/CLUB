@@ -9,7 +9,7 @@ import type { Row } from "@/lib/store/types";
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; aid: string }> };
 
-// 팀 구성에 쓸 사람: 관리자 선택 회원 활동이면 선택한 회원, 전체 회원 활동이면 행사 참석 신청자(없으면 전체 회원).
+// 팀 구성에 쓸 사람: 관리자 선택 회원 활동이면 선택한 회원, 전체 회원 활동이면 일정 참석 신청자(없으면 전체 회원).
 const pool = participantPool;
 
 const view = (m: Row) => ({ id: m.id, name: m.name, ageGroup: m.ageGroup });

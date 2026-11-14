@@ -24,7 +24,7 @@ export function newTemplateId(): string {
 
 const DAY = 24 * 60 * 60 * 1000;
 
-// 행사 일시(한국 시간)를 시각으로 바꾼다.
+// 일정 일시(한국 시간)를 시각으로 바꾼다.
 export function eventStart(startsAt: string): number | null {
   if (!startsAt) return null;
   const t = Date.parse(startsAt.length <= 16 ? `${startsAt}:00+09:00` : startsAt);
@@ -33,7 +33,7 @@ export function eventStart(startsAt: string): number | null {
 
 export type PreStatus = {
   enabled: boolean;
-  // none: 사전 작성 없음(현장에서 진행) / unknown: 행사 날짜 미정 / before / open / closed
+  // none: 사전 작성 없음(현장에서 진행) / unknown: 일정 날짜 미정 / before / open / closed
   status: "none" | "unknown" | "before" | "open" | "closed";
   opensAt: string; // 안내용 날짜(YYYY-MM-DD)
   closesAt: string;
@@ -45,10 +45,10 @@ const ymd = (t: number) => new Date(t + 9 * 60 * 60 * 1000).toISOString().slice(
 export const periodText = (p: Pick<PreStatus, "opensAt" | "closesAt">): string =>
   p.opensAt ? ` (${p.opensAt.replace(/-/g, "/")} ~ ${p.closesAt.replace(/-/g, "/")})` : "";
 
-// 템플릿의 사전 작성 설정과 행사 날짜로 지금 상태를 계산한다.
+// 템플릿의 사전 작성 설정과 일정 날짜로 지금 상태를 계산한다.
 type Win = { enabled: boolean; opensBeforeDays?: number; closesBeforeDays?: number };
 
-// 행사 며칠 전부터 며칠 전까지 열리는 기간의 현재 상태
+// 일정 며칠 전부터 며칠 전까지 열리는 기간의 현재 상태
 export function windowStatus(win: Win | undefined, startsAt: string, now = Date.now()): PreStatus {
   if (!win || !win.enabled) return { enabled: false, status: "none", opensAt: "", closesAt: "" };
   const start = eventStart(startsAt);

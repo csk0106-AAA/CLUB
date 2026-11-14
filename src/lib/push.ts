@@ -33,7 +33,7 @@ export function inQuiet(p: Prefs, now = new Date()): boolean {
 
 // alerts: 소모임 가입·참관 신청과 그 결과(받을 알림 종류 설정과 상관없이 알림 ON 이면 보낸다)
 export type PushKind = Kind | "alerts";
-const LABEL: Record<PushKind, string> = { events: "행사", posts: "게시글", profiles: "프로필 북", alerts: "알림" };
+const LABEL: Record<PushKind, string> = { events: "일정", posts: "게시글", profiles: "프로필 북", alerts: "알림" };
 const URL_OF: Record<PushKind, string> = { events: "/events", posts: "/board", profiles: "/profiles", alerts: "/board" };
 
 // 이 회원들에게 kind 종류 알림을 보낸다(조건에 맞는 사람만).
@@ -78,7 +78,7 @@ export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: str
   return sent;
 }
 
-// 행사가 공개되거나 바뀌었을 때: 배지용 시각을 남기고, 공개 대상에게 알린다.
+// 일정이 공개되거나 바뀌었을 때: 배지용 시각을 남기고, 공개 대상에게 알린다.
 export async function notifyEvent(eventId: string, _kind: "new" | "update"): Promise<void> {
   await stampEvent(eventId);
   try {
@@ -88,7 +88,7 @@ export async function notifyEvent(eventId: string, _kind: "new" | "update"): Pro
     if (!ev) return;
     await pushTo(members.filter((m) => eventJoinable(ev, m)).map((m) => m.id), "events");
   } catch (e) {
-    console.error("[push] 행사 알림 실패", e);
+    console.error("[push] 일정 알림 실패", e);
   }
 }
 

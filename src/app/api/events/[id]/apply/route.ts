@@ -6,7 +6,7 @@ import { getStore } from "@/lib/store";
 
 const body = z.object({
   answer: z.enum(["참석", "불참"]),
-  // 참석 날짜(YYYY-MM-DD). 행사 기간 안의 날짜만 받는다.
+  // 참석 날짜(YYYY-MM-DD). 일정 기간 안의 날짜만 받는다.
   days: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(7).optional(),
 });
 
@@ -22,14 +22,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const s = await getStore();
   const me = (await s.list("Members")).find((m) => m.id === g.s.mid);
   const ev = (await s.list("Events")).find((x) => x.id === id && eventVisible(x, me ?? g.s.mid));
-  if (!ev) return bad("행사를 찾을 수 없어요.", 404);
-  // 다른 소모임 행사는 읽기만 된다: 소모임 회원·참관자만 신청할 수 있다.
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
+  // 다른 소모임 일정은 읽기만 된다: 소모임 회원·참관자만 신청할 수 있다.
   if (!eventJoinable(ev, me ?? g.s.mid)) return bad(`${ev.club} 소모임 회원만 참석 신청할 수 있어요. 소모임 가입이나 참관을 먼저 신청해 주세요.`, 403);
 
   if (days && days.length > 0) {
     const from = (ev.startsAt || "").slice(0, 10);
     const to = (ev.endsAt || ev.startsAt || "").slice(0, 10);
-    if (!from || days.some((d) => d < from || d > to)) return bad("행사 기간 안의 날짜를 골라 주세요.");
+    if (!from || days.some((d) => d < from || d > to)) return bad("일정 기간 안의 날짜를 골라 주세요.");
   }
 
   const rows = await s.list("EventApplies");

@@ -17,7 +17,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 const PART = ["members", "events", "fees", "activities", "minutes", "board"];
 const PART_TEXT: Record<string, string> = {
   members: "회원 명단, 원우회 설정, 회원 구분, 조직도",
-  events: "행사 개요, 참석 신청, 일정, 카풀·방배정",
+  events: "일정 개요, 참석 신청, 일정, 카풀·방배정",
   fees: "회비 입금 확인, 비용과 예산",
   activities: "활동 진행, 조편성, 팀 구성",
   minutes: "회의록, 회칙",
@@ -181,7 +181,7 @@ function Admins() {
       <div className="adm-two">
         <section style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }} aria-label="권한 종류">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>권한 종류</b>
-          <div className="card"><b>모든 권한</b><div className="small">회원관리, 행사관리, 소모임관리 전부와 권한 바꾸기</div></div>
+          <div className="card"><b>모든 권한</b><div className="small">회원관리, 소모임관리, 활동 템플릿, 일정 만들기·관리 전부와 권한 바꾸기</div></div>
           <div className="card">
             <b>부분 권한 (여러 개 선택)</b>
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>

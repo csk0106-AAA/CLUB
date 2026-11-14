@@ -15,7 +15,7 @@ export function IconBack({ size = 18, max = 1.2 }: P) {
 export function IconExport({ size = 18, max = 1.2 }: P) {
   return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3M7 8l5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>;
 }
-// 행사 탭(달력)
+// 일정 탭(달력)
 export function IconCalendar({ size = 26, max }: P) {
   return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>;
 }

@@ -5,7 +5,7 @@ import { getStore } from "@/lib/store";
 
 type Ctx = { params: Promise<{ id: string; aid: string }> };
 
-// 이 행사에서만 설정을 고친다(템플릿 보관함은 그대로).
+// 이 일정에서만 설정을 고친다(템플릿 보관함은 그대로).
 export async function PATCH(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;

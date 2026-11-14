@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ aid: string }> };
 
 const WHY: Record<string, string> = {
   none: "이 활동에는 사전 작성이 없어요.",
-  unknown: "행사 날짜가 정해지면 작성 기간이 열려요.",
+  unknown: "일정 날짜가 정해지면 작성 기간이 열려요.",
   before: "아직 작성 기간이 아니에요.",
   closed: "작성 기간이 끝났어요.",
 };

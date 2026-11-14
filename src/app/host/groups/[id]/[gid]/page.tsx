@@ -7,7 +7,7 @@ import { api } from "@/lib/client";
 type Team = { id: string; name: string; members: { id: string; name: string; ageGroup: string }[] };
 type Data = { teams: Team[]; published: boolean };
 
-// 행사 조편성 결과를 큰 화면(프로젝터)에 보여 준다. 읽기 전용이고 관리자만 열 수 있다.
+// 일정 조편성 결과를 큰 화면(프로젝터)에 보여 준다. 읽기 전용이고 관리자만 열 수 있다.
 export default function GroupsScreen({ params }: { params: Promise<{ id: string; gid: string }> }) {
   const { id, gid } = use(params);
   const [teams, setTeams] = useState<Team[] | null>(null);

@@ -15,7 +15,7 @@ export async function rooms(eventId: string): Promise<Room[]> {
 
 export const validDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d));
 
-// 행사 기간에서 숙박하는 날짜(시작일부터 종료일 전날까지). 당일 행사면 시작일만 돌려준다.
+// 일정 기간에서 숙박하는 날짜(시작일부터 종료일 전날까지). 당일 일정이면 시작일만 돌려준다.
 export function nightsOf(startsAt: string, endsAt: string): string[] {
   const s = startsAt.slice(0, 10);
   const e = endsAt.slice(0, 10);

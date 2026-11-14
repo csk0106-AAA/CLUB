@@ -1,7 +1,8 @@
 /* 디자인 토큰: 차분한 업무용 앱 스타일. 색은 모두 여기서만 정한다(밝은 화면 + 다크 모드).
-   팔레트: 조선일보 로고 색 기반 — 먹색(#222222, 주 버튼·제목·켜짐) + 빨강(#C81616, 아껴서: 고른 탭·알림 숫자·포커스) + 회색.
+   팔레트(안 C 수정): 주색 빨강(#C81616 — 주 버튼·고른 하단 탭·관리자 탭 밑줄·알림 숫자·포커스)
+   + 보조색 보라(#5B4DE8 — 참석·성공·켜짐·내 소모임·고른 하위 메뉴·보기 전환·링크) + 먹색 글자(#222222) + 회색.
    예전 이름(--blue*, --green*, --orange*)은 그대로 두고 새 색으로 연결했다:
-   파랑(선택) → 빨강 계열, 초록(참석·성공) → 중립 먹색 칩, 주황(주의) → 회색 칩. 초록은 쓰지 않는다. */
+   파랑(선택) → 보라, 초록(참석·성공·켜짐) → 보라, 주황(주의) → 회색 칩. */
 :root {
   /* 회색(구조) */
   --page: #f4f5f7;          /* 화면 바탕 */
@@ -20,31 +21,38 @@
   --switch-off: #d5d8de;    /* 꺼진 스위치 */
   --scrim: rgba(17, 17, 17, 0.5);
   --shadow: rgba(17, 17, 17, 0.2);
-  /* 주 동작(먹색) */
-  --brand: #222222;         /* 주 버튼·켜진 스위치·고른 하위 메뉴 바탕 */
-  --brand-h: #000000;
-  --on-brand: #ffffff;      /* 주 버튼 위 글자 */
-  /* 빨강(강조, 아껴서) */
-  --red: #c81616;           /* 고른 하단 탭·관리자 탭 밑줄·알림 숫자 바탕·포커스·고정 칩 바탕 */
+  /* 빨강(주색): 주 버튼·고른 하단 탭·관리자 탭 밑줄·알림 숫자 바탕·포커스·고정 칩 바탕 */
+  --red: #c81616;
   --red-d: #a61e22;
   --on-red: #ffffff;        /* 빨강 바탕 위 글자 */
   --red-t: #a61e22;         /* 밝은 바탕 위 빨간 글자(공지·고정·참석 체크 필요·위험) */
-  --red-bg: #fbecec;        /* 빨간 칩·고른 줄 바탕 */
+  --red-bg: #fbecec;        /* 빨간 칩 바탕 */
   --red-line: #f0bcbc;
-  /* 예전 "초록"(참석·성공·켜짐) → 중립 먹색 */
-  --green: var(--brand);
-  --green-d: var(--brand-h);
-  --green-ink: var(--on-brand);
-  --green-bg: #ededed;
-  --green-t: #222222;
-  --green-line: #cfd2d6;
-  --ok-bg: #f1f1f1;         /* 성공 안내 바탕 */
-  /* 예전 "파랑"(선택·강조) → 빨강 계열 */
-  --blue: var(--red);
-  --blue-d: var(--red-d);
-  --blue-bg: var(--red-bg);
-  --blue-t: var(--red-t);
-  --blue-line: var(--red-line);
+  /* 주 동작 = 빨강 */
+  --brand: var(--red);      /* 주 버튼 바탕 */
+  --brand-h: var(--red-d);
+  --on-brand: var(--on-red);
+  /* 보라(보조색): 참석·성공·켜짐·내 소모임·고른 하위 메뉴·보기 전환·링크 */
+  --violet: #5b4de8;        /* 보라 바탕·테두리(흰 바탕 위 글자로도 4.5:1 이상) */
+  --violet-d: #4a3cd0;
+  --on-violet: #ffffff;     /* 보라 바탕 위 글자 */
+  --violet-t: #5b4de8;      /* 밝은 바탕 위 보라 글자 */
+  --violet-bg: #efedfd;     /* 보라 칩·고른 줄 바탕 */
+  --violet-line: #c9c3f7;
+  /* 예전 "초록"(참석·성공·켜짐) → 보라 */
+  --green: var(--violet);
+  --green-d: var(--violet-d);
+  --green-ink: var(--on-violet);
+  --green-bg: var(--violet-bg);
+  --green-t: var(--violet-t);
+  --green-line: var(--violet-line);
+  --ok-bg: #f1f1f1;         /* 중립 안내 바탕(msg.info) */
+  /* 예전 "파랑"(선택·강조) → 보라 */
+  --blue: var(--violet);
+  --blue-d: var(--violet-d);
+  --blue-bg: var(--violet-bg);
+  --blue-t: var(--violet-t);
+  --blue-line: var(--violet-line);
   /* 예전 "주황"(주의) → 회색 칩 */
   --orange-bg: #ededed;
   --orange-t: #3a3f47;
@@ -65,9 +73,9 @@
     --page: #0f1113; --bg: #181b1e; --card: #181b1e; --soft: #22262a; --line: #2c3136; --line2: #22262a;
     --ink: #eceef0; --ink2: #ced3d8; --sub: #a6adb5; --icon: #8f969e; --muted: #8f969e; --dis: #5f666e;
     --chip: #2a2e33; --switch-off: #3a4046; --scrim: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.5);
-    --brand: #eceef0; --brand-h: #ffffff; --on-brand: #111111;
     --red: #ff5a52; --red-d: #ff7a73; --on-red: #111111; --red-t: #ff5a52; --red-bg: #3a1c1c; --red-line: #6a2a2a;
-    --green-bg: #2a2e33; --green-t: #eceef0; --green-line: #3d434a; --ok-bg: #2a2e33;
+    --violet: #a79cff; --violet-d: #bdb5ff; --on-violet: #111111; --violet-t: #a79cff; --violet-bg: #262247; --violet-line: #4a4290;
+    --ok-bg: #2a2e33;
     --orange-bg: #2a2e33; --orange-t: #ced3d8;
     --off-bg: #22262a; --off-line: #2c3136; --off-ink: #8f969e;
     --ic-ink: #111111; --focus: #ff5a52;
@@ -78,9 +86,9 @@
   --page: #0f1113; --bg: #181b1e; --card: #181b1e; --soft: #22262a; --line: #2c3136; --line2: #22262a;
   --ink: #eceef0; --ink2: #ced3d8; --sub: #a6adb5; --icon: #8f969e; --muted: #8f969e; --dis: #5f666e;
   --chip: #2a2e33; --switch-off: #3a4046; --scrim: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.5);
-  --brand: #eceef0; --brand-h: #ffffff; --on-brand: #111111;
   --red: #ff5a52; --red-d: #ff7a73; --on-red: #111111; --red-t: #ff5a52; --red-bg: #3a1c1c; --red-line: #6a2a2a;
-  --green-bg: #2a2e33; --green-t: #eceef0; --green-line: #3d434a; --ok-bg: #2a2e33;
+  --violet: #a79cff; --violet-d: #bdb5ff; --on-violet: #111111; --violet-t: #a79cff; --violet-bg: #262247; --violet-line: #4a4290;
+  --ok-bg: #2a2e33;
   --orange-bg: #2a2e33; --orange-t: #ced3d8;
   --off-bg: #22262a; --off-line: #2c3136; --off-ink: #8f969e;
   --ic-ink: #111111; --focus: #ff5a52;
@@ -100,7 +108,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3, b, strong { font-weight: 700; }
-a { color: var(--red-t); }
+a { color: var(--violet-t); }
 
 /* 앱 틀: 휴대폰 한 칸, 태블릿·PC에서는 가운데 정렬. 바탕은 연한 회색, 카드·목록은 흰색. */
 .app {
@@ -139,7 +147,7 @@ a { color: var(--red-t); }
 .grow { flex: 1; }
 .center { text-align: center; }
 
-/* 버튼: 납작하게. 기본 = 빨간 주 버튼, white = 흰 바탕 보조 버튼, red = 위험(빨간 테두리) */
+/* 버튼: 납작하게. 기본 = 빨간 주 버튼, green = 보라(긍정) 버튼, white = 흰 바탕 보조 버튼, red = 위험(빨간 테두리) */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 46px; width: 100%;
@@ -150,7 +158,7 @@ a { color: var(--red-t); }
 }
 .btn:hover:not(:disabled) { background: var(--brand-h); border-color: var(--brand-h); }
 .btn.blue { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
-.btn.green { background: var(--green); border-color: var(--green); color: var(--on-brand); }
+.btn.green { background: var(--green); border-color: var(--green); color: var(--green-ink); }
 .btn.green:hover:not(:disabled) { background: var(--green-d); border-color: var(--green-d); }
 .btn.white { background: var(--card); color: var(--ink); border-color: var(--line); font-weight: 500; }
 .btn.white:hover:not(:disabled) { background: var(--soft); border-color: var(--line); }
@@ -175,11 +183,15 @@ label.l, span.l { font-size: calc(13px * var(--fs, 1)); font-weight: 700; color:
 .pill {
   display: inline-block; font: 700 calc(12px * var(--fs, 1))/1.5 var(--body); border-radius: 4px; padding: 1px 6px; white-space: nowrap;
 }
-.pill.blue { background: var(--red-bg); color: var(--red-t); }
+.pill.blue { background: var(--blue-bg); color: var(--blue-t); }
 .pill.ok { background: var(--green-bg); color: var(--green-t); }
 .pill.warn { background: var(--orange-bg); color: var(--orange-t); }
 .pill.bad { background: var(--red-bg); color: var(--red-t); }
 .pill.gray { background: var(--card); color: var(--sub); border: 1px solid var(--line); font-weight: 500; padding: 0 6px; }
+/* 일정 유형 칩(lib/event-types.ts TYPE_TONE) */
+.pill.red { background: var(--red-bg); color: var(--red-t); }
+.pill.violet { background: var(--violet-bg); color: var(--violet-t); }
+.pill.ink { background: var(--ink); color: var(--card); }
 
 .pick { display: flex; flex-direction: column; gap: 8px; }
 .opt {
@@ -202,7 +214,8 @@ a.opt:hover, button.opt:hover:not(:disabled) { background: var(--soft); }
 
 .msg { border-radius: 8px; padding: 10px 14px; font-weight: 500; font-size: calc(14px * var(--fs, 1)); }
 .msg.bad { background: var(--red-bg); color: var(--red-t); }
-.msg.info, .msg.ok { background: var(--ok-bg); color: var(--ink); }
+.msg.info { background: var(--ok-bg); color: var(--ink); }
+.msg.ok { background: var(--violet-bg); color: var(--violet-t); }
 .msg.ok::before { content: "✓"; font-weight: 700; margin-right: 6px; }
 
 .mascot { display: block; margin: 0 auto; }
@@ -249,8 +262,8 @@ a.opt:hover, button.opt:hover:not(:disabled) { background: var(--soft); }
   border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg);
 }
 .mine {
-  align-self: flex-end; max-width: 88%; background: var(--red-bg); border: 1px solid var(--red-line); border-radius: 10px;
-  padding: 10px 14px; font-weight: 500; font-size: calc(15px * var(--fs, 1)); color: var(--red-t); white-space: pre-wrap;
+  align-self: flex-end; max-width: 88%; background: var(--violet-bg); border: 1px solid var(--violet-line); border-radius: 10px;
+  padding: 10px 14px; font-weight: 500; font-size: calc(15px * var(--fs, 1)); color: var(--violet-t); white-space: pre-wrap;
 }
 
 /* 아이콘이 붙은 알림 배너 */
@@ -267,7 +280,7 @@ a.opt:hover, button.opt:hover:not(:disabled) { background: var(--soft); }
 button.fb { cursor: pointer; }
 button.fb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-/* 행사 화면: 한 줄 요약 숫자 */
+/* 일정 화면: 한 줄 요약 숫자 */
 .stats { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .stat { display: flex; align-items: center; gap: 6px; font: 700 calc(15px * var(--fs, 1)) var(--display); color: var(--ink2); }
 /* 활동 목록(LiveActivities): 예전 "길" 모양을 차분한 카드형으로 */
@@ -316,11 +329,11 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   padding: 18px 16px max(20px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px;
   max-height: 90%; overflow: auto;
 }
-.opt[aria-pressed="true"] { border-color: var(--red); background: var(--red-bg); color: var(--red-t); }
+.opt[aria-pressed="true"] { border-color: var(--violet); background: var(--violet-bg); color: var(--violet-t); }
 /* 선택지 오른쪽 동그라미 체크 */
 .opt.rowopt { flex-direction: row; align-items: center; gap: 12px; }
-.tick { width: calc(22px * var(--fs, 1)); height: calc(22px * var(--fs, 1)); border-radius: 50%; border: 1.5px solid var(--dis); flex: none; display: grid; place-items: center; font-size: calc(13px * var(--fs, 1)); color: var(--on-red); }
-.opt[aria-pressed="true"] .tick { background: var(--red); border-color: var(--red); color: var(--on-red); }
+.tick { width: calc(22px * var(--fs, 1)); height: calc(22px * var(--fs, 1)); border-radius: 50%; border: 1.5px solid var(--dis); flex: none; display: grid; place-items: center; font-size: calc(13px * var(--fs, 1)); color: var(--on-violet); }
+.opt[aria-pressed="true"] .tick { background: var(--violet); border-color: var(--violet); color: var(--on-violet); }
 .opt[aria-pressed="true"] .tick::after { content: "✓"; }
 
 /* 사회자 전체화면: 프로젝터용 어두운 무대(글자 크기 설정을 따르지 않는다) */
@@ -353,7 +366,7 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 /* 관리자 화면: PC·노트북에서는 넓게 */
 .app.admin { max-width: 1120px; }
 @media (min-width: 900px) { .app.admin { max-width: var(--admin-w, 1120px); } }
-/* 관리자 윗줄: 이전 페이지 · 제목 · 내보내기, 그 아래 밑줄 탭(회원관리/행사관리/소모임관리) */
+/* 관리자 윗줄: 이전 페이지 · 제목 · 내보내기, 그 아래 밑줄 탭(회원관리/소모임관리/활동 템플릿) */
 .adminbar { padding-bottom: 0; gap: 4px; }
 .adminbar h1 { flex: 1; min-width: 0; margin: 0; font: 700 calc(17px * var(--fs, 1)) var(--display); }
 .iconbtn {
@@ -370,7 +383,7 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .modes a:hover { color: var(--ink); }
 .modes a.on { color: var(--red-t); font-weight: 700; border-bottom-color: var(--red); }
 .modes a:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-/* 하위 메뉴: 작은 둥근 알약, 고른 것은 진한 바탕 */
+/* 하위 메뉴: 작은 둥근 알약, 고른 것은 보라 바탕 */
 .subnav { display: flex; gap: 6px; flex-wrap: wrap; }
 .subnav a, .tabsx button {
   min-height: 36px; display: inline-flex; align-items: center; padding: 0 12px; cursor: pointer;
@@ -378,7 +391,7 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   font: 500 calc(14px * var(--fs, 1)) var(--body); color: var(--ink2); text-decoration: none; white-space: nowrap;
 }
 .subnav a:hover, .tabsx button:hover { border-color: var(--dis); }
-.subnav a.on, .tabsx button.on { border-color: var(--ink); background: var(--ink); color: var(--card); font-weight: 700; }
+.subnav a.on, .tabsx button.on { border-color: var(--violet); background: var(--violet); color: var(--on-violet); font-weight: 700; }
 .subnav a:focus-visible, .tabsx button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* 하위 메뉴를 한 줄로: 좁으면 글자·여백을 줄이고, 그래도 넘치면 옆으로 밀어 보기 */
 .subnav.one { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; gap: 6px; padding-bottom: 2px; }
@@ -392,7 +405,7 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   font: 500 calc(14px * var(--fs, 1)) var(--body); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 6px;
 }
 .seg > button:first-child { border-left: 0; }
-.seg > button[aria-pressed="true"] { background: var(--red-bg); color: var(--red-t); font-weight: 700; }
+.seg > button[aria-pressed="true"] { background: var(--violet-bg); color: var(--violet-t); font-weight: 700; }
 .seg > button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
 .big { font: 700 calc(26px * var(--fs, 1))/1.1 var(--display); font-variant-numeric: tabular-nums; }
@@ -414,12 +427,12 @@ a.mini { display: inline-flex; align-items: center; text-decoration: none; }
 .mini:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .checks { display: flex; flex-wrap: wrap; gap: 6px; }
 .checks label { display: inline-flex; align-items: center; gap: 6px; font-size: calc(14px * var(--fs, 1)); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: var(--card); cursor: pointer; }
-.checks label:has(input:checked) { border-color: var(--red-line); background: var(--red-bg); color: var(--red-t); }
-.checks input { width: 18px; height: 18px; accent-color: var(--red); }
+.checks label:has(input:checked) { border-color: var(--violet-line); background: var(--violet-bg); color: var(--violet-t); }
+.checks input { width: 18px; height: 18px; accent-color: var(--violet); }
 .num { font-variant-numeric: tabular-nums; }
-input[type="checkbox"], input[type="radio"] { accent-color: var(--red); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 
-/* 관리자 행사 카드의 참석 진행 막대 */
+/* 관리자 일정 카드의 참석 진행 막대 */
 .meter { width: 100%; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--green); }
 /* 순서 안내 (① › ② › …) */
@@ -440,7 +453,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--red); }
 
 /* 화면 읽기 프로그램에만 읽히는 글 */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-/* 행사 일정 타임라인 */
+/* 세부 일정 타임라인 */
 .tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .tl li { display: flex; gap: 14px; border-left: 2px solid var(--line); padding: 4px 0 4px 12px; }
 .tl b { min-width: 110px; flex: none; font-variant-numeric: tabular-nums; }
@@ -480,7 +493,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--red); }
 :root[data-theme="dark"] [style*="background:#fff"],
 :root[data-theme="dark"] [style*="background: rgb(255, 255, 255)"] { background: var(--card) !important; }
 
-/* 켜기·끄기 스위치 (button role="switch" aria-checked): iOS 처럼 작고 둥글게, 켜면 초록 */
+/* 켜기·끄기 스위치 (button role="switch" aria-checked): iOS 처럼 작고 둥글게, 켜면 보라 */
 .switchrow { display: flex; align-items: center; gap: 12px; min-height: 48px; }
 .switchrow .grow { min-width: 0; }
 .switch {

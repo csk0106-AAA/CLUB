@@ -5,7 +5,7 @@ import { AdminGate } from "@/components/AdminGate";
 import { fs } from "@/lib/fs";
 
 const TABS: [string, string][] = [
-  ["Members", "회원 명단"], ["Events", "행사"], ["EventApplies", "참석 신청·회비"], ["EventCosts", "비용"], ["EventPrep", "준비 목록"],
+  ["Members", "회원 명단"], ["Events", "일정"], ["EventApplies", "참석 신청·회비"], ["EventCosts", "비용"], ["EventPrep", "준비 목록"],
   ["EventSchedule", "일정"], ["Groupings", "조편성"], ["Carpools", "카풀"], ["Rooms", "방배정"], ["Org", "조직도"], ["Rules", "회칙"], ["Minutes", "회의록"],
   ["Profiles", "프로필(공개된 소개)"], ["Guesses", "사전 추측"], ["Votes", "투표"], ["Settings", "설정"],
 ];

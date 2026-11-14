@@ -11,7 +11,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 const dayOf = (at: string) => (/^\d{4}-\d{2}-\d{2}/.test(at) ? at.slice(0, 10) : "");
 const timeOf = (at: string) => (/T\d{2}:\d{2}/.test(at) ? at.slice(11, 16) : "");
 
-// 행사 기간의 날짜 목록(최대 7일)
+// 일정 기간의 날짜 목록(최대 7일)
 function eventDays(startsAt: string, endsAt: string): string[] {
   const a = startsAt?.slice(0, 10);
   const b = (endsAt || startsAt)?.slice(0, 10);
@@ -118,8 +118,8 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      <span className="small">날짜별로 시간 순서대로 보여요. 여기에 적은 일정은 회원의 행사 화면에도 같은 모양으로 보여요.</span>
-      {groups.length === 0 && <div className="msg info">아직 일정이 없어요. 행사 일시를 먼저 정하고 “+ 일정 추가”로 넣어 주세요.</div>}
+      <span className="small">날짜별로 시간 순서대로 보여요. 여기에 적은 일정은 회원의 일정 화면에도 같은 모양으로 보여요.</span>
+      {groups.length === 0 && <div className="msg info">아직 일정이 없어요. 일정 일시를 먼저 정하고 “+ 일정 추가”로 넣어 주세요.</div>}
 
       {groups.map(([day, list]) => (
         <section key={day || "none"} className="card" aria-label={day ? fmtDateDow(day) : "날짜 미정"} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -159,7 +159,7 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
                 {days.map((d) => <option key={d} value={d}>{fmtDateDow(d)}</option>)}
               </select>
             ) : (
-              <div className="small">행사 개요에서 시작·끝나는 일시를 먼저 정해 주세요.</div>
+              <div className="small">일정 개요에서 시작·끝나는 일시를 먼저 정해 주세요.</div>
             )}
           </div>
           <div className="row" style={{ flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>

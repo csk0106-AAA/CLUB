@@ -32,7 +32,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const parsed = carInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
   const s = await getStore();
-  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("행사를 찾을 수 없어요.", 404);
+  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
   const members = await s.list("Members");
   if (inputPeople(parsed.data).some((p) => !members.some((m) => m.id === p))) return bad("명단에 없는 회원이에요.");
 

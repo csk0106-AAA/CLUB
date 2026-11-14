@@ -103,8 +103,8 @@ export async function PUT(req: Request) {
   if (nextGroups !== groups) await setSetting("permGroups", nextGroups);
   for (const [id, p] of patches) await s.update("Members", id, p);
 
-  // 소모임: 기본 정보(Settings "clubInfo") 키와 소모임 행사(Events.club)도 이름을 따라 바꾸고, 삭제하면 기본 정보를 지운다.
-  // (삭제된 소모임의 행사는 club 값을 그대로 둔다: 전체 회원에게 갑자기 보이지 않도록. 참관자만 계속 볼 수 있다.)
+  // 소모임: 기본 정보(Settings "clubInfo") 키와 소모임 일정(Events.club)도 이름을 따라 바꾸고, 삭제하면 기본 정보를 지운다.
+  // (삭제된 소모임의 일정은 club 값을 그대로 둔다: 전체 회원에게 갑자기 보이지 않도록. 참관자만 계속 볼 수 있다.)
   if (list === "clubs" && (renames.size || deleted.length)) {
     const info = await getSetting<Record<string, unknown>>("clubInfo", {});
     const next: Record<string, unknown> = {};

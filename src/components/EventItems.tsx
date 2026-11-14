@@ -19,7 +19,7 @@ const BLANK: Record<Kind, Record<string, string | number | boolean>> = {
 const STATUS = ["예정", "집행 완료", "보류"];
 const TITLE: Record<Kind, string> = { schedule: "일정", prep: "준비 목록", costs: "비용" };
 
-// 행사 일정 / 준비 목록 / 비용(예산과 집행). 같은 화면 틀로 세 가지를 다룬다.
+// 세부 일정 / 준비 목록 / 비용(예산과 집행). 같은 화면 틀로 세 가지를 다룬다.
 // 일정은 회원에게 보이고, 준비 목록과 비용은 관리자만 본다.
 export function EventItems(props: { eventId: string; kind: Kind; canEdit: boolean }) {
   // 일정은 날짜별로 묶어 보여 주는 전용 화면을 쓴다.
@@ -115,7 +115,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 행사 화면에도 보여요.</span>}
+      {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 일정 화면에도 보여요.</span>}
       {kind === "prep" && <span className="small">준비 목록은 관리자만 볼 수 있어요. 끝낸 것은 체크해 주세요.</span>}
       {kind === "costs" && <span className="small">비용은 “회비·비용” 권한이 있는 관리자만 볼 수 있어요.</span>}
 

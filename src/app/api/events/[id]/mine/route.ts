@@ -8,7 +8,7 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-// 회원이 보는 행사 정보: 일정, 내 조편성(배포된 것만), 내 카풀(배포된 것만).
+// 회원이 보는 일정 정보: 일정, 내 조편성(배포된 것만), 내 카풀(배포된 것만).
 // 준비 목록과 비용은 관리자만 본다.
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const g = await guard();
@@ -20,7 +20,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   ]);
   const me = members.find((m) => m.id === g.s.mid);
   const ev = events.find((e) => e.id === id && eventVisible(e, me ?? g.s.mid));
-  if (!ev) return bad("행사를 찾을 수 없어요.", 404);
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   const nm = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
 
   const myGroups = groups

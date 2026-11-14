@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { AudiencePicker } from "@/components/AudiencePicker";
 import type { Audience } from "@/lib/audience";
 import {
-  checkFileType, FILE_ACCEPT, FORM_HINT, FORM_LABEL, FORMS, fmtSize, IMAGE_ACCEPT, MAX_FILE_BYTES, MAX_FILES,
-  type FileMeta, type Form,
+  checkFileType, FILE_ACCEPT, FORM_HINT, FORM_LABEL, fmtSize, IMAGE_ACCEPT, MAX_FILE_BYTES, MAX_FILES,
+  type FileMeta, type Form, WRITE_FORMS,
 } from "@/lib/board";
 import { api } from "@/lib/client";
 import { FormFields } from "./FormFields";
@@ -149,7 +149,7 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
   if (!meta) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
   if (!initial && !meta.me.canWrite) return <div className="msg bad" role="alert">글은 관리자와 소모임 직책자만 쓸 수 있어요.</div>;
 
-  const forms = FORMS.filter((f) => f !== "rules" || meta.me.isAll);
+  const forms = WRITE_FORMS.filter((f) => f !== "rules" || meta.me.isAll);
   const canTpl = meta.me.tplAdmin && form && (form !== "rules" || meta.me.isAll);
   const images = files.filter((f) => f.image);
   const docs = files.filter((f) => !f.image);

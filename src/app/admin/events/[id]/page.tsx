@@ -6,12 +6,14 @@ import { AdminGate } from "@/components/AdminGate";
 import { CarpoolPanel } from "@/components/CarpoolPanel";
 import { EventActivities } from "@/components/EventActivities";
 import { EventItems } from "@/components/EventItems";
+import { EventMinutes } from "@/components/EventMinutes";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
 import { DateField } from "@/components/DateField";
 import { ObserversCard } from "@/app/events/[id]/ObserversCard";
 import { EventAudience } from "./EventAudience";
-import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, won } from "@/lib/client";
+import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, TYPE_TONE, won } from "@/lib/client";
+import { isLight } from "@/lib/event-types";
 import type { FeeRule } from "@/lib/fee";
 import { fs } from "@/lib/fs";
 
@@ -19,33 +21,37 @@ type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; booking: string;
   status: string; published: string; pinned?: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
   feeRules?: FeeRule[];
-  club?: string; // 소모임 행사의 소모임
-  audience?: string; // 공개 대상 JSON(소모임이 아닌 행사)
+  club?: string; // 소모임 일정의 소모임
+  audience?: string; // 공개 대상 JSON(소모임이 아닌 일정)
 };
 type Row = {
   memberId: string; name: string; kind: string; position: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string;
   fee: string; feePending: boolean; // 이 회원이 낼 회비(조건 반영), 날짜를 골라야 정해지면 feePending
-  clubRole?: string; observer?: boolean; // 소모임 행사: 소모임 직책, 참관자
+  clubRole?: string; observer?: boolean; // 소모임 일정: 소모임 직책, 참관자
 };
 type ClubOpt = { name: string; account: string; holder: string; leaders: { name: string; role: string }[] };
 type Opts = { kinds: string[]; positions: string[]; clubs: ClubOpt[]; dues: { account: string; holder: string } };
 
 const TABS = [
   { key: "over", label: "개요" },
+  { key: "minutes", label: "회의록" }, // 회의 일정만
   { key: "apply", label: "참석 신청" },
   { key: "fee", label: "회비" },
   { key: "act", label: "활동" },
-  { key: "sched", label: "일정" },
+  { key: "sched", label: "세부 일정" },
   { key: "prep", label: "준비 목록" },
   { key: "cost", label: "비용" },
   { key: "group", label: "조편성" },
   { key: "car", label: "카풀" },
   { key: "room", label: "숙박·방배정" },
 ];
+// 회의·미팅은 회비·활동·비용·조편성·카풀·숙박이 필요 없다. 회의록 탭은 회의 일정에만.
+const LIGHT_TABS = ["over", "minutes", "apply", "sched", "prep"];
+const tabsFor = (type: string) => TABS.filter((t) => (t.key === "minutes" ? type === "회의" : !isLight(type) || LIGHT_TABS.includes(t.key)));
 // 회비 줄이 "모두 전체" 한 줄뿐이면 모든 회원이 같은 금액(그 금액), 아니면 null
 const oneFee = (rules?: FeeRule[]): string | null =>
   rules && rules.length === 1 && !rules[0].days && !rules[0].kind && !rules[0].position && Number(rules[0].amount) > 0 ? rules[0].amount : null;
-// 행사 정보 줄(한 줄에 하나씩, 아이콘 포함). "회원에게 보이는 모습"과 대화방 안내 문구가 같이 쓴다.
+// 일정 정보 줄(한 줄에 하나씩, 아이콘 포함). "회원에게 보이는 모습"과 대화방 안내 문구가 같이 쓴다.
 // 회비가 "전체·전체·전체" 한 줄뿐(모두 같은 금액)일 때만 금액과 계좌를 보여 주고,
 // 여러 줄이면 회원마다 금액이 다르므로 "앱 접속 후 내 회비 확인"만 쓴다(계좌는 앱의 회비 안내에서).
 type InfoLine = { icon: string; label: string; value: string; multiline?: boolean };
@@ -65,7 +71,7 @@ function infoLines(ev: Ev, rules: FeeRule[], actNames: string[]): InfoLine[] {
 }
 
 const dayText = (days: string) => (days ? fmtDays(days) : "");
-// 소모임 행사 참석 현황의 이름 옆 표시: 회장(소모임 직책) / 참관자
+// 소모임 일정 참석 현황의 이름 옆 표시: 회장(소모임 직책) / 참관자
 const tags = (r: Row) => (
   <>
     {r.clubRole && <span className="pill ok" style={{ marginLeft: 6 }}>{r.clubRole}</span>}
@@ -103,7 +109,7 @@ function Detail({ id }: { id: string }) {
       const e = r.data.event;
       const rs = e.feeRules ?? [];
       if (e.fee && !rs.some((x) => !x.days && !x.kind && !x.position)) e.feeRules = [...rs, { days: "", kind: "", position: "", amount: e.fee }];
-      // 입금계좌가 비어 있으면 소모임 계좌(소모임 행사) 또는 모임회비관리 계좌를 미리 넣는다(저장해야 반영).
+      // 입금계좌가 비어 있으면 소모임 계좌(소모임 일정) 또는 모임회비관리 계좌를 미리 넣는다(저장해야 반영).
       setPrefilled("");
       if (!e.account && !e.accountHolder) {
         const c = e.club ? r.data.options.clubs.find((x) => x.name === e.club) : undefined;
@@ -127,6 +133,7 @@ function Detail({ id }: { id: string }) {
   if (!ev) return msg ? <div className="msg bad" role="alert">{msg.text}</div> : <p className="small">불러오는 중이에요…</p>;
 
   const set = (k: keyof Ev, v: string) => setEv({ ...ev, [k]: v });
+  const light = isLight(ev.type); // 회의·미팅: 회비·활동 칸 없음
   const curClub = ev.club ? opts.clubs.find((c) => c.name === ev.club) : undefined;
   // 소모임을 고르면 그 소모임의 입금계좌·예금주를 넣는다(소모임 계좌가 없으면 지금 값을 둔다).
   function pickClub(name: string) {
@@ -140,7 +147,7 @@ function Detail({ id }: { id: string }) {
       setPrefilled("");
     }
   }
-  // 행사 기간의 날짜 목록(참석 날짜 고르기용, 최대 7일)
+  // 일정 기간의 날짜 목록(참석 날짜 고르기용, 최대 7일)
   const evDays = (() => {
     const a = ev.startsAt?.slice(0, 10);
     const b = (ev.endsAt || ev.startsAt)?.slice(0, 10);
@@ -169,7 +176,7 @@ function Detail({ id }: { id: string }) {
     load();
   }
 
-  // 회원 행사 목록 맨 위 고정: 누르면 바로 저장(회원 알림은 보내지 않는다)
+  // 회원 일정 목록 맨 위 고정: 누르면 바로 저장(회원 알림은 보내지 않는다)
   async function togglePin(next: boolean) {
     if (!ev) return;
     setBusy(true);
@@ -177,7 +184,7 @@ function Detail({ id }: { id: string }) {
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setEv({ ...ev, pinned: String(next) });
-    setMsg({ tone: "info", text: next ? "회원 행사 목록 맨 위에 고정했어요." : "맨 위 고정을 풀었어요." });
+    setMsg({ tone: "info", text: next ? "회원 일정 목록 맨 위에 고정했어요." : "맨 위 고정을 풀었어요." });
   }
 
   async function pay(memberId: string, paid: boolean) {
@@ -201,7 +208,7 @@ function Detail({ id }: { id: string }) {
     load();
   }
 
-  // 행사 공지 문구(단체 대화방용). "회원에게 보이는 모습"과 같은 순서·아이콘을 쓴다.
+  // 일정 공지 문구(단체 대화방용). "회원에게 보이는 모습"과 같은 순서·아이콘을 쓴다.
   // 계좌는 모든 회원 회비가 같을 때만 넣는다(infoLines 참고).
   async function copyAnnounce() {
     if (!ev) return;
@@ -245,7 +252,7 @@ function Detail({ id }: { id: string }) {
   const paid = attend.filter((r) => r.paid);
   const rules = ev.feeRules ?? [];
   const setRules = (next: FeeRule[]) => setEv({ ...ev, feeRules: next });
-  // 참석일 선택지: 행사 기간(최대 7일)
+  // 참석일 선택지: 일정 기간(최대 7일)
   const dayCount = (() => {
     const a = ev.startsAt?.slice(0, 10);
     const b = (ev.endsAt || ev.startsAt)?.slice(0, 10);
@@ -260,14 +267,16 @@ function Detail({ id }: { id: string }) {
   return (
     <>
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <Link href="/admin/events" className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>‹ 행사 목록</Link>
-        <span className="pill blue">{ev.type}</span>
+        <Link href={ev.published === "true" ? `/events/${id}/overview` : "/events"} className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+          {ev.published === "true" ? "‹ 회원 화면에서 보기" : "‹ 일정 목록"}
+        </Link>
+        <span className={`pill ${TYPE_TONE[ev.type] ?? "gray"}`}>{ev.type}</span>
         <h1 className="title grow" style={{ fontSize: fs(20) }}>{ev.name}</h1>
         <span className={`pill ${ev.published === "true" ? "ok" : "gray"}`}>{ev.published === "true" ? "회원에게 공개 중" : "초안"}</span>
       </div>
 
-      <div className="tabsx" role="tablist" aria-label="행사 관리 메뉴">
-        {TABS.map((t) => (
+      <div className="tabsx" role="tablist" aria-label="일정 관리 메뉴">
+        {tabsFor(ev.type).map((t) => (
           <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </div>
@@ -294,8 +303,8 @@ function Detail({ id }: { id: string }) {
           )}
           <div className="card switchrow">
             <span className="grow">
-              <b id="o-pin-l">회원 행사 목록 맨 위에 고정</b>
-              <span className="small" style={{ display: "block" }} id="o-pin-d">켜면 회원의 행사 목록에서 가장 먼저 보여요. 누르면 바로 저장돼요.</span>
+              <b id="o-pin-l">회원 일정 목록 맨 위에 고정</b>
+              <span className="small" style={{ display: "block" }} id="o-pin-d">켜면 회원의 일정 목록에서 가장 먼저 보여요. 누르면 바로 저장돼요.</span>
             </span>
             <button type="button" role="switch" className="switch" aria-checked={ev.pinned === "true"} aria-labelledby="o-pin-l" aria-describedby="o-pin-d"
               disabled={busy} onClick={() => togglePin(ev.pinned !== "true")} />
@@ -303,13 +312,13 @@ function Detail({ id }: { id: string }) {
           {!ev.club && <EventAudience key={ev.id} eventId={id} audience={ev.audience} onSaved={load} />}
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           <div className="grid2">
-            <div><label className="l" htmlFor="o-name">행사 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
+            <div><label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
-            <div><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
+            {!light && <><div><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
             <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div>
+            <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div></>}
           </div>
 
           <div>
@@ -320,14 +329,14 @@ function Detail({ id }: { id: string }) {
             <span className="hint">{ev.booking.length}/2000자 · 회원 화면에도 줄바꿈 그대로 보여요.</span>
           </div>
 
-          {/* 회비: 회원구분 / 직책 / 참석일 조건별 */}
-          <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* 회비: 회원구분 / 직책 / 참석일 조건별 (회의·미팅은 없음) */}
+          {!light && <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <b style={{ font: `700 ${fs(17)} var(--display)` }}>회비</b>
             <span className="small">
               회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
               회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
             </span>
-            {rules.length === 0 && <span className="small">아직 회비가 없어요. 회비를 받는 행사라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
+            {rules.length === 0 && <span className="small">아직 회비가 없어요. 회비를 받는 일정이라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
             {rules.length > 0 && (
               <div className="tblw">
                 <table className="tbl" style={{ minWidth: 620 }}>
@@ -379,13 +388,13 @@ function Detail({ id }: { id: string }) {
             </button>
             {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
             {dist.length > 0 && <span className="small">현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
-          </section>
-          <div>
+          </section>}
+          {!light && <div>
             <span className="l">주요 활동 (활동 탭에서 고른 것이 자동으로 들어가요)</span>
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
               {actNames.length ? actNames.map((n) => <span key={n} className="pill blue" style={{ fontSize: fs(15) }}>{n}</span>) : <span className="small">아직 넣은 활동이 없어요.</span>}
             </div>
-          </div>
+          </div>}
           <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="pill gray" style={{ alignSelf: "flex-start" }}>회원에게 보이는 모습</span>
             <b style={{ font: `700 ${fs(19)} var(--display)` }}>{ev.name}</b>
@@ -415,6 +424,7 @@ function Detail({ id }: { id: string }) {
         </form>
       )}
 
+      {tab === "minutes" && ev.type === "회의" && <EventMinutes eventId={id} admin />}
       {tab === "act" && <EventActivities eventId={id} canEdit={canEditActs} />}
       {tab === "sched" && <EventItems eventId={id} kind="schedule" canEdit />}
       {tab === "prep" && <EventItems eventId={id} kind="prep" canEdit />}
@@ -485,7 +495,7 @@ function Detail({ id }: { id: string }) {
           <span className="small">전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
           {ev.club && (
             <>
-              <span className="small">소모임 행사라 참석 신청 명단에는 {ev.club} 회원과 참관자만 보여요(다른 회원은 행사를 읽기만 할 수 있어요). 행사 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
+              <span className="small">소모임 일정이라 참석 신청 명단에는 {ev.club} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
               <ObserversCard key={ev.club} eventId={id} admin onChange={load} />
             </>
           )}
@@ -529,5 +539,5 @@ function Detail({ id }: { id: string }) {
 
 export default function EventDetailAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  return <AdminGate mode="events" need={["events", "fees"]} active="/admin/events"><Detail id={id} /></AdminGate>;
+  return <AdminGate need={["events", "fees"]}><Detail id={id} /></AdminGate>;
 }

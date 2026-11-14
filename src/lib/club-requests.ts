@@ -5,15 +5,15 @@ import { ownPerms } from "./perms";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
-// 소모임 가입 신청 / 소모임 행사 1회 참관 신청 (ClubRequests 탭).
+// 소모임 가입 신청 / 소모임 일정 1회 참관 신청 (ClubRequests 탭).
 //  - 소모임 밖 회원이 보내고, 그 소모임 직책자(Members.clubs 의 role 이 있는 회원)가 승인·거절한다.
 //    직책자가 아직 없는 소모임이면 전체 관리자(perms 에 all)가 대신 처리한다.
 //  - 승인: join → 회원의 Members.clubs 에 그 소모임(직책 없음)을 더한다.
-//          observe → 그 행사의 참관자(Events.observers)에 더한다.
+//          observe → 그 일정의 참관자(Events.observers)에 더한다.
 //  - 결과는 신청한 회원의 알림(홈 화면 종 아이콘)에 뜨고, 본 뒤에는 숫자에서 빠진다(resultSeen).
 export type ReqKind = "join" | "observe";
 export type ReqStatus = "pending" | "approved" | "declined";
-export const KIND_LABEL: Record<ReqKind, string> = { join: "소모임 가입", observe: "행사 1회 참관" };
+export const KIND_LABEL: Record<ReqKind, string> = { join: "소모임 가입", observe: "일정 1회 참관" };
 
 // 이 소모임 신청을 처리할 회원 id 목록
 export function handlersOf(members: Row[], club: string): string[] {
@@ -35,7 +35,7 @@ export function alreadyIn(kind: ReqKind, me: Row | undefined, club: string, ev?:
   return false;
 }
 
-// 같은 회원·종류·소모임(참관이면 같은 행사)의 처리 대기 신청
+// 같은 회원·종류·소모임(참관이면 같은 일정)의 처리 대기 신청
 export function pendingDup(rows: Row[], kind: ReqKind, club: string, memberId: string, eventId: string): Row | undefined {
   return rows.find((r) =>
     r.status === "pending" && r.kind === kind && r.club === club && r.memberId === memberId && (kind === "join" || r.eventId === eventId),

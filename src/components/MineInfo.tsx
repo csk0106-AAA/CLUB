@@ -14,7 +14,7 @@ type Data = {
 
 const when = (at: string) => fmtDateTime(at); // "2026/12/11 14:00"
 
-// 회원이 보는 행사 정보: 일정, 내 조편성(배포된 것), 내 카풀(배포된 것)
+// 회원이 보는 일정 정보: 일정, 내 조편성(배포된 것), 내 카풀(배포된 것)
 // placeholder: 조편성·카풀이 아직 배포되지 않았을 때 "조 편성 후 알려 드려요" 카드를 보여 준다.
 export function MineInfo({ eventId, placeholder = false }: { eventId: string; placeholder?: boolean }) {
   const [d, setD] = useState<Data | null>(null);

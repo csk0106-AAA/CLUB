@@ -9,7 +9,7 @@ import { getSetting, getStore } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 // 프로필 한 장: 공개로 승인된 소개 글만 내려준다.
-// 2진실 1거짓은 활동 중에는 절대 내려주지 않고, 활동이 끝난 뒤(그 회원 차례의 정답 공개 또는 행사 종료)에만 정답과 함께 보여 준다.
+// 2진실 1거짓은 활동 중에는 절대 내려주지 않고, 활동이 끝난 뒤(그 회원 차례의 정답 공개 또는 일정 종료)에만 정답과 함께 보여 준다.
 export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }> }) {
   const g = await guard();
   if ("err" in g) return g.err;

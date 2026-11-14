@@ -27,7 +27,7 @@ type Act = {
   hostCode: string;
 };
 type Tpl = { id: string; origin?: string; config: TemplateConfig };
-// 템플릿 이름(행사 템플릿이면 "이름 (행사명_날짜)")
+// 템플릿 이름(일정 템플릿이면 "이름 (일정명_날짜)")
 const tplLabel = (t?: Tpl) =>
   !t ? "" : t.origin === "event" && t.config.sourceEvent ? `${t.config.name} (${t.config.sourceEvent.name}_${t.config.sourceEvent.date})` : t.config.name;
 type Att = {
@@ -37,7 +37,7 @@ type Att = {
 
 const PRE_TEXT: Record<string, string> = {
   none: "현장에서만 진행 (사전 작성 없음)",
-  unknown: "사전 작성 있음 · 행사 날짜가 정해지면 기간이 계산돼요",
+  unknown: "사전 작성 있음 · 일정 날짜가 정해지면 기간이 계산돼요",
   before: "사전 작성 시작 전",
   open: "사전 작성 중",
   closed: "사전 작성 마감",
@@ -192,7 +192,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
   async function preset() {
     setBusy(true);
     const r = await api(base, { method: "PUT", body: { preset: "applicants" } });
-    setMsg(r.ok ? { tone: "info", text: "행사에 참석을 신청한 회원으로 채웠어요. 필요하면 고쳐 주세요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: "일정에 참석을 신청한 회원으로 채웠어요. 필요하면 고쳐 주세요." } : { tone: "bad", text: r.error });
     setBusy(false);
     await load();
     onChange();
@@ -211,7 +211,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="mini" type="button" disabled={busy} onClick={preset}>행사 참석 신청자로 채우기</button>
+          <button className="mini" type="button" disabled={busy} onClick={preset}>일정 참석 신청자로 채우기</button>
           <button className="mini" type="button" onClick={() => { setSel(new Set(att.members.map((m) => m.id))); setDirty(true); }}>전체 선택</button>
           <button className="mini" type="button" onClick={() => { setSel(new Set()); setDirty(true); }}>전체 해제</button>
         </div>
@@ -221,7 +221,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
           <label key={m.id} style={sel.has(m.id) ? { borderColor: "var(--blue)", background: "var(--blue-bg)" } : undefined}>
             <input type="checkbox" checked={sel.has(m.id)} disabled={!canEdit} onChange={() => toggle(m.id)} />
             {m.name}
-            {m.answer && <span className={`pill ${m.answer === "참석" ? "ok" : "gray"}`}>{m.answer === "참석" ? "행사 신청" : "불참"}</span>}
+            {m.answer && <span className={`pill ${m.answer === "참석" ? "ok" : "gray"}`}>{m.answer === "참석" ? "일정 신청" : "불참"}</span>}
           </label>
         ))}
       </div>
@@ -257,7 +257,7 @@ function Progress({ eventId, aid }: { eventId: string; aid: string }) {
   );
 }
 
-// 행사 관리의 '활동' 탭: 템플릿에서 활동 추가, 행사별 수정, 사회자 컨트롤(시험 조작)
+// 일정 관리의 '활동' 탭: 템플릿에서 활동 추가, 일정별 수정, 사회자 컨트롤(시험 조작)
 export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
   const [acts, setActs] = useState<Act[] | null>(null);
   const [tpls, setTpls] = useState<Tpl[]>([]);
@@ -296,7 +296,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     const r = await api(`/api/admin/events/${eventId}/activities`, { body: { templateId: pick } });
     setBusy(false);
     if (!r.ok) return setAddErr(r.error);
-    setMsg({ tone: "info", text: "활동을 넣었어요. 템플릿 설정이 복사돼서 이 행사에서만 따로 고칠 수 있어요." });
+    setMsg({ tone: "info", text: "활동을 넣었어요. 템플릿 설정이 복사돼서 이 일정에서만 따로 고칠 수 있어요." });
     setAddOpen(false);
     load();
   }
@@ -308,13 +308,13 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     const r = await api(`/api/admin/events/${eventId}/activities/${edit.id}`, { method: "PATCH", body: edit.value });
     setBusy(false);
     if (!r.ok) return setEditErr(r.error);
-    setMsg({ tone: "info", text: "이 행사의 활동 설정을 저장했어요." });
+    setMsg({ tone: "info", text: "이 일정의 활동 설정을 저장했어요." });
     setEdit(null);
     load();
   }
 
   async function remove(a: Act) {
-    if (!window.confirm(`“${a.config.name}” 활동을 이 행사에서 뺄까요?`)) return;
+    if (!window.confirm(`“${a.config.name}” 활동을 이 일정에서 뺄까요?`)) return;
     const r = await api(`/api/admin/events/${eventId}/activities/${a.id}`, { method: "DELETE" });
     setMsg(r.ok ? { tone: "info", text: "뺐어요." } : { tone: "bad", text: r.error });
     load();
@@ -347,8 +347,8 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           setMsg({
             tone: "info",
             text: target === "template"
-              ? `AI 지침을 “${r.data.templateName ?? "원래"}” 템플릿에도 반영했어요. 이 템플릿을 쓰는 다른 행사 활동에도 적용돼요.`
-              : `AI 지침을 이 행사 활동에만 저장했어요.${r.data.label ? ` 템플릿 보관함에 “행사 템플릿 · ${r.data.label}”로 보여요.` : ""}`,
+              ? `AI 지침을 “${r.data.templateName ?? "원래"}” 템플릿에도 반영했어요. 이 템플릿을 쓰는 다른 일정 활동에도 적용돼요.`
+              : `AI 지침을 이 일정 활동에만 저장했어요.${r.data.label ? ` 템플릿 보관함에 “일정 템플릿 · ${r.data.label}”로 보여요.` : ""}`,
           });
           setGuideFor(null);
           load();
@@ -362,7 +362,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   return (
     <>
       <p className="small" style={{ margin: 0 }}>
-        활동 템플릿에서 활동을 골라 이 행사에 넣어요. 넣은 뒤 이 행사에 맞게 고칠 수 있어요.
+        활동 템플릿에서 활동을 골라 이 일정에 넣어요. 넣은 뒤 이 일정에 맞게 고칠 수 있어요.
       </p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {!acts && !msg && <p className="small">불러오는 중이에요…</p>}
@@ -373,7 +373,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           <div className="row" style={{ flexWrap: "wrap" }}>
             <b style={{ font: `700 ${fs(18)} var(--display)` }}>{a.config.name}</b>
             <span className="pill gray">
-              {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.origin === "event" && t.config.sourceEvent ? `행사 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}` : `템플릿 v${a.templateVersion}`; })()}
+              {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.origin === "event" && t.config.sourceEvent ? `일정 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}` : `템플릿 v${a.templateVersion}`; })()}
             </span>
             <span className={`pill ${a.pre.enabled ? "blue" : "warn"}`}>{a.pre.enabled ? "사전 작성 있음" : "현장에서만"}</span>
             <span className="pill gray">{modeOf(a.config) === "team" ? "팀 활동" : "전체 활동"}</span>
@@ -406,10 +406,10 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           {!a.config.preEvent.steps.includes("ai_interview") && !a.config.preEvent.steps.includes("worry_write") && a.config.onsite.steps.some((s) => s.memberScreen === "write") ? (
             <CapsuleAdmin eventId={eventId} aid={a.id} canEdit={canEdit} />
           ) : modeOf(a.config) === "team" && (
-            // 팀 활동: 팀 배정은 템플릿이 아니라 이 행사에서 한다
+            // 팀 활동: 팀 배정은 템플릿이 아니라 이 일정에서 한다
             <section className="card" aria-label="팀 배정" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
               <b style={{ font: `700 ${fs(17)} var(--display)` }}>팀 배정</b>
-              <span className="small">이 행사의 참여자로 팀을 나눠요. 팀은 이 행사의 이 활동에만 쓰여요.</span>
+              <span className="small">이 일정의 참여자로 팀을 나눠요. 팀은 이 일정의 이 활동에만 쓰여요.</span>
               <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}/teams`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} />
             </section>
           )}
@@ -459,7 +459,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                   </span>
                 ) : null;
               })()}
-              <span className="small">템플릿 설정이 복사돼서 이 행사에서만 따로 고칠 수 있어요.</span>
+              <span className="small">템플릿 설정이 복사돼서 이 일정에서만 따로 고칠 수 있어요.</span>
               <button className="btn" type="submit" disabled={busy || !pick} style={{ width: "auto", minWidth: 140, alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }}>추가</button>
             </form>
           </Popup>
@@ -482,7 +482,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       >
         {edit && (
           <>
-            <span className="small">여기서 고친 내용은 이 행사에만 적용돼요. 템플릿 보관함은 바뀌지 않아요.</span>
+            <span className="small">여기서 고친 내용은 이 일정에만 적용돼요. 템플릿 보관함은 바뀌지 않아요.</span>
             {editErr && <div className="msg bad" role="alert">{editErr}</div>}
             <TemplateEditor value={edit.value} onChange={(value) => setEdit({ ...edit, value })} />
           </>

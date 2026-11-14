@@ -19,8 +19,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const [events, acts, lives, members] = await Promise.all([s.list("Events"), s.list("EventActivities"), s.list("LiveState"), s.list("Members")]);
   const me = members.find((m) => m.id === g.s.mid);
   const ev = events.find((e) => e.id === id && eventVisible(e, me ?? g.s.mid));
-  if (!ev) return bad("행사를 찾을 수 없어요.", 404);
-  // 다른 소모임 행사는 개요만 읽을 수 있고 활동에는 들어갈 수 없다.
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
+  // 다른 소모임 일정은 개요만 읽을 수 있고 활동에는 들어갈 수 없다.
   if (!eventJoinable(ev, me ?? g.s.mid)) return bad("이 소모임 회원만 활동에 참여할 수 있어요.", 403);
 
   const mine = acts

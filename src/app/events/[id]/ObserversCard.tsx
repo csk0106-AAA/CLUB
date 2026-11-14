@@ -13,7 +13,7 @@ export function clubLine(club: string, leaders?: { name: string; role: string }[
 type P ={ id: string; name: string; kind?: string; position?: string };
 type Data = { club: string; observers: P[]; candidates: P[] };
 
-// 소모임 행사의 참관자 추가 카드. 소모임 회장(직책자)이 회원 화면에서, 관리자가 행사 관리 화면에서 쓴다.
+// 소모임 일정의 참관자 추가 카드. 소모임 회장(직책자)이 회원 화면에서, 관리자가 일정 관리 화면에서 쓴다.
 // 바꿀 때마다 바로 저장한다(서버가 직책을 다시 확인).
 export function ObserversCard({ eventId, admin, onChange }: { eventId: string; admin?: boolean; onChange?: () => void }) {
   const [d, setD] = useState<Data | null>(null);
@@ -47,7 +47,7 @@ export function ObserversCard({ eventId, admin, onChange }: { eventId: string; a
     <section className="card" aria-label="참관자" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>참관자 추가</b>
       <span className="small">
-        {d.club} 회원이 아닌 분도 참관자로 넣으면 이 행사를 보고 참석 신청할 수 있어요.
+        {d.club} 회원이 아닌 분도 참관자로 넣으면 이 일정을 보고 참석 신청할 수 있어요.
         {admin ? "" : " 소모임 회장만 보이는 칸이에요."}
       </span>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}

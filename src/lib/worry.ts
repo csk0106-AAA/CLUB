@@ -27,7 +27,7 @@ type Payload = { worry?: WorryPayload } & Record<string, unknown>;
 
 export type WorryCtx = { act: Row; ev: Row; cfg: TemplateConfig };
 
-// eventId 가 있으면 관리자용(공개 여부 무관), 없으면 회원용(공개된 행사만)
+// eventId 가 있으면 관리자용(공개 여부 무관), 없으면 회원용(공개된 일정만)
 export async function loadWorry(aid: string, eventId?: string): Promise<WorryCtx | string> {
   const s = await getStore();
   const act = (await s.list("EventActivities")).find((a) => a.id === aid && (!eventId || a.eventId === eventId));

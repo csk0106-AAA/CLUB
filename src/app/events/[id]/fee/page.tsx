@@ -63,13 +63,13 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기"
+      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기"
         right={<span className={`pill ${paid ? "ok" : noticed ? "warn" : "bad"}`}>{paid ? "입금 확인됨 ✓" : noticed ? "입금 확인 중" : "입금 확인 전"}</span>} />
       <h1 className="title">회비를 보내 주세요</h1>
 
       {!attending && <div className="msg info">참석을 신청하면 회비 안내가 열려요.</div>}
       {attending && !e.fee && (e.feePending
-        ? <div className="msg info">참석 날짜에 따라 회비가 달라요. 행사 개요에서 “참석 날짜 바꾸기”로 날짜를 고르면 내 회비를 알려 드려요.</div>
+        ? <div className="msg info">참석 날짜에 따라 회비가 달라요. 일정 개요에서 “참석 날짜 바꾸기”로 날짜를 고르면 내 회비를 알려 드려요.</div>
         : <div className="msg info">내 회비는 없어요. 따로 보내지 않아도 돼요.</div>)}
 
       {attending && e.fee && (
@@ -93,7 +93,7 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
             {e.account && !paid && <button className="btn white" type="button" onClick={() => copy(e.account)}>{copied ? "복사했어요 ✓" : "계좌번호 복사"}</button>}
             {!paid && !noticed && <button className="btn" type="button" disabled={busy} onClick={() => notice(true)}>입금했어요</button>}
             {noticed && <button className="btn white" type="button" disabled={busy} onClick={() => notice(false)}>입금 알림 취소</button>}
-            <button className="btn white" type="button" onClick={() => router.push(`/events/${id}`)}>행사로 돌아가기</button>
+            <button className="btn white" type="button" onClick={() => router.push(`/events/${id}`)}>일정으로 돌아가기</button>
           </div>
         </>
       )}

@@ -34,7 +34,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 const WHEN: Record<string, string> = {
   before: "아직 작성 기간이 아니에요.",
   closed: "작성 기간이 끝났어요.",
-  unknown: "행사 날짜가 정해지면 작성 기간이 열려요.",
+  unknown: "일정 날짜가 정해지면 작성 기간이 열려요.",
   none: "이 활동에는 사전 작성이 없어요.",
 };
 // 사전 추측 후보 동그라미 색(돌아가며). 글자색은 globals.css .avatar 의 어두운 색이라 대비 4.5:1 이상.
@@ -63,7 +63,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
     return (
       <main className="app">
         {note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>}
-        <button className="btn white" type="button" onClick={() => router.push(`/events/${id}`)}>‹ 행사로 돌아가기</button>
+        <button className="btn white" type="button" onClick={() => router.push(`/events/${id}`)}>‹ 일정으로 돌아가기</button>
       </main>
     );
   }
@@ -78,7 +78,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={progress?.done} total={progress?.total} />
+      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" done={progress?.done} total={progress?.total} />
       <h1 className="title" style={{ fontSize: fs(20) }}>{st.activity.name}</h1>
       <div className="subnav" role="tablist" aria-label="내가 누굴까요? 메뉴" style={{ display: "flex", gap: 6 }}>
         <a href="#" role="tab" aria-selected={tab === "write"} className={tab === "write" ? "on" : ""} onClick={(e) => { e.preventDefault(); setTab("write"); }}>내 소개 작성</a>
@@ -441,7 +441,7 @@ function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) =
   const g = data.guess;
   if (data.notJoin) return <div className="msg info">이 활동의 참여 대상으로 선택되지 않아서 맞히기에는 참여하지 않아요. 프로필 북에서 다른 회원의 소개를 읽어 보세요.</div>;
   if (g.status !== "open" && g.status !== "closed") {
-    return <div className="msg info">{g.status === "before" ? `맞히기는 ${fmtDate(g.opensAt)}부터 열려요.` : g.status === "unknown" ? "행사 날짜가 정해지면 맞히기가 열려요." : "이 활동에는 사전 맞히기가 없어요."}</div>;
+    return <div className="msg info">{g.status === "before" ? `맞히기는 ${fmtDate(g.opensAt)}부터 열려요.` : g.status === "unknown" ? "일정 날짜가 정해지면 맞히기가 열려요." : "이 활동에는 사전 맞히기가 없어요."}</div>;
   }
   const done = data.targets.filter((t) => t.myChoice).length;
 

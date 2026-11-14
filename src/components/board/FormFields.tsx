@@ -96,7 +96,7 @@ function FeeFields({ data, onChange, kinds, positions }: P<FeeData> & { kinds: s
 const statusTone = (s: string) => (s === "논의 전" || s === "보류·삭제" ? "gray" : s === "확정·실행완료" ? "ok" : s === "새로운 안건" ? "blue" : "warn");
 export const agendaTone = statusTone;
 
-function MinutesFields({ data, onChange, labels }: P<MinutesData> & { labels: Record<string, string> }) {
+export function MinutesFields({ data, onChange, labels }: P<MinutesData> & { labels: Record<string, string> }) {
   const id = useId();
   const agenda = data.agenda ?? [];
   const setA = (i: number, patch: Partial<MinutesData["agenda"][number]>) => onChange({ ...data, agenda: agenda.map((a, j) => (j === i ? { ...a, ...patch } : a)) });

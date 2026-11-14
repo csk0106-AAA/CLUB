@@ -62,7 +62,7 @@ export function introAliasPrompt(
   guidelines: string, answers: string[], alias: string, taken: string[], avoid: string[] = [], banned: string[] = [],
 ): { system: string; messages: Msg[] } {
   const avoidRule = avoid.length
-    ? `\n- 아래 문장들은 행사에서 '2진실 1거짓' 게임에 씁니다. 소개 글을 읽고 정답을 알 수 없도록, 이 문장들에 나온 사실·장소·사물·경험은 소개 글에 전혀 쓰지 않습니다(돌려 말하거나 암시하지도 않습니다):\n${avoid.map((x) => `  · ${x}`).join("\n")}`
+    ? `\n- 아래 문장들은 일정에서 '2진실 1거짓' 게임에 씁니다. 소개 글을 읽고 정답을 알 수 없도록, 이 문장들에 나온 사실·장소·사물·경험은 소개 글에 전혀 쓰지 않습니다(돌려 말하거나 암시하지도 않습니다):\n${avoid.map((x) => `  · ${x}`).join("\n")}`
     : "";
   const bannedRule = banned.length ? `\n- 다음 단어는 소개 글에 절대 쓰지 않습니다: ${banned.join(", ")}` : "";
   const aliasRule = alias

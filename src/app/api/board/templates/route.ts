@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, parseJson } from "@/lib/api";
-import { DATA_SCHEMA, isForm, templateInput, zodMessage, type Template } from "@/lib/board";
+import { DATA_SCHEMA, isWriteForm, templateInput, zodMessage, type Template } from "@/lib/board";
 import { getSetting, setSetting } from "@/lib/store";
 import { forbid, getMe } from "../_lib/server";
 
@@ -19,7 +19,7 @@ export async function PUT(req: Request) {
   const parsed = body.safeParse(raw);
   if (!parsed.success) return bad(zodMessage(parsed.error));
   const { form } = parsed.data;
-  if (!isForm(form)) return bad("양식을 골라 주세요.");
+  if (!isWriteForm(form)) return bad("양식을 골라 주세요.");
   if (form === "rules" && !m.me.isAll) return forbid("회칙 양식은 전체 관리자만 바꿀 수 있어요.");
   const saved = await getSetting<Record<string, Template>>("boardTemplates", {});
   if ((raw as { reset?: boolean })?.reset === true) {

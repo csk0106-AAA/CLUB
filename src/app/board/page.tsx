@@ -127,8 +127,8 @@ export default function BoardPage() {
             <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none", alignItems: "flex-start" }}>
               <span className="grow">
                 <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                  {p.pinned && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
-                  {p.notice && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={13} />공지</span>}
+                  {p.pinned && <span className="pill red" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
+                  {p.notice && <span className="pill red" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={13} />공지</span>}
                   {p.form !== "general" && <span className="pill gray">{FORM_LABEL[p.form]}</span>}
                   {RESPONSE_FORMS.includes(p.form) && (p.responded ? <span className="pill ok">참여 ✓</span> : p.closed ? <span className="pill gray">마감</span> : <span className="pill bad">참여 전</span>)}
                 </span>

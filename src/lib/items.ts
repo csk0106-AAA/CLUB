@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { TabName } from "./store/schema";
 import type { Row } from "./store/types";
 
-// 행사의 일정, 준비 목록, 비용. 한 쌍의 API 파일(items/[kind])로 모두 처리한다.
+// 일정의 일정, 준비 목록, 비용. 한 쌍의 API 파일(items/[kind])로 모두 처리한다.
 export type ItemKind = "schedule" | "prep" | "costs";
 
 type Def = {

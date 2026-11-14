@@ -4,12 +4,13 @@ import { bad, guard, parseJson } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
 import { memberGenderPatch, withSelfEdits } from "@/lib/gender-edit";
 import { getLists, memberClubs } from "@/lib/lists";
+import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { mergePrefs, prefsInput, readPrefs } from "@/lib/prefs";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-type Member = { id?: string; avatar?: string; gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string };
+type Member = { id?: string; perms?: string; position?: string; avatar?: string; gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string };
 type Sess = { name: string; perms: string[]; admin: boolean };
 
 async function view(s: Sess, me: Member) {
@@ -18,6 +19,8 @@ async function view(s: Sess, me: Member) {
   return {
     name: s.name,
     perms: s.perms,
+    // 지금 DB 기준 권한(권한 그룹·직책 반영). 화면에서 버튼을 보일지 정할 때 쓴다(실제 작업은 서버가 다시 확인).
+    livePerms: effectivePerms(me as Parameters<typeof effectivePerms>[0], await getPermGroups()),
     admin: s.admin,
     consent: Boolean(extra.consentAt),
     gender: me.gender === "남" || me.gender === "여" ? me.gender : "",

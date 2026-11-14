@@ -74,7 +74,7 @@ function Club({ name }: { name: string }) {
       <section className="card" aria-label="소모임 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>소모임 회원</b>
         <span className="small">
-          직책(회장 등)을 정하면 그 회원이 소모임 행사의 참관자를 정할 수 있고 게시글도 쓸 수 있어요.
+          직책(회장 등)을 정하면 그 회원이 소모임 일정의 참관자를 정할 수 있고 게시글도 쓸 수 있어요.
           {leaders.length > 0 && <> 지금: {leaders.map((l) => `${l.role} ${l.name}`).join(", ")}</>}
         </span>
         {roster.length === 0 && <span className="small">아직 회원이 없어요. 아래에서 더해 주세요.</span>}
@@ -119,7 +119,7 @@ function Club({ name }: { name: string }) {
           <div><label className="l" htmlFor="c-acc">계좌번호</label><input id="c-acc" className="field" maxLength={80} value={info.account} onChange={(e) => setI("account", e.target.value)} /></div>
           <div><label className="l" htmlFor="c-holder">예금주</label><input id="c-holder" className="field" maxLength={60} value={info.holder} onChange={(e) => setI("holder", e.target.value)} /></div>
         </div>
-        <span className="small">이 소모임으로 행사를 만들면 이 계좌가 행사 입금계좌로 먼저 들어가요.</span>
+        <span className="small">이 소모임으로 일정을 만들면 이 계좌가 일정 입금계좌로 먼저 들어가요.</span>
         <b>소모임 회비 (선택)</b>
         <div className="grid2">
           <div><label className="l" htmlFor="c-fee">금액 (원)</label><input id="c-fee" className="field" inputMode="numeric" value={info.feeAmount} onChange={(e) => setI("feeAmount", e.target.value.replace(/\D/g, "").slice(0, 9))} /></div>

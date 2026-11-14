@@ -13,7 +13,7 @@ const body = z.object({ decision: z.enum(["approve", "decline"]) });
 
 // 소모임 직책자(직책자가 없으면 전체 관리자)가 가입·참관 신청을 승인하거나 거절한다.
 //  승인 join    → 신청한 회원의 Members.clubs 에 그 소모임(직책 없음)을 더한다.
-//  승인 observe → 그 행사의 참관자(Events.observers)에 더한다.
+//  승인 observe → 그 일정의 참관자(Events.observers)에 더한다.
 // 결과는 신청한 회원의 알림에 뜨고 휴대폰 알림(내용 없이)도 간다.
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const g = await guard();
@@ -44,7 +44,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       }
     } else {
       const ev = events.find((e) => e.id === r.eventId);
-      if (!ev) return bad("행사를 찾을 수 없어요. 거절로 처리해 주세요.", 404);
+      if (!ev) return bad("일정을 찾을 수 없어요. 거절로 처리해 주세요.", 404);
       const obs = readObservers(ev.observers);
       if (!inClub && !obs.includes(who.id)) await s.update("Events", ev.id, { observers: JSON.stringify([...obs, who.id]) });
     }

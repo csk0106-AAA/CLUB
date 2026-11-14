@@ -11,9 +11,10 @@ import { PasswordField } from "./PasswordField";
 type Me = { name: string; perms: string[]; admin: boolean; consent: boolean };
 
 // 관리자 화면 공통 틀: 로그인 확인 → 관리자 2차 비밀번호 → 권한 확인 → 위쪽 메뉴.
-// mode: 회원관리 / 행사관리 / 소모임관리 중 어느 쪽 화면인지. need: 필요한 권한(하나라도 있으면 통과).
+// mode: 회원관리 / 소모임관리 / 활동 템플릿 중 어느 쪽 화면인지(일정 관리 화면은 mode 없이 — 일정 페이지에서 들어온다).
+// need: 필요한 권한(하나라도 있으면 통과).
 export function AdminGate(props: {
-  mode?: "members" | "events" | "clubs";
+  mode?: "members" | "clubs" | "templates";
   need?: string[];
   active?: string;
   children: React.ReactNode;
@@ -92,8 +93,8 @@ export function AdminGate(props: {
   const sub =
     props.mode === "members"
       ? [{ href: "/admin/settings", label: "원우회 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/members", label: "회원 명단" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/dues", label: "회비관리" }]
-      : props.mode === "events"
-        ? [{ href: "/admin/events", label: "행사 목록" }, { href: "/admin/templates", label: "활동 템플릿" }]
+      : props.mode === "templates"
+        ? []
         : props.mode === "clubs"
           ? [{ href: "/admin/clubs", label: "소모임 목록" }]
           : [];
@@ -114,8 +115,8 @@ export function AdminGate(props: {
         </div>
         <nav className="modes" aria-label="관리자 구분">
           <Link href="/admin/members" className={props.mode === "members" ? "on" : ""} aria-current={props.mode === "members" ? "true" : undefined}>회원관리</Link>
-          <Link href="/admin/events" className={props.mode === "events" ? "on" : ""} aria-current={props.mode === "events" ? "true" : undefined}>행사관리</Link>
           <Link href="/admin/clubs" className={props.mode === "clubs" ? "on" : ""} aria-current={props.mode === "clubs" ? "true" : undefined}>소모임관리</Link>
+          <Link href="/admin/templates" className={props.mode === "templates" ? "on" : ""} aria-current={props.mode === "templates" ? "true" : undefined}>활동 템플릿</Link>
         </nav>
       </header>
       {sub.length > 0 && (
@@ -132,7 +133,7 @@ export function AdminGate(props: {
 export const PERM_LABELS: Record<string, string> = {
   all: "모든 권한",
   members: "회원정보",
-  events: "행사",
+  events: "일정",
   fees: "회비·비용",
   activities: "활동·조편성",
   minutes: "회의록·회칙",

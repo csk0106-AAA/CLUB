@@ -55,7 +55,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
     setBusy("");
     if (!r.ok) return setError(r.error);
     setNote(decision === "approve"
-      ? `${h.memberName} 님의 ${h.kindLabel} 신청을 승인했어요.${h.kind === "join" ? ` 이제 ${h.club} 회원이에요.` : " 이제 이 행사에 참석 신청할 수 있어요."}`
+      ? `${h.memberName} 님의 ${h.kindLabel} 신청을 승인했어요.${h.kind === "join" ? ` 이제 ${h.club} 회원이에요.` : " 이제 이 일정에 참석 신청할 수 있어요."}`
       : `${h.memberName} 님의 신청을 거절했어요.`);
     await load(true);
   }

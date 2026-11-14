@@ -22,10 +22,12 @@ export const TABS = {
     "feeRules",
     // audience: 공개 대상 JSON (lib/audience.ts). 비어 있으면 전체 회원.
     "audience",
-    // club: 소모임 행사면 소모임 이름. 이때 대상은 그 소모임 회원(실시간) + observers(참관자 회원 id JSON 배열)
+    // club: 소모임 일정이면 소모임 이름. 이때 대상은 그 소모임 회원(실시간) + observers(참관자 회원 id JSON 배열)
     "club", "observers",
-    // pinned: "true"면 회원 행사 목록 맨 위에 고정
+    // pinned: "true"면 회원 일정 목록 맨 위에 고정
     "pinned",
+    // minutes: 회의 일정의 회의록 JSON { heldAt, place, attendees, agenda:[{title, status, note}], followUp } (lib/board.ts minutesData)
+    "minutes",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
@@ -41,7 +43,7 @@ export const TABS = {
   // 활동별 출석 체크: 자동 명단(날짜 선택 기반)을 관리자가 고칠 때만 행이 생긴다. present: true(출석) / false(결석)
   Attendance: ["id", "eventActivityId", "memberId", "present"],
   Teams: ["id", "eventActivityId", "name", "memberIds"],
-  // 행사 조편성(여러 개 가능, 예: 저녁 게임 3개 조). teams 는 [{name, memberIds}] JSON. published 가 true 여야 회원에게 보인다.
+  // 일정 조편성(여러 개 가능, 예: 저녁 게임 3개 조). teams 는 [{name, memberIds}] JSON. published 가 true 여야 회원에게 보인다.
   Groupings: ["id", "eventId", "title", "teams", "published", "updatedAt"],
   // 갈 때: from/to 출발·도착 장소, departAt/arriveAt 출발·도착 예상 시간, riders 탑승자(JSON)
   // 올 때: backFrom/backTo/backDepartAt/backArriveAt/backRiders (같은 뜻)
@@ -76,7 +78,7 @@ export const TABS = {
   // 현장 진행: 한 사람씩 진행하는 라운드, 거짓 투표
   Rounds: ["id", "eventActivityId", "targetMemberId", "state", "orderNo", "nameRevealed", "updatedAt"],
   Votes: ["id", "roundId", "voterId", "chosenIndex", "createdAt"],
-  // 게시글. form: org|rules|fee|minutes|general|survey|poll|quiz (lib/board.ts). data: 양식별 내용 JSON.
+  // 게시글. form: rules|fee|general|survey|poll|quiz (lib/board.ts). minutes 는 예전 회의록 글(이제 회의 일정으로 옮김). data: 양식별 내용 JSON.
   // audience: 공개 대상 JSON(lib/audience.ts), files: 첨부 [{id,name,type,size,image}] JSON
   Posts: [
     "id", "form", "title", "body", "data", "audience", "notice", "pinned", "files",
@@ -90,7 +92,7 @@ export const TABS = {
   PostResponses: ["id", "postId", "memberId", "answer", "createdAt"],
   // 휴대폰 알림(Web Push) 구독
   PushSubs: ["id", "memberId", "endpoint", "keys", "createdAt"],
-  // 소모임 가입 신청(kind=join) / 소모임 행사 1회 참관 신청(kind=observe, eventId 필수).
+  // 소모임 가입 신청(kind=join) / 소모임 일정 1회 참관 신청(kind=observe, eventId 필수).
   // status: pending | approved | declined. 처리는 그 소모임 직책자(lib/club-requests.ts).
   // resultSeen: 신청한 회원이 결과 알림을 봤으면 "true"
   ClubRequests: [

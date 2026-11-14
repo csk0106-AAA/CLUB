@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ADMIN_PERMS } from "./api";
 
-export const EVENT_TYPES = ["전체정기모임", "워크숍", "소모임"] as const;
+export { EVENT_TYPES } from "./event-types";
 
 // 소모임: [{name, role}] — role 이 비어 있으면 일반 소모임 회원
 export const clubSeats = z.array(z.object({

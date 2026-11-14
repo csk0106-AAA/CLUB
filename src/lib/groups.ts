@@ -14,7 +14,7 @@ export async function loadGrouping(eventId: string, gid: string): Promise<{ g: R
 
 export const gTeams = (g: Row): GTeam[] => parseJson<GTeam[]>(g.teams, []);
 
-// 조편성에 쓸 사람: 행사에 참석을 신청한 회원, 없으면(신청 전) 전체 회원
+// 조편성에 쓸 사람: 일정에 참석을 신청한 회원, 없으면(신청 전) 전체 회원
 export async function groupPool(ev: Row): Promise<{ members: Row[]; kind: "attending" | "all" }> {
   const s = await getStore();
   const [members, applies] = await Promise.all([s.list("Members"), s.list("EventApplies")]);

@@ -86,7 +86,7 @@ function ProfileReveal() {
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>프로필 북 실명 공개 시점</b>
-      <span className="small">행사가 끝난 뒤 별칭 대신 실명으로 보여 줄 시점이에요(한국 시간). 비워 두면 계속 별칭으로만 보여요.</span>
+      <span className="small">일정이 끝난 뒤 별칭 대신 실명으로 보여 줄 시점이에요(한국 시간). 비워 두면 계속 별칭으로만 보여요.</span>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="row" style={{ flexWrap: "wrap" }}>
         <DateField mode="datetime" ariaLabel="실명 공개 시점" style={{ width: 300, maxWidth: "100%" }} value={at} onChange={setAt} />

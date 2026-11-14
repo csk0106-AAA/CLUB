@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // 회원 개인 설정(Members.prefs JSON): 화면 모드와 알림.
 //  theme:    "system"(기기 설정 따름) | "light"(기본) | "dark"
-//  notify:   받을 알림 종류 — 행사(events) / 공지글(posts) / 프로필북 수정(profiles)
+//  notify:   받을 알림 종류 — 일정(events) / 공지글(posts) / 프로필북 수정(profiles)
 //  notifyOn: 알림 전체 켜기·끄기
 //  sound:    알림 소리 (알림이 꺼져 있으면 항상 꺼짐)
 //  quiet:    방해 금지 시간 (알림이 꺼져 있으면 항상 꺼짐). from/to 는 "HH:mm", 밤을 넘길 수 있다(22:00~08:00).

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 
-// 사회자 전체화면 위쪽 "돌아가기": 사회자 접속이면 사회자 첫 화면, 관리자면 행사 관리 화면으로.
+// 사회자 전체화면 위쪽 "돌아가기": 사회자 접속이면 사회자 첫 화면, 관리자면 일정 관리 화면으로.
 export function HostBack({ eventId }: { eventId: string }) {
   const [host, setHost] = useState<boolean | null>(null);
   useEffect(() => {

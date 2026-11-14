@@ -11,7 +11,7 @@ export type ChatMsg = { role: "ai" | "me"; text: string; scope?: Scope };
 
 export type WhoCtx = { ev: Row; act: Row; cfg: TemplateConfig };
 
-// 활동 id 로 행사와 설정을 찾는다. '내가 누굴까요?' 방식의 활동이 아니면 오류.
+// 활동 id 로 일정과 설정을 찾는다. '내가 누굴까요?' 방식의 활동이 아니면 오류.
 export async function loadWho(aid: string): Promise<WhoCtx | NextResponse> {
   const s = await getStore();
   const act = (await s.list("EventActivities")).find((a) => a.id === aid);
@@ -24,7 +24,7 @@ export async function loadWho(aid: string): Promise<WhoCtx | NextResponse> {
 
 const WHY: Record<string, string> = {
   none: "이 활동에는 사전 작성이 없어요.",
-  unknown: "행사 날짜가 정해지면 작성 기간이 열려요.",
+  unknown: "일정 날짜가 정해지면 작성 기간이 열려요.",
   before: "아직 작성 기간이 아니에요.",
   closed: "작성 기간이 끝났어요.",
 };

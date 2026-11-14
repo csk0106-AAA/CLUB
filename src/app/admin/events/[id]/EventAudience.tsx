@@ -18,7 +18,7 @@ function read(text?: string): Audience {
   }
 }
 
-// 소모임이 아닌 행사의 공개 대상. 행사 목록·참석 신청·알림이 모두 이 대상에게만 보인다.
+// 소모임이 아닌 일정의 공개 대상. 일정 목록·참석 신청·알림이 모두 이 대상에게만 보인다.
 export function EventAudience({ eventId, audience, onSaved }: { eventId: string; audience?: string; onSaved: () => void }) {
   const [saved, setSaved] = useState<Audience>(() => read(audience));
   const [value, setValue] = useState<Audience>(saved);
@@ -41,7 +41,7 @@ export function EventAudience({ eventId, audience, onSaved }: { eventId: string;
   return (
     <section className="card" aria-label="공개 대상" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>공개 대상</b>
-      <span className="small">이 행사는 고른 회원에게만 목록·참석 신청·알림이 보여요. 전체 회원이 기본이에요.</span>
+      <span className="small">이 일정은 고른 회원에게만 목록·참석 신청·알림이 보여요. 전체 회원이 기본이에요.</span>
       <AudiencePicker value={value} onChange={setValue} legend="누구에게 보일까요?" />
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <button className="btn" type="button" disabled={busy || !dirty} style={{ width: "auto", minWidth: 160, alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }} onClick={save}>

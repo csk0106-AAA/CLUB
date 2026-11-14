@@ -5,7 +5,7 @@ import { getStore } from "@/lib/store";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// 템플릿 수정: 버전이 1 올라간다. 이미 행사에 넣은 활동은 그때 복사해 둔 설정을 그대로 쓰므로 영향이 없다.
+// 템플릿 수정: 버전이 1 올라간다. 이미 일정에 넣은 활동은 그때 복사해 둔 설정을 그대로 쓰므로 영향이 없다.
 export async function PUT(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;

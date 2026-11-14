@@ -110,6 +110,8 @@ async function seedBoard(): Promise<void> {
         data: JSON.stringify({ heldAt: m.heldAt, place: m.place, attendees: m.attendees, agenda, followUp: m.followUp }),
         audience: aud, notice: "false", pinned: "false", files: "[]", authorId: author, createdAt: at, updatedAt: at,
       });
+      // 새로 생긴 회의록 글도 회의 일정으로 옮기도록 다시 표시(lib/event-migrate.ts)
+      await setSetting("minutesToEvents", false);
     }
   }
 }

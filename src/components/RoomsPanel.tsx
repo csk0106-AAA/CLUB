@@ -84,7 +84,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
       <div className="subnav" role="tablist" aria-label="숙박 날짜">
         {d.dates.map((x) => <a key={x} href="#" role="tab" aria-selected={day === x} className={day === x ? "on" : ""} onClick={(e) => { e.preventDefault(); setDay(x); }}>{dayLabel(x)}</a>)}
       </div>
-      {d.dates.length === 0 && <div className="msg info">행사 개요에 시작·종료 일시를 먼저 입력하면 숙박 날짜가 나와요.</div>}
+      {d.dates.length === 0 && <div className="msg info">일정 개요에 시작·종료 일시를 먼저 입력하면 숙박 날짜가 나와요.</div>}
 
       {day && shown.length === 0 && <div className="msg info">{dayLabel(day)}에 만든 방이 없어요. “+ 방 만들기”로 만들어 주세요.</div>}
       <div className="cards">

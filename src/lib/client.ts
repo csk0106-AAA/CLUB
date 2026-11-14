@@ -23,7 +23,7 @@ export async function api<T = unknown>(path: string, init?: { method?: string; b
   }
 }
 
-// 행사 목록·카드용: "2026/12/11 ~ 2026/12/12 · 장소" (시간은 빼고 날짜만, 같은 날이면 하루만)
+// 일정 목록·카드용: "2026/12/11 ~ 2026/12/12 · 장소" (시간은 빼고 날짜만, 같은 날이면 하루만)
 export function fmtWhen(startsAt: string, endsAt: string, place: string): string {
   if (!startsAt) return "날짜가 정해지면 알려 드려요";
   const a = fmtDate(toLocalIso(startsAt));
@@ -96,8 +96,8 @@ export function fmtRange(startsAt: string, endsAt: string): string {
   return `${start} ~ ${b.hm ? `${b.md} ${b.hm}` : b.md}`;
 }
 
-// 행사 유형별 pill 색
-export const TYPE_TONE: Record<string, string> = { 워크숍: "blue", 전체정기모임: "ok", 소모임: "warn" };
+// 일정 유형별 pill 색
+export { TYPE_TONE } from "./event-types";
 
 export function won(n: string | number): string {
   const v = Number(n);

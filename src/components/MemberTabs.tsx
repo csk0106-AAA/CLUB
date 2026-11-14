@@ -7,7 +7,7 @@ import { setBadge } from "@/lib/push-client";
 import { IconCalendar, IconGear, IconHome, IconProfileBook } from "./Icons";
 import css from "./MemberTabs.module.css";
 
-// 하단 탭: 홈(게시글 + 알림 + 조직도) / 행사 / 프로필 북 / 설정.
+// 하단 탭: 홈(게시글 + 알림 + 조직도) / 일정 / 프로필 북 / 설정.
 // 조직도는 홈 화면 위쪽 "조직도" 아이콘으로 연다(/org 로 바로 들어오면 "홈" 탭이 켜진다).
 // 관리자 화면은 설정 안(설정 화면 위쪽 관리자 아이콘)으로 들어가므로, 관리자 화면에서는 "설정" 탭이 켜진다.
 // 이 탭을 쓰는 화면은 <main className="app with-tabs"> 로 감싼다.
@@ -53,7 +53,7 @@ export function MemberTabs({ on: tab }: { on: Tab }) {
 
   const items: { key: Tab; href: string; label: string; icon: React.ReactNode }[] = [
     { key: "board", href: "/board", label: "홈", icon: <IconHome size={TAB_ICON} max={TAB_MAX} /> },
-    { key: "events", href: "/events", label: "행사", icon: <IconCalendar size={TAB_ICON} max={TAB_MAX} /> },
+    { key: "events", href: "/events", label: "일정", icon: <IconCalendar size={TAB_ICON} max={TAB_MAX} /> },
     { key: "profiles", href: "/profiles", label: "프로필 북", icon: <IconProfileBook size={TAB_ICON} max={TAB_MAX} /> },
     { key: "settings", href: "/settings", label: "설정", icon: <IconGear size={TAB_ICON} max={TAB_MAX} /> },
   ];

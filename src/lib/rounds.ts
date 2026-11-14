@@ -28,7 +28,7 @@ const FROM: Record<Exclude<Action, "open" | "name" | "back">, RoundState[]> = {
 
 export type StageCtx = { act: Row; ev: Row; cfg: TemplateConfig };
 
-// 행사와 활동 확인. '내가 누굴까요?' 방식의 활동이어야 한다.
+// 일정과 활동 확인. '내가 누굴까요?' 방식의 활동이어야 한다.
 export async function loadStage(eventId: string, aid: string): Promise<StageCtx | string> {
   const s = await getStore();
   const act = (await s.list("EventActivities")).find((a) => a.id === aid && a.eventId === eventId);

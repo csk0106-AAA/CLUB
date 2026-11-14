@@ -12,8 +12,8 @@ export const aiPointKeys = (c: { preEvent: { steps: string[] } }): string[] =>
   : c.preEvent.steps.includes("worry_write") ? ["worry"]
   : [];
 
-// AI 지침 편집기(지점별). scope="template": 템플릿 보관함에서, scope="event": 행사 활동에서 연다.
-// 행사 활동에서는 저장할 때 "템플릿에도 반영" / "이 행사 활동에만" 중 하나를 고른다.
+// AI 지침 편집기(지점별). scope="template": 템플릿 보관함에서, scope="event": 일정 활동에서 연다.
+// 일정 활동에서는 저장할 때 "템플릿에도 반영" / "이 일정 활동에만" 중 하나를 고른다.
 export type AiSettings = {
   aiGuides: Record<string, string>;
   aiCommon?: string;
@@ -68,7 +68,7 @@ export function AiGuidesEditor(props: {
       </div>
       <span className="small">
         이 활동 안에서 AI가 쓰이는 지점마다 지침을 정해요. 비워 두면 “AI 설정” 화면의 전체 지침을 써요. 모든 지점에는 공통 지침(신원 정보 금지 등)이 항상 함께 들어가요.
-        {scope === "template" ? " 저장하면 이 템플릿으로 넣은 행사 활동에도 바로 적용돼요." : ""}
+        {scope === "template" ? " 저장하면 이 템플릿으로 넣은 일정 활동에도 바로 적용돼요." : ""}
       </span>
       {err && <div className="msg bad" role="alert">{err}</div>}
       {!info && !err && <p className="small">불러오는 중이에요…</p>}
@@ -138,12 +138,12 @@ export function AiGuidesEditor(props: {
               {busy ? "저장 중…" : "템플릿에도 반영해서 저장"}
             </button>
             <button className="btn blue" type="button" disabled={busy || !info} style={{ width: "auto", minWidth: 220 }} onClick={() => save("event")}>
-              {busy ? "저장 중…" : "이 행사 활동에만 저장"}
+              {busy ? "저장 중…" : "이 일정 활동에만 저장"}
             </button>
           </div>
           <span className="small">
-            템플릿에도 반영: 원래 템플릿의 지침이 바뀌어 이 템플릿을 쓰는 다른 행사와 앞으로 넣을 활동에도 적용돼요.<br />
-            이 행사 활동에만: 이 행사용 템플릿으로 따로 저장돼요. 템플릿 보관함에 “행사 템플릿 · 행사명_날짜”로 보여요.
+            템플릿에도 반영: 원래 템플릿의 지침이 바뀌어 이 템플릿을 쓰는 다른 일정과 앞으로 넣을 활동에도 적용돼요.<br />
+            이 일정 활동에만: 이 일정용 템플릿으로 따로 저장돼요. 템플릿 보관함에 “일정 템플릿 · 일정명_날짜”로 보여요.
           </span>
         </div>
       ))}

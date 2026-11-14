@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { EventMinutes } from "@/components/EventMinutes";
 import { MineInfo } from "@/components/MineInfo";
 import { Sheet } from "@/components/Sheet";
 import { ClubRequestCard } from "../ClubRequestCard";
@@ -14,7 +15,7 @@ type Detail = {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
-    canApply?: boolean; // false: 내가 속하지 않은 소모임 행사(읽기만)
+    canApply?: boolean; // false: 내가 속하지 않은 소모임 일정(읽기만)
     requests?: { join: string; observe: string } | null; // 내 가입·참관 신청 상태
   };
   activities: { id: string; name: string }[];
@@ -22,7 +23,7 @@ type Detail = {
   feeDue: boolean;
 };
 
-// 행사 기간의 날짜 목록 (최대 7일)
+// 일정 기간의 날짜 목록 (최대 7일)
 function eventDays(startsAt: string, endsAt: string): string[] {
   const from = startsAt.slice(0, 10);
   const to = (endsAt || startsAt).slice(0, 10);
@@ -37,7 +38,9 @@ function eventDays(startsAt: string, endsAt: string): string[] {
   return out;
 }
 const dayLabel = (iso: string) => fmtDateDow(iso); // "2026/12/11 (목)"
-// ③ 행사 개요: 행사를 누르면 먼저 보이는 화면. 참석 신청 → (워크숍) 날짜 선택 → 회비 안내 → 홈
+// 일정·회비 관리 권한(지금 DB 기준)이 있으면 "일정 관리" 버튼
+const canManageOf = (p?: string[]) => !!p && ["all", "events", "fees"].some((x) => p.includes(x));
+// ③ 일정 개요: 일정을 누르면 먼저 보이는 화면. 참석 신청 → (워크숍) 날짜 선택 → 회비 안내 → 홈
 export default function OverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -46,11 +49,13 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
   const [sel, setSel] = useState<string[]>([]);
+  const [manage, setManage] = useState(false);
 
   const load = useCallback(async () => {
-    const m = await api<{ consent: boolean }>("/api/me");
+    const m = await api<{ consent: boolean; livePerms?: string[] }>("/api/me");
     if (!m.ok) return void (m.status === 401 ? router.replace("/") : setError(m.error));
     if (!m.data.consent) return void router.replace("/events");
+    setManage(canManageOf(m.data.livePerms));
     const r = await api<Detail>(`/api/events/${id}`);
     if (r.ok) setD(r.data);
     else setError(r.error);
@@ -97,7 +102,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
     return (
       <main className="app">
         <div className="msg bad" role="alert">{error}</div>
-        <button className="btn white" type="button" onClick={() => router.push("/events")}>‹ 행사 목록</button>
+        <button className="btn white" type="button" onClick={() => router.push("/events")}>‹ 일정 목록</button>
       </main>
     );
   }
@@ -110,8 +115,10 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
   return (
     <main className="app">
       <div className="lh">
-        <Link href={answer ? `/events/${id}` : "/events"} className="x" aria-label={answer ? "행사로 돌아가기" : "행사 목록으로"}>‹</Link>
+        <Link href={answer ? `/events/${id}` : "/events"} className="x" aria-label={answer ? "일정으로 돌아가기" : "일정 목록으로"}>‹</Link>
         <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.type}</span>
+        <span className="grow" />
+        {manage && <Link className="mini" href={`/admin/events/${id}`} style={{ minHeight: 40 }}>일정 관리</Link>}
       </div>
       <h1 className="title">{e.name}</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
@@ -144,6 +151,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
         </div>
       )}
       {e.booking && <div className="card"><b>안내</b><div className="small" style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{e.booking}</div></div>}
+      {e.type === "회의" && <EventMinutes eventId={id} />}
       <MineInfo eventId={id} placeholder />
       {e.canObserve && <ObserversCard eventId={id} />}
 
@@ -158,12 +166,12 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       {e.canApply === false && e.club ? (
         <>
           <ClubRequestCard eventId={id} club={e.club} requests={e.requests ?? null} onSent={load} />
-          <button className="btn white" type="button" onClick={() => router.push("/events")}>행사 목록으로</button>
+          <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
         </>
       ) : !e.startsAt && answer === "" ? (
         <div className="footer-actions">
           <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>날짜가 정해지면 알려 드려요</b><span className="t">일정이 확정되면 그때 참석 여부를 받을게요.</span></div></div>
-          <button className="btn white" type="button" onClick={() => router.push("/events")}>행사 목록으로</button>
+          <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
         </div>
       ) : (
       <div className="footer-actions">
@@ -179,7 +187,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
         {answer === "참석" && e.type === "워크숍" && (
           <button className="btn white" type="button" onClick={() => { setSel(d.apply?.days ?? []); setPicking(true); }}>참석 날짜 바꾸기</button>
         )}
-        {answer !== "" && <button className="btn white" type="button" onClick={() => router.push(`/events/${id}`)}>행사로 돌아가기</button>}
+        {answer !== "" && <button className="btn white" type="button" onClick={() => router.push(`/events/${id}`)}>일정으로 돌아가기</button>}
       </div>
       )}
 

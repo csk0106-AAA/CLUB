@@ -13,15 +13,15 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// 소모임 행사의 참관자(소모임 밖 회원). 그 소모임의 직책자(회장 등, Members.clubs 실시간)나
-// 행사 권한이 있는 관리자만 볼 수 있고 바꿀 수 있다.
+// 소모임 일정의 참관자(소모임 밖 회원). 그 소모임의 직책자(회장 등, Members.clubs 실시간)나
+// 일정 권한이 있는 관리자만 볼 수 있고 바꿀 수 있다.
 async function load(s: Session, id: string): Promise<{ ev: Row; members: Row[] } | NextResponse> {
   const store = await getStore();
   const [events, members] = await Promise.all([store.list("Events"), store.list("Members")]);
   const ev = events.find((e) => e.id === id);
-  if (!ev) return bad("행사를 찾을 수 없어요.", 404);
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   const club = (ev.club ?? "").trim();
-  if (!club) return bad("소모임 행사에서만 참관자를 정할 수 있어요.");
+  if (!club) return bad("소모임 일정에서만 참관자를 정할 수 있어요.");
   const me = members.find((m) => m.id === s.mid);
   if (!can(s, "events") && !isClubLeader(me, club)) return bad("이 소모임의 회장(직책자)만 참관자를 정할 수 있어요.", 403);
   return { ev, members };

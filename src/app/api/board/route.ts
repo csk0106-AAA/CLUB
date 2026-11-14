@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad } from "@/lib/api";
+import { migrateMinutesPosts } from "@/lib/event-migrate";
 import { notifyPost } from "@/lib/notify";
 import { getStore } from "@/lib/store";
 import { parsePost, sortPosts, summaries } from "./_lib/posts";
@@ -12,6 +13,7 @@ export async function GET() {
   const m = await getMe();
   if ("err" in m) return m.err;
   await ensureBoard();
+  await migrateMinutesPosts().catch(() => 0); // 예전 회의록 글 → 회의 일정
   const { me } = m;
   const posts = (await (await getStore()).list("Posts")).filter((p) => canSee(me, p)).sort(sortPosts);
   return NextResponse.json({
@@ -26,7 +28,10 @@ export async function POST(req: Request) {
   if ("err" in m) return m.err;
   const { me } = m;
   if (!me.canWrite) return forbid("글은 관리자와 소모임 직책자만 쓸 수 있어요.");
-  const parsed = await parsePost(await req.json().catch(() => null), me);
+  const raw = await req.json().catch(() => null);
+  // 회의록은 이제 일정 › 회의 일정에서 쓴다(예전 회의록 글은 고치기만 된다)
+  if ((raw as { form?: string } | null)?.form === "minutes") return bad("회의록은 일정에서 ‘회의’ 일정을 만들어 그 안에 써 주세요.");
+  const parsed = await parsePost(raw, me);
   if (!parsed.ok) return bad(parsed.error, parsed.status);
   const now = new Date().toISOString();
   const row = await (await getStore()).insert("Posts", { ...parsed.v, files: "[]", authorId: me.row.id, createdAt: now, updatedAt: now });

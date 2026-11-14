@@ -74,7 +74,7 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
+      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
         right={<span className={`pill ${state.tone}`}>{state.text}</span>} />
       <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: fs(20) }}>{d.activity.name}</h1></div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}

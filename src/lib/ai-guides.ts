@@ -31,7 +31,7 @@ export async function pointGuides(): Promise<Record<AiPoint, string>> {
   return out;
 }
 
-// 이 행사 활동이 따르는 설정: 템플릿(행사에 넣은 뒤 템플릿에서 고쳐도 바로 반영되도록 다시 읽는다) → 없으면 활동에 복사된 설정
+// 이 일정 활동이 따르는 설정: 템플릿(일정에 넣은 뒤 템플릿에서 고쳐도 바로 반영되도록 다시 읽는다) → 없으면 활동에 복사된 설정
 export async function activityAiConfig(act?: Row): Promise<TemplateConfig | null> {
   if (!act) return null;
   if (act.templateId) {

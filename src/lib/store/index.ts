@@ -59,7 +59,7 @@ async function seedInterview(s: Store): Promise<void> {
   await put("seeded3", true);
 }
 
-// 송년 워크숍에 기본 활동 3개를 넣는다. 템플릿 설정을 복사해 행사별로 수정할 수 있게 한다.
+// 송년 워크숍에 기본 활동 3개를 넣는다. 템플릿 설정을 복사해 일정별로 수정할 수 있게 한다.
 async function seedActivities(s: Store): Promise<void> {
   const settings = await s.list("Settings");
   if (settings.some((r) => r.id === "seeded2")) return;
@@ -134,7 +134,7 @@ async function seedBase(s: Store): Promise<void> {
   });
   await s.insert("Events", {
     id: "evt-regular",
-    type: "전체정기모임",
+    type: "정기모임",
     name: "2027 신년 정기모임",
     status: "초안",
     published: "true",

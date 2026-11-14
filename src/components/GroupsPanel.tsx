@@ -52,7 +52,7 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      <span className="small">활동마다 조를 따로 만들 수 있어요. 배포한 조편성은 해당 회원의 행사 화면에 “내 조”로 나와요.</span>
+      <span className="small">활동마다 조를 따로 만들 수 있어요. 배포한 조편성은 해당 회원의 일정 화면에 “내 조”로 나와요.</span>
       <div className="subnav" role="tablist" aria-label="조편성 목록">
         {list.map((g) => (
           <a key={g.id} href="#" role="tab" aria-selected={sel === g.id} className={sel === g.id ? "on" : ""} onClick={(e) => { e.preventDefault(); setSel(g.id); }}>

@@ -57,13 +57,13 @@ function Templates() {
       : await api("/api/admin/templates", { body: edit.value });
     setBusy(false);
     if (!r.ok) return setEditErr(r.error);
-    setMsg({ tone: "info", text: "저장했어요. 이미 행사에 넣은 활동은 그대로고, 앞으로 넣는 활동부터 바뀐 설정을 써요." });
+    setMsg({ tone: "info", text: "저장했어요. 이미 일정에 넣은 활동은 그대로고, 앞으로 넣는 활동부터 바뀐 설정을 써요." });
     setEditRaw(null);
     load();
   }
 
   async function remove(t: T) {
-    if (!window.confirm(`“${t.config.name}” 템플릿을 지울까요? 이미 행사에 넣은 활동은 그대로 남아요.`)) return;
+    if (!window.confirm(`“${t.config.name}” 템플릿을 지울까요? 이미 일정에 넣은 활동은 그대로 남아요.`)) return;
     const r = await api(`/api/admin/templates/${t.id}`, { method: "DELETE" });
     setMsg(r.ok ? { tone: "info", text: "지웠어요." } : { tone: "bad", text: r.error });
     load();
@@ -72,7 +72,7 @@ function Templates() {
   return (
     <>
       <p className="small" style={{ margin: 0 }}>
-        활동 템플릿은 행사에 넣을 활동의 설계도예요. 사전 작성이 있는지, 현장에서 어떤 단계로 진행하는지, 사회자가 버튼을 누를 때 회원 화면이 언제 켜지는지를 여기서 정해요.
+        활동 템플릿은 일정에 넣을 활동의 설계도예요. 사전 작성이 있는지, 현장에서 어떤 단계로 진행하는지, 사회자가 버튼을 누를 때 회원 화면이 언제 켜지는지를 여기서 정해요.
       </p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
 
@@ -86,7 +86,7 @@ function Templates() {
           onSave={async (ai) => {
             const r = await api(`/api/admin/templates/${guideFor.id}/ai-guides`, { method: "PUT", body: ai });
             if (!r.ok) return r.error;
-            setMsg({ tone: "info", text: `“${guideFor.config.name}”의 AI 지침을 저장했어요. 이 템플릿으로 넣은 행사 활동에도 바로 적용돼요.` });
+            setMsg({ tone: "info", text: `“${guideFor.config.name}”의 AI 지침을 저장했어요. 이 템플릿으로 넣은 일정 활동에도 바로 적용돼요.` });
             setGuideFor(null);
             load();
             return null;
@@ -100,12 +100,12 @@ function Templates() {
               <div key={t.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
                 <span className={`pill ${t.origin === "default" ? "ok" : t.origin === "event" ? "warn" : "blue"}`}>
                   {t.origin === "default" ? "기본 템플릿" : t.origin === "event" && t.config.sourceEvent
-                    ? `행사 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}`
+                    ? `일정 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}`
                     : "내가 만든 템플릿"} v{t.version}
                 </span>
                 <b style={{ font: `700 ${fs(18)} var(--display)` }}>{t.config.name}</b>
                 <span className="small">{t.config.description}</span>
-                <span className="small">{modeOf(t.config) === "team" ? "팀 활동 · " : "전체 활동 · "}{t.config.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}{t.config.preEvent.enabled ? `사전 작성 있음 (행사 ${t.config.preEvent.opensBeforeDays ?? 14}일 전 ~ ${t.config.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 {t.config.onsite.steps.length}단계</span>
+                <span className="small">{modeOf(t.config) === "team" ? "팀 활동 · " : "전체 활동 · "}{t.config.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}{t.config.preEvent.enabled ? `사전 작성 있음 (일정 ${t.config.preEvent.opensBeforeDays ?? 14}일 전 ~ ${t.config.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 {t.config.onsite.steps.length}단계</span>
                 <div className="row" style={{ flexWrap: "wrap" }}>
                   <button className="mini" type="button" onClick={() => openEdit(t.id, strip(t.config))}>수정</button>
                   <button className="mini" type="button" onClick={() => openEdit(null, { ...strip(t.config), name: `${t.config.name} (복사본)` })}>복제</button>
@@ -127,7 +127,7 @@ function Templates() {
           {aiOpen && (
             <AiMaker
               onOpen={(value) => { openEdit(null, value); setAiOpen(false); }}
-              onSaved={() => { setMsg({ tone: "info", text: "AI가 만든 템플릿을 보관함에 저장했어요. 다음 행사부터 고를 수 있어요." }); setAiOpen(false); load(); }}
+              onSaved={() => { setMsg({ tone: "info", text: "AI가 만든 템플릿을 보관함에 저장했어요. 다음 일정부터 고를 수 있어요." }); setAiOpen(false); load(); }}
             />
           )}
         </>
@@ -220,7 +220,7 @@ function AiMaker({ onOpen, onSaved }: { onOpen: (v: EditableConfig) => void; onS
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>{draft.name}</b>
           {draft.description && <span className="small">{draft.description}</span>}
           <span className="small">
-            {draft.participants === "selected" ? "관리자 선택 회원만" : "전체 회원"} · {draft.preEvent.enabled ? `사전 작성 (행사 ${draft.preEvent.opensBeforeDays ?? 14}일 전 ~ ${draft.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"}
+            {draft.participants === "selected" ? "관리자 선택 회원만" : "전체 회원"} · {draft.preEvent.enabled ? `사전 작성 (일정 ${draft.preEvent.opensBeforeDays ?? 14}일 전 ~ ${draft.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"}
           </span>
           <ol className="flow">
             {draft.onsite.steps.map((s) => <li key={s.key}>{s.label}{s.hostButton ? ` · 버튼 “${s.hostButton}”` : ""} · {SCREEN_LABELS[s.memberScreen] ?? s.memberScreen}</li>)}
@@ -240,11 +240,11 @@ function AiMaker({ onOpen, onSaved }: { onOpen: (v: EditableConfig) => void; onS
         <input className="field" aria-label="AI에게 요청" placeholder="예: 명함 대신 한 줄 키워드로 소개하는 20분짜리 아이스브레이킹" value={input} maxLength={1000} onChange={(e) => setInput(e.target.value)} />
         <button className="btn" type="submit" disabled={busy || !input.trim()} style={{ width: 96, flex: "none" }}>보내기</button>
       </form>
-      <span className="small">승인(저장)하면 템플릿 보관함에 들어가고, 다음 행사부터 고를 수 있어요. 앱에 없는 입력 방식은 “진행 안내형”(회원 휴대폰에 지금 단계만 보임)으로 만들어져요.</span>
+      <span className="small">승인(저장)하면 템플릿 보관함에 들어가고, 다음 일정부터 고를 수 있어요. 앱에 없는 입력 방식은 “진행 안내형”(회원 휴대폰에 지금 단계만 보임)으로 만들어져요.</span>
     </section>
   );
 }
 
 export default function TemplatesPage() {
-  return <AdminGate mode="events" need={["activities", "events"]} active="/admin/templates"><Templates /></AdminGate>;
+  return <AdminGate mode="templates" need={["activities", "events"]} active="/admin/templates"><Templates /></AdminGate>;
 }

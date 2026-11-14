@@ -6,7 +6,7 @@ import type { Row } from "./store/types";
 
 // 새 글 표시(하단 아이콘 숫자)와 휴대폰 알림 숫자.
 //  - 회원마다 마지막으로 본 시각: Settings "seen:<회원 id>" = { events, posts, profiles } (ISO)
-//  - 행사는 수정 시각 열이 없어서, 공개·수정될 때 Settings "eventStamps" = { 행사 id: ISO } 에 남긴다.
+//  - 일정은 수정 시각 열이 없어서, 공개·수정될 때 Settings "eventStamps" = { 일정 id: ISO } 에 남긴다.
 //  - "받을 알림"에서 끈 종류는 0으로 센다.
 export type Kind = "events" | "posts" | "profiles";
 export const KINDS: Kind[] = ["events", "posts", "profiles"];

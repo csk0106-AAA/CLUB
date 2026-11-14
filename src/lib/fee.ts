@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parseJson } from "./api";
 
-// 조건별 회비. 행사의 기본 회비(fee) 위에, 참석일 수 / 회원구분 / 직책 조건을 붙인 금액을 여러 줄 둘 수 있다.
+// 조건별 회비. 일정의 기본 회비(fee) 위에, 참석일 수 / 회원구분 / 직책 조건을 붙인 금액을 여러 줄 둘 수 있다.
 // 빈 조건("")은 "전체". 회원에게 맞는 줄 중 조건을 가장 많이 지정한 줄을 쓰고(같으면 위쪽 줄),
 // 맞는 줄이 없으면 기본 회비를 쓴다. 금액은 숫자 문자열(원), ""는 회비 없음.
 export const feeRule = z.object({
@@ -51,7 +51,7 @@ export function feePreview(ev: { fee?: string; feeRules?: string; startsAt?: str
   return amounts.size === 1 ? { known: true, amount: [...amounts][0] } : { known: false, amount: "" };
 }
 
-// 행사 기간의 날짜 수(하루짜리 행사면 1)
+// 일정 기간의 날짜 수(하루짜리 일정이면 1)
 function eventDayCount(ev: { startsAt?: string; endsAt?: string }): number {
   const a = ev.startsAt?.slice(0, 10);
   const b = (ev.endsAt || ev.startsAt)?.slice(0, 10);
@@ -59,8 +59,8 @@ function eventDayCount(ev: { startsAt?: string; endsAt?: string }): number {
   return Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000) + 1);
 }
 
-// 회원 한 명의 회비. 참석 날짜를 골랐으면 그 날짜 수로, 하루짜리 행사면 1일로 계산한다.
-// 여러 날 행사인데 아직 날짜를 고르지 않았고 날짜에 따라 금액이 달라지면 known=false.
+// 회원 한 명의 회비. 참석 날짜를 골랐으면 그 날짜 수로, 하루짜리 일정이면 1일로 계산한다.
+// 여러 날 일정인데 아직 날짜를 고르지 않았고 날짜에 따라 금액이 달라지면 known=false.
 export function memberFee(
   ev: { fee?: string; feeRules?: string; startsAt?: string; endsAt?: string },
   m: Who,

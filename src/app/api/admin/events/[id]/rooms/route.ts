@@ -15,7 +15,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const s = await getStore();
   const [events, members, applies, all, state] = await Promise.all([s.list("Events"), s.list("Members"), s.list("EventApplies"), rooms(id), roomState(id)]);
   const ev = events.find((e) => e.id === id);
-  if (!ev) return bad("행사를 찾을 수 없어요.", 404);
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   const live = members.filter((m) => m.kind !== "회원대기");
   const att = live.filter((m) => applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
   const dates = [...new Set([...nightsOf(ev.startsAt, ev.endsAt), ...all.map((r) => r.date)])].sort();
@@ -45,7 +45,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("날짜와 정원을 확인해 주세요.");
   const s = await getStore();
-  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("행사를 찾을 수 없어요.", 404);
+  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
   const all = await rooms(id);
   const name = parsed.data.name || suggestRoomName(all, parsed.data.date);
   if (all.some((r) => r.date === parsed.data.date && r.name === name)) return bad("같은 날짜에 같은 이름의 방이 있어요.", 409);

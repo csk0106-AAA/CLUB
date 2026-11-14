@@ -50,9 +50,9 @@ export default function HostHome() {
     return (
       <main className="app">
         <h1 className="title">사회자 화면</h1>
-        <div className="msg info">사회자 접속번호로 로그인하면 내가 진행할 활동이 여기에 보여요.{d.mode === "admin" ? " 관리자는 행사 › 활동에서 사회자 전체화면을 열 수 있어요." : ""}</div>
+        <div className="msg info">사회자 접속번호로 로그인하면 내가 진행할 활동이 여기에 보여요.{d.mode === "admin" ? " 관리자는 일정 › 활동에서 사회자 전체화면을 열 수 있어요." : ""}</div>
         <div className="footer-actions">
-          <button className="btn white" type="button" onClick={() => router.push(d.mode === "admin" ? "/admin/events" : "/events")}>돌아가기</button>
+          <button className="btn white" type="button" onClick={() => router.push("/events")}>돌아가기</button>
         </div>
       </main>
     );

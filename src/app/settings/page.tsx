@@ -29,7 +29,7 @@ const THEME_OPTS: { v: Prefs["theme"]; label: string; sub: string }[] = [
   { v: "dark", label: "다크", sub: "어두운 화면" },
 ];
 const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string }[] = [
-  { k: "events", label: "행사" },
+  { k: "events", label: "일정" },
   { k: "posts", label: "공지글" },
   { k: "profiles", label: "프로필북 수정" },
 ];

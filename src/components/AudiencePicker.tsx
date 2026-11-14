@@ -5,9 +5,9 @@ import type { Audience } from "@/lib/audience";
 import { api, fmtDate } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
-// 공개 대상 고르기 (게시글·행사 공통).
-//  전체 회원 / 회원 선택 / 행사 참석자 선택(여러 행사) / 소모임 선택(여러 소모임)
-// 행사·소모임을 고르면 그 회원이 아래 명단에 미리 체크되고, 명단에서 한 명씩 더 고치거나 뺄 수 있다.
+// 공개 대상 고르기 (게시글·일정 공통).
+//  전체 회원 / 회원 선택 / 일정 참석자 선택(여러 일정) / 소모임 선택(여러 소모임)
+// 일정·소모임을 고르면 그 회원이 아래 명단에 미리 체크되고, 명단에서 한 명씩 더 고치거나 뺄 수 있다.
 // 목록은 /api/audience-options (글을 쓸 수 있는 회원만) 에서 불러온다.
 export type AudienceOptions = {
   members: { id: string; name: string }[];
@@ -18,7 +18,7 @@ export type AudienceOptions = {
 const MODES: { k: Audience["mode"]; l: string }[] = [
   { k: "all", l: "전체 회원" },
   { k: "members", l: "회원 선택" },
-  { k: "events", l: "행사 참석자 선택" },
+  { k: "events", l: "일정 참석자 선택" },
   { k: "clubs", l: "소모임 선택" },
 ];
 
@@ -41,7 +41,7 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
     else onChange({ mode, events: [], clubs: [], memberIds: [] });
   }
 
-  // 행사·소모임을 켜면 그 회원을 더하고, 끄면 다른 고른 행사·소모임에 없는 회원만 뺀다.
+  // 일정·소모임을 켜면 그 회원을 더하고, 끄면 다른 고른 일정·소모임에 없는 회원만 뺀다.
   function toggleGroup(kind: "events" | "clubs", key: string, on: boolean) {
     if (!opts) return;
     const idsOf = (k: string) =>
@@ -79,8 +79,8 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
 
       {value.mode === "events" && opts && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="l" id={`${uid}-ev`}>행사 고르기 (여러 개 가능) — 참석으로 답한 회원을 불러와요</span>
-          {opts.events.length === 0 && <span className="small">행사가 없어요.</span>}
+          <span className="l" id={`${uid}-ev`}>일정 고르기 (여러 개 가능) — 참석으로 답한 회원을 불러와요</span>
+          {opts.events.length === 0 && <span className="small">일정이 없어요.</span>}
           <div className="checks" role="group" aria-labelledby={`${uid}-ev`}>
             {opts.events.map((e) => (
               <label key={e.id}>

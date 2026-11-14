@@ -11,7 +11,7 @@ const body = z.object({
   days: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(7).optional(),
 });
 
-// 행사 기간의 날짜 목록(최대 7일)
+// 일정 기간의 날짜 목록(최대 7일)
 function eventDays(startsAt: string, endsAt: string): string[] {
   const from = startsAt.slice(0, 10);
   const to = (endsAt || startsAt).slice(0, 10);
@@ -35,14 +35,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const s = await getStore();
   const [events, members, applies] = await Promise.all([s.list("Events"), s.list("Members"), s.list("EventApplies")]);
   const ev = events.find((e) => e.id === id);
-  if (!ev) return bad("행사를 찾을 수 없어요.", 404);
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   if (!members.some((m) => m.id === memberId)) return bad("회원을 찾을 수 없어요.", 404);
 
-  // 참석 날짜는 행사 기간 안의 날짜만 받는다.
+  // 참석 날짜는 일정 기간 안의 날짜만 받는다.
   let dayValue: string | undefined;
   if (answer === "참석" && days) {
     const allowed = new Set(eventDays(ev.startsAt, ev.endsAt));
-    if (days.some((d) => !allowed.has(d))) return bad("행사 기간 안의 날짜만 고를 수 있어요.");
+    if (days.some((d) => !allowed.has(d))) return bad("일정 기간 안의 날짜만 고를 수 있어요.");
     dayValue = [...new Set(days)].sort().join(",");
   }
 

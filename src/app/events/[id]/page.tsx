@@ -5,6 +5,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconStar } from "@/components/Icons";
 import { LiveActivities } from "@/components/LiveActivities";
+import { EventMinutes } from "@/components/EventMinutes";
 import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
 import { clubLine, ObserversCard } from "./ObserversCard";
@@ -21,7 +22,7 @@ type Detail = {
   feeDue: boolean;
 };
 
-// 행사 시작까지 남은 날: "D-35", 진행 중이면 "오늘 진행", 끝났으면 빈 문자열
+// 일정 시작까지 남은 날: "D-35", 진행 중이면 "오늘 진행", 끝났으면 빈 문자열
 function dday(startsAt: string, endsAt: string): string {
   if (!startsAt) return "";
   const today = new Date();
@@ -34,18 +35,22 @@ function dday(startsAt: string, endsAt: string): string {
   return "";
 }
 const days = (list: string[]) => fmtDaySpan(list);
+// 일정·회비 관리 권한(지금 DB 기준)이 있으면 "일정 관리" 버튼
+const canManageOf = (p?: string[]) => !!p && ["all", "events", "fees"].some((x) => p.includes(x));
 
-// ⑥ 행사 홈: D-day, 회비 알림, 활동 길
+// ⑥ 일정 홈: D-day, 회비 알림, 활동 길
 export default function EventHomePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState("");
+  const [manage, setManage] = useState(false);
 
   const load = useCallback(async () => {
-    const m = await api<{ consent: boolean }>("/api/me");
+    const m = await api<{ consent: boolean; livePerms?: string[] }>("/api/me");
     if (!m.ok) return void (m.status === 401 ? router.replace("/") : setError(m.error));
     if (!m.data.consent) return void router.replace("/events");
+    setManage(canManageOf(m.data.livePerms));
     const r = await api<Detail>(`/api/events/${id}`);
     if (!r.ok) return setError(r.error);
     // 참석 여부를 아직 안 알렸으면 개요부터 보여 준다.
@@ -61,7 +66,7 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
     return (
       <main className="app with-tabs">
         <div className="msg bad" role="alert">{error}</div>
-        <button className="btn white" type="button" onClick={() => router.push("/events")}>‹ 행사 목록</button>
+        <button className="btn white" type="button" onClick={() => router.push("/events")}>‹ 일정 목록</button>
         <MemberTabs on="events" />
       </main>
     );
@@ -95,7 +100,10 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
         )
       )}
 
-      <Link href="/events" className="small" style={{ fontWeight: 700, color: "var(--blue-t)", textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>‹ 행사 목록으로</Link>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <Link href="/events" className="small" style={{ fontWeight: 700, color: "var(--blue-t)", textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>‹ 일정 목록으로</Link>
+        {manage && <Link className="mini" href={`/admin/events/${id}`} style={{ minHeight: 40 }}>일정 관리</Link>}
+      </div>
 
       <Link href={`/events/${id}/overview`} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, textDecoration: "none", color: "inherit" }}>
         <div>
@@ -104,10 +112,11 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
           <div className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</div>
           {e.club && <div className="small">소모임: {clubLine(e.club, e.clubLeaders)}</div>}
         </div>
-        <span className="small" style={{ fontWeight: 700, color: "var(--blue-t)", whiteSpace: "nowrap" }}>행사 개요 ›</span>
+        <span className="small" style={{ fontWeight: 700, color: "var(--blue-t)", whiteSpace: "nowrap" }}>일정 개요 ›</span>
       </Link>
-      {d.apply?.answer === "불참" && <div className="msg info">참석 안함으로 알렸어요. 행사 개요에서 언제든 바꿀 수 있어요.</div>}
+      {d.apply?.answer === "불참" && <div className="msg info">참석 안함으로 알렸어요. 일정 개요에서 언제든 바꿀 수 있어요.</div>}
 
+      {e.type === "회의" && <EventMinutes eventId={id} />}
       <LiveActivities eventId={id} layout="path" />
       <MineInfo eventId={id} />
       {e.canObserve && <ObserversCard eventId={id} />}

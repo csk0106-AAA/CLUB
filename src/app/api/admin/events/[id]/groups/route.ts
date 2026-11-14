@@ -30,7 +30,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("조편성 이름을 입력해 주세요. 예: 저녁 게임");
   const s = await getStore();
-  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("행사를 찾을 수 없어요.", 404);
+  if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
   const row = await s.insert("Groupings", { eventId: id, title: parsed.data.title, teams: "[]", published: "false", updatedAt: new Date().toISOString() });
   return NextResponse.json({ id: row.id });
 }
