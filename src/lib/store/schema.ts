@@ -20,6 +20,8 @@ export const TABS = {
     "feeRules",
     // audience: 공개 대상 JSON (lib/audience.ts). 비어 있으면 전체 회원.
     "audience",
+    // club: 소모임 행사면 소모임 이름. 이때 대상은 그 소모임 회원(실시간) + observers(참관자 회원 id JSON 배열)
+    "club", "observers",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [

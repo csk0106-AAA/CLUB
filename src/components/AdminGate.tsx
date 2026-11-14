@@ -9,9 +9,9 @@ import { MemberTabs } from "./MemberTabs";
 type Me = { name: string; perms: string[]; admin: boolean; consent: boolean };
 
 // 관리자 화면 공통 틀: 로그인 확인 → 관리자 2차 비밀번호 → 권한 확인 → 위쪽 메뉴.
-// mode: 회원관리 / 행사진행 중 어느 쪽 화면인지. need: 필요한 권한(하나라도 있으면 통과).
+// mode: 회원관리 / 행사관리 / 소모임관리 중 어느 쪽 화면인지. need: 필요한 권한(하나라도 있으면 통과).
 export function AdminGate(props: {
-  mode?: "members" | "events";
+  mode?: "members" | "events" | "clubs";
   need?: string[];
   active?: string;
   children: React.ReactNode;
@@ -88,17 +88,20 @@ export function AdminGate(props: {
 
   const sub =
     props.mode === "members"
-      ? [{ href: "/admin/members", label: "회원 명단" }, { href: "/admin/settings", label: "원우회 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/export", label: "내보내기" }]
+      ? [{ href: "/admin/members", label: "회원 명단" }, { href: "/admin/settings", label: "원우회 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/dues", label: "모임회비관리" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/export", label: "내보내기" }]
       : props.mode === "events"
-        ? [{ href: "/admin/events", label: "행사 목록" }, { href: "/admin/templates", label: "활동 템플릿" }, { href: "/admin/ai", label: "AI 지침과 질문" }]
-        : [];
+        ? [{ href: "/admin/events", label: "행사 목록" }, { href: "/admin/templates", label: "활동 템플릿" }]
+        : props.mode === "clubs"
+          ? [{ href: "/admin/clubs", label: "소모임 목록" }]
+          : [];
 
   return (
     <main className="app admin with-tabs">
       <div className="row" style={{ flexWrap: "wrap" }}>
         <nav className="modes" aria-label="관리자 구분">
           <Link href="/admin/members" className={props.mode === "members" ? "on" : ""}>회원관리</Link>
-          <Link href="/admin/events" className={props.mode === "events" ? "on" : ""}>행사진행</Link>
+          <Link href="/admin/events" className={props.mode === "events" ? "on" : ""}>행사관리</Link>
+          <Link href="/admin/clubs" className={props.mode === "clubs" ? "on" : ""}>소모임관리</Link>
         </nav>
         <span className="grow" />
         <span className="pill blue">{me.name} · 관리자</span>

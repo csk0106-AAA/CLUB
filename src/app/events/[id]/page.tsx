@@ -7,12 +7,14 @@ import { IconStar } from "@/components/Icons";
 import { LiveActivities } from "@/components/LiveActivities";
 import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
+import { clubLine, ObserversCard } from "./ObserversCard";
 import { api, fmtDaySpan, fmtWhen, TYPE_TONE, won } from "@/lib/client";
 
 type Detail = {
   event: {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
     fee: string;
+    club?: string; clubLeaders?: { name: string; role: string }[]; canObserve?: boolean;
   };
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
   feeDue: boolean;
@@ -99,6 +101,7 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
           <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.type}</span>
           <b style={{ display: "block", font: "400 19px var(--display)" }}>{e.name}</b>
           <div className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</div>
+          {e.club && <div className="small">소모임: {clubLine(e.club, e.clubLeaders)}</div>}
         </div>
         <span className="small" style={{ fontWeight: 700, color: "var(--blue-t)", whiteSpace: "nowrap" }}>행사 개요 ›</span>
       </Link>
@@ -106,6 +109,7 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
 
       <LiveActivities eventId={id} layout="path" />
       <MineInfo eventId={id} />
+      {e.canObserve && <ObserversCard eventId={id} />}
 
       <MemberTabs on="events" />
     </main>

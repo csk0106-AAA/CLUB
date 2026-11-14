@@ -9,6 +9,8 @@ import { EventItems } from "@/components/EventItems";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
 import { DateField } from "@/components/DateField";
+import { ObserversCard } from "@/app/events/[id]/ObserversCard";
+import { EventAudience } from "./EventAudience";
 import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, won } from "@/lib/client";
 import type { FeeRule } from "@/lib/fee";
 
@@ -16,11 +18,16 @@ type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; booking: string;
   status: string; published: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
   feeRules?: FeeRule[];
+  club?: string; // 소모임 행사의 소모임
+  audience?: string; // 공개 대상 JSON(소모임이 아닌 행사)
 };
 type Row = {
   memberId: string; name: string; kind: string; position: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string;
   fee: string; feePending: boolean; // 이 회원이 낼 회비(조건 반영), 날짜를 골라야 정해지면 feePending
+  clubRole?: string; observer?: boolean; // 소모임 행사: 소모임 직책, 참관자
 };
+type ClubOpt = { name: string; account: string; holder: string; leaders: { name: string; role: string }[] };
+type Opts = { kinds: string[]; positions: string[]; clubs: ClubOpt[]; dues: { account: string; holder: string } };
 
 const TABS = [
   { key: "over", label: "개요" },
@@ -43,6 +50,7 @@ const oneFee = (rules?: FeeRule[]): string | null =>
 type InfoLine = { icon: string; label: string; value: string; multiline?: boolean };
 function infoLines(ev: Ev, rules: FeeRule[], actNames: string[]): InfoLine[] {
   const out: InfoLine[] = [];
+  if (ev.club) out.push({ icon: "👥", label: "소모임", value: ev.club });
   out.push({ icon: "📅", label: "일시", value: fmtRange(ev.startsAt, ev.endsAt) });
   if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
   if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
@@ -56,6 +64,13 @@ function infoLines(ev: Ev, rules: FeeRule[], actNames: string[]): InfoLine[] {
 }
 
 const dayText = (days: string) => (days ? fmtDays(days) : "");
+// 소모임 행사 참석 현황의 이름 옆 표시: 회장(소모임 직책) / 참관자
+const tags = (r: Row) => (
+  <>
+    {r.clubRole && <span className="pill ok" style={{ marginLeft: 6 }}>{r.clubRole}</span>}
+    {r.observer && <span className="pill blue" style={{ marginLeft: 6 }}>참관자</span>}
+  </>
+);
 
 function Detail({ id }: { id: string }) {
   const [ev, setEv] = useState<Ev | null>(null);
@@ -68,7 +83,8 @@ function Detail({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
   const [actNames, setActNames] = useState<string[]>([]);
-  const [opts, setOpts] = useState<{ kinds: string[]; positions: string[] }>({ kinds: [], positions: [] });
+  const [opts, setOpts] = useState<Opts>({ kinds: [], positions: [], clubs: [], dues: { account: "", holder: "" } });
+  const [prefilled, setPrefilled] = useState("");
 
   useEffect(() => {
     api<{ perms: string[] }>("/api/me").then((r) => {
@@ -78,7 +94,7 @@ function Detail({ id }: { id: string }) {
 
   const load = useCallback(async () => {
     const [r, a] = await Promise.all([
-      api<{ event: Ev; rows: Row[]; options: { kinds: string[]; positions: string[] } }>(`/api/admin/events/${id}`),
+      api<{ event: Ev; rows: Row[]; options: Opts }>(`/api/admin/events/${id}`),
       api<{ activities: { config: { name: string } }[] }>(`/api/admin/events/${id}/activities`),
     ]);
     if (r.ok) {
@@ -86,6 +102,17 @@ function Detail({ id }: { id: string }) {
       const e = r.data.event;
       const rs = e.feeRules ?? [];
       if (e.fee && !rs.some((x) => !x.days && !x.kind && !x.position)) e.feeRules = [...rs, { days: "", kind: "", position: "", amount: e.fee }];
+      // 입금계좌가 비어 있으면 소모임 계좌(소모임 행사) 또는 모임회비관리 계좌를 미리 넣는다(저장해야 반영).
+      setPrefilled("");
+      if (!e.account && !e.accountHolder) {
+        const c = e.club ? r.data.options.clubs.find((x) => x.name === e.club) : undefined;
+        const src = e.club ? (c ? { account: c.account, holder: c.holder } : null) : r.data.options.dues;
+        if (src && (src.account || src.holder)) {
+          e.account = src.account;
+          e.accountHolder = src.holder;
+          setPrefilled(e.club ? `${e.club} 소모임 계좌를 미리 넣었어요. 저장하면 반영돼요.` : "모임회비관리의 입금계좌를 미리 넣었어요. 저장하면 반영돼요.");
+        }
+      }
       setEv(e);
       setRows(r.data.rows);
       setOpts(r.data.options);
@@ -99,6 +126,19 @@ function Detail({ id }: { id: string }) {
   if (!ev) return msg ? <div className="msg bad" role="alert">{msg.text}</div> : <p className="small">불러오는 중이에요…</p>;
 
   const set = (k: keyof Ev, v: string) => setEv({ ...ev, [k]: v });
+  const curClub = ev.club ? opts.clubs.find((c) => c.name === ev.club) : undefined;
+  // 소모임을 고르면 그 소모임의 입금계좌·예금주를 넣는다(소모임 계좌가 없으면 지금 값을 둔다).
+  function pickClub(name: string) {
+    if (!ev) return;
+    const c = opts.clubs.find((x) => x.name === name);
+    if (c && (c.account || c.holder)) {
+      setEv({ ...ev, club: name, account: c.account, accountHolder: c.holder });
+      setPrefilled(`${name} 소모임 계좌를 넣었어요. 저장하면 반영돼요.`);
+    } else {
+      setEv({ ...ev, club: name });
+      setPrefilled("");
+    }
+  }
   // 행사 기간의 날짜 목록(참석 날짜 고르기용, 최대 7일)
   const evDays = (() => {
     const a = ev.startsAt?.slice(0, 10);
@@ -113,8 +153,9 @@ function Detail({ id }: { id: string }) {
     if (!ev) return;
     setBusy(true);
     setMsg(null);
-    const { id: _id, type: _t, published: _p, ...fields } = ev;
-    void _id; void _t; void _p;
+    // 참관자는 참석 신청 탭에서 따로 저장하고, 공개 대상(audience)은 이 화면에서 바꾸지 않는다.
+    const { id: _id, type: _t, published: _p, observers: _o, audience: _a, ...fields } = ev as Ev & { observers?: unknown; audience?: unknown };
+    void _id; void _t; void _p; void _o; void _a;
     const r = await api(`/api/admin/events/${id}`, {
       method: "PATCH",
       // 기본 회비 칸은 없앴다: 회비는 모두 회비 줄(feeRules)로 저장하고 예전 fee 값은 비운다.
@@ -222,6 +263,24 @@ function Detail({ id }: { id: string }) {
 
       {tab === "over" && (
         <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {ev.type === "소모임" && (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label className="l" htmlFor="o-club" style={{ margin: 0 }}>소모임</label>
+              <select id="o-club" className="field" value={ev.club ?? ""} onChange={(e) => pickClub(e.target.value)}>
+                <option value="">소모임을 고르지 않음 (전체 회원에게 보임)</option>
+                {[...new Set([...opts.clubs.map((c) => c.name), ...(ev.club ? [ev.club] : [])])].map((c) => <option key={c}>{c}</option>)}
+              </select>
+              {curClub && (
+                <span className="small">
+                  {curClub.leaders.length ? curClub.leaders.map((l) => `${l.role}: ${l.name}`).join(" · ") : "회장을 아직 정하지 않았어요"}
+                  {" · "}참석 신청 대상은 {curClub.name} 회원이고, 회장이 참관자를 더할 수 있어요.
+                </span>
+              )}
+              {ev.club && !curClub && <span className="small" style={{ color: "var(--red-t)" }}>“{ev.club}” 소모임이 목록에 없어요. 다른 소모임을 골라 주세요.</span>}
+            </div>
+          )}
+          {!ev.club && <EventAudience key={ev.id} eventId={id} audience={ev.audience} onSaved={load} />}
+          {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           <div className="grid2">
             <div><label className="l" htmlFor="o-name">행사 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
@@ -363,7 +422,7 @@ function Detail({ id }: { id: string }) {
                 {rows.map((r) =>
                   editRow?.memberId === r.memberId ? (
                     <tr key={r.memberId}>
-                      <td><b>{r.name}</b></td>
+                      <td><b>{r.name}</b>{tags(r)}</td>
                       <td>
                         <select className="field" style={{ minHeight: 44, minWidth: 110 }} aria-label={`${r.name} 신청`} value={editRow.answer}
                           onChange={(e) => setEditRow({ ...editRow, answer: e.target.value })}>
@@ -391,7 +450,7 @@ function Detail({ id }: { id: string }) {
                     </tr>
                   ) : (
                     <tr key={r.memberId}>
-                      <td><b>{r.name}</b></td>
+                      <td><b>{r.name}</b>{tags(r)}</td>
                       <td><span className={`pill ${r.answer === "참석" ? "ok" : r.answer === "불참" ? "gray" : "warn"}`}>{r.answer || "미응답"}</span></td>
                       <td className="num">{dayText(r.days)}</td>
                       <td>{r.memo || <span className="small">-</span>}</td>
@@ -403,6 +462,12 @@ function Detail({ id }: { id: string }) {
             </table>
           </div>
           <span className="small">전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
+          {ev.club && (
+            <>
+              <span className="small">소모임 행사라 {ev.club} 회원과 참관자만 보여요. 행사 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
+              <ObserversCard key={ev.club} eventId={id} admin onChange={load} />
+            </>
+          )}
         </>
       )}
 

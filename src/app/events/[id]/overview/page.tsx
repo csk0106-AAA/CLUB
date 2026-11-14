@@ -5,12 +5,14 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MineInfo } from "@/components/MineInfo";
 import { Sheet } from "@/components/Sheet";
+import { clubLine, ObserversCard } from "../ObserversCard";
 import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, TYPE_TONE, won } from "@/lib/client";
 
 type Detail = {
   event: {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
+    club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
   };
   activities: { id: string; name: string }[];
   apply: { answer: string; days: string[]; paid: boolean } | null;
@@ -32,7 +34,6 @@ function eventDays(startsAt: string, endsAt: string): string[] {
   return out;
 }
 const dayLabel = (iso: string) => fmtDateDow(iso); // "2026/12/11 (목)"
-
 // ③ 행사 개요: 행사를 누르면 먼저 보이는 화면. 참석 신청 → (워크숍) 날짜 선택 → 회비 안내 → 홈
 export default function OverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -112,6 +113,13 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       <h1 className="title">{e.name}</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
 
+      {e.club && (
+        <div className="card">
+          <b>소모임</b>
+          <div className="small">{clubLine(e.club, e.clubLeaders)}</div>
+          {e.observer && <div className="small">참관자로 초대받았어요.</div>}
+        </div>
+      )}
       <div className="card"><b>일시</b><div className="small">{fmtRange(e.startsAt, e.endsAt)}</div></div>
       {e.place && <div className="card"><b>장소</b><div className="small">{e.place}</div></div>}
       {d.activities.length > 0 && (
@@ -134,6 +142,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       )}
       {e.booking && <div className="card"><b>안내</b><div className="small" style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{e.booking}</div></div>}
       <MineInfo eventId={id} placeholder />
+      {e.canObserve && <ObserversCard eventId={id} />}
 
       {answer === "참석" && (
         <div className="msg info">

@@ -4,7 +4,7 @@ import { bad, guard } from "@/lib/api";
 import { getLists, memberClubs } from "@/lib/lists";
 import { checkPermChange, clubKey, getPermGroups, isAllNow, posKey, type PermGroups } from "@/lib/perms";
 import { clubsJson } from "@/lib/schemas";
-import { getStore, setSetting } from "@/lib/store";
+import { getSetting, getStore, setSetting } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 
 export const dynamic = "force-dynamic";
@@ -102,5 +102,30 @@ export async function PUT(req: Request) {
   await setSetting(list, list === "memberKinds" ? items.map((i) => ({ value: i.value, definition: (i.definition ?? "").trim() })) : values);
   if (nextGroups !== groups) await setSetting("permGroups", nextGroups);
   for (const [id, p] of patches) await s.update("Members", id, p);
+
+  // 소모임: 기본 정보(Settings "clubInfo") 키와 소모임 행사(Events.club)도 이름을 따라 바꾸고, 삭제하면 기본 정보를 지운다.
+  // (삭제된 소모임의 행사는 club 값을 그대로 둔다: 전체 회원에게 갑자기 보이지 않도록. 참관자만 계속 볼 수 있다.)
+  if (list === "clubs" && (renames.size || deleted.length)) {
+    const info = await getSetting<Record<string, unknown>>("clubInfo", {});
+    const next: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(info ?? {})) {
+      if (deleted.includes(k)) continue;
+      next[renames.get(k) ?? k] = v;
+    }
+    if (JSON.stringify(next) !== JSON.stringify(info ?? {})) await setSetting("clubInfo", next);
+    if (renames.size) {
+      for (const e of await s.list("Events")) {
+        const to = e.club ? renames.get(e.club) : undefined;
+        if (to) await s.update("Events", e.id, { club: to });
+      }
+    }
+  }
+  // 직책 이름이 바뀌면 모임회비(Settings "dues")의 직책별 회비 줄도 따라 바꾼다.
+  if (list === "positions" && renames.size) {
+    const dues = await getSetting<{ rules?: { position: string; amount: string }[] } | null>("dues", null);
+    if (dues && Array.isArray(dues.rules) && dues.rules.some((r) => renames.has(r.position))) {
+      await setSetting("dues", { ...dues, rules: dues.rules.map((r) => ({ ...r, position: renames.get(r.position) ?? r.position })) });
+    }
+  }
   return NextResponse.json({ ok: true, moved: patches.size, renamed: renames.size, deleted: deleted.length });
 }

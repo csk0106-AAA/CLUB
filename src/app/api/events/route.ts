@@ -18,7 +18,7 @@ export async function GET() {
   const me = members.find((m) => m.id === session.mid);
 
   const list = events
-    .filter((e) => eventVisible(e, session.mid))
+    .filter((e) => eventVisible(e, me ?? session.mid))
     .map((e) => {
       const a = mine.find((x) => x.eventId === e.id);
       const attending = a?.answer === "참석";
@@ -33,6 +33,7 @@ export async function GET() {
         endsAt: e.endsAt,
         place: e.place,
         status: e.status,
+        club: e.club ?? "",
         myAnswer: a?.answer ?? "",
         // 참석 신청하고 회비를 내지 않았으면 회비 알림
         feeDue: attending && hasFee && a?.paid !== "true",

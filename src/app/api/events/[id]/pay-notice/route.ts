@@ -18,10 +18,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const s = await getStore();
   const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
-  const e = events.find((x) => x.id === id && eventVisible(x, g.s.mid));
+  const me = members.find((m) => m.id === g.s.mid);
+  const e = events.find((x) => x.id === id && eventVisible(x, me ?? g.s.mid));
   if (!e) return bad("행사를 찾을 수 없어요.", 404);
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);
-  const me = members.find((m) => m.id === g.s.mid);
   const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
   if (!a || a.answer !== "참석" || !mf.known || !payable(mf.amount)) return bad("참석을 신청한 행사의 회비만 알릴 수 있어요.");
   if (a.paid === "true") return bad("이미 입금이 확인됐어요.");

@@ -16,8 +16,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const s = await getStore();
-  const [events, acts, lives] = await Promise.all([s.list("Events"), s.list("EventActivities"), s.list("LiveState")]);
-  const ev = events.find((e) => e.id === id && eventVisible(e, g.s.mid));
+  const [events, acts, lives, members] = await Promise.all([s.list("Events"), s.list("EventActivities"), s.list("LiveState"), s.list("Members")]);
+  const me = members.find((m) => m.id === g.s.mid);
+  const ev = events.find((e) => e.id === id && eventVisible(e, me ?? g.s.mid));
   if (!ev) return bad("행사를 찾을 수 없어요.", 404);
 
   const mine = acts

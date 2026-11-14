@@ -2,6 +2,7 @@ import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { ALL, audienceInput, audienceLabel, type Audience } from "@/lib/audience";
 import { DATA_SCHEMA, isClosed, isForm, RESPONSE_FORMS, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { duesAccount, duesAmount, PERIOD_LABEL, readDues } from "@/lib/dues";
 import { feeFor } from "@/lib/fee";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { getSetting, getStore } from "@/lib/store";
@@ -106,7 +107,19 @@ export async function detail(me: Me, p: Row) {
 
   if (form === "minutes") extra.agendaLabels = await getSetting<AgendaLabels>(AGENDA_LABELS_KEY, {});
 
-  if (form === "fee") {
+  // 연회비 글에 금액을 따로 적지 않았으면 관리자 "모임회비관리" 설정을 그대로 보여 준다(상단 고정 연회비 안내).
+  if (form === "fee" && !String(data.defaultAmount ?? "").trim() && !(Array.isArray(data.rules) && data.rules.length)) {
+    const d = await readDues();
+    extra.myFee = { amount: duesAmount(d, { kind: me.row.kind, position: me.row.position }), kind: me.row.kind ?? "", position: me.row.position ?? "" };
+    data.defaultAmount = d.amount;
+    data.rules = full ? d.rules.map((r) => ({ kind: "", position: r.position, amount: r.amount })).concat(d.kindRules.map((r) => ({ kind: r.kind, position: "", amount: r.amount }))) : [];
+    data.account = duesAccount(d);
+    data.accountHolder = d.holder;
+    data.deadline = "";
+    data.dueText = [d.dueText, d.note].filter(Boolean).join("\n");
+    data.period = PERIOD_LABEL[d.period];
+    data.fromDues = true;
+  } else if (form === "fee") {
     const rules = Array.isArray(data.rules) ? (data.rules as { kind: string; position: string; amount: string }[]) : [];
     const amount = feeFor(
       { fee: String(data.defaultAmount ?? ""), feeRules: JSON.stringify(rules.map((r) => ({ days: "", kind: r.kind, position: r.position, amount: r.amount }))) },

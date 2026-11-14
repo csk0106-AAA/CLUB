@@ -84,7 +84,7 @@ export async function notifyEvent(eventId: string, _kind: "new" | "update"): Pro
     const [events, members] = await Promise.all([s.list("Events"), s.list("Members")]);
     const ev = events.find((e) => e.id === eventId);
     if (!ev) return;
-    await pushTo(members.filter((m) => eventVisible(ev, m.id)).map((m) => m.id), "events");
+    await pushTo(members.filter((m) => eventVisible(ev, m)).map((m) => m.id), "events");
   } catch (e) {
     console.error("[push] 행사 알림 실패", e);
   }

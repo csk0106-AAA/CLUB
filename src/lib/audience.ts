@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseJson } from "./api";
+import { memberClubs } from "./lists";
 
 // 공개 대상(게시글·행사 공통).
 //  mode "all"     : 전체 회원
@@ -42,9 +43,34 @@ export function inAudience(a: Audience, memberId: string, authorId?: string): bo
   return a.memberIds.includes(memberId);
 }
 
-// 회원에게 이 행사가 보이는지: 공개(published) + 공개 대상에 포함
-export function eventVisible(e: { published?: string; audience?: string }, memberId: string): boolean {
-  return e.published === "true" && inAudience(readAudience(e.audience), memberId);
+// 소모임 행사의 참관자(회원 id 목록)
+export function readObservers(text: string | undefined): string[] {
+  const v = parseJson<unknown>(text, []);
+  return Array.isArray(v) ? [...new Set(v.map(String).filter(Boolean))] : [];
+}
+
+// 행사를 보는 회원: id 와 Members.clubs(소모임 행사 판단용). 문자열(id)만 주면 소모임 회원 여부는 모르는 것으로 본다.
+export type Viewer = { id?: string; clubs?: string };
+
+// 회원에게 이 행사가 보이는지: 공개(published) + 대상에 포함
+//  - 소모임 행사(e.club): 그 소모임 회원(Members.clubs 실시간) + 참관자(e.observers)
+//  - 그 밖: 공개 대상(e.audience)
+export function eventVisible(
+  e: { published?: string; audience?: string; club?: string; observers?: string },
+  who: Viewer | string,
+): boolean {
+  if (e.published !== "true") return false;
+  const v: Viewer = typeof who === "string" ? { id: who } : who;
+  const club = (e.club ?? "").trim();
+  if (club) return inClubOrObserver(e, v);
+  return inAudience(readAudience(e.audience), v.id ?? "");
+}
+
+// 소모임 행사 대상인지(공개 여부와 상관없이). 소모임이 없는 행사면 true.
+export function inClubOrObserver(e: { club?: string; observers?: string }, v: Viewer): boolean {
+  const club = (e.club ?? "").trim();
+  if (!club) return true;
+  return memberClubs(v).some((c) => c.name === club) || readObservers(e.observers).includes(v.id ?? "");
 }
 
 // 화면 표시용 요약

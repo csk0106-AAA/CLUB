@@ -12,7 +12,7 @@ function Go() {
   return <p className="small">이동 중이에요…</p>;
 }
 
-// 관리자 입구: 2차 비밀번호를 통과하면 행사진행 화면으로 간다.
+// 관리자 입구: 2차 비밀번호를 통과하면 행사관리 화면으로 간다.
 export default function AdminHome() {
   return <AdminGate><Go /></AdminGate>;
 }

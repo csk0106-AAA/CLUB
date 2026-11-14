@@ -19,6 +19,7 @@ type Ev = {
   feeDue: boolean;
   feePaid: boolean;
   payNotice: boolean;
+  club?: string;
 };
 type Me = { name: string; perms: string[]; admin: boolean; consent: boolean };
 
@@ -93,7 +94,7 @@ export default function EventsPage() {
         {events?.map((e) => (
           <button key={e.id} className="opt" type="button" disabled={locked} onClick={() => open(e)}
             style={e.myAnswer === "" && e.startsAt ? { borderColor: "var(--blue)" } : undefined}>
-            <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.type}</span>
+            <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
             <span className="name">{e.name}</span>
             <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
             {e.myAnswer === "" && e.startsAt && <span className="pill warn">참석 신청 필요</span>}

@@ -48,7 +48,7 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
     if (!me) continue;
     const prefs = readPrefs(me.prefs);
     const seen = await getSeen(mid);
-    const ev = events.filter((e) => eventVisible(e, mid) && later(stamps[e.id], seen.events)).length;
+    const ev = events.filter((e) => eventVisible(e, me) && later(stamps[e.id], seen.events)).length;
     const po = posts.filter((p) =>
       p.authorId !== mid &&
       inAudience(readAudience(p.audience), mid, p.authorId) &&

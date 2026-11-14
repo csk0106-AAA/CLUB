@@ -78,7 +78,10 @@ export function RulesView({ rules }: { rules: NonNullable<PostDetail["rules"]> }
 }
 
 /* ───── 연회비 ───── */
-export function FeeView({ data, myFee, full }: { data: FeeData; myFee: NonNullable<PostDetail["myFee"]>; full: boolean }) {
+export function FeeView({ data: raw, myFee, full }: { data: FeeData; myFee: NonNullable<PostDetail["myFee"]>; full: boolean }) {
+  // 모임회비관리 설정에서 온 경우 period(연회비/월회비)와 dueText(납부 안내)가 함께 온다.
+  const data = raw as FeeData & { period?: string; dueText?: string; fromDues?: boolean };
+  const label = data.period || "연회비";
   const [copied, setCopied] = useState(false);
   const has = Number(myFee.amount) > 0;
   const who = [myFee.kind, myFee.position].filter(Boolean).join(" · ");
@@ -92,7 +95,7 @@ export function FeeView({ data, myFee, full }: { data: FeeData; myFee: NonNullab
   return (
     <>
       <div className="card center">
-        <span className="small">내 연회비{who ? ` (${who})` : ""}</span>
+        <span className="small">내 {label}{who ? ` (${who})` : ""}</span>
         <div className="title num" style={{ fontSize: 36 }}>{has ? won(myFee.amount) : "없어요"}</div>
       </div>
       {has && (
@@ -104,6 +107,8 @@ export function FeeView({ data, myFee, full }: { data: FeeData; myFee: NonNullab
         </div>
       )}
       {has && data.deadline && <div className="card"><span className="small">납부기한</span><div style={{ font: "700 19px var(--body)" }}>{fmtDate(data.deadline)}까지</div></div>}
+      {data.dueText && <div className="card"><span className="small">납부 안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.dueText}</div></div>}
+      {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 회원관리 › 모임회비관리에서 바꿀 수 있어요.</span>}
       {full && (
         <details className="card">
           <summary style={{ fontWeight: 700, cursor: "pointer" }}>전체 금액표 (작성자·관리자만 보여요)</summary>

@@ -42,6 +42,7 @@ function FeeFields({ data, onChange, kinds, positions }: P<FeeData> & { kinds: s
   return (
     <section className="card" aria-label="연회비" style={col}>
       <b style={{ font: "400 19px var(--display)" }}>연회비</b>
+      <div className="msg info">기본 금액과 조건별 금액을 모두 비워 두면 관리자 › 회원관리 › 모임회비관리의 회비·계좌·납부 안내를 그대로 보여 줘요. 이 글에만 다른 금액을 쓰려면 아래에 적어 주세요.</div>
       <span className="small">기본 금액 위에 회원구분·직책별 금액을 줄로 더할 수 있어요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 기본 금액을 써요. 직책의 “일반회원”은 직책이 없는 회원이에요. 회원에게는 <b>본인 연회비만</b> 보여요.</span>
       <div>
         <label className="l" htmlFor={`${id}-def`}>기본 금액(원) — 비우면 연회비 없음</label>

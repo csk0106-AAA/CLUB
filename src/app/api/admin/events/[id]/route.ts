@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
-import { audienceInput } from "@/lib/audience";
-import { getLists } from "@/lib/lists";
+import { audienceInput, inClubOrObserver, readObservers } from "@/lib/audience";
+import { clubAccount, clubLeaders, readAllClubInfo } from "@/lib/clubs";
+import { duesAccount, readDues } from "@/lib/dues";
+import { getLists, memberClubs } from "@/lib/lists";
 import { notifyEvent } from "@/lib/push";
 import { getSetting, getStore } from "@/lib/store";
 
@@ -25,9 +27,13 @@ export async function GET(_req: Request, ctx: Ctx) {
   const event = events.find((e) => e.id === id);
   if (!event) return bad("행사를 찾을 수 없어요.", 404);
 
+  // 소모임 행사: 그 소모임 회원 + 참관자만 보여 준다(참관자·회장 표시).
+  const club = (event.club ?? "").trim();
+  const observers = readObservers(event.observers);
   const rows = members
-    .filter((m) => m.kind !== "회원대기")
+    .filter((m) => m.kind !== "회원대기" && inClubOrObserver(event, m))
     .map((m) => {
+      const seat = club ? memberClubs(m).find((c) => c.name === club) : undefined;
       const a = applies.find((x) => x.eventId === id && x.memberId === m.id);
       // 이 회원이 낼 회비(참석일·회원구분·직책 조건 반영)
       const mf = memberFee(event, { kind: m.kind, position: m.position }, a);
@@ -44,6 +50,8 @@ export async function GET(_req: Request, ctx: Ctx) {
         payNotice: a?.payNotice ?? "",
         fee: mf.known ? mf.amount : "",
         feePending: !mf.known,
+        clubRole: seat?.role ?? "", // 소모임 직책(회장 등)
+        observer: !!club && !seat && observers.includes(m.id),
       };
     });
   // 조건별 회비 선택지: 회원구분(설정 값), 직책(명단에 있는 값)
@@ -57,7 +65,18 @@ export async function GET(_req: Request, ctx: Ctx) {
       GENERAL_POSITION,
     ]),
   ];
-  return NextResponse.json({ event: { ...event, feeRules: readRules(event.feeRules) }, rows, options: { kinds, positions } });
+  // 소모임 선택지와 미리 채울 계좌: 소모임별 계좌·직책자, 모임회비관리 계좌
+  const [info, dues] = await Promise.all([readAllClubInfo(), readDues()]);
+  const lists = await getLists();
+  const clubs = lists.clubs.map((name) => {
+    const i = info[name];
+    return { name, account: i ? clubAccount(i) : "", holder: i?.holder ?? "", leaders: clubLeaders(members, name).map((l) => ({ name: l.name, role: l.role })) };
+  });
+  return NextResponse.json({
+    event: { ...event, club, observers, feeRules: readRules(event.feeRules) },
+    rows,
+    options: { kinds, positions, clubs, dues: { account: duesAccount(dues), holder: dues.holder } },
+  });
 }
 
 const patch = z.object({
@@ -74,6 +93,7 @@ const patch = z.object({
   accountHolder: z.string().max(60).optional(),
   feeRules: feeRules.optional(), // 조건별 회비
   audience: audienceInput.optional(), // 공개 대상(비우면 전체 회원)
+  club: z.string().trim().max(40).optional(), // 소모임 행사의 소모임(""= 없음)
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -86,6 +106,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const s = await getStore();
   const before = (await s.list("Events")).find((e) => e.id === id);
   if (!before) return bad("행사를 찾을 수 없어요.", 404);
+  if (rest.club !== undefined) {
+    if (before.type !== "소모임") rest.club = "";
+    else if (rest.club && rest.club !== (before.club ?? "") && !(await getLists()).clubs.includes(rest.club)) return bad("소모임을 목록에서 골라 주세요.");
+  }
   const row = await s.update("Events", id, {
     ...rest,
     ...(rules === undefined ? {} : { feeRules: JSON.stringify(rules) }),

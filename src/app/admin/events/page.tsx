@@ -8,7 +8,7 @@ import { api, fmtWhen } from "@/lib/client";
 
 type E = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
-  status: string; published: string; attend: number; absent: number; paid: number; total: number;
+  status: string; published: string; club?: string; attend: number; absent: number; paid: number; total: number;
 };
 const TYPES = ["전체정기모임", "워크숍", "소모임"];
 const TONE: Record<string, string> = { 워크숍: "blue", 전체정기모임: "ok", 소모임: "warn" };
@@ -19,13 +19,17 @@ function Events() {
   const [filter, setFilter] = useState("전체");
   const [type, setType] = useState(TYPES[1]);
   const [name, setName] = useState("");
+  const [club, setClub] = useState("");
+  const [clubs, setClubs] = useState<string[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await api<{ events: E[] }>("/api/admin/events");
-    if (r.ok) setList(r.data.events);
-    else setMsg(r.error);
+    const r = await api<{ events: E[]; clubs: string[] }>("/api/admin/events");
+    if (r.ok) {
+      setList(r.data.events);
+      setClubs(r.data.clubs ?? []);
+    } else setMsg(r.error);
   }, []);
   useEffect(() => {
     load();
@@ -35,7 +39,7 @@ function Events() {
     e.preventDefault();
     setBusy(true);
     setMsg("");
-    const r = await api<{ event: { id: string } }>("/api/admin/events", { body: { type, name } });
+    const r = await api<{ event: { id: string } }>("/api/admin/events", { body: { type, name, ...(type === "소모임" ? { club } : {}) } });
     setBusy(false);
     if (!r.ok) return setMsg(r.error);
     router.push(`/admin/events/${r.data.event.id}`);
@@ -64,7 +68,7 @@ function Events() {
       <div className="cards">
         {shown.map((e) => (
           <Link key={e.id} href={`/admin/events/${e.id}`} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start", color: "inherit", textDecoration: "none" }}>
-            <span className={`pill ${TONE[e.type] ?? "gray"}`}>{e.type}</span>
+            <span className={`pill ${TONE[e.type] ?? "gray"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
             <b style={{ font: "400 21px var(--display)" }}>{e.name}</b>
             <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
             <div className="meter" role="progressbar" aria-label="참석 신청" aria-valuemin={0} aria-valuemax={e.total} aria-valuenow={e.attend + e.absent}>
@@ -98,9 +102,19 @@ function Events() {
             </select>
           </div>
           <div><label className="l" htmlFor="n-name">행사 이름</label><input id="n-name" className="field" value={name} onChange={(e) => setName(e.target.value)} /></div>
+          {type === "소모임" && (
+            <div>
+              <label className="l" htmlFor="n-club">소모임</label>
+              <select id="n-club" className="field" value={club} onChange={(e) => setClub(e.target.value)}>
+                <option value="">소모임 고르기</option>
+                {clubs.map((c) => <option key={c}>{c}</option>)}
+              </select>
+              <span className="hint">고른 소모임 회원에게만 보여요. 입금계좌는 소모임 계좌로 먼저 채워져요.</span>
+            </div>
+          )}
         </div>
-        <span className="small">만들면 초안으로 시작해요. 개요를 채우고 “회원에게 전달”을 눌러야 회원에게 보여요.</span>
-        <button className="btn" type="submit" disabled={busy || !name.trim()} style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }}>만들기</button>
+        <span className="small">만들면 초안으로 시작해요. 개요를 채우고 “회원에게 전달”을 눌러야 회원에게 보여요.{type !== "소모임" ? " 입금계좌는 모임회비관리의 계좌로 먼저 채워져요." : ""}</span>
+        <button className="btn" type="submit" disabled={busy || !name.trim() || (type === "소모임" && clubs.length > 0 && !club)} style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }}>만들기</button>
       </form>
     </>
   );

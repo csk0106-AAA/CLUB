@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { can, getSession } from "@/lib/auth";
 import { getLists, memberClubs } from "@/lib/lists";
 import { getStore } from "@/lib/store";
 import { forbid, getMe } from "../board/_lib/server";
@@ -9,7 +10,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const m = await getMe();
   if ("err" in m) return m.err;
-  if (!m.me.canWrite) return forbid();
+  // 게시글 작성자 + 행사 공개 대상을 고르는 행사 관리자(관리자 2차 인증)
+  if (!m.me.canWrite && !can(await getSession(), "events")) return forbid();
   const s = await getStore();
   const [members, events, applies, lists] = await Promise.all([s.list("Members"), s.list("Events"), s.list("EventApplies"), getLists()]);
   const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name, "ko"));

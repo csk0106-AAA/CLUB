@@ -20,7 +20,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { answer, days } = parsed.data;
 
   const s = await getStore();
-  const ev = (await s.list("Events")).find((x) => x.id === id && eventVisible(x, g.s.mid));
+  const me = (await s.list("Members")).find((m) => m.id === g.s.mid);
+  const ev = (await s.list("Events")).find((x) => x.id === id && eventVisible(x, me ?? g.s.mid));
   if (!ev) return bad("행사를 찾을 수 없어요.", 404);
 
   if (days && days.length > 0) {
