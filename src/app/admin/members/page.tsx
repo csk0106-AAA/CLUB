@@ -240,29 +240,25 @@ function Members() {
         </div>
       )}
 
-      <div className="cards">
-        <div className="card"><span className="small">전체</span><div className="big">{list?.length ?? "-"}명</div></div>
-        {[...counts.entries()].map(([k, n]) => (
-          <div className="card" key={k}><span className="small">{k}</span><div className="big">{n}명</div></div>
-        ))}
-        <div className="card"><span className="small">권한자</span><div className="big">{admins.length}명</div><Link className="small" href="/admin/admins">권한설정 보기 ›</Link></div>
-        {list && (
-          <div className="card">
-            <span className="small">남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}</span>
-            <div className="small">전체 회원 기준{list.some((m) => !m.gender) ? ` · 미입력 ${list.filter((m) => !m.gender).length}명` : ""}</div>
-          </div>
-        )}
-      </div>
+      {/* 요약: 한 줄로 간단히 */}
+      {list && (
+        <div className="row" role="group" aria-label="회원 요약" style={{ flexWrap: "wrap", gap: 6 }}>
+          <span className="pill blue">전체 {list.length}명</span>
+          {[...counts.entries()].map(([k, n]) => <span key={k} className="pill gray">{k} {n}</span>)}
+          <span className="pill gray">남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}{list.some((m) => !m.gender) ? ` · 미입력 ${list.filter((m) => !m.gender).length}` : ""}</span>
+          <Link href="/admin/admins" className="pill gray" style={{ textDecoration: "none" }}>권한자 {admins.length} ›</Link>
+        </div>
+      )}
 
       <div className="row" style={{ flexWrap: "wrap" }}>
         <button className="mini" type="button" aria-expanded={importOpen} onClick={() => setImportOpen(!importOpen)}>{importOpen ? "붙여넣기 닫기" : "명단 붙여넣기 (CSV·엑셀)"}</button>
         <button className="mini" type="button" aria-haspopup="dialog" onClick={startAdd}>+ 회원 추가</button>
-        <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }}>항목(열) 관리</button>
+        <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }}>+ 항목 추가</button>
       </div>
 
       {colsOpen && (
-        <section className="card" aria-label="항목(열) 관리" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: `400 ${fs(20)} var(--display)` }}>항목(열) 관리</b>
+        <section className="card" aria-label="항목 추가" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <b style={{ font: `400 ${fs(20)} var(--display)` }}>항목 추가</b>
           <span className="small">기본 항목 외에 필요한 항목(예: 기수, 이메일, 차량 여부)을 더할 수 있어요. 회원 입력 칸과 명단 표에 함께 보이고, 붙여넣기 머리글에 같은 이름이 있으면 그 값도 읽어요. 항목을 지워도 이미 적은 값은 남아 있어서 다시 만들면 보여요.</span>
           <div className="checks" aria-label="추가 항목">
             {colsDraft.map((c) => (

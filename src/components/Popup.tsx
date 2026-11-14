@@ -117,7 +117,9 @@ function PopupWindow({ id, onClose, title, dirty, width = 560, children, footer 
     };
     // 브라우저가 Esc 를 연달아 눌러 강제로 닫은 경우
     const onNativeClose = () => {
-      if (closingRef.current) return;
+      // 이미 다시 열린 창에 늦게 도착한 close 이벤트(개발 모드에서 화면을 두 번 그릴 때 생김)는 무시한다.
+      // 이걸 받으면 창이 열리자마자 닫혀서 "+ 만들기"를 눌러도 반응이 없는 것처럼 보였다.
+      if (closingRef.current || dlg.open) return;
       if (!requestClose()) {
         try {
           dlg.showModal();

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
+import { IconBack, IconExport } from "./Icons";
 import { MemberTabs } from "./MemberTabs";
 import { PasswordField } from "./PasswordField";
 
@@ -45,9 +46,10 @@ export function AdminGate(props: {
     await loadMe();
   }
 
-  async function logout() {
-    await api("/api/auth/logout", { method: "POST", body: {} });
-    router.push("/");
+  // 이전 페이지로(관리자 화면을 바로 열었으면 설정으로)
+  function goBack() {
+    if (window.history.length > 1) router.back();
+    else router.push("/settings");
   }
 
   if (!me) {
@@ -89,7 +91,7 @@ export function AdminGate(props: {
 
   const sub =
     props.mode === "members"
-      ? [{ href: "/admin/members", label: "회원 명단" }, { href: "/admin/settings", label: "원우회 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/dues", label: "모임회비관리" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/export", label: "내보내기" }]
+      ? [{ href: "/admin/settings", label: "원우회 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/members", label: "회원 명단" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/dues", label: "회비관리" }]
       : props.mode === "events"
         ? [{ href: "/admin/events", label: "행사 목록" }, { href: "/admin/templates", label: "활동 템플릿" }]
         : props.mode === "clubs"
@@ -106,10 +108,16 @@ export function AdminGate(props: {
         </nav>
         <span className="grow" />
         <span className="pill blue">{me.name} · 관리자</span>
-        <button className="mini" type="button" onClick={logout}>로그아웃</button>
+        <button className="mini" type="button" onClick={goBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <IconBack /> 이전 페이지
+        </button>
+        <Link className="mini" href="/admin/export" aria-current={props.active === "/admin/export" ? "page" : undefined}
+          style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", ...(props.active === "/admin/export" ? { borderColor: "var(--blue)", color: "var(--blue-t)" } : {}) }}>
+          <IconExport /> 내보내기
+        </Link>
       </div>
       {sub.length > 0 && (
-        <nav className="subnav" aria-label="하위 메뉴">
+        <nav className="subnav one" aria-label="하위 메뉴">
           {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""}>{s.label}</Link>)}
         </nav>
       )}

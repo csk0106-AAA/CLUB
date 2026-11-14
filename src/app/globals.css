@@ -301,6 +301,9 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
   font: 400 calc(18px * var(--fs, 1)) var(--display); color: var(--sub); text-decoration: none;
 }
 .subnav a.on, .tabsx button.on { border-color: var(--blue); background: var(--blue-bg); color: var(--blue-t); }
+/* 하위 메뉴를 한 줄로: 좁으면 글자·여백을 줄이고, 그래도 넘치면 옆으로 밀어 보기 */
+.subnav.one { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; gap: 4px; padding-bottom: 2px; }
+.subnav.one a { flex: 0 0 auto; min-height: 42px; padding: 0 12px; white-space: nowrap; font-size: calc(clamp(14px, 1.6vw, 17px) * min(var(--fs, 1), 1.2)); }
 .tabsx { display: flex; gap: 6px; overflow-x: auto; }
 .tabsx button { flex: none; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }

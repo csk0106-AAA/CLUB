@@ -7,6 +7,23 @@ const sz = (size: number, max?: number) => ({ width: fs(size, max), height: fs(s
 export function IconHome({ size = 26, max }: P) {
   return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="currentColor" /></svg>;
 }
+// 이전 페이지(왼쪽 화살표)
+export function IconBack({ size = 18, max = 1.2 }: P) {
+  return (
+    <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}
+// 내보내기(상자에서 위로 나가는 화살표)
+export function IconExport({ size = 18, max = 1.2 }: P) {
+  return (
+    <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 15V3M7 8l5-5 5 5" />
+      <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+    </svg>
+  );
+}
 // 행사 탭(달력)
 export function IconCalendar({ size = 26, max }: P) {
   return (
