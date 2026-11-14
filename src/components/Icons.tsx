@@ -30,6 +30,15 @@ export function IconShield({ size = 26 }: P) {
     </svg>
   );
 }
+// 로그아웃(문 밖으로 나가는 화살표)
+export function IconLogout({ size = 24 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+      <path d="M10 16l-4-4 4-4M6 12h10" />
+    </svg>
+  );
+}
 // 게시글(게시판) 탭
 export function IconBoard({ size = 26 }: P) {
   return (
