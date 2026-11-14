@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { MemberTabs } from "@/components/MemberTabs";
-import { applyTheme } from "@/components/ThemeBoot";
+import { applyScale, applyTheme, readScale, SCALES } from "@/components/ThemeBoot";
 import { api } from "@/lib/client";
 import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
 import { disablePush, enablePush, pushSupported } from "@/lib/push-client";
@@ -58,6 +58,13 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   // 내 정보 입력칸(저장 버튼으로 한 번에 저장)
   const [form, setForm] = useState({ company: "", title: "", phone: "" });
+  // 글자 크기: 이 기기에만 저장(서버 저장 없음)
+  const [scale, setScale] = useState("1");
+  useEffect(() => setScale(readScale()), []);
+  function pickScale(v: string) {
+    setScale(v);
+    applyScale(v);
+  }
 
   useEffect(() => {
     api<Me>("/api/me").then((r) => {
@@ -264,6 +271,20 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </section>
+
+          {/* 2-1. 글자 크기 (이 기기만) */}
+          <section className="card" aria-labelledby="s-scale" style={col}>
+            <b id="s-scale" style={sectionTitle}>글자 크기</b>
+            <div className="quick" role="group" aria-labelledby="s-scale">
+              {SCALES.map((o) => (
+                <button key={o.v} type="button" className="opt" aria-pressed={scale === o.v} onClick={() => pickScale(o.v)}
+                  style={{ flex: "1 1 120px", width: "auto", minHeight: 50, alignItems: "center", justifyContent: "center" }}>
+                  <span className="name" style={{ fontSize: Math.round(19 * Number(o.v)) }}>{o.label}</span>
+                </button>
+              ))}
+            </div>
+            <span className="small">글자와 버튼이 함께 커지거나 작아져요. 이 기기에만 저장돼요. 폭이 좁은 휴대폰(400px 미만)에서는 화면이 넘치지 않게 “아주 크게”도 “크게”만큼만 커져요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
           </section>
 
           {/* 3. 받을 알림 */}

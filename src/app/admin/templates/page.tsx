@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { AiGuidesEditor, aiPointKeys } from "@/components/AiGuidesEditor";
 import { Mascot } from "@/components/Mascot";
+import { Popup } from "@/components/Popup";
 import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "@/components/TemplateEditor";
 import { api } from "@/lib/client";
 import type { TemplateConfig } from "@/lib/template-schema";
@@ -25,7 +26,13 @@ const BLANK: EditableConfig = {
 
 function Templates() {
   const [list, setList] = useState<T[] | null>(null);
-  const [edit, setEdit] = useState<{ id: string | null; value: EditableConfig } | null>(null);
+  const [edit, setEditRaw] = useState<{ id: string | null; value: EditableConfig; orig: string } | null>(null);
+  const [editErr, setEditErr] = useState("");
+  // 편집 창 열기(처음 값을 기억해 두고, 바뀐 게 있으면 닫기 전에 물어본다)
+  const openEdit = (id: string | null, value: EditableConfig) => {
+    setEditErr("");
+    setEditRaw({ id, value, orig: JSON.stringify(value) });
+  };
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -43,14 +50,14 @@ function Templates() {
   async function save() {
     if (!edit) return;
     setBusy(true);
-    setMsg(null);
+    setEditErr("");
     const r = edit.id
       ? await api(`/api/admin/templates/${edit.id}`, { method: "PUT", body: edit.value })
       : await api("/api/admin/templates", { body: edit.value });
     setBusy(false);
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) return setEditErr(r.error);
     setMsg({ tone: "info", text: "저장했어요. 이미 행사에 넣은 활동은 그대로고, 앞으로 넣는 활동부터 바뀐 설정을 써요." });
-    setEdit(null);
+    setEditRaw(null);
     load();
   }
 
@@ -84,15 +91,6 @@ function Templates() {
             return null;
           }}
         />
-      ) : edit ? (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <b style={{ font: "400 21px var(--display)" }}>{edit.id ? "템플릿 수정" : "새 템플릿"}</b>
-          <TemplateEditor value={edit.value} onChange={(value) => setEdit({ ...edit, value })} />
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            <button className="btn" type="button" disabled={busy || !edit.value.name.trim()} style={{ width: "auto", minWidth: 160 }} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
-            <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={() => setEdit(null)}>취소</button>
-          </div>
-        </div>
       ) : (
         <>
           {!list && !msg && <p className="small">불러오는 중이에요…</p>}
@@ -108,8 +106,8 @@ function Templates() {
                 <span className="small">{t.config.description}</span>
                 <span className="small">{modeOf(t.config) === "team" ? "팀 활동 · " : "전체 활동 · "}{t.config.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}{t.config.preEvent.enabled ? `사전 작성 있음 (행사 ${t.config.preEvent.opensBeforeDays ?? 14}일 전 ~ ${t.config.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 {t.config.onsite.steps.length}단계</span>
                 <div className="row" style={{ flexWrap: "wrap" }}>
-                  <button className="mini" type="button" onClick={() => setEdit({ id: t.id, value: strip(t.config) })}>수정</button>
-                  <button className="mini" type="button" onClick={() => setEdit({ id: null, value: { ...strip(t.config), name: `${t.config.name} (복사본)` } })}>복제</button>
+                  <button className="mini" type="button" onClick={() => openEdit(t.id, strip(t.config))}>수정</button>
+                  <button className="mini" type="button" onClick={() => openEdit(null, { ...strip(t.config), name: `${t.config.name} (복사본)` })}>복제</button>
                   <button className="mini" type="button" onClick={() => { setMsg(null); setGuideFor(t); }}>
                     AI 지침{Object.values(t.config.aiGuides ?? {}).some((v) => v.trim()) || t.config.aiCommon?.trim() || t.config.interview?.questions?.length ? " ✓" : ""}
                   </button>
@@ -119,7 +117,7 @@ function Templates() {
             ))}
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <button className="btn" type="button" style={{ width: "auto", minWidth: 200 }} onClick={() => setEdit({ id: null, value: BLANK })}>+ 새 템플릿 만들기</button>
+            <button className="btn" type="button" style={{ width: "auto", minWidth: 200 }} aria-haspopup="dialog" onClick={() => openEdit(null, BLANK)}>+ 새 템플릿 만들기</button>
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 220 }} aria-expanded={aiOpen} onClick={() => setAiOpen(!aiOpen)}>
               {aiOpen ? "AI 대화 닫기" : "AI와 새 활동 만들기"}
             </button>
@@ -127,12 +125,34 @@ function Templates() {
           <p className="small" style={{ margin: 0 }}>기존 템플릿을 “복제”해서 필요한 부분만 고쳐 쓰는 것이 가장 빨라요. 새 활동이 필요하면 AI에게 설명하고 초안을 받아 다듬을 수 있어요.</p>
           {aiOpen && (
             <AiMaker
-              onOpen={(value) => { setEdit({ id: null, value }); setAiOpen(false); }}
+              onOpen={(value) => { openEdit(null, value); setAiOpen(false); }}
               onSaved={() => { setMsg({ tone: "info", text: "AI가 만든 템플릿을 보관함에 저장했어요. 다음 행사부터 고를 수 있어요." }); setAiOpen(false); load(); }}
             />
           )}
         </>
       )}
+
+      <Popup
+        id="template-editor"
+        width={900}
+        title={edit?.id ? "템플릿 수정" : "새 템플릿 만들기"}
+        open={!!edit}
+        onClose={() => setEditRaw(null)}
+        dirty={!!edit && JSON.stringify(edit.value) !== edit.orig}
+        footer={edit && (
+          <>
+            <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48 }} onClick={() => setEditRaw(null)}>취소</button>
+            <button className="btn" type="button" disabled={busy || !edit.value.name.trim()} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
+          </>
+        )}
+      >
+        {edit && (
+          <>
+            {editErr && <div className="msg bad" role="alert">{editErr}</div>}
+            <TemplateEditor value={edit.value} onChange={(value) => setEditRaw({ ...edit, value })} />
+          </>
+        )}
+      </Popup>
     </>
   );
 }

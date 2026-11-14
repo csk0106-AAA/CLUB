@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDateTime } from "@/lib/client";
+import { Popup } from "../Popup";
 
 // 회칙 조문 편집(예전 관리자 > 회칙 탭에서 옮겨 옴). 조문마다 "저장"을 누르면 바로 반영되고 변경 기록이 남는다.
 // "확정"으로 표시한 조문만 회원의 회칙 글에 보인다. 전체 관리자만 쓸 수 있다(/api/admin/club/rules).
@@ -114,6 +115,8 @@ export function RulesEditor() {
   const [note, setNote] = useState<Note>(null);
   const [add, setAdd] = useState({ chapter: "", article: "", body: "", version: "v1", confirmed: false });
   const [paste, setPaste] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<{ items: Rule[] }>("/api/admin/club/rules");
@@ -127,9 +130,12 @@ export function RulesEditor() {
   const upd = (id: string, patch: Partial<Rule>) => setItems((l) => l && l.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   async function create() {
+    setErr("");
     const r = await api("/api/admin/club/rules", { body: add });
-    setNote(r.ok ? { tone: "info", text: "조문을 추가했어요." } : { tone: "bad", text: r.error });
-    if (r.ok) setAdd({ chapter: "", article: "", body: "", version: "v1", confirmed: false });
+    if (!r.ok) return setErr(r.error);
+    setNote({ tone: "info", text: "조문을 추가했어요." });
+    setAdd({ chapter: "", article: "", body: "", version: "v1", confirmed: false });
+    setOpen(false);
     load();
   }
   async function save(x: Rule) {
@@ -183,16 +189,20 @@ export function RulesEditor() {
           )}
         </div>
       ))}
-      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: "400 18px var(--display)" }}>+ 조문 추가</b>
+      <button className="btn white" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 조문 추가</button>
+      <Popup id="rule-new" width={640} title="조문 추가" open={open} onClose={() => setOpen(false)} dirty={!!(add.chapter.trim() || add.article.trim() || add.body.trim())}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {err && <div className="msg bad" role="alert">{err}</div>}
         <div className="grid2">
           <div><label className="l" htmlFor="rn-c">장 (예: 제1장 총칙)</label><input id="rn-c" className="field" value={add.chapter} onChange={(e) => setAdd({ ...add, chapter: e.target.value })} /></div>
           <div><label className="l" htmlFor="rn-a">조 (예: 제1조 (명칭))</label><input id="rn-a" className="field" value={add.article} onChange={(e) => setAdd({ ...add, article: e.target.value })} /></div>
         </div>
         <label className="l" htmlFor="rn-b">내용</label>
         <textarea id="rn-b" className="field" rows={4} style={{ padding: 12 }} value={add.body} onChange={(e) => setAdd({ ...add, body: e.target.value })} />
-        <button className="btn white" type="button" disabled={!add.chapter.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={create}>조문 추가</button>
+        <span className="small">추가한 조문은 “확정”으로 표시해야 회원에게 보여요.</span>
+        <button className="btn" type="button" disabled={!add.chapter.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={create}>조문 추가</button>
       </div>
+      </Popup>
     </section>
   );
 }

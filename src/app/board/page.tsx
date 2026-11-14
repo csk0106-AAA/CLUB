@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconClip, IconMegaphone, IconPin } from "@/components/Icons";
 import { MemberTabs } from "@/components/MemberTabs";
+import { Popup } from "@/components/Popup";
+import { PostEditor } from "@/components/board/PostEditor";
 import { fileUrl, type BoardMe, type PostSummary } from "@/components/board/types";
 import { FORM_LABEL, RESPONSE_FORMS } from "@/lib/board";
 import { api, fmtDate } from "@/lib/client";
@@ -15,20 +17,43 @@ export default function BoardPage() {
   const [posts, setPosts] = useState<PostSummary[] | null>(null);
   const [me, setMe] = useState<BoardMe | null>(null);
   const [error, setError] = useState("");
+  // 글쓰기 창
+  const [writing, setWriting] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api<{ posts: PostSummary[]; me: BoardMe }>("/api/board").then((r) => {
       if (r.ok) { setPosts(r.data.posts); setMe(r.data.me); }
       else if (r.status === 401) router.replace("/");
       else setError(r.error);
     });
   }, [router]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  const closeWriter = useCallback(() => {
+    setWriting(false);
+    setDirty(false);
+    load();
+  }, [load]);
 
   return (
     <main className="app with-tabs">
       <div className="row">
         <h1 className="title grow">게시글</h1>
-        {me?.canWrite && <Link href="/board/new" className="btn" style={{ width: "auto", minHeight: 46, fontSize: 18, textDecoration: "none" }}>+ 글쓰기</Link>}
+        {me?.canWrite && (
+          <a
+            href="/board/new" className="btn" aria-haspopup="dialog" style={{ width: "auto", minHeight: 46, fontSize: 18, textDecoration: "none" }}
+            onClick={(e) => {
+              // 새 탭·창으로 열기(Ctrl/⌘/Shift/가운데 버튼)는 그대로 글쓰기 화면으로
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              e.preventDefault();
+              setWriting(true);
+            }}
+          >
+            + 글쓰기
+          </a>
+        )}
       </div>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!posts && !error && <p className="small">불러오는 중이에요…</p>}
@@ -60,6 +85,17 @@ export default function BoardPage() {
           </li>
         ))}
       </ul>
+      <Popup id="post-editor" width={760} title="글쓰기" open={writing} onClose={closeWriter} dirty={dirty}>
+        <PostEditor
+          onDirty={setDirty}
+          onCancel={closeWriter}
+          onDone={(id) => {
+            setWriting(false);
+            setDirty(false);
+            router.push(`/board/${id}`);
+          }}
+        />
+      </Popup>
       <MemberTabs on="board" />
     </main>
   );

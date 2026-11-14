@@ -18,7 +18,13 @@ const ALL_AUD: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 // 글쓰기·고치기 화면. 양식을 고르면 그 양식의 기본 템플릿(제목·내용·양식 내용)을 불러온다.
-export function PostEditor({ initial }: { initial?: PostFull }) {
+// 팝업 창 안에서 쓸 때: onDone(저장 후 글 id), onCancel(취소), onDirty(작성 중인지) 를 넘긴다.
+export function PostEditor({ initial, onDone, onCancel, onDirty }: {
+  initial?: PostFull;
+  onDone?: (id: string) => void;
+  onCancel?: () => void;
+  onDirty?: (dirty: boolean) => void;
+}) {
   const router = useRouter();
   const uid = useId();
   const [meta, setMeta] = useState<BoardMeta | null>(null);
@@ -37,6 +43,9 @@ export function PostEditor({ initial }: { initial?: PostFull }) {
   const [dirty, setDirty] = useState(false);
   const imgRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    onDirty?.(dirty || pending.length > 0);
+  }, [dirty, pending.length, onDirty]);
 
   useEffect(() => {
     api<BoardMeta>("/api/board/meta").then((r) => {
@@ -122,7 +131,8 @@ export function PostEditor({ initial }: { initial?: PostFull }) {
     setBusy(false);
     setDirty(false);
     if (fails.length) return setNote({ tone: "bad", text: `글은 저장했지만 파일 몇 개를 올리지 못했어요. ${fails.join(" ")} 다시 “저장”을 누르면 남은 파일을 올려요.` });
-    router.push(`/board/${id}`);
+    if (onDone) onDone(id);
+    else router.push(`/board/${id}`);
   }
 
   async function saveTemplate(reset = false) {
@@ -235,7 +245,7 @@ export function PostEditor({ initial }: { initial?: PostFull }) {
           {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
           <div className="footer-actions">
             <button className="btn" type="button" disabled={busy || !title.trim()} onClick={save}>{busy ? "저장하는 중…" : savedId ? "저장" : "올리기"}</button>
-            <button className="btn white" type="button" onClick={() => router.push(savedId ? `/board/${savedId}` : "/board")}>{savedId ? "글로 돌아가기" : "취소"}</button>
+            <button className="btn white" type="button" onClick={() => (onCancel ? onCancel() : router.push(savedId ? `/board/${savedId}` : "/board"))}>{savedId ? "글로 돌아가기" : "취소"}</button>
           </div>
         </>
       )}

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -7,6 +7,7 @@ import type { TemplateConfig } from "@/lib/template-schema";
 import { CapsuleAdmin } from "./CapsuleAdmin";
 import { DateField } from "./DateField";
 import { AiGuidesEditor, aiPointKeys } from "./AiGuidesEditor";
+import { Popup } from "./Popup";
 import { TeamBoard } from "./TeamBoard";
 import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "./TemplateEditor";
 
@@ -264,7 +265,10 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     api<{ members: { id: string; name: string }[] }>("/api/public/club").then((r) => r.ok && setMembers(r.data.members));
   }, []);
   const [pick, setPick] = useState("");
-  const [edit, setEdit] = useState<{ id: string; value: EditableConfig } | null>(null);
+  const [edit, setEdit] = useState<{ id: string; value: EditableConfig; orig: string } | null>(null);
+  const [editErr, setEditErr] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addErr, setAddErr] = useState("");
   const [guideFor, setGuideFor] = useState<Act | null>(null); // AI 지침을 고치는 활동
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -287,18 +291,22 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
 
   async function add() {
     setBusy(true);
+    setAddErr("");
     const r = await api(`/api/admin/events/${eventId}/activities`, { body: { templateId: pick } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: "활동을 넣었어요. 템플릿 설정이 복사돼서 이 행사에서만 따로 고칠 수 있어요." } : { tone: "bad", text: r.error });
+    if (!r.ok) return setAddErr(r.error);
+    setMsg({ tone: "info", text: "활동을 넣었어요. 템플릿 설정이 복사돼서 이 행사에서만 따로 고칠 수 있어요." });
+    setAddOpen(false);
     load();
   }
 
   async function saveEdit() {
     if (!edit) return;
     setBusy(true);
+    setEditErr("");
     const r = await api(`/api/admin/events/${eventId}/activities/${edit.id}`, { method: "PATCH", body: edit.value });
     setBusy(false);
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) return setEditErr(r.error);
     setMsg({ tone: "info", text: "이 행사의 활동 설정을 저장했어요." });
     setEdit(null);
     load();
@@ -349,20 +357,6 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     );
   }
 
-  if (edit) {
-    return (
-      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <b style={{ font: "400 21px var(--display)" }}>이 행사의 활동 설정 수정</b>
-        <span className="small">여기서 고친 내용은 이 행사에만 적용돼요. 템플릿 보관함은 바뀌지 않아요.</span>
-        {msg && <div className={`msg ${msg.tone}`} role="alert">{msg.text}</div>}
-        <TemplateEditor value={edit.value} onChange={(value) => setEdit({ ...edit, value })} />
-        <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 160 }} onClick={saveEdit}>저장</button>
-          <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={() => setEdit(null)}>취소</button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -371,7 +365,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       </p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {!acts && !msg && <p className="small">불러오는 중이에요…</p>}
-      {acts && acts.length === 0 && <div className="msg info">아직 넣은 활동이 없어요. 아래에서 템플릿을 골라 추가해 보세요.</div>}
+      {acts && acts.length === 0 && <div className="msg info">아직 넣은 활동이 없어요. “+ 템플릿에서 활동 추가”로 넣어 보세요.</div>}
 
       {acts?.map((a) => (
         <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -385,7 +379,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             <span className="grow" />
             {canEdit && (
               <>
-                <button className="mini" type="button" onClick={() => { const { id: _i, version: _v, ...rest } = a.config; void _i; void _v; setEdit({ id: a.id, value: rest }); }}>수정</button>
+                <button className="mini" type="button" onClick={() => { const { id: _i, version: _v, ...rest } = a.config; void _i; void _v; setEditErr(""); setEdit({ id: a.id, value: rest, orig: JSON.stringify(rest) }); }}>수정</button>
                 {aiPointKeys(a.config).length > 0 && (
                   <button className="mini" type="button" onClick={() => { setMsg(null); setGuideFor(a); }}>
                     AI 지침{Object.values(tpls.find((x) => x.id === a.templateId)?.config.aiGuides ?? {}).some((v) => v.trim()) ? " ✓" : ""}
@@ -445,16 +439,54 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       ))}
 
       {canEdit && tpls.length > 0 && (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 19px var(--display)" }}>+ 템플릿에서 활동 추가</b>
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            <select className="field" aria-label="활동 템플릿" style={{ flex: 1, minWidth: 220 }} value={pick} onChange={(e) => setPick(e.target.value)}>
-              {tpls.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}
-            </select>
-            <button className="btn" type="button" disabled={busy || !pick} style={{ width: "auto", minWidth: 140 }} onClick={add}>추가</button>
-          </div>
-        </div>
+        <>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setAddErr(""); setAddOpen(true); }}>+ 템플릿에서 활동 추가</button>
+          <Popup id="activity-add" title="템플릿에서 활동 추가" open={addOpen} onClose={() => setAddOpen(false)}>
+            <form onSubmit={(e) => { e.preventDefault(); add(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {addErr && <div className="msg bad" role="alert">{addErr}</div>}
+              <div>
+                <label className="l" htmlFor="act-pick">활동 템플릿</label>
+                <select id="act-pick" className="field" value={pick} onChange={(e) => setPick(e.target.value)}>
+                  {tpls.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}
+                </select>
+              </div>
+              {(() => {
+                const t = tpls.find((x) => x.id === pick);
+                return t ? (
+                  <span className="small">
+                    {t.config.description ? `${t.config.description} · ` : ""}{modeOf(t.config) === "team" ? "팀 활동" : "전체 활동"} · {t.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {t.config.onsite.steps.length}단계
+                  </span>
+                ) : null;
+              })()}
+              <span className="small">템플릿 설정이 복사돼서 이 행사에서만 따로 고칠 수 있어요.</span>
+              <button className="btn" type="submit" disabled={busy || !pick} style={{ width: "auto", minWidth: 140, alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>추가</button>
+            </form>
+          </Popup>
+        </>
       )}
+
+      <Popup
+        id="activity-editor"
+        width={900}
+        title={edit ? `활동 설정 수정 · ${edit.value.name}` : "활동 설정 수정"}
+        open={!!edit}
+        onClose={() => setEdit(null)}
+        dirty={!!edit && JSON.stringify(edit.value) !== edit.orig}
+        footer={edit && (
+          <>
+            <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48 }} onClick={() => setEdit(null)}>취소</button>
+            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={saveEdit}>저장</button>
+          </>
+        )}
+      >
+        {edit && (
+          <>
+            <span className="small">여기서 고친 내용은 이 행사에만 적용돼요. 템플릿 보관함은 바뀌지 않아요.</span>
+            {editErr && <div className="msg bad" role="alert">{editErr}</div>}
+            <TemplateEditor value={edit.value} onChange={(value) => setEdit({ ...edit, value })} />
+          </>
+        )}
+      </Popup>
     </>
   );
 }

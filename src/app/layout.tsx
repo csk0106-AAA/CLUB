@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { THEME_BOOT } from "@/components/ThemeBoot";
 import { ThemeSync } from "@/components/ThemeSync";
+import { AppResizer } from "@/components/AppResizer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeSync />
         {children}
+        <AppResizer />
       </body>
     </html>
   );

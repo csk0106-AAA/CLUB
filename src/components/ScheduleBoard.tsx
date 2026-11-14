@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDateDow } from "@/lib/client";
+import { Popup } from "./Popup";
 
 type Item = { id: string; at: string; title: string };
 type Note = { tone: "bad" | "info"; text: string } | null;
@@ -59,6 +60,8 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
   const [addTime, setAddTime] = useState("");
   const [addTitle, setAddTitle] = useState("");
   const [note, setNote] = useState<Note>(null);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const [r, e] = await Promise.all([
@@ -82,11 +85,15 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    if (!addDay) return setNote({ tone: "bad", text: "날짜를 먼저 골라 주세요." });
-    if (!validTime(addTime)) return setNote({ tone: "bad", text: "시간을 14:30 처럼 넣어 주세요." });
+    if (!addDay) return setErr("날짜를 먼저 골라 주세요.");
+    if (!validTime(addTime)) return setErr("시간을 14:30 처럼 넣어 주세요.");
+    setErr("");
     const r = await api(base, { body: { at: `${addDay}T${addTime}`, title: addTitle.trim() } });
-    setNote(r.ok ? { tone: "info", text: "일정을 추가했어요." } : { tone: "bad", text: r.error });
-    if (r.ok) { setAddTime(""); setAddTitle(""); }
+    if (!r.ok) return setErr(r.error);
+    setNote({ tone: "info", text: "일정을 추가했어요." });
+    setAddTime("");
+    setAddTitle("");
+    setOpen(false);
     load();
   }
   async function save(i: Item) {
@@ -111,7 +118,7 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <span className="small">날짜별로 시간 순서대로 보여요. 여기에 적은 일정은 회원의 행사 화면에도 같은 모양으로 보여요.</span>
-      {groups.length === 0 && <div className="msg info">아직 일정이 없어요. 행사 일시를 먼저 정하고 아래에서 추가해 주세요.</div>}
+      {groups.length === 0 && <div className="msg info">아직 일정이 없어요. 행사 일시를 먼저 정하고 “+ 일정 추가”로 넣어 주세요.</div>}
 
       {groups.map(([day, list]) => (
         <section key={day || "none"} className="card" aria-label={day ? fmtDateDow(day) : "날짜 미정"} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -139,8 +146,11 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
       ))}
 
       {canEdit && (
-        <form className="card" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 18px var(--display)" }}>+ 일정 추가</b>
+        <>
+        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 일정 추가</button>
+        <Popup id="schedule-new" title="일정 추가" open={open} onClose={() => setOpen(false)} dirty={!!(addTime || addTitle.trim())}>
+        <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {err && <div className="msg bad" role="alert">{err}</div>}
           <div>
             <label className="l" htmlFor="s-day">① 날짜</label>
             {days.length > 0 ? (
@@ -164,6 +174,8 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
             <button className="btn" type="submit" disabled={!addDay || !addTime || !addTitle.trim()} style={{ width: "auto", minWidth: 100, minHeight: 54, fontSize: 17 }}>추가</button>
           </div>
         </form>
+        </Popup>
+        </>
       )}
     </>
   );

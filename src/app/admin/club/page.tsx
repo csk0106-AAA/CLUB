@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { OrgChart } from "@/components/OrgChart";
+import { Popup } from "@/components/Popup";
 import { api } from "@/lib/client";
 
 // 관리자 > 조직도. 회원은 하단 "조직도" 탭(/org)에서 본다.
@@ -18,6 +19,8 @@ function OrgEditor({ members }: { members: Member[] }) {
   const [items, setItems] = useState<Org[] | null>(null);
   const [note, setNote] = useState<Note>(null);
   const [add, setAdd] = useState({ ...BLANK });
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<{ items: Org[] }>("/api/admin/club/org");
@@ -29,9 +32,12 @@ function OrgEditor({ members }: { members: Member[] }) {
   }, [load]);
 
   async function create() {
+    setErr("");
     const r = await api("/api/admin/club/org", { body: add });
-    setNote(r.ok ? { tone: "info", text: "추가했어요." } : { tone: "bad", text: r.error });
-    if (r.ok) setAdd({ ...BLANK });
+    if (!r.ok) return setErr(r.error);
+    setNote({ tone: "info", text: "추가했어요." });
+    setAdd({ ...BLANK });
+    setOpen(false);
     load();
   }
   async function save(x: Org) {
@@ -83,8 +89,10 @@ function OrgEditor({ members }: { members: Member[] }) {
           </tbody>
         </table>
       </div>
-      <form className="card" onSubmit={(e) => { e.preventDefault(); create(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: "400 18px var(--display)" }}>+ 항목 추가</b>
+      <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 항목 추가</button>
+      <Popup id="org-new" width={640} title="조직도 항목 추가" open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(add) !== JSON.stringify(BLANK)}>
+      <form onSubmit={(e) => { e.preventDefault(); create(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {err && <div className="msg bad" role="alert">{err}</div>}
         <div className="grid2">
           <div><label className="l" htmlFor="o-dept">구분</label><input id="o-dept" className="field" value={add.dept} onChange={(e) => setAdd({ ...add, dept: e.target.value })} /></div>
           <div><label className="l" htmlFor="o-role">직책</label><input id="o-role" className="field" value={add.role} onChange={(e) => setAdd({ ...add, role: e.target.value })} /></div>
@@ -95,6 +103,7 @@ function OrgEditor({ members }: { members: Member[] }) {
         </div>
         <button className="btn" type="submit" disabled={!add.dept.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>추가</button>
       </form>
+      </Popup>
     </>
   );
 }

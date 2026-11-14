@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminGate } from "@/components/AdminGate";
+import { Popup } from "@/components/Popup";
 import { api, fmtWhen } from "@/lib/client";
 
 type E = {
@@ -23,6 +24,8 @@ function Events() {
   const [clubs, setClubs] = useState<string[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<{ events: E[]; clubs: string[] }>("/api/admin/events");
@@ -38,10 +41,11 @@ function Events() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setMsg("");
+    setErr("");
     const r = await api<{ event: { id: string } }>("/api/admin/events", { body: { type, name, ...(type === "소모임" ? { club } : {}) } });
     setBusy(false);
-    if (!r.ok) return setMsg(r.error);
+    if (!r.ok) return setErr(r.error);
+    setOpen(false);
     router.push(`/admin/events/${r.data.event.id}`);
   }
 
@@ -55,15 +59,14 @@ function Events() {
             <a key={t} href="#" className={filter === t ? "on" : ""} onClick={(e) => { e.preventDefault(); setFilter(t); }}>{t}</a>
           ))}
         </div>
-        <a href="#new-event" className="btn" style={{ width: "auto", minWidth: 180, textDecoration: "none" }}
-          onClick={(e) => { e.preventDefault(); document.getElementById("n-name")?.focus(); document.getElementById("new-event")?.scrollIntoView({ behavior: "smooth" }); }}>
+        <button type="button" className="btn" style={{ width: "auto", minWidth: 180 }} aria-haspopup="dialog" onClick={() => { setErr(""); setOpen(true); }}>
           + 새 행사 만들기
-        </a>
+        </button>
       </div>
 
       {msg && <div className="msg bad" role="alert">{msg}</div>}
       {!list && !msg && <p className="small">불러오는 중이에요…</p>}
-      {list && shown.length === 0 && <div className="msg info">이 유형의 행사가 아직 없어요. 아래에서 만들어 보세요.</div>}
+      {list && shown.length === 0 && <div className="msg info">이 유형의 행사가 아직 없어요. “+ 새 행사 만들기”로 만들어 보세요.</div>}
 
       <div className="cards">
         {shown.map((e) => (
@@ -92,8 +95,9 @@ function Events() {
         </ol>
       </div>
 
-      <form id="new-event" className="card" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 20px var(--display)" }}>+ 새 행사 만들기</b>
+      <Popup id="new-event" title="새 행사 만들기" open={open} onClose={() => setOpen(false)} dirty={!!name.trim()}>
+      <form id="new-event" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {err && <div className="msg bad" role="alert">{err}</div>}
         <div className="grid2">
           <div>
             <label className="l" htmlFor="n-type">유형</label>
@@ -116,6 +120,7 @@ function Events() {
         <span className="small">만들면 초안으로 시작해요. 개요를 채우고 “회원에게 전달”을 눌러야 회원에게 보여요.{type !== "소모임" ? " 입금계좌는 모임회비관리의 계좌로 먼저 채워져요." : ""}</span>
         <button className="btn" type="submit" disabled={busy || !name.trim() || (type === "소모임" && clubs.length > 0 && !club)} style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }}>만들기</button>
       </form>
+      </Popup>
     </>
   );
 }

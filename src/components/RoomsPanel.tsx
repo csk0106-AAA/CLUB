@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
+import { Popup } from "./Popup";
 
 type Room = { id: string; date: string; name: string; capacity: number; memo: string; guests: string[] };
 type Data = {
@@ -20,6 +21,8 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
   const [note, setNote] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [nu, setNu] = useState({ name: "", capacity: 2, memo: "" });
   const [copyTo, setCopyTo] = useState("");
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<Data>(base);
@@ -37,9 +40,12 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    setErr("");
     const r = await api(base, { body: { date: day, ...nu } });
-    setNote(r.ok ? { tone: "info", text: "방을 만들었어요." } : { tone: "bad", text: r.error });
-    if (r.ok) setNu({ name: "", capacity: nu.capacity, memo: "" });
+    if (!r.ok) return setErr(r.error);
+    setNote({ tone: "info", text: `${dayLabel(day)}에 방을 만들었어요.` });
+    setNu({ name: "", capacity: nu.capacity, memo: "" });
+    setOpen(false);
     load();
   }
   async function save(id: string) {
@@ -79,7 +85,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
       </div>
       {d.dates.length === 0 && <div className="msg info">행사 개요에 시작·종료 일시를 먼저 입력하면 숙박 날짜가 나와요.</div>}
 
-      {day && shown.length === 0 && <div className="msg info">{dayLabel(day)}에 만든 방이 없어요. 아래에서 방을 만들어 주세요.</div>}
+      {day && shown.length === 0 && <div className="msg info">{dayLabel(day)}에 만든 방이 없어요. “+ 방 만들기”로 만들어 주세요.</div>}
       <div className="cards">
         {shown.map((c) => {
           const x = draft[c.id] ?? c;
@@ -116,8 +122,10 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
 
       {canEdit && day && (
         <>
-          <form className="card" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: "400 18px var(--display)" }}>+ {dayLabel(day)} 방 만들기</b>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ {dayLabel(day)} 방 만들기</button>
+          <Popup id="room-new" title={`${dayLabel(day)} 방 만들기`} open={open} onClose={() => setOpen(false)} dirty={!!(nu.name.trim() || nu.memo.trim())}>
+          <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {err && <div className="msg bad" role="alert">{err}</div>}
             <div className="grid2">
               <div><label className="l" htmlFor="nr-nm">방 이름 (비우면 자동)</label><input id="nr-nm" className="field" value={nu.name} onChange={(e) => setNu({ ...nu, name: e.target.value })} placeholder="예: 301호" /></div>
               <div><label className="l" htmlFor="nr-cp">정원</label><input id="nr-cp" className="field" type="number" min={1} max={20} value={nu.capacity} onChange={(e) => setNu({ ...nu, capacity: Number(e.target.value) })} /></div>
@@ -125,6 +133,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
             </div>
             <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>방 만들기</button>
           </form>
+          </Popup>
           {shown.length > 0 && otherDates.length > 0 && (
             <div className="row" style={{ flexWrap: "wrap" }}>
               <select aria-label="복사할 날짜" className="field" style={{ width: 130, minHeight: 48 }} value={copyTo} onChange={(e) => setCopyTo(e.target.value)}>

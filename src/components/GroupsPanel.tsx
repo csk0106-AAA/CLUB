@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { Popup } from "./Popup";
 import { TeamBoard } from "./TeamBoard";
 
 type G = { id: string; title: string; published: boolean; teamCount: number; memberCount: number };
@@ -13,6 +14,8 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
   const [sel, setSel] = useState("");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<{ groups: G[] }>(base);
@@ -26,9 +29,11 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    setErr("");
     const r = await api<{ id: string }>(base, { body: { title } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return setErr(r.error);
     setTitle("");
+    setOpen(false);
     setNote({ tone: "info", text: "조편성을 만들었어요." });
     await load();
     setSel(r.data.id);
@@ -54,7 +59,7 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
           </a>
         ))}
       </div>
-      {list.length === 0 && <div className="msg info">아직 조편성이 없어요. 아래에서 이름을 정해 만들어 보세요.</div>}
+      {list.length === 0 && <div className="msg info">아직 조편성이 없어요. “+ 조편성 만들기”로 만들어 보세요.</div>}
 
       {cur && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -68,10 +73,17 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
       )}
 
       {canEdit && (
-        <form className="card" onSubmit={create} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
-          <div style={{ flex: "1 1 240px" }}><label className="l" htmlFor="g-title">새 조편성 이름</label><input id="g-title" className="field" placeholder="예: 저녁 게임" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <button className="btn" type="submit" disabled={!title.trim()} style={{ width: "auto", minHeight: 54 }}>+ 조편성 만들기</button>
-        </form>
+        <>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 조편성 만들기</button>
+          <Popup id="group-new" width={480} title="조편성 만들기" open={open} onClose={() => setOpen(false)} dirty={!!title.trim()}>
+            <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {err && <div className="msg bad" role="alert">{err}</div>}
+              <div><label className="l" htmlFor="g-title">새 조편성 이름</label><input id="g-title" className="field" placeholder="예: 저녁 게임" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+              <span className="small">만든 뒤 조 수와 조원을 정해요.</span>
+              <button className="btn" type="submit" disabled={!title.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>만들기</button>
+            </form>
+          </Popup>
+        </>
       )}
     </>
   );

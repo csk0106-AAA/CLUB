@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate, won } from "@/lib/client";
 import { DateField } from "./DateField";
+import { Popup } from "./Popup";
 import { ScheduleBoard } from "./ScheduleBoard";
 
 type Kind = "schedule" | "prep" | "costs";
@@ -33,6 +34,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const [note, setNote] = useState<Note>(null);
   const [attend, setAttend] = useState(0);
   const [fee, setFee] = useState("");
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<{ items: Item[] }>(base);
@@ -62,9 +65,12 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    setErr("");
     const r = await api(base, { body: add });
-    setNote(r.ok ? { tone: "info", text: "추가했어요." } : { tone: "bad", text: r.error });
-    if (r.ok) setAdd({ ...BLANK[kind] });
+    if (!r.ok) return setErr(r.error);
+    setNote({ tone: "info", text: "추가했어요." });
+    setAdd({ ...BLANK[kind] });
+    setOpen(false);
     load();
   }
   async function save(id: string) {
@@ -126,7 +132,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
         </div>
       )}
 
-      {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. 아래에서 추가해 주세요.</div>}
+      {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. “+ {TITLE[kind]} 추가”로 넣어 주세요.</div>}
       <div className="tblw">
         <table className="tbl" style={{ minWidth: kind === "costs" ? 760 : 560 }}>
           <thead>
@@ -179,8 +185,11 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       </div>
 
       {canEdit && (
-        <form className="card" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: "400 18px var(--display)" }}>+ {TITLE[kind]} 추가</b>
+        <>
+        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ {TITLE[kind]} 추가</button>
+        <Popup id={`item-new-${kind}`} title={`${TITLE[kind]} 추가`} open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(add) !== JSON.stringify(BLANK[kind])}>
+        <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {err && <div className="msg bad" role="alert">{err}</div>}
           <div className="grid2">
             {kind === "schedule" && (
               <>
@@ -205,6 +214,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           </div>
           <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>추가</button>
         </form>
+        </Popup>
+        </>
       )}
     </>
   );

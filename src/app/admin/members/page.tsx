@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
 import { DateField } from "@/components/DateField";
+import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
 import { parseMembers } from "@/lib/member-import";
 
@@ -109,6 +110,10 @@ function Members() {
   const kinds = lists.memberKinds;
   const [form, setForm] = useState<Form>(EMPTY);
   const [editId, setEditId] = useState<string | null>(null);
+  // 회원 추가·수정 창
+  const [formOpen, setFormOpen] = useState(false);
+  const [formOrig, setFormOrig] = useState("");
+  const [formErr, setFormErr] = useState("");
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState("전체");
@@ -164,15 +169,26 @@ function Members() {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   function startEdit(m: M) {
-    setEditId(m.id);
-    setForm({
+    const f: Form = {
       name: m.name, kind: m.kind ?? "", position: m.position ?? "", gender: m.gender ?? "", company: m.company ?? "", title: m.title ?? "",
       birth: m.birth ?? "", phone: m.phone ?? "", ageGroup: m.ageGroup ?? "", clubs: m.clubs ?? [], fields: m.fields ?? {},
-    });
+    };
+    setEditId(m.id);
+    setForm(f);
+    setFormOrig(JSON.stringify(f));
+    setFormErr("");
     setMsg(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setFormOpen(true);
+  }
+  function startAdd() {
+    setEditId(null);
+    setForm(EMPTY);
+    setFormOrig(JSON.stringify(EMPTY));
+    setFormErr("");
+    setFormOpen(true);
   }
   function reset() {
+    setFormOpen(false);
     setEditId(null);
     setForm(EMPTY);
   }
@@ -180,12 +196,12 @@ function Members() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setMsg(null);
+    setFormErr("");
     const r = editId
       ? await api(`/api/admin/members/${editId}`, { method: "PATCH", body: form })
       : await api("/api/admin/members", { body: form });
     setBusy(false);
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) return setFormErr(r.error);
     setMsg({ tone: "info", text: editId ? "저장했어요." : "회원을 추가했어요." });
     reset();
     load();
@@ -239,7 +255,7 @@ function Members() {
 
       <div className="row" style={{ flexWrap: "wrap" }}>
         <button className="mini" type="button" aria-expanded={importOpen} onClick={() => setImportOpen(!importOpen)}>{importOpen ? "붙여넣기 닫기" : "명단 붙여넣기 (CSV·엑셀)"}</button>
-        <button className="mini" type="button" onClick={() => { reset(); document.getElementById("f-name")?.focus(); }}>+ 회원 추가</button>
+        <button className="mini" type="button" aria-haspopup="dialog" onClick={startAdd}>+ 회원 추가</button>
         <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }}>항목(열) 관리</button>
       </div>
 
@@ -298,8 +314,9 @@ function Members() {
         </section>
       )}
 
-      <form className="card" onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 20px var(--display)" }}>{editId ? "회원 수정" : "회원 추가"}</b>
+      <Popup id="member-form" width={760} title={editId ? "회원 수정" : "회원 추가"} open={formOpen} onClose={reset} dirty={JSON.stringify(form) !== formOrig}>
+      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {formErr && <div className="msg bad" role="alert">{formErr}</div>}
         <div className="grid2">
           <div><label className="l" htmlFor="f-name">성명</label><input id="f-name" className="field" value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
           <div>
@@ -332,9 +349,10 @@ function Members() {
         <span className="small">관리자 권한은 직책·소모임 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
         <div className="row">
           <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "auto", minWidth: 160 }}>{editId ? "저장" : "추가"}</button>
-          {editId && <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>}
+          <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>
         </div>
       </form>
+      </Popup>
 
       <div className="subnav" aria-label="회원구분 보기">
         {["전체", ...kindTabs, "미지정"].map((k) => (

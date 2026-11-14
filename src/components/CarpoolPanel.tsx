@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { DateField } from "./DateField";
+import { Popup } from "./Popup";
 
 type Dir = "go" | "back";
 type LegInfo = { on: boolean; from: string; departAt: string; to: string; arriveAt: string; riders: string[] };
@@ -55,6 +56,8 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
   const [note, setNote] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const blank = () => ({ name: "", plate: "", driverId: "", seats: 4, go: emptyLeg(), back: emptyLeg() });
   const [nu, setNu] = useState(blank);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<Data>(base);
@@ -78,10 +81,13 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    if (!nu.go.on && !nu.back.on) return setNote({ tone: "bad", text: "갈 때와 올 때 중 하나는 운행해야 해요." });
+    if (!nu.go.on && !nu.back.on) return setErr("갈 때와 올 때 중 하나는 운행해야 해요.");
+    setErr("");
     const r = await api(base, { body: { name: nu.name, plate: nu.plate, driverId: nu.driverId, seats: nu.seats, go: legBody(nu.go), back: legBody(nu.back) } });
-    setNote(r.ok ? { tone: "info", text: "차량을 등록했어요. 아래 카드에서 탑승자를 정해 주세요." } : { tone: "bad", text: r.error });
-    if (r.ok) setNu(blank());
+    if (!r.ok) return setErr(r.error);
+    setNote({ tone: "info", text: "차량을 등록했어요. 아래 카드에서 탑승자를 정해 주세요." });
+    setNu(blank());
+    setOpen(false);
     load();
   }
   async function save(id: string) {
@@ -144,7 +150,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
         <span className="small">갈 때 대기 {d.free.go.length}명 · 올 때 대기 {d.free.back.length}명</span>
       </div>
 
-      {d.cars.length === 0 && <div className="msg info">등록된 차량이 없어요. 아래에서 차량을 등록해 주세요.</div>}
+      {d.cars.length === 0 && <div className="msg info">등록된 차량이 없어요. “+ 차량 등록”으로 차량을 등록해 주세요.</div>}
       <div className="cards">
         {d.cars.map((c) => {
           const x = draft[c.id] ?? c;
@@ -192,8 +198,10 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
 
       {canEdit && (
         <>
-          <form className="card" onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: "400 18px var(--display)" }}>+ 차량 등록</b>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }} onClick={() => { setErr(""); setOpen(true); }}>+ 차량 등록</button>
+          <Popup id="carpool-new" width={720} title="차량 등록" open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(nu) !== JSON.stringify(blank())}>
+          <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {err && <div className="msg bad" role="alert">{err}</div>}
             <div className="grid2">
               <div><label className="l" htmlFor="nc-nm">그룹명 (비우면 자동)</label><input id="nc-nm" className="field" value={nu.name} onChange={(e) => setNu({ ...nu, name: e.target.value })} /></div>
               <div><label className="l" htmlFor="nc-dr">운전자</label><select id="nc-dr" className="field" value={nu.driverId} onChange={(e) => setNu({ ...nu, driverId: e.target.value })}><option value="">미정</option>{d.members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
@@ -209,6 +217,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
             ))}
             <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: 17 }}>차량 등록</button>
           </form>
+          </Popup>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: 17 }} onClick={() => act("auto")}>빈 좌석 자동 배정</button>
             {!d.published
