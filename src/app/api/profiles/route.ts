@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guard } from "@/lib/api";
+import { avatarView } from "@/lib/avatar";
 import { consentRequired, hasConsent } from "@/lib/consent";
 import { memberClubs } from "@/lib/lists";
 import { getSetting, getStore } from "@/lib/store";
@@ -20,7 +21,10 @@ export async function GET() {
 
   const live = members.filter((m) => m.kind !== "회원대기");
   // 실명 공개 뒤에만: 이름 / 회사명 / 회사 직책 / 소모임. 공개 전에는 이 값들을 아예 내려주지 않는다.
-  const card = (m: (typeof members)[number]) => ({ name: m.name, company: m.company ?? "", title: m.title ?? "", clubs: memberClubs(m).map((c) => c.name) });
+  // 프로필 사진·캐릭터도 실명 공개 뒤에만(공개 전에 내려주면 별칭의 주인을 알아챌 수 있다).
+  const card = (m: (typeof members)[number]) => ({
+    name: m.name, company: m.company ?? "", title: m.title ?? "", clubs: memberClubs(m).map((c) => c.name), avatar: avatarView(m),
+  });
   const authored = live.flatMap((m) => {
     const p = profiles.find((x) => x.memberId === m.id && x.introStatus === "approved");
     if (!p) return [];

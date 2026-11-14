@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Avatar, type AvatarView } from "@/components/Avatars";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Sheet } from "@/components/Sheet";
 import { api, fmtDateTime } from "@/lib/client";
@@ -10,7 +11,7 @@ import { fs } from "@/lib/fs";
 type Data = {
   revealed: boolean; revealAt: string;
   // company·title·clubs 는 실명 공개 뒤에만 온다
-  items: { id: string; alias: string; name: string; mine: boolean; company?: string; title?: string; clubs?: string[] }[];
+  items: { id: string; alias: string; name: string; mine: boolean; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
   missingCount: number; missing: { name: string; company?: string; title?: string; clubs?: string[] }[];
 };
 
@@ -89,13 +90,18 @@ export default function ProfilesPage() {
           {d.items.length === 0 && <div className="msg info">아직 공개된 소개가 없어요. 회원이 작성하고 배포하면 여기에 나타나요.</div>}
           <div className="pick">
             {d.items.map((p) => (
-              <button key={p.id} type="button" className="opt" onClick={() => router.push(`/profiles/${p.id}`)}>
-                <span className="name">
-                  {d.revealed && p.name ? p.name : `“${p.alias}”`}
-                  {d.revealed && p.name && details(p) && <span style={{ font: `700 ${fs(16)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
+              <button key={p.id} type="button" className="opt" onClick={() => router.push(`/profiles/${p.id}`)}
+                style={d.revealed && p.name ? { flexDirection: "row", alignItems: "center", gap: 12 } : undefined}>
+                {/* 프로필 사진·캐릭터는 실명 공개 뒤에만(공개 전에는 별칭의 주인을 알아챌 수 있어서 서버가 내려주지도 않는다) */}
+                {d.revealed && p.name && <Avatar member={{ name: p.name, avatar: p.avatar ?? null }} size={44} />}
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 0 }}>
+                  <span className="name">
+                    {d.revealed && p.name ? p.name : `“${p.alias}”`}
+                    {d.revealed && p.name && details(p) && <span style={{ font: `700 ${fs(16)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
+                  </span>
+                  {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}
+                  {p.mine && <span className="pill blue">내 소개</span>}
                 </span>
-                {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}
-                {p.mine && <span className="pill blue">내 소개</span>}
               </button>
             ))}
           </div>

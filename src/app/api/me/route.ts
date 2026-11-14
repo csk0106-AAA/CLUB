@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard, parseJson } from "@/lib/api";
+import { avatarView } from "@/lib/avatar";
 import { memberGenderPatch, withSelfEdits } from "@/lib/gender-edit";
 import { getLists, memberClubs } from "@/lib/lists";
 import { mergePrefs, prefsInput, readPrefs } from "@/lib/prefs";
@@ -8,7 +9,7 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-type Member = { gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string };
+type Member = { id?: string; avatar?: string; gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string };
 type Sess = { name: string; perms: string[]; admin: boolean };
 
 async function view(s: Sess, me: Member) {
@@ -26,6 +27,7 @@ async function view(s: Sess, me: Member) {
     clubs: memberClubs(me),
     clubOptions: clubs,
     prefs: readPrefs(me.prefs),
+    avatar: avatarView(me),
   };
 }
 

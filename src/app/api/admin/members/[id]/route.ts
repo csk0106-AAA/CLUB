@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
+import { removeMemberPhotos } from "@/lib/avatar";
 import { withGenderEdit } from "@/lib/gender-edit";
 import { fieldValues, withFields } from "@/lib/member-fields";
 import { checkPermChange, effectivePerms, getPermGroups, isAllNow } from "@/lib/perms";
@@ -52,5 +53,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const groups = await getPermGroups();
   if (effectivePerms(cur, groups).length > 0) return bad("권한이 있는 회원은 먼저 권한설정에서 권한을 없애거나 직책을 바꾼 뒤 지울 수 있어요.");
   await s.remove("Members", id);
+  await removeMemberPhotos(id); // 프로필 사진도 함께 지운다
   return NextResponse.json({ ok: true });
 }

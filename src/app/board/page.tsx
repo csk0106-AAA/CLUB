@@ -7,6 +7,7 @@ import { AlertsPanel } from "@/components/AlertsPanel";
 import { ConsentSheet } from "@/components/ConsentSheet";
 import { IconBell, IconClip, IconLogout, IconMegaphone, IconOrg, IconPin } from "@/components/Icons";
 import { Mascot } from "@/components/Mascot";
+import { Avatar, type AvatarView } from "@/components/Avatars";
 import { MemberTabs } from "@/components/MemberTabs";
 import tabsCss from "@/components/MemberTabs.module.css";
 import { OrgView } from "@/components/OrgView";
@@ -20,7 +21,7 @@ import { disablePush } from "@/lib/push-client";
 import { fs } from "@/lib/fs";
 
 
-type Me = { name: string; consent: boolean };
+type Me = { name: string; consent: boolean; avatar: AvatarView };
 
 // 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
 export default function BoardPage() {
@@ -77,7 +78,7 @@ export default function BoardPage() {
     <main className="app with-tabs">
       {/* 윗줄: 캐릭터(왼쪽) + 알림·조직도·로그아웃 아이콘(오른쪽). 다음 줄: 인사 */}
       <div className="say" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        <Mascot size={52} />
+        {who ? <Avatar member={who} size={52} fallback="mascot" /> : <Mascot size={52} />}
         <div style={{ display: "flex", gap: 6, flex: "none" }}>
           <button type="button" onClick={() => setAlertsOpen(true)} aria-haspopup="dialog" title="알림"
             aria-label={bell > 0 ? `알림, 새 소식 ${bell}개` : "알림"} style={{ ...headIcon, color: "var(--blue-t)" }}>

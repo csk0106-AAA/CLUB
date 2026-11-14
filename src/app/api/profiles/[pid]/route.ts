@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { eventStart } from "@/lib/activities";
 import { bad, guard, parseJson } from "@/lib/api";
+import { avatarView } from "@/lib/avatar";
 import { consentRequired, hasConsent } from "@/lib/consent";
 import { memberClubs } from "@/lib/lists";
 import { getSetting, getStore } from "@/lib/store";
@@ -22,7 +23,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }>
   // 실명 공개 뒤에만 이름 / 회사명 / 회사 직책 / 소모임을 내려준다(공개 전에는 빈 값).
   const who = revealed ? (await s.list("Members")).find((m) => m.id === p.memberId) : undefined;
   const name = who?.name ?? "";
-  const card = who ? { company: who.company ?? "", title: who.title ?? "", clubs: memberClubs(who).map((c) => c.name) } : { company: "", title: "", clubs: [] as string[] };
+  // 프로필 사진·캐릭터도 실명 공개 뒤에만 내려준다(공개 전에는 null).
+  const card = who
+    ? { company: who.company ?? "", title: who.title ?? "", clubs: memberClubs(who).map((c) => c.name), avatar: avatarView(who) }
+    : { company: "", title: "", clubs: [] as string[], avatar: null };
 
   const [tls, rounds, acts, events] = await Promise.all([
     s.list("TruthLies"), s.list("Rounds"), s.list("EventActivities"), s.list("Events"),

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
+import { Avatar, type AvatarView } from "@/components/Avatars";
 import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
@@ -16,6 +17,7 @@ type M = {
   effective: string[]; // 최종 권한(그룹 ∪ 개인)
   fields: Record<string, string>; // 관리자가 만든 추가 항목(열)의 값
   genderEdit?: { from: string; to: string; at: string } | null; // 회원이 직접 바꾼 성별 기록
+  avatar?: AvatarView; // 프로필 사진·캐릭터(없으면 이름 첫 글자)
 };
 type Seat = { name: string; role: string };
 type Lists = { memberKinds: { value: string; definition: string }[]; positions: string[]; clubs: string[]; clubRoles: string[] };
@@ -375,7 +377,8 @@ function Members() {
             <tbody>
               {shown.map((m) => (
                 <tr key={m.id}>
-                  <td className="num">{m.no}</td><td><b>{m.name}</b></td>
+                  <td className="num">{m.no}</td>
+                  <td><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Avatar member={m} size={26} /><b>{m.name}</b></span></td>
                   <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}</td>
                   <td>{m.position}{m.position && !lists.positions.includes(m.position) && <span className="small">{OFF}</span>}</td>
                   <td>{clubsText(m.clubs ?? [])}</td>

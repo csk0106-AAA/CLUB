@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { IconLogout, IconShield } from "@/components/Icons";
 import { headIcon, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "@/components/HeadIcon";
 import { Mascot } from "@/components/Mascot";
+import { Avatar, type AvatarView } from "@/components/Avatars";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { MemberTabs } from "@/components/MemberTabs";
 import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS, SCALE_NARROW_MAX } from "@/components/ThemeBoot";
 import { api } from "@/lib/client";
@@ -18,6 +20,7 @@ type Me = {
   company: string; title: string; phone: string;
   clubs: { name: string; role: string }[]; clubOptions: string[];
   prefs: Prefs;
+  avatar: AvatarView;
 };
 
 const THEME_OPTS: { v: Prefs["theme"]; label: string; sub: string }[] = [
@@ -216,7 +219,7 @@ export default function SettingsPage() {
     <main className="app with-tabs">
       {/* 홈 화면과 같은 윗줄: 캐릭터(왼쪽) + 관리자(권한이 있을 때만)·로그아웃 아이콘(오른쪽). 다음 줄: 이름 */}
       <div className="say" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        <Mascot size={52} />
+        {me ? <Avatar member={me} size={52} fallback="mascot" /> : <Mascot size={52} />}
         <div style={{ display: "flex", gap: 6, flex: "none" }}>
           {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
           {me && me.perms.length > 0 && (
@@ -249,6 +252,8 @@ export default function SettingsPage() {
           {/* 1. 내 정보 */}
           <section className="card" aria-labelledby="s-me" style={{ ...col, gap: 12 }}>
             <b id="s-me" style={sectionTitle}>내 정보</b>
+
+            <AvatarPicker name={me.name} avatar={me.avatar} onChange={(avatar, text) => { setMe((m) => (m ? { ...m, avatar } : m)); setNote({ tone: "ok", text }); }} />
 
             <div style={col}>
               <span className="l" id="g-l" style={{ marginBottom: 0 }}>성별</span>

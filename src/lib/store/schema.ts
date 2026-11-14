@@ -8,6 +8,8 @@ export const TABS = {
     // clubs: 소모임 [{name, role}] JSON (lib/lists.ts). 회원이 설정에서 소모임을 고르고, role(소모임 직책)은 관리자가 정한다.
     // prefs: 화면 모드·알림 설정 JSON (lib/prefs.ts)
     "clubs", "prefs",
+    // avatar: 프로필 사진 JSON {type:"character", key} | {type:"photo", fileId} (lib/avatar.ts). 비어 있으면 기본.
+    "avatar",
   ],
   Org: ["id", "dept", "role", "memberId", "clubName", "frequency", "leaderId"],
   // history: 조문 변경 기록 [{at, by, what}] JSON (최근 30개)
@@ -82,6 +84,8 @@ export const TABS = {
   ],
   // 첨부 파일 내용(base64). 게시글 목록을 읽을 때 같이 읽지 않도록 따로 둔다.
   PostFiles: ["id", "postId", "name", "type", "size", "data", "createdAt"],
+  // 회원 프로필 사진(base64, 256×256). 게시글 첨부와 섞지 않는다. 회원당 1장(바꾸면 예전 것은 지운다).
+  MemberPhotos: ["id", "memberId", "type", "size", "data", "createdAt"],
   // 설문 응답, 투표, 퀴즈 답. answer: JSON
   PostResponses: ["id", "postId", "memberId", "answer", "createdAt"],
   // 휴대폰 알림(Web Push) 구독

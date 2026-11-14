@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Avatar, type AvatarView } from "@/components/Avatars";
 import { Mascot } from "@/components/Mascot";
 import { downloadReading, Md, OldReadingNote, SajuInfoView, type SajuInfo } from "@/components/SajuPanel";
 import { api } from "@/lib/client";
@@ -12,7 +13,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
   const router = useRouter();
   const [p, setP] = useState<{
     alias: string; name: string; introMd: string; mine: boolean;
-    company: string; title: string; clubs: string[]; // 실명 공개 뒤에만 값이 있다
+    company: string; title: string; clubs: string[]; avatar: AvatarView; // 실명 공개 뒤에만 값이 있다
     truthLies: { statements: string[]; lieIndex: number } | null;
     traitsMd: string; readingMd: string; sajuInfo: SajuInfo | null;
   } | null>(null);
@@ -34,7 +35,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
       {!p && !error && <p className="small">불러오는 중이에요…</p>}
       {p && (
         <>
-          <div className="row"><Mascot size={56} /><div><h1 className="title" style={{ fontSize: fs(26) }}>{p.name || `“${p.alias}”`}</h1>{p.name && <div className="small">별칭 “{p.alias}”</div>}</div></div>
+          <div className="row">{p.name ? <Avatar member={{ name: p.name, avatar: p.avatar }} size={56} fallback="mascot" /> : <Mascot size={56} />}<div><h1 className="title" style={{ fontSize: fs(26) }}>{p.name || `“${p.alias}”`}</h1>{p.name && <div className="small">별칭 “{p.alias}”</div>}</div></div>
           {p.name && (
             <p style={{ margin: 0, fontWeight: 700 }}>
               {[p.name, p.company, p.title, (p.clubs ?? []).join(", ")].filter((x) => x && x.trim()).join(" / ")}

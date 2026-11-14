@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
+import { avatarView } from "@/lib/avatar";
 import { readGenderEdit } from "@/lib/gender-edit";
 import { memberClubs } from "@/lib/lists";
 import { fieldValues, readFields, withFields } from "@/lib/member-fields";
@@ -18,6 +19,7 @@ export async function GET() {
   const groups = await getPermGroups();
   const members = (await s.list("Members")).map(({ extra: _extra, prefs: _prefs, ...m }) => (void _prefs, {
     ...m,
+    avatar: avatarView(m),
     perms: m.perms ? m.perms.split("|").filter(Boolean) : [],
     clubs: memberClubs(m),
     effective: effectivePerms({ ...m, extra: _extra }, groups),
