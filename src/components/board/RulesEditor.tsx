@@ -81,7 +81,7 @@ function RulesPaste({ onDone }: { onDone: () => void }) {
 
   return (
     <section className="card" aria-label="회칙 붙여넣기" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: `400 ${fs(19)} var(--display)` }}>회칙 붙여넣기</b>
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>회칙 붙여넣기</b>
       <span className="small">회칙 글을 통째로 붙여 넣거나 텍스트(.txt) 파일을 고르세요. “제1장”으로 시작하는 줄은 장, “제1조”로 시작하는 줄은 조로 나눠요.</span>
       <Msg n={note} />
       <label className="l" htmlFor="rp-file">텍스트 파일 고르기 (선택)</label>
@@ -104,7 +104,7 @@ function RulesPaste({ onDone }: { onDone: () => void }) {
         </>
       )}
       {text.trim() && rows.length === 0 && <div className="msg info">“제1조”처럼 시작하는 줄을 찾지 못했어요.</div>}
-      <button className="btn" type="button" disabled={busy || rows.length === 0} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={addAll}>
+      <button className="btn" type="button" disabled={busy || rows.length === 0} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={addAll}>
         {busy ? "추가하는 중…" : rows.length ? `조문 ${rows.length}개 추가` : "추가"}
       </button>
     </section>
@@ -153,7 +153,7 @@ export function RulesEditor() {
 
   return (
     <section aria-label="회칙 조문 편집" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: `400 ${fs(20)} var(--display)` }}>회칙 조문</b>
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>회칙 조문</b>
       <span className="small">조문마다 “저장”을 누르면 바로 반영돼요(글 저장과 따로예요). “확정”으로 표시한 조문만 회원에게 보여요. 저장할 때마다 변경 기록이 남아요.</span>
       <Msg n={note} />
       <div className="row"><button className="mini" type="button" aria-expanded={paste} onClick={() => setPaste(!paste)}>{paste ? "붙여넣기 닫기" : "회칙 붙여넣기 · 파일"}</button></div>
@@ -190,7 +190,7 @@ export function RulesEditor() {
           )}
         </div>
       ))}
-      <button className="btn white" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setErr(""); setOpen(true); }}>+ 조문 추가</button>
+      <button className="btn white" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setErr(""); setOpen(true); }}>+ 조문 추가</button>
       <Popup id="rule-new" width={640} title="조문 추가" open={open} onClose={() => setOpen(false)} dirty={!!(add.chapter.trim() || add.article.trim() || add.body.trim())}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {err && <div className="msg bad" role="alert">{err}</div>}
@@ -201,7 +201,7 @@ export function RulesEditor() {
         <label className="l" htmlFor="rn-b">내용</label>
         <textarea id="rn-b" className="field" rows={4} style={{ padding: 12 }} value={add.body} onChange={(e) => setAdd({ ...add, body: e.target.value })} />
         <span className="small">추가한 조문은 “확정”으로 표시해야 회원에게 보여요.</span>
-        <button className="btn" type="button" disabled={!add.chapter.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={create}>조문 추가</button>
+        <button className="btn" type="button" disabled={!add.chapter.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={create}>조문 추가</button>
       </div>
       </Popup>
     </section>

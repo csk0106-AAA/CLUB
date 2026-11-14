@@ -27,13 +27,13 @@ type Action = "open" | "results" | "ready" | "name" | "vote" | "close" | "answer
 const STATE_LABEL: Record<string, string> = {
   intro: "소개 읽기", results: "사전 추측 결과", reveal: "“저예요” 대기", voting: "거짓 투표 중", closed: "투표 마감", answer: "정답 공개",
 };
-// 막대 색(파랑, 노랑, 보라, 초록 순서로 돌아가며)
-const BAR = ["#1cb0f6", "#ffc800", "#ce82ff", "#58cc02"];
-// 문장 번호 동그라미: 1 파랑, 2 노랑, 3 보라. 글자는 어두운 색으로 대비를 지킨다.
+// 막대 색(밝은 회색 단계로 돌아가며, 거짓 문장은 빨강)
+const BAR = ["#eceef0", "#a6adb5", "#6b737c", "#ced3d8"];
+// 문장 번호 동그라미: 회색 3단계. 글자는 대비 4.5:1 이상.
 const NO = [
-  { bg: "#1cb0f6", ink: "#06324a" },
-  { bg: "#ffc800", ink: "#3d2e00" },
-  { bg: "#ce82ff", ink: "#2e0a4a" },
+  { bg: "#eceef0", ink: "#111111" },
+  { bg: "#a6adb5", ink: "#111111" },
+  { bg: "#5f666e", ink: "#ffffff" },
 ];
 const namesLine = (names: string[], max = 6) =>
   names.length <= max ? names.join(", ") : `${names.slice(0, max).join(", ")} 외 ${names.length - max}명`;
@@ -187,7 +187,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
                   {r.votes.counts.map((n, i) => (
                     <div key={i}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}><span>{i + 1}번</span><span className="num">{n}표</span></div>
-                      <div className="bar"><i style={{ width: `${r.votes.voted ? (n / r.votes.voted) * 100 : 0}%`, background: r.state === "answer" && i === r.lieIndex ? "#ff4b4b" : NO[i % 3].bg }} /></div>
+                      <div className="bar"><i style={{ width: `${r.votes.voted ? (n / r.votes.voted) * 100 : 0}%`, background: r.state === "answer" && i === r.lieIndex ? "#ff5a52" : NO[i % 3].bg }} /></div>
                     </div>
                   ))}
                   {(r.state === "voting" || r.state === "closed") && (
@@ -294,7 +294,7 @@ function Board({ id, aid, setError }: { id: string; aid: string; setError: (e: s
     <div className="panel">
       <h2>{title}</h2>
       {s.top.map((x, i) => (
-        <div key={x.memberId} style={{ display: "flex", justifyContent: "space-between", color: x.score === s.topScore && s.topScore > 0 ? "#ffc800" : undefined }}>
+        <div key={x.memberId} style={{ display: "flex", justifyContent: "space-between", color: x.score === s.topScore && s.topScore > 0 ? "#ff7a73" : undefined }}>
           <span>{i + 1}. {x.name}</span><span className="num">{x.score}점</span>
         </div>
       ))}
@@ -309,7 +309,7 @@ function Board({ id, aid, setError }: { id: string; aid: string; setError: (e: s
           {s.lottery && <button className="btn white" type="button" disabled={spin !== null} onClick={() => roulette(cat, true)}>다시 돌리기</button>}
         </>
       )}
-      {!s.needsRoulette && s.topScore > 0 && <div className="roulette" style={{ borderColor: "#58cc02", color: "#7fe04a" }}>🏆 {s.top[0].name}</div>}
+      {!s.needsRoulette && s.topScore > 0 && <div className="roulette" style={{ borderColor: "#eceef0", color: "#ffffff" }}>🏆 {s.top[0].name}</div>}
     </div>
   );
 

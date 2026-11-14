@@ -91,7 +91,7 @@ function ListEditor({ list, data, onSaved }: { list: ListName; data: Data; onSav
 
   return (
     <section className="card" aria-label={info.title} style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-      <b style={{ font: `400 ${fs(20)} var(--display)` }}>{info.title} <span className="num small">{items.length}개</span></b>
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>{info.title} <span className="num small">{items.length}개</span></b>
       <span className="small">{info.help}</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {items.length > 1 && <span className="small">왼쪽 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
@@ -120,7 +120,7 @@ function ListEditor({ list, data, onSaved }: { list: ListName; data: Data; onSav
         <button className="mini" type="button" onClick={() => setItems([...items, { value: "", definition: "", key: ++seq }])}>+ {info.one} 추가</button>
         <span className="grow" />
         {dirty && <button className="mini" type="button" disabled={busy} onClick={() => { setItems(toItems(data, list)); setNote(null); }}>되돌리기</button>}
-        <button className="btn" type="button" style={{ width: "auto", minWidth: 110, minHeight: 44, fontSize: fs(16) }} disabled={busy || !dirty} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
+        <button className="btn" type="button" style={{ width: "auto", minWidth: 110, minHeight: 44, fontSize: fs(15) }} disabled={busy || !dirty} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
       </div>
     </section>
   );

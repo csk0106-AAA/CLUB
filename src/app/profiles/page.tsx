@@ -88,7 +88,7 @@ export default function ProfilesPage() {
             {d.revealed ? "회원이 공개로 승인한 소개를 실명으로 보여 드려요." : `회원이 공개로 승인한 소개예요. 지금은 별칭으로만 보여요${d.revealAt ? ` (${fmtDateTime(d.revealAt)}부터 실명)` : ""}.`}
           </p>
           {d.items.length === 0 && <div className="msg info">아직 공개된 소개가 없어요. 회원이 작성하고 배포하면 여기에 나타나요.</div>}
-          <div className="pick">
+          <div className="rows">
             {d.items.map((p) => (
               <button key={p.id} type="button" className="opt" onClick={() => router.push(`/profiles/${p.id}`)}
                 style={d.revealed && p.name ? { flexDirection: "row", alignItems: "center", gap: 12 } : undefined}>
@@ -97,7 +97,7 @@ export default function ProfilesPage() {
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 0 }}>
                   <span className="name">
                     {d.revealed && p.name ? p.name : `“${p.alias}”`}
-                    {d.revealed && p.name && details(p) && <span style={{ font: `700 ${fs(16)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
+                    {d.revealed && p.name && details(p) && <span style={{ font: `400 ${fs(13)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
                   </span>
                   {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}
                   {p.mine && <span className="pill blue">내 소개</span>}

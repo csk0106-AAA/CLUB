@@ -48,7 +48,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
         <article style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
             {p.pinned && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
-            {p.notice && <span className="pill warn" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={14} />공지</span>}
+            {p.notice && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={13} />공지</span>}
             <span className="pill gray">{FORM_LABEL[p.form]}</span>
           </div>
           <h1 className="title" style={{ overflowWrap: "anywhere" }}>{p.title}</h1>
@@ -69,8 +69,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
           {d.canEdit && (
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <Link href={`/board/${p.id}/edit`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: fs(17), textDecoration: "none" }}>{p.form === "rules" ? "글·회칙 고치기" : "고치기"}</Link>
-              <button className="btn red" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(17) }} onClick={remove}>지우기</button>
+              <Link href={`/board/${p.id}/edit`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>{p.form === "rules" ? "글·회칙 고치기" : "고치기"}</Link>
+              <button className="btn red" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={remove}>지우기</button>
             </div>
           )}
         </article>

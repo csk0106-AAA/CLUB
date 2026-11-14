@@ -14,7 +14,7 @@ export type SajuInfo = {
 export type Reading = { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean; sajuInfo?: SajuInfo | null };
 
 const ymd = (iso: string) => fmtDate(iso);
-const WX_COLOR: Record<string, string> = { 목: "#2b7a00", 화: "#b3261e", 토: "#8f5200", 금: "#5a6b74", 수: "#0f6ea3" };
+const WX_COLOR: Record<string, string> = { 목: "var(--wx-wood)", 화: "var(--wx-fire)", 토: "var(--wx-earth)", 금: "var(--wx-metal)", 수: "var(--wx-water)" };
 
 // 생애주기 풀이 첫머리: 내가 입력한 정보와 사주 원국(본인에게만 보인다)
 export function SajuInfoView({ info }: { info: SajuInfo }) {
@@ -22,8 +22,8 @@ export function SajuInfoView({ info }: { info: SajuInfo }) {
   const cols = [...info.pillars].reverse();
   return (
     <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: `400 ${fs(19)} var(--display)` }}>내가 입력한 정보</b>
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: fs(16) }}>
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>내가 입력한 정보</b>
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: fs(15) }}>
         <span className="small">성별</span><b>{info.gender}</b>
         <span className="small">생년월일</span>
         <b>
@@ -32,12 +32,12 @@ export function SajuInfoView({ info }: { info: SajuInfo }) {
         </b>
         <span className="small">태어난 시간</span><b>{info.time ?? "모름 (시주 없이 풀이)"}</b>
       </div>
-      <b style={{ font: `400 ${fs(19)} var(--display)`, marginTop: 4 }}>사주 원국</b>
-      <div className="tblw" style={{ background: "#fff" }}>
+      <b style={{ font: `700 ${fs(17)} var(--display)`, marginTop: 4 }}>사주 원국</b>
+      <div className="tblw" style={{ background: "var(--card)" }}>
         <table className="tbl" style={{ minWidth: 0, textAlign: "center" }}>
           <thead><tr>{cols.map((p) => <th key={p.label} style={{ textAlign: "center" }}>{p.label}</th>)}</tr></thead>
           <tbody>
-            <tr>{cols.map((p) => <td key={p.label}><div style={{ font: `400 ${fs(26)} var(--display)` }}>{p.ganZhi}</div><div className="small">{p.ko}</div></td>)}</tr>
+            <tr>{cols.map((p) => <td key={p.label}><div style={{ font: `700 ${fs(22)} var(--display)` }}>{p.ganZhi}</div><div className="small">{p.ko}</div></td>)}</tr>
             <tr>{cols.map((p) => (
               <td key={p.label} className="small">
                 {p.wuxing.split("").map((w, i) => <span key={i} style={{ color: WX_COLOR[w] ?? "inherit", fontWeight: 700 }}>{w}</span>)}
@@ -64,8 +64,8 @@ export function Md({ text }: { text: string }) {
       {text.split("\n").map((line, i) => {
         const t = line.trim();
         if (!t) return <div key={i} style={{ height: 4 }} />;
-        if (/^#{1,2}\s/.test(t)) return <b key={i} style={{ font: `400 ${fs(20)} var(--display)`, marginTop: 6 }}>{t.replace(/^#+\s*/, "")}</b>;
-        if (/^#{3,}\s/.test(t)) return <b key={i} style={{ fontSize: fs(17), marginTop: 4 }}>{t.replace(/^#+\s*/, "")}</b>;
+        if (/^#{1,2}\s/.test(t)) return <b key={i} style={{ font: `700 ${fs(17)} var(--display)`, marginTop: 6 }}>{t.replace(/^#+\s*/, "")}</b>;
+        if (/^#{3,}\s/.test(t)) return <b key={i} style={{ fontSize: fs(15), marginTop: 4 }}>{t.replace(/^#+\s*/, "")}</b>;
         if (/^[-*·]\s/.test(t)) return <div key={i} style={{ paddingLeft: 14, textIndent: -10 }}>· {t.replace(/^[-*·]\s*/, "").replace(/\*\*/g, "")}</div>;
         return <p key={i} style={{ margin: 0 }}>{t.replace(/\*\*/g, "")}</p>;
       })}
@@ -176,7 +176,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
         <legend className="l">성별</legend>
         {memberGender ? (
           <div className="card row" style={{ background: "var(--soft)", flexWrap: "wrap" }}>
-            <b style={{ font: `400 ${fs(20)} var(--display)` }}>{memberGender}</b>
+            <b style={{ font: `700 ${fs(17)} var(--display)` }}>{memberGender}</b>
             <span className="small grow">회원정보에 등록된 성별이에요. 바꾸려면 설정 › 내 정보에서 고쳐 주세요.</span>
           </div>
         ) : (
@@ -233,7 +233,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
   if (r.readingStatus === "" || r.readingStatus === "none") {
     return (
       <section className="card" aria-label="명리학 풀이" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="say" style={{ alignItems: "center" }}><Mascot size={48} /><b style={{ font: `400 ${fs(20)} var(--display)` }}>명리학으로 사주를 볼까요?</b></div>
+        <div className="say" style={{ alignItems: "center" }}><Mascot size={48} /><b style={{ font: `700 ${fs(17)} var(--display)` }}>명리학으로 사주를 볼까요?</b></div>
         <span className="small">
           성별과 생년월일, 태어난 시간을 알려 주시면 명리학 관점에서 생애주기 풀이(건강, 재물, 직업, 성격, 성향, 연애, 결혼, 인간관계)를 나만 볼 수 있게 만들어 드려요.
           입력하지 않으셔도 괜찮아요. 건너뛰어도 불이익은 없어요.
@@ -272,7 +272,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
     <section aria-label="명리학 풀이" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, borderColor: r.traitsShown ? "var(--green)" : "var(--orange-t)" }}>
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <b className="grow" style={{ font: `400 ${fs(20)} var(--display)` }}>명리학으로 본 성격과 성향</b>
+          <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>명리학으로 본 성격과 성향</b>
           <span className={`pill ${state.tone}`}>{state.text}</span>
         </div>
         <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.75 }}>{r.traitsMd}</p>
@@ -283,7 +283,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
           {r.traitsShown ? (
             <button className="mini" type="button" disabled={busy} onClick={() => call("PATCH", { traitsShown: false })}>소개 페이지에서 빼기</button>
           ) : (
-            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 180, minHeight: 46, fontSize: fs(17) }}
+            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 180, minHeight: 46, fontSize: fs(15) }}
               onClick={() => { if (!published || window.confirm("성격·성향 글을 소개 페이지 맨 끝에 실을까요? 바로 다른 회원에게 보여요.")) call("PATCH", { traitsShown: true }); }}>
               소개 페이지에 싣기
             </button>
@@ -295,7 +295,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
           {r.sajuInfo ? <SajuInfoView info={r.sajuInfo} /> : <OldReadingNote />}
           <Md text={r.readingMd} />
-          <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(17) }} onClick={() => downloadReading(r.sajuInfo, r.readingMd)}>
+          <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }} onClick={() => downloadReading(r.sajuInfo, r.readingMd)}>
             내 기기로 내려받기 (.txt)
           </button>
         </div>

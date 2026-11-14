@@ -121,7 +121,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
     if (!m) return null;
     return (
       <div key={id} draggable={editable} onDragStart={(e) => { e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "move"; }}
-        className="row" style={{ border: "2px solid var(--line)", borderRadius: 12, padding: "4px 8px", background: "#fff", cursor: editable ? "grab" : "default", gap: 6 }}>
+        className="row" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "4px 8px", background: "var(--card)", cursor: editable ? "grab" : "default", gap: 6 }}>
         <span className="grow" style={{ fontWeight: 700 }}>{m.name}{m.ageGroup ? <span className="small"> · {m.ageGroup}</span> : null}</span>
         {editable && (
           <select aria-label={`${m.name} 옮기기`} className="field" style={{ width: 96, minHeight: 36, fontSize: fs(14), padding: "0 6px" }} value={where} onChange={(e) => move(id, e.target.value)}>
@@ -147,12 +147,12 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <b style={{ font: `400 ${fs(18)} var(--display)` }}>{unit} 구성 ({td.participantCount}명 · {POOL_TEXT[td.poolKind]})</b>
+        <b style={{ font: `700 ${fs(16)} var(--display)` }}>{unit} 구성 ({td.participantCount}명 · {POOL_TEXT[td.poolKind]})</b>
         <span className={`pill ${td.published ? "ok" : "warn"}`}>{td.published ? "회원에게 배포됨" : "배포 전 (회원에게 안 보여요)"}</span>
         {td.locked && <span className="pill gray">작성이 시작되어 바꿀 수 없어요</span>}
         <span className="grow" />
         {screenHref && cols.length > 0 && (
-          <Link href={screenHref} target="_blank" rel="noopener" className="btn blue" style={{ width: "auto", minHeight: 48, fontSize: fs(17), textDecoration: "none" }}>
+          <Link href={screenHref} target="_blank" rel="noopener" className="btn blue" style={{ width: "auto", minHeight: 48, fontSize: fs(15), textDecoration: "none" }}>
             큰 화면에 보여 주기 ⛶<span className="sr-only"> (새 탭)</span>
           </Link>
         )}
@@ -162,7 +162,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
           <div className="pick" role="radiogroup" aria-label={`${unit} 구성 방식`} style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {(Object.keys(MODE_TEXT) as Mode[]).map((k) => (
-              <button key={k} type="button" role="radio" aria-checked={mode === k} aria-pressed={mode === k} className="opt" style={{ width: "auto", flex: "1 1 160px", minHeight: 52 }} onClick={() => setMode(k)}>
+              <button key={k} type="button" role="radio" aria-checked={mode === k} aria-pressed={mode === k} className="opt" style={{ width: "auto", flex: "1 1 160px", minHeight: 46 }} onClick={() => setMode(k)}>
                 <span className="name">{mode === k ? "✓ " : ""}{MODE_TEXT[k].label}</span>
               </button>
             ))}
@@ -175,7 +175,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
             {by === "size"
               ? <input className="field" aria-label={`${unit}당 인원`} type="number" min={2} max={20} style={{ width: 100 }} value={size} onChange={(e) => setSize(e.target.value)} />
               : <input className="field" aria-label={`${unit} 수`} type="number" min={1} max={30} style={{ width: 100 }} value={count} onChange={(e) => setCount(e.target.value)} />}
-            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={generate}>{cols.length > 0 ? "다시 만들기" : `${unit} 만들기`}</button>
+            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={generate}>{cols.length > 0 ? "다시 만들기" : `${unit} 만들기`}</button>
           </div>
         </div>
       )}
@@ -190,10 +190,10 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
           </div>
           {editable && (
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={addTeam}>+ {unit} 추가</button>
-              <button className="btn white" type="button" disabled={busy || !dirty} style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={onSaveDraft}>초안 저장</button>
-              <button className="btn" type="button" disabled={busy || (td.published && !dirty)} style={{ width: "auto", minHeight: 48, fontSize: fs(17), minWidth: 140 }} onClick={onConfirm}>{td.published ? "변경 내용 다시 배포" : "확인 (회원에게 배포)"}</button>
-              {td.published && !dirty && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(17) }} onClick={onUnpublish}>배포 취소</button>}
+              <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={addTeam}>+ {unit} 추가</button>
+              <button className="btn white" type="button" disabled={busy || !dirty} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onSaveDraft}>초안 저장</button>
+              <button className="btn" type="button" disabled={busy || (td.published && !dirty)} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 140 }} onClick={onConfirm}>{td.published ? "변경 내용 다시 배포" : "확인 (회원에게 배포)"}</button>
+              {td.published && !dirty && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onUnpublish}>배포 취소</button>}
             </div>
           )}
           {editable && <span className="small">“확인”을 눌러야 회원 화면에 보여요. {unit}이 없는 사람이 남아 있거나 빈 {unit}이 있으면 배포되지 않아요.</span>}

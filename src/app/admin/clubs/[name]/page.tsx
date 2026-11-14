@@ -66,13 +66,13 @@ function Club({ name }: { name: string }) {
     <>
       <div className="row" style={{ flexWrap: "wrap" }}>
         <Link href="/admin/clubs" className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>‹ 소모임 목록</Link>
-        <h1 className="title grow" style={{ fontSize: fs(24) }}>{data.name}</h1>
+        <h1 className="title grow" style={{ fontSize: fs(20) }}>{data.name}</h1>
         <span className="pill gray">회원 {data.roster.length}명</span>
       </div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <section className="card" aria-label="소모임 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: `400 ${fs(20)} var(--display)` }}>소모임 회원</b>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>소모임 회원</b>
         <span className="small">
           직책(회장 등)을 정하면 그 회원이 소모임 행사의 참관자를 정할 수 있고 게시글도 쓸 수 있어요.
           {leaders.length > 0 && <> 지금: {leaders.map((l) => `${l.role} ${l.name}`).join(", ")}</>}
@@ -97,14 +97,14 @@ function Club({ name }: { name: string }) {
         <div className="row" style={{ flexWrap: "wrap" }}>
           <span className="grow" />
           {rosterDirty && <button className="mini" type="button" disabled={busy} onClick={() => setRoster(data.roster)}>되돌리기</button>}
-          <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 46, fontSize: fs(17) }} disabled={busy || !rosterDirty} onClick={saveRoster}>
+          <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 46, fontSize: fs(15) }} disabled={busy || !rosterDirty} onClick={saveRoster}>
             {busy ? "저장 중…" : "회원 저장"}
           </button>
         </div>
       </section>
 
       <form className="card" aria-label="기본 정보" onSubmit={saveInfo} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: `400 ${fs(20)} var(--display)` }}>기본 정보</b>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>기본 정보</b>
         <div>
           <label className="l" htmlFor="c-intro">소개</label>
           <textarea id="c-intro" className="field" rows={3} maxLength={1000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }} value={info.intro} onChange={(e) => setI("intro", e.target.value)} />

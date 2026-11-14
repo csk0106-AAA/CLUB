@@ -100,25 +100,27 @@ export function AdminGate(props: {
 
   return (
     <main className="app admin with-tabs">
-      <div className="row" style={{ flexWrap: "wrap" }}>
+      <header className="topbar adminbar">
+        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <button className="mini" type="button" onClick={goBack} style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40 }}>
+            <IconBack size={16} /> 이전 페이지
+          </button>
+          <h1>관리자</h1>
+          <span className="small" style={{ whiteSpace: "nowrap" }}>{me.name}</span>
+          <Link className="mini" href="/admin/export" aria-current={props.active === "/admin/export" ? "page" : undefined}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40, ...(props.active === "/admin/export" ? { borderColor: "var(--ink)", color: "var(--ink)", fontWeight: 700 } : {}) }}>
+            <IconExport size={16} /> 내보내기
+          </Link>
+        </div>
         <nav className="modes" aria-label="관리자 구분">
-          <Link href="/admin/members" className={props.mode === "members" ? "on" : ""}>회원관리</Link>
-          <Link href="/admin/events" className={props.mode === "events" ? "on" : ""}>행사관리</Link>
-          <Link href="/admin/clubs" className={props.mode === "clubs" ? "on" : ""}>소모임관리</Link>
+          <Link href="/admin/members" className={props.mode === "members" ? "on" : ""} aria-current={props.mode === "members" ? "true" : undefined}>회원관리</Link>
+          <Link href="/admin/events" className={props.mode === "events" ? "on" : ""} aria-current={props.mode === "events" ? "true" : undefined}>행사관리</Link>
+          <Link href="/admin/clubs" className={props.mode === "clubs" ? "on" : ""} aria-current={props.mode === "clubs" ? "true" : undefined}>소모임관리</Link>
         </nav>
-        <span className="grow" />
-        <span className="pill blue">{me.name} · 관리자</span>
-        <button className="mini" type="button" onClick={goBack} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <IconBack /> 이전 페이지
-        </button>
-        <Link className="mini" href="/admin/export" aria-current={props.active === "/admin/export" ? "page" : undefined}
-          style={{ display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", ...(props.active === "/admin/export" ? { borderColor: "var(--blue)", color: "var(--blue-t)" } : {}) }}>
-          <IconExport /> 내보내기
-        </Link>
-      </div>
+      </header>
       {sub.length > 0 && (
         <nav className="subnav one" aria-label="하위 메뉴">
-          {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""}>{s.label}</Link>)}
+          {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""} aria-current={props.active === s.href ? "page" : undefined}>{s.label}</Link>)}
         </nav>
       )}
       {allowed ? props.children : <div className="msg bad" role="alert">이 화면을 볼 권한이 없어요.</div>}

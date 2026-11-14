@@ -76,7 +76,7 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
     <main className="app">
       <LessonHeader href={`/events/${id}`} closeLabel="행사로 돌아가기" done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
         right={<span className={`pill ${state.tone}`}>{state.text}</span>} />
-      <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: fs(24) }}>{d.activity.name}</h1></div>
+      <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: fs(20) }}>{d.activity.name}</h1></div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <div className={`fb ${d.opened ? "good" : "info"}`}>
@@ -117,14 +117,14 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
           {d.canJoin && (
             <>
               <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }} aria-disabled={!d.canWrite}>
-                <b style={{ font: `400 ${fs(20)} var(--display)` }}>나의 1년 뒤 목표</b>
+                <b style={{ font: `700 ${fs(17)} var(--display)` }}>나의 1년 뒤 목표</b>
                 <span className="small">나만 볼 수 있어요. 봉인하면 열림 일시 전에는 나도 다시 볼 수 없어요.{d.hasGoal ? " 다시 쓰면 이전 내용을 대신해요." : ""}</span>
                 <label className="l" htmlFor="c-goal">목표</label>
                 <textarea id="c-goal" className="field" rows={4} style={{ padding: 12 }} maxLength={1000} value={goal} disabled={!d.canWrite} onChange={(e) => setGoal(e.target.value)} />
                 <button className="btn" type="button" disabled={busy || !d.canWrite || !goal.trim()} onClick={() => save("goal")}>목표 봉인하기</button>
               </section>
               <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }} aria-disabled={!d.canWrite}>
-                <b style={{ font: `400 ${fs(20)} var(--display)` }}>우리 팀 약속 2가지</b>
+                <b style={{ font: `700 ${fs(17)} var(--display)` }}>우리 팀 약속 2가지</b>
                 <span className="small">{d.team ? "팀원이 함께 정해요. 저장하면 팀 이름과 구성원이 함께 남아요." : "팀이 정해진 뒤에 쓸 수 있어요."}</span>
                 <label className="l" htmlFor="c-p1">약속 1</label>
                 <input id="c-p1" className="field" maxLength={200} value={p1} disabled={!d.team || !d.canWrite} onChange={(e) => setP1(e.target.value)} />

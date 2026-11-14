@@ -144,7 +144,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
               <span className="sub">{c.orderNo}번째 고민 · {c.category}</span>
               <div className="intro" style={{ fontSize: "clamp(26px, 3.4vw, 44px)", lineHeight: 1.6, maxHeight: "none" }}>{c.body}</div>
               {c.tips.length > 0 && (
-                <div style={{ borderTop: "2px solid #37464f", paddingTop: 10 }}>
+                <div style={{ borderTop: "1px solid #2c3136", paddingTop: 10 }}>
                   <b className="sub">대화를 시작하는 관점</b>
                   <ol style={{ margin: "6px 0 0", paddingLeft: 24, fontSize: 24, lineHeight: 1.6 }}>{c.tips.map((t, i) => <li key={i}>{t}</li>)}</ol>
                 </div>
@@ -156,7 +156,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
           <div className="panel">
             <h3>대화 시간</h3>
-            <div className="num" style={{ font: "400 clamp(64px, 10vw, 120px)/1 var(--display)", color: timeUp ? "#ff4b4b" : "#ffc800" }} aria-label="남은 시간">{c ? (timeUp ? "00:00" : fmt(remaining)) : "--:--"}</div>
+            <div className="num" style={{ font: "700 clamp(64px, 10vw, 120px)/1 var(--display)", color: timeUp ? "#ff5a52" : "#ffffff" }} aria-label="남은 시간">{c ? (timeUp ? "00:00" : fmt(remaining)) : "--:--"}</div>
             <span className="sub">{!c ? "고민을 뽑으면 시작돼요" : timeUp ? (c.nameRevealed ? "시간이 끝났어요." : "시간이 끝났어요. 이름 오픈을 눌러 주세요.") : c.paused ? "일시정지 중" : `기본 ${c.minutes}분`}</span>
             {c && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

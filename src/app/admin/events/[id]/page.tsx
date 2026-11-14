@@ -262,7 +262,7 @@ function Detail({ id }: { id: string }) {
       <div className="row" style={{ flexWrap: "wrap" }}>
         <Link href="/admin/events" className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>‹ 행사 목록</Link>
         <span className="pill blue">{ev.type}</span>
-        <h1 className="title grow" style={{ fontSize: fs(24) }}>{ev.name}</h1>
+        <h1 className="title grow" style={{ fontSize: fs(20) }}>{ev.name}</h1>
         <span className={`pill ${ev.published === "true" ? "ok" : "gray"}`}>{ev.published === "true" ? "회원에게 공개 중" : "초안"}</span>
       </div>
 
@@ -322,7 +322,7 @@ function Detail({ id }: { id: string }) {
 
           {/* 회비: 회원구분 / 직책 / 참석일 조건별 */}
           <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: `400 ${fs(19)} var(--display)` }}>회비</b>
+            <b style={{ font: `700 ${fs(17)} var(--display)` }}>회비</b>
             <span className="small">
               회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
               회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
@@ -373,7 +373,7 @@ function Detail({ id }: { id: string }) {
                 </table>
               </div>
             )}
-            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(17) }}
+            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }}
               onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>
               + 회비 줄 추가
             </button>
@@ -388,7 +388,7 @@ function Detail({ id }: { id: string }) {
           </div>
           <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="pill gray" style={{ alignSelf: "flex-start" }}>회원에게 보이는 모습</span>
-            <b style={{ font: `400 ${fs(22)} var(--display)` }}>{ev.name}</b>
+            <b style={{ font: `700 ${fs(19)} var(--display)` }}>{ev.name}</b>
             {/* 한 줄에 정보 하나씩(대화방 안내 문구와 같은 순서·아이콘) */}
             {infoLines(ev, rules, actNames).map((x) =>
               x.multiline ? (

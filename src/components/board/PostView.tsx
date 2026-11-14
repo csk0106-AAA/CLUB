@@ -35,7 +35,7 @@ export function Attachments({ files }: { files: FileMeta[] }) {
       {images.map((f) => (
         <a key={f.id} href={fileUrl(f.id)} target="_blank" rel="noopener" aria-label={`${f.name} 크게 보기`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={fileUrl(f.id)} alt={f.name} loading="lazy" style={{ display: "block", maxWidth: "100%", borderRadius: 14, border: "2px solid var(--line)" }} />
+          <img src={fileUrl(f.id)} alt={f.name} loading="lazy" style={{ display: "block", maxWidth: "100%", borderRadius: 8, border: "1px solid var(--line)" }} />
         </a>
       ))}
       {docs.length > 0 && (
@@ -65,7 +65,7 @@ export function RulesView({ rules }: { rules: NonNullable<PostDetail["rules"]> }
     <>
       {chapters.map(([ch, list]) => (
         <section key={ch} className="card" aria-label={ch} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: `400 ${fs(19)} var(--display)` }}>{ch}</b>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>{ch}</b>
           {list.map((r) => (
             <div key={r.id}>
               {r.article && <b>{r.article}</b>}
@@ -166,7 +166,7 @@ export function PollBox({ id, data, mine, results, onDone }: { id: string; data:
   return (
     <section className="card" aria-label="투표" style={col}>
       <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-        <b style={{ font: `400 ${fs(19)} var(--display)` }}>투표</b>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>투표</b>
         <span className="pill gray">{data.multi ? "여러 개 고르기" : "하나만 고르기"}</span>
         {data.anonymous && <span className="pill gray">익명</span>}
         {data.deadline && <span className={`pill ${closed ? "bad" : "warn"}`}>{closed ? "마감됨" : `${fmtDateTime(data.deadline)} 마감`}</span>}
@@ -175,7 +175,7 @@ export function PollBox({ id, data, mine, results, onDone }: { id: string; data:
         <>
           <div className="pick" role={data.multi ? "group" : "radiogroup"} aria-label="투표 보기">
             {data.options.map((o, i) => (
-              <button key={i} type="button" className="opt rowopt" role={data.multi ? "checkbox" : "radio"} aria-checked={pick.includes(i)} aria-pressed={pick.includes(i)} onClick={() => toggle(i)} style={{ minHeight: 50 }}>
+              <button key={i} type="button" className="opt rowopt" role={data.multi ? "checkbox" : "radio"} aria-checked={pick.includes(i)} aria-pressed={pick.includes(i)} onClick={() => toggle(i)} style={{ minHeight: 46 }}>
                 <span className="tick" aria-hidden="true" />
                 <span className="grow">{o}</span>
               </button>
@@ -235,7 +235,7 @@ export function SurveyBox({ id, data, mine, results, onDone }: { id: string; dat
     <>
       <section className="card" aria-label="설문" style={col}>
         <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-          <b style={{ font: `400 ${fs(19)} var(--display)` }}>{mine && !edit ? "내 답" : "설문"}</b>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>{mine && !edit ? "내 답" : "설문"}</b>
           {data.deadline && <span className={`pill ${closed ? "bad" : "warn"}`}>{closed ? "마감됨" : `${fmtDateTime(data.deadline)} 마감`}</span>}
           {mine && <span className="pill ok">답했어요 ✓</span>}
         </div>
@@ -270,7 +270,7 @@ export function SurveyBox({ id, data, mine, results, onDone }: { id: string; dat
       </section>
       {results && (
         <section className="card" aria-label="설문 결과" style={col}>
-          <b style={{ font: `400 ${fs(19)} var(--display)` }}>결과 · {results.total}명 응답 (작성자·관리자만)</b>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>결과 · {results.total}명 응답 (작성자·관리자만)</b>
           {data.questions.map((q, qi) => {
             const r = results.questions.find((x) => x.id === q.id);
             return (
@@ -319,14 +319,14 @@ export function QuizBox({ id, data, mine, results, onDone }: { id: string; data:
     <>
       <section className="card" aria-label="OX 퀴즈" style={col}>
         <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-          <b style={{ font: `400 ${fs(19)} var(--display)` }}>OX 퀴즈</b>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>OX 퀴즈</b>
           {mine && <span className="pill ok">{data.items.length}문제 중 {score}개 맞혔어요</span>}
         </div>
         {data.items.map((it, i) => {
           const my = mine?.answers[i];
           const right = mine ? my === it.answer : false;
           return (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: i ? "2px solid var(--line)" : 0, paddingTop: i ? 10 : 0 }}>
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: i ? "1px solid var(--line)" : 0, paddingTop: i ? 10 : 0 }}>
               <b>{i + 1}. {it.q}</b>
               {mine ? (
                 <>
@@ -340,7 +340,7 @@ export function QuizBox({ id, data, mine, results, onDone }: { id: string; data:
                 <div className="row" role="radiogroup" aria-label={`${i + 1}번 문제 답`}>
                   {(["O", "X"] as const).map((v) => (
                     <button key={v} type="button" className="opt" role="radio" aria-checked={ans[i] === v} aria-pressed={ans[i] === v}
-                      style={{ alignItems: "center", minHeight: 56, font: `400 ${fs(28)} var(--display)` }} onClick={() => setAns(ans.map((x, j) => (j === i ? v : x)))}>
+                      style={{ alignItems: "center", minHeight: 46, font: `700 ${fs(24)} var(--display)` }} onClick={() => setAns(ans.map((x, j) => (j === i ? v : x)))}>
                       {v}
                     </button>
                   ))}
@@ -355,7 +355,7 @@ export function QuizBox({ id, data, mine, results, onDone }: { id: string; data:
       </section>
       {results && (
         <section className="card" aria-label="퀴즈 결과" style={col}>
-          <b style={{ font: `400 ${fs(19)} var(--display)` }}>점수 요약 (작성자·관리자만)</b>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>점수 요약 (작성자·관리자만)</b>
           <span>{results.total}명이 풀었어요 · 평균 {results.avg}점 / {results.items}점</span>
           {results.perItem.map((n, i) => <Bar key={i} label={`${i + 1}번 정답`} n={n} total={results.total} />)}
           {results.people.length > 0 && (

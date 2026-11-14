@@ -63,7 +63,7 @@ export default function HostHome() {
       <div className="say" style={{ alignItems: "center" }}>
         <Mascot size={56} />
         <div className="grow">
-          <b style={{ font: "400 20px var(--display)" }}>{d.name} 님, 사회자로 들어왔어요</b>
+          <b style={{ font: "700 20px var(--display)" }}>{d.name} 님, 사회자로 들어왔어요</b>
           <div className="small">진행할 활동만 보여요. 회원으로 참여하려면 로그아웃하고 평소 초대코드로 다시 들어오세요.</div>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function HostHome() {
       {d.items.map((it) => (
         <section key={it.id} className="card" aria-label={it.name} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <span className="small">{it.eventName}</span>
-          <b style={{ font: "400 22px var(--display)" }}>{it.name}</b>
+          <b style={{ font: "700 22px var(--display)" }}>{it.name}</b>
           {it.startsAt && <span className="small">{fmtRange(it.startsAt, it.endsAt)}</span>}
           <span className={`pill ${it.live.active ? (it.live.unlocked ? "ok" : "warn") : "gray"}`} style={{ alignSelf: "flex-start" }}>
             {it.live.active ? `${it.live.stepLabel} · ${it.live.unlocked ? "회원 화면 열림" : "회원 화면 잠김"}` : "시작 전"}

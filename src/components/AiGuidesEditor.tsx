@@ -63,7 +63,7 @@ export function AiGuidesEditor(props: {
   return (
     <section className="card" aria-label={`${title} AI 지침`} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <b className="grow" style={{ font: `400 ${fs(21)} var(--display)` }}>“{title}” AI 지침</b>
+        <b className="grow" style={{ font: `700 ${fs(18)} var(--display)` }}>“{title}” AI 지침</b>
         <button className="mini" type="button" onClick={onClose}>닫기</button>
       </div>
       <span className="small">
@@ -86,15 +86,15 @@ export function AiGuidesEditor(props: {
 
       {info && hasInterview && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: `400 ${fs(18)} var(--display)` }}>AI 인터뷰 질문</b>
+          <b style={{ font: `700 ${fs(16)} var(--display)` }}>AI 인터뷰 질문</b>
           <span className="small">회원에게 차례로 묻는 필수 질문이에요. 다 답하면 AI가 후속 질문을 최대 개수만큼 이어서 물어요.</span>
           {questions.map((q, i) => (
             <div key={i} className="row">
               <input className="field" aria-label={`질문 ${i + 1}`} maxLength={300} value={q} onChange={(e) => setQuestions(questions.map((x, j) => (j === i ? e.target.value : x)))} />
-              <button className="mini danger" type="button" disabled={questions.length <= 1} style={{ minHeight: 54 }} onClick={() => setQuestions(questions.filter((_, j) => j !== i))}>삭제</button>
+              <button className="mini danger" type="button" disabled={questions.length <= 1} style={{ minHeight: 46 }} onClick={() => setQuestions(questions.filter((_, j) => j !== i))}>삭제</button>
             </div>
           ))}
-          <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(16) }} onClick={() => setQuestions([...questions, ""])}>+ 질문 추가</button>
+          <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(15) }} onClick={() => setQuestions([...questions, ""])}>+ 질문 추가</button>
           <div style={{ maxWidth: 240 }}>
             <label className="l" htmlFor="ag-fu">AI 후속 질문 최대 개수</label>
             <input id="ag-fu" className="field" type="number" min={0} max={12} value={followUpMax} onChange={(e) => setFollowUpMax(Math.max(0, Math.min(12, Number(e.target.value) || 0)))} />
@@ -131,7 +131,7 @@ export function AiGuidesEditor(props: {
         </div>
       ) : (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
-          <b style={{ font: `400 ${fs(18)} var(--display)` }}>어디에 반영할까요?</b>
+          <b style={{ font: `700 ${fs(16)} var(--display)` }}>어디에 반영할까요?</b>
           <span className="small">지금 이 활동은 “{templateName ?? "템플릿"}” 템플릿을 쓰고 있어요.</span>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn" type="button" disabled={busy || !info} style={{ width: "auto", minWidth: 220 }} onClick={() => save("template")}>

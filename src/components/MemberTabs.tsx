@@ -12,7 +12,7 @@ import css from "./MemberTabs.module.css";
 // 관리자 화면은 설정 안(설정 화면 위쪽 관리자 아이콘)으로 들어가므로, 관리자 화면에서는 "설정" 탭이 켜진다.
 // 이 탭을 쓰는 화면은 <main className="app with-tabs"> 로 감싼다.
 // 하단 탭 칸 높이는 그대로: 아이콘·글자는 글자 크기 설정을 따르되 120%까지만 커진다(MemberTabs.module.css 와 같은 값).
-const TAB_ICON = 28;
+const TAB_ICON = 22;
 const TAB_MAX = 1.2;
 type Tab = "events" | "board" | "org" | "profiles" | "settings" | "admin";
 // alerts: 소모임 가입·참관 신청 알림(lib/unread.ts)

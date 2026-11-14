@@ -77,34 +77,36 @@ export default function BoardPage() {
   return (
     <main className="app with-tabs">
       {/* 윗줄: 캐릭터(왼쪽) + 알림·조직도·로그아웃 아이콘(오른쪽). 다음 줄: 인사 */}
-      <div className="say" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        {who ? <Avatar member={who} size={52} fallback="mascot" /> : <Mascot size={52} />}
-        <div style={{ display: "flex", gap: 6, flex: "none" }}>
-          <button type="button" onClick={() => setAlertsOpen(true)} aria-haspopup="dialog" title="알림"
-            aria-label={bell > 0 ? `알림, 새 소식 ${bell}개` : "알림"} style={{ ...headIcon, color: "var(--blue-t)" }}>
-            <IconBell size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-            {bell > 0 && <span className={tabsCss.badge} aria-hidden="true">{bell > 99 ? "99+" : bell}</span>}
-            알림
-          </button>
-          <button type="button" onClick={() => setOrgOpen(true)} aria-haspopup="dialog" aria-label="조직도" title="조직도" style={{ ...headIcon, color: "var(--blue-t)" }}>
-            <IconOrg size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-            조직도
-          </button>
-          <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ ...headIcon, color: "var(--red-t)" }}>
-            <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-            로그아웃
-          </button>
+      <header className="topbar">
+        <div className="row">
+          {who ? <Avatar member={who} size={40} fallback="mascot" /> : <Mascot size={40} />}
+          <div className="who">
+            {club && <span>{club}</span>}
+            <b>{who ? `${who.name} 대표님, 반갑습니다` : "반갑습니다"}</b>
+          </div>
+          <div className="icons">
+            <button type="button" onClick={() => setAlertsOpen(true)} aria-haspopup="dialog" title="알림"
+              aria-label={bell > 0 ? `알림, 새 소식 ${bell}개` : "알림"} style={headIcon}>
+              <IconBell size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+              {bell > 0 && <span className={tabsCss.badge} aria-hidden="true">{bell > 99 ? "99+" : bell}</span>}
+              알림
+            </button>
+            <button type="button" onClick={() => setOrgOpen(true)} aria-haspopup="dialog" aria-label="조직도" title="조직도" style={headIcon}>
+              <IconOrg size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+              조직도
+            </button>
+            <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={headIcon}>
+              <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+              로그아웃
+            </button>
+          </div>
         </div>
-      </div>
-      <div>
-        <b style={{ font: `400 ${fs(20)} var(--display)`, overflowWrap: "anywhere" }}>{who ? `${who.name} 대표님, 반갑습니다.` : "반갑습니다."}</b>
-        {club && <div className="small">{club}</div>}
-      </div>
+      </header>
       <div className="row">
-        <h1 className="title grow" style={{ fontSize: fs(22) }}>게시글</h1>
+        <h1 className="title grow">게시글</h1>
         {me?.canWrite && (
           <a
-            href="/board/new" className="btn" aria-haspopup="dialog" style={{ width: "auto", minHeight: 46, fontSize: fs(18), textDecoration: "none" }}
+            href="/board/new" className="btn" aria-haspopup="dialog" style={{ width: "auto", minHeight: 40, padding: "0 14px", fontSize: fs(14), textDecoration: "none" }}
             onClick={(e) => {
               // 새 탭·창으로 열기(Ctrl/⌘/Shift/가운데 버튼)는 그대로 글쓰기 화면으로
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
@@ -119,14 +121,14 @@ export default function BoardPage() {
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!posts && !error && <p className="small">불러오는 중이에요…</p>}
       {posts && posts.length === 0 && <div className="msg info">아직 올라온 글이 없어요.</div>}
-      <ul className="pick" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      <ul className="rows" aria-label="게시글 목록">
         {posts?.map((p) => (
           <li key={p.id}>
-            <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none", alignItems: "flex-start", ...(p.pinned ? { borderColor: "var(--blue)" } : {}) }}>
+            <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none", alignItems: "flex-start" }}>
               <span className="grow">
                 <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                   {p.pinned && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
-                  {p.notice && <span className="pill warn" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={14} />공지</span>}
+                  {p.notice && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconMegaphone size={13} />공지</span>}
                   {p.form !== "general" && <span className="pill gray">{FORM_LABEL[p.form]}</span>}
                   {RESPONSE_FORMS.includes(p.form) && (p.responded ? <span className="pill ok">참여 ✓</span> : p.closed ? <span className="pill gray">마감</span> : <span className="pill bad">참여 전</span>)}
                 </span>
@@ -140,7 +142,7 @@ export default function BoardPage() {
               </span>
               {p.thumb && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={fileUrl(p.thumb)} alt="" loading="lazy" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 10, flex: "none", border: "2px solid var(--line)" }} />
+                <img src={fileUrl(p.thumb)} alt="" loading="lazy" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flex: "none", border: "1px solid var(--line)" }} />
               )}
             </Link>
           </li>

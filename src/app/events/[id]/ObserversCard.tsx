@@ -45,7 +45,7 @@ export function ObserversCard({ eventId, admin, onChange }: { eventId: string; a
 
   return (
     <section className="card" aria-label="참관자" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: `400 ${fs(19)} var(--display)` }}>참관자 추가</b>
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>참관자 추가</b>
       <span className="small">
         {d.club} 회원이 아닌 분도 참관자로 넣으면 이 행사를 보고 참석 신청할 수 있어요.
         {admin ? "" : " 소모임 회장만 보이는 칸이에요."}

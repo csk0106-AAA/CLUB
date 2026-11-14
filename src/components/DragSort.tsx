@@ -109,7 +109,7 @@ export function DragHandle({ ref, label, active, ...on }: HandleProps) {
       {...on}
       style={{
         width: 44, minWidth: 44, height: 44, display: "grid", placeItems: "center", flex: "none",
-        border: "2px solid var(--line)", borderRadius: 10, background: active ? "var(--blue-bg)" : "var(--card)",
+        border: "1px solid var(--line)", borderRadius: 10, background: active ? "var(--blue-bg)" : "var(--card)",
         color: active ? "var(--blue-t)" : "var(--sub)", cursor: active ? "grabbing" : "grab", touchAction: "none", userSelect: "none",
       }}
     >

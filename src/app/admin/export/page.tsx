@@ -45,11 +45,11 @@ function Export() {
       <div className="msg info">인터뷰 원문, 타임캡슐 본문, 아직 공개되지 않은 고민과 소개 초안은 본인 외에는 볼 수 없게 정한 내용이라 내려받는 파일에 포함되지 않아요. 초대코드도 빠져요.</div>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: `400 ${fs(20)} var(--display)` }}>전체 백업 (JSON)</b>
-        <button className="btn" type="button" disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 50 }} onClick={() => download("format=json", "backup.json")}>전체 데이터 내려받기</button>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>전체 백업 (JSON)</b>
+        <button className="btn" type="button" disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 46 }} onClick={() => download("format=json", "backup.json")}>전체 데이터 내려받기</button>
       </div>
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: `400 ${fs(20)} var(--display)` }}>항목별 내려받기 (CSV, 엑셀에서 열 수 있어요)</b>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>항목별 내려받기 (CSV, 엑셀에서 열 수 있어요)</b>
         <div className="row" style={{ flexWrap: "wrap" }}>
           {TABS.map(([tab, label]) => <button key={tab} className="mini" type="button" disabled={busy} onClick={() => download(`format=csv&tab=${tab}`, `${tab}.csv`)}>{label}</button>)}
         </div>

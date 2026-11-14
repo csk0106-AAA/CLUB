@@ -36,7 +36,7 @@ export function ClubRequestCard({ eventId, club, requests, onSent }: {
 
   return (
     <section className="card" aria-labelledby="creq-h" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b id="creq-h" style={{ font: `400 ${fs(19)} var(--display)` }}>이 소모임 회원이 아니에요</b>
+      <b id="creq-h" style={{ font: `700 ${fs(17)} var(--display)` }}>이 소모임 회원이 아니에요</b>
       <span className="small">
         {club} 소모임 행사라 내용은 볼 수 있지만, 참석 신청은 소모임 회원과 참관자만 할 수 있어요.
         소모임에 가입하거나 이번 행사만 참관하고 싶다면 신청해 주세요.

@@ -21,7 +21,7 @@ const STATUS: Record<string, { text: string; tone: string }> = {
   approved: { text: "승인됨", tone: "ok" },
   declined: { text: "거절됨", tone: "bad" },
 };
-const sectionTitle = { font: `400 ${fs(18)} var(--display)`, margin: 0 } as const;
+const sectionTitle = { font: `700 ${fs(16)} var(--display)`, margin: 0 } as const;
 const what = (r: { kindLabel: string; club: string; eventName: string }) =>
   `${r.club} ${r.kindLabel}${r.eventName ? ` · ${r.eventName}` : ""}`;
 
@@ -111,7 +111,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
       {d.posts.length > 0 && (
         <section aria-labelledby="al-h3" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-h3" style={sectionTitle}>새 글 {d.posts.length}개</h3>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <ul className="rows">
             {d.posts.map((p) => (
               <li key={p.id}>
                 <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none" }}>

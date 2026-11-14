@@ -74,7 +74,7 @@ function Events() {
         {shown.map((e) => (
           <Link key={e.id} href={`/admin/events/${e.id}`} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start", color: "inherit", textDecoration: "none" }}>
             <span className={`pill ${TONE[e.type] ?? "gray"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
-            <b style={{ font: `400 ${fs(21)} var(--display)` }}>{e.name}</b>
+            <b style={{ font: `700 ${fs(18)} var(--display)` }}>{e.name}</b>
             <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
             <div className="meter" role="progressbar" aria-label="참석 신청" aria-valuemin={0} aria-valuemax={e.total} aria-valuenow={e.attend + e.absent}>
               <i style={{ width: `${e.total ? Math.min(100, Math.round(((e.attend + e.absent) / e.total) * 100)) : 0}%` }} />
@@ -89,7 +89,7 @@ function Events() {
       </div>
 
       <div className="card" style={{ background: "var(--soft)" }}>
-        <b style={{ font: `400 ${fs(19)} var(--display)` }}>행사를 만드는 순서</b>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>행사를 만드는 순서</b>
         <ol className="flow">
           <li>① 유형 선택</li><li aria-hidden="true">›</li>
           <li>② 활동 템플릿에서 선택</li><li aria-hidden="true">›</li>

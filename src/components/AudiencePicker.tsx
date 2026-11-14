@@ -64,7 +64,7 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
 
   return (
     <fieldset className="card" style={{ display: "flex", flexDirection: "column", gap: 10, margin: 0 }}>
-      <legend style={{ font: `400 ${fs(18)} var(--display)`, padding: "0 4px" }}>{legend}</legend>
+      <legend style={{ font: `700 ${fs(16)} var(--display)`, padding: "0 4px" }}>{legend}</legend>
       <div className="checks" role="radiogroup" aria-label={legend}>
         {MODES.map((m) => (
           <label key={m.k} style={value.mode === m.k ? { borderColor: "var(--blue)", background: "var(--blue-bg)", color: "var(--blue-t)" } : undefined}>
@@ -108,7 +108,7 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
       )}
 
       {value.mode !== "all" && opts && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "2px solid var(--line)", paddingTop: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <span className="l" id={`${uid}-mem`} style={{ margin: 0 }}>보여 줄 회원 <b style={{ color: "var(--blue-t)" }}>{value.memberIds.length}명</b></span>
             <span className="grow" />

@@ -47,7 +47,7 @@ async function squareJpeg(file: File): Promise<Blob> {
 }
 
 const tabBtn = (on: boolean) => ({
-  flex: 1, minHeight: 44, borderRadius: 12, cursor: "pointer",
+  flex: 1, minHeight: 44, borderRadius: 8, cursor: "pointer",
   border: `2px solid ${on ? "var(--blue)" : "var(--line)"}`,
   background: on ? "var(--blue-bg)" : "var(--card)", color: on ? "var(--blue-t)" : "var(--ink)",
   font: `700 ${fs(16)} var(--body)`,
@@ -129,7 +129,7 @@ export function AvatarPicker({ name, avatar, onChange }: { name: string; avatar:
         <span className="small">{avatar?.type === "photo" ? "올린 사진" : avatar?.type === "character" ? `캐릭터 · ${CHARACTERS.find((c) => c.key === avatar.key)?.label ?? ""}` : "기본 모양"}</span>
       </div>
       <button className="btn white" type="button" aria-haspopup="dialog" onClick={start}
-        style={{ width: "auto", minHeight: 44, fontSize: fs(16), flex: "none" }}>
+        style={{ width: "auto", minHeight: 44, fontSize: fs(15), flex: "none" }}>
         바꾸기
       </button>
 
@@ -138,11 +138,11 @@ export function AvatarPicker({ name, avatar, onChange }: { name: string; avatar:
         footer={(
           <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
             <button className="btn white" type="button" disabled={busy || !avatar} onClick={reset}
-              style={{ width: "auto", minHeight: 46, fontSize: fs(16) }}>
+              style={{ width: "auto", minHeight: 46, fontSize: fs(15) }}>
               기본으로
             </button>
             <button className="btn" type="button" disabled={busy || !dirty} onClick={save}
-              style={{ width: "auto", minHeight: 46, fontSize: fs(17) }}>
+              style={{ width: "auto", minHeight: 46, fontSize: fs(15) }}>
               {busy ? "저장하는 중…" : "저장"}
             </button>
           </div>
@@ -162,7 +162,7 @@ export function AvatarPicker({ name, avatar, onChange }: { name: string; avatar:
                 return (
                   <button key={c.key} type="button" aria-pressed={on} onClick={() => setPick(c.key)}
                     style={{
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px", borderRadius: 14, cursor: "pointer",
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px", borderRadius: 8, cursor: "pointer",
                       border: `3px solid ${on ? "var(--blue)" : "var(--line)"}`, background: on ? "var(--blue-bg)" : "var(--card)",
                       color: on ? "var(--blue-t)" : "var(--ink)", font: `700 ${fs(14)} var(--body)`,
                     }}>
@@ -183,7 +183,7 @@ export function AvatarPicker({ name, avatar, onChange }: { name: string; avatar:
               )}
               <input ref={fileRef} type="file" accept={ACCEPT} hidden onChange={(e) => { choose(e.target.files?.[0]); e.target.value = ""; }} />
               <button className="btn white" type="button" disabled={busy} onClick={() => fileRef.current?.click()}
-                style={{ width: "auto", minHeight: 46, fontSize: fs(16) }}>
+                style={{ width: "auto", minHeight: 46, fontSize: fs(15) }}>
                 {photo || avatar?.type === "photo" ? "다른 사진 고르기" : "사진 고르기"}
               </button>
               <span className="small" style={{ textAlign: "center" }}>jpg, png, webp 사진을 올릴 수 있어요. 로그인한 회원에게만 보여요.</span>

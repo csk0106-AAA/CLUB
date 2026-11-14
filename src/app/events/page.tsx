@@ -88,7 +88,7 @@ export default function EventsPage() {
 
   const item = (e: Ev) => (
     <button key={e.id} className="opt" type="button" disabled={locked} onClick={() => open(e)}
-      style={e.needsAnswer || e.pinned ? { borderColor: "var(--blue)" } : undefined}>
+      style={e.needsAnswer ? { boxShadow: "inset 3px 0 0 var(--red)" } : undefined}>
       <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
         {e.pinned && !e.past && <span className="pill blue" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={13} />고정</span>}
         <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
@@ -96,7 +96,7 @@ export default function EventsPage() {
       </span>
       <span className="name">{e.name}</span>
       <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
-      {e.needsAnswer && <span className="pill warn">참석 여부를 체크해 주세요</span>}
+      {e.needsAnswer && <span className="pill bad">! 참석 여부를 체크해 주세요</span>}
       {e.myAnswer === "불참" && <span className="pill gray">불참으로 알림</span>}
       {e.feeDue && (e.payNotice ? <span className="pill warn">₩ 입금 확인 중</span> : <span className="pill bad">₩ 회비 미입금</span>)}
       {e.feePaid && <span className="pill ok">회비 입금 ✓</span>}
@@ -106,10 +106,15 @@ export default function EventsPage() {
   return (
     <main className="app with-tabs">
       <div className="row" style={{ alignItems: "center" }}>
-        <h1 className="title grow" style={{ fontSize: fs(22) }}>예정된 행사</h1>
-        <button type="button" className="mini" onClick={toggleView} style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 44, flex: "none" }}>
-          {view === "list" ? <><IconCalendar size={20} />캘린더로 보기</> : <><ListIcon />리스트로 보기</>}
-        </button>
+        <h1 className="title grow">예정된 행사</h1>
+        <div className="seg" role="group" aria-label="보기 방식" style={{ flex: "none" }}>
+          <button type="button" aria-pressed={view === "list"} onClick={() => view !== "list" && toggleView()} style={{ minHeight: 44, padding: "0 12px" }}>
+            <ListIcon />리스트
+          </button>
+          <button type="button" aria-pressed={view === "calendar"} onClick={() => view !== "calendar" && toggleView()} style={{ minHeight: 44, padding: "0 12px" }}>
+            <IconCalendar size={18} />캘린더
+          </button>
+        </div>
       </div>
 
       {error && <div className="msg bad" role="alert">{error}</div>}
@@ -118,7 +123,7 @@ export default function EventsPage() {
 
       {view === "calendar" && events && <EventCalendar events={events} renderItem={item} hrefOf={hrefOf} />}
 
-      {view === "list" && upcoming.length > 0 && <div className="pick">{upcoming.map(item)}</div>}
+      {view === "list" && upcoming.length > 0 && <div className="rows">{upcoming.map(item)}</div>}
       {view === "list" && upcoming.length > 0 && <p className="hint">행사를 누르면 그 행사에 필요한 화면으로 이동해요. 다른 소모임 행사는 읽어 볼 수 있고, 가입이나 참관을 신청할 수 있어요.</p>}
 
       {view === "list" && past.length > 0 && (
@@ -126,7 +131,7 @@ export default function EventsPage() {
           <button type="button" className="btn white" aria-expanded={showPast} aria-controls="past-list" onClick={() => setShowPast(!showPast)}>
             {showPast ? "접기 ▴" : `지난 행사 ${past.length}개 보기 ▾`}
           </button>
-          {showPast && <div id="past-list" className="pick">{past.map(item)}</div>}
+          {showPast && <div id="past-list" className="rows">{past.map(item)}</div>}
         </section>
       )}
 
@@ -140,7 +145,7 @@ export default function EventsPage() {
 // 리스트로 보기 아이콘(줄 세 개)
 function ListIcon() {
   return (
-    <svg width={20} height={20} style={{ width: fs(20), height: fs(20), flex: "none" }} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+    <svg width={18} height={18} style={{ width: fs(18), height: fs(18), flex: "none" }} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
       <path d="M8 6h12M8 12h12M8 18h12" />
       <circle cx="3.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
       <circle cx="3.5" cy="12" r="1.3" fill="currentColor" stroke="none" />

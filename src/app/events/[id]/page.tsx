@@ -76,7 +76,7 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
     <main className="app with-tabs">
       {(dd || tripDays) && (
         <div className="stats">
-          {dd ? <span className="stat"><span style={{ color: "#ff9600", display: "inline-flex" }}><IconStar /></span>{dd}</span> : <span />}
+          {dd ? <span className="stat"><span style={{ color: "var(--red)", display: "inline-flex" }}><IconStar size={18} /></span>{dd}</span> : <span />}
           {tripDays && <span className="pill warn">졸업여행 참석자 · {tripDays}</span>}
         </div>
       )}
@@ -100,7 +100,7 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
       <Link href={`/events/${id}/overview`} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, textDecoration: "none", color: "inherit" }}>
         <div>
           <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.type}</span>
-          <b style={{ display: "block", font: `400 ${fs(19)} var(--display)` }}>{e.name}</b>
+          <b style={{ display: "block", font: `700 ${fs(17)} var(--display)` }}>{e.name}</b>
           <div className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</div>
           {e.club && <div className="small">소모임: {clubLine(e.club, e.clubLeaders)}</div>}
         </div>

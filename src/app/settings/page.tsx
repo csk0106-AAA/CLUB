@@ -36,7 +36,7 @@ const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string }[] = [
 const ROLE_MSG = "소모임 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요.";
 
 const digits = (s: string) => s.replace(/\D/g, "");
-const sectionTitle = { font: `400 ${fs(19)} var(--display)` } as const;
+const sectionTitle = { font: `700 ${fs(15)} var(--display)` } as const;
 const col = { display: "flex", flexDirection: "column", gap: 8 } as const;
 
 // 켜기·끄기 스위치 한 줄
@@ -218,35 +218,37 @@ export default function SettingsPage() {
   return (
     <main className="app with-tabs">
       {/* 홈 화면과 같은 윗줄: 캐릭터(왼쪽) + 관리자(권한이 있을 때만)·로그아웃 아이콘(오른쪽). 다음 줄: 이름 */}
-      <div className="say" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        {me ? <Avatar member={me} size={52} fallback="mascot" /> : <Mascot size={52} />}
-        <div style={{ display: "flex", gap: 6, flex: "none" }}>
-          {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
-          {me && me.perms.length > 0 && (
-            <Link href="/admin" aria-label="관리자 화면" title="관리자 화면" style={{ ...headIcon, color: "var(--blue-t)" }}>
-              <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-              관리자
-            </Link>
-          )}
-          {me && (
-            <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ ...headIcon, color: "var(--red-t)" }}>
-              <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-              로그아웃
-            </button>
-          )}
+      <header className="topbar">
+        <div className="row">
+          {me ? <Avatar member={me} size={44} fallback="mascot" /> : <Mascot size={44} />}
+          <div className="who">
+            {me && <b>{me.name} 님</b>}
+            {club && <span>{club}</span>}
+          </div>
+          <div className="icons">
+            {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
+            {me && me.perms.length > 0 && (
+              <Link href="/admin" aria-label="관리자 화면" title="관리자 화면" style={headIcon}>
+                <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+                관리자
+              </Link>
+            )}
+            {me && (
+              <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={headIcon}>
+                <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+                로그아웃
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-      <div>
-        {me && <b style={{ font: `400 ${fs(20)} var(--display)`, display: "block", overflowWrap: "anywhere" }}>{me.name} 님</b>}
-        {club && <div className="small">{club}</div>}
-      </div>
-      <h1 className="title" style={{ fontSize: fs(22) }}>설정</h1>
+      </header>
+      <h1 className="title">설정</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!me && !error && <p className="small">불러오는 중이에요…</p>}
       {me && pr && (
         <>
           <div aria-live="polite" role="status">
-            {note && <div className={`msg ${note.tone === "bad" ? "bad" : "info"}`}>{note.text}</div>}
+            {note && <div className={`msg ${note.tone === "bad" ? "bad" : "ok"}`}>{note.text}</div>}
           </div>
 
           {/* 1. 내 정보 */}
@@ -294,7 +296,7 @@ export default function SettingsPage() {
               {phoneChanged && phoneOk && (
                 <div className="msg info" style={{ fontSize: fs(15) }}>다음 로그인부터 초대코드가 <b>{phoneDigits.slice(-4)}</b>로 바뀌어요. 잊지 않게 기억해 주세요.</div>
               )}
-              <button className="btn" type="submit" style={{ minHeight: 50, fontSize: fs(18) }} disabled={saving || !infoChanged}>내 정보 저장</button>
+              <button className="btn" type="submit" disabled={saving || !infoChanged}>내 정보 저장</button>
             </form>
 
             {/* 소모임: 내가 가입한 소모임만 보여 주고, "+ 소모임 추가"로 더한다 */}
@@ -304,9 +306,9 @@ export default function SettingsPage() {
               {me.clubs.length > 0 && (
                 <ul aria-labelledby="c-l" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {me.clubs.map((c) => (
-                    <li key={c.name} className="row" style={{ border: "2px solid var(--line)", borderRadius: 12, padding: "6px 6px 6px 12px", background: "var(--card)" }}>
+                    <li key={c.name} className="row" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "6px 6px 6px 12px", background: "var(--card)" }}>
                       <b className="grow">{c.name}</b>
-                      {c.role && <span className="pill warn">{c.role}</span>}
+                      {c.role && <span className="pill ok">{c.role}</span>}
                       {c.role
                         ? <span className="small" style={{ fontSize: fs(13) }}>관리자에게 변경 요청</span>
                         : <button className="mini danger" type="button" disabled={saving} aria-label={`${c.name} 소모임에서 빠지기`}
@@ -319,7 +321,7 @@ export default function SettingsPage() {
               {pendingJoins.length > 0 && (
                 <ul aria-label="가입 신청 중인 소모임" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {pendingJoins.map((n) => (
-                    <li key={n} className="row" style={{ border: "2px dashed var(--line)", borderRadius: 12, padding: "8px 12px" }}>
+                    <li key={n} className="row" style={{ border: "1px dashed var(--line)", borderRadius: 8, padding: "8px 12px" }}>
                       <b className="grow">{n}</b>
                       <span className="pill gray">승인 대기</span>
                     </li>
@@ -328,7 +330,7 @@ export default function SettingsPage() {
               )}
               {!addingClub ? (
                 <button className="btn white" type="button" disabled={saving || requestable.length === 0} aria-expanded={false}
-                  style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(16) }} onClick={() => { setAddingClub(true); setClubPick(requestable[0] ?? ""); setJoinMsg(""); }}>
+                  style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(15) }} onClick={() => { setAddingClub(true); setClubPick(requestable[0] ?? ""); setJoinMsg(""); }}>
                   + 소모임 가입 신청
                 </button>
               ) : (
@@ -340,8 +342,8 @@ export default function SettingsPage() {
                   </div>
                   <input className="field" aria-label="소모임 임원에게 한마디 (선택)" placeholder="소모임 임원에게 한마디 (선택)" maxLength={200} value={joinMsg} onChange={(e) => setJoinMsg(e.target.value)} />
                   <div className="row" style={{ flexWrap: "wrap" }}>
-                    <button className="btn" type="button" disabled={saving || !clubPick} style={{ width: "auto", minHeight: 46, fontSize: fs(16) }} onClick={requestJoin}>신청 보내기</button>
-                    <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(16) }} onClick={() => setAddingClub(false)}>취소</button>
+                    <button className="btn" type="button" disabled={saving || !clubPick} style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={requestJoin}>신청 보내기</button>
+                    <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={() => setAddingClub(false)}>취소</button>
                   </div>
                 </div>
               )}
@@ -358,17 +360,12 @@ export default function SettingsPage() {
           <section className="card" aria-labelledby="s-theme" style={col}>
             <b id="s-theme" style={sectionTitle}>화면 모드</b>
             {/* 작은 선택 칸 3개를 가로로 */}
-            <div role="group" aria-labelledby="s-theme" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+            <div className="seg" role="group" aria-labelledby="s-theme">
               {THEME_OPTS.map((o) => {
                 const on = pr.theme === o.v;
                 return (
                   <button key={o.v} type="button" aria-pressed={on} title={o.sub} onClick={() => !on && savePrefs({ theme: o.v })}
-                    style={{
-                      minHeight: 44, padding: "6px 4px", borderRadius: 12, cursor: "pointer",
-                      border: `2px solid ${on ? "var(--blue)" : "var(--line)"}`,
-                      background: on ? "var(--blue-bg)" : "var(--card)", color: on ? "var(--blue-t)" : "var(--ink)",
-                      font: `700 ${fs(15)} var(--body)`, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    }}>
+                    style={{ minHeight: 44 }}>
                     <span aria-hidden="true">{o.v === "system" ? "◐" : o.v === "light" ? "☀" : "☾"}</span>
                     {o.label}
                   </button>
@@ -422,7 +419,7 @@ export default function SettingsPage() {
             <b id="s-push" style={sectionTitle}>알림 설정</b>
             <Switch id="sw-on" label="알림" sub={pr.notifyOn ? "켜져 있어요" : "꺼져 있어요. 알림을 보내지 않아요."} on={pr.notifyOn} onChange={toggleNotify} />
             {pr.notifyOn && device === "off" && (
-              <button type="button" className="btn white" style={{ minHeight: 46, fontSize: fs(16) }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
+              <button type="button" className="btn white" style={{ minHeight: 46, fontSize: fs(15) }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
             )}
             {pr.notifyOn && device === "unsupported" && (
               <span className="small">이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 공유 버튼 → “홈 화면에 추가”로 설치한 앱에서 켜 주세요. 하단 아이콘 숫자는 그대로 보여요.</span>

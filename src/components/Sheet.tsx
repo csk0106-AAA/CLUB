@@ -11,10 +11,10 @@ export function Sheet({ title, mascot, children }: { title: string; mascot?: boo
         {mascot ? (
           <div className="say" style={{ alignItems: "center" }}>
             <Mascot size={64} />
-            <h2 className="title" style={{ fontSize: fs(23) }}>{title}</h2>
+            <h2 className="title" style={{ fontSize: fs(20) }}>{title}</h2>
           </div>
         ) : (
-          <h2 className="title" style={{ fontSize: fs(23) }}>{title}</h2>
+          <h2 className="title" style={{ fontSize: fs(20) }}>{title}</h2>
         )}
         {children}
       </div>

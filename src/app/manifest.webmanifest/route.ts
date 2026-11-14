@@ -7,7 +7,7 @@ export function GET() {
       start_url: "/",
       display: "standalone",
       background_color: "#ffffff",
-      theme_color: "#58cc02",
+      theme_color: "#ffffff",
       lang: "ko",
       icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
     },

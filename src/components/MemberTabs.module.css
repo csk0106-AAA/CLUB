@@ -1,30 +1,30 @@
 /* 하단 탭 4개: 360px 화면에서도 넉넉히 들어가도록.
    탭 막대 높이는 그대로: 글자·아이콘은 글자 크기 설정(--fs)을 따르되 120%까지만(MemberTabs.tsx TAB_MAX 와 같은 값). */
 .many {
-  gap: 4px;
-  padding-left: 6px;
-  padding-right: 6px;
+  gap: 2px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .many :global(.tab) {
   min-width: 0;
   padding: 0 2px;
-  font-size: calc(clamp(13px, 3.8vw, 14.5px) * min(var(--fs, 1), 1.2));
+  font-size: calc(clamp(11.5px, 3.2vw, 12.5px) * min(var(--fs, 1), 1.2));
   line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
 }
 /* 새 글 숫자 배지(아이콘 오른쪽 위) */
 .tab { position: relative; }
 .badge {
-  position: absolute; top: 2px; left: calc(50% + 6px);
+  position: absolute; top: 2px; left: calc(50% + 5px);
   --bz: min(var(--fs, 1), 1.2);
-  min-width: calc(18px * var(--bz)); height: calc(18px * var(--bz)); padding: 0 5px; border-radius: 999px;
-  background: #e5262b; color: #fff; font-size: calc(11px * var(--bz)); font-weight: 800; line-height: calc(18px * var(--bz)); text-align: center;
-  letter-spacing: 0; box-shadow: 0 0 0 2px var(--bg, #fff);
+  min-width: calc(16px * var(--bz)); height: calc(16px * var(--bz)); padding: 0 4px; border-radius: 999px;
+  background: var(--red); color: var(--on-red); font-size: calc(10px * var(--bz)); font-weight: 700; line-height: calc(16px * var(--bz)); text-align: center;
+  letter-spacing: 0; box-shadow: 0 0 0 2px var(--bg);
 }
 .many :global(.tab) svg {
-  width: calc(28px * min(var(--fs, 1), 1.2));
-  height: calc(28px * min(var(--fs, 1), 1.2));
+  width: calc(22px * min(var(--fs, 1), 1.2));
+  height: calc(22px * min(var(--fs, 1), 1.2));
   flex: none;
 }

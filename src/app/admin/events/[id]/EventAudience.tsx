@@ -40,11 +40,11 @@ export function EventAudience({ eventId, audience, onSaved }: { eventId: string;
 
   return (
     <section className="card" aria-label="공개 대상" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: `400 ${fs(19)} var(--display)` }}>공개 대상</b>
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>공개 대상</b>
       <span className="small">이 행사는 고른 회원에게만 목록·참석 신청·알림이 보여요. 전체 회원이 기본이에요.</span>
       <AudiencePicker value={value} onChange={setValue} legend="누구에게 보일까요?" />
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      <button className="btn" type="button" disabled={busy || !dirty} style={{ width: "auto", minWidth: 160, alignSelf: "flex-start", minHeight: 46, fontSize: fs(16) }} onClick={save}>
+      <button className="btn" type="button" disabled={busy || !dirty} style={{ width: "auto", minWidth: 160, alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }} onClick={save}>
         {busy ? "저장 중…" : "공개 대상 저장"}
       </button>
     </section>

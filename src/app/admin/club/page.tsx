@@ -90,7 +90,7 @@ function OrgEditor({ members }: { members: Member[] }) {
           </tbody>
         </table>
       </div>
-      <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setErr(""); setOpen(true); }}>+ 항목 추가</button>
+      <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setErr(""); setOpen(true); }}>+ 항목 추가</button>
       <Popup id="org-new" width={640} title="조직도 항목 추가" open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(add) !== JSON.stringify(BLANK)}>
       <form onSubmit={(e) => { e.preventDefault(); create(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {err && <div className="msg bad" role="alert">{err}</div>}
@@ -102,7 +102,7 @@ function OrgEditor({ members }: { members: Member[] }) {
           <div><label className="l" htmlFor="o-freq">모임 횟수</label><input id="o-freq" className="field" value={add.frequency} onChange={(e) => setAdd({ ...add, frequency: e.target.value })} /></div>
           <div><label className="l" htmlFor="o-lead">리더</label>{sel(add.leaderId, (v) => setAdd({ ...add, leaderId: v }), "리더", "o-lead")}</div>
         </div>
-        <button className="btn" type="submit" disabled={!add.dept.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }}>추가</button>
+        <button className="btn" type="submit" disabled={!add.dept.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }}>추가</button>
       </form>
       </Popup>
     </>
@@ -116,7 +116,7 @@ function OrgAdmin() {
   }, []);
   return (
     <>
-      <h1 className="title" style={{ fontSize: fs(24) }}>조직도</h1>
+      <h1 className="title" style={{ fontSize: fs(20) }}>조직도</h1>
       <OrgEditor members={members} />
     </>
   );

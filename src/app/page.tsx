@@ -57,7 +57,7 @@ export default function LoginPage() {
     <main className="app">
       <div style={{ paddingTop: 20, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
         <Mascot />
-        <h1 className="title center" style={{ fontSize: fs(23) }}>
+        <h1 className="title center" style={{ fontSize: fs(20) }}>
           {club ? club.clubName : "원우회"}
         </h1>
         <p className="small" style={{ margin: 0 }}>원우회 회원 전용</p>

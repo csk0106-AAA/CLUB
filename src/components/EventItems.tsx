@@ -187,7 +187,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
 
       {canEdit && (
         <>
-        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }} onClick={() => { setErr(""); setOpen(true); }}>+ {TITLE[kind]} 추가</button>
+        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setErr(""); setOpen(true); }}>+ {TITLE[kind]} 추가</button>
         <Popup id={`item-new-${kind}`} title={`${TITLE[kind]} 추가`} open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(add) !== JSON.stringify(BLANK[kind])}>
         <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {err && <div className="msg bad" role="alert">{err}</div>}
@@ -213,7 +213,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
               </>
             )}
           </div>
-          <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(17) }}>추가</button>
+          <button className="btn" type="submit" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }}>추가</button>
         </form>
         </Popup>
         </>
