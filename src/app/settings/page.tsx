@@ -59,6 +59,8 @@ export default function SettingsPage() {
   // 내 정보 입력칸(저장 버튼으로 한 번에 저장)
   const [form, setForm] = useState({ company: "", title: "", phone: "" });
   // 글자 크기: 이 기기에만 저장(서버 저장 없음)
+  const [addingClub, setAddingClub] = useState(false);
+  const [clubPick, setClubPick] = useState("");
   // 띠를 끄는 동안에는 미리보기만 바꾸고, 손을 떼면(또는 키보드로 바꾸면) 화면 전체에 적용한다.
   const [scale, setScale] = useState(SCALE_DEFAULT);
   const [applied, setApplied] = useState(SCALE_DEFAULT);
@@ -175,6 +177,8 @@ export default function SettingsPage() {
   }
 
   const clubNames = me ? [...me.clubOptions, ...me.clubs.map((c) => c.name).filter((n) => !me.clubOptions.includes(n))] : [];
+  // 아직 가입하지 않은 소모임(+ 소모임 추가에서 고를 수 있는 것)
+  const joinable = me ? me.clubOptions.filter((n) => !me.clubs.some((c) => c.name === n)) : [];
   const pr = me?.prefs;
 
   return (
@@ -242,28 +246,44 @@ export default function SettingsPage() {
               <button className="btn" type="submit" style={{ minHeight: 50, fontSize: 18 }} disabled={saving || !infoChanged}>내 정보 저장</button>
             </form>
 
+            {/* 소모임: 내가 가입한 소모임만 보여 주고, "+ 소모임 추가"로 더한다 */}
             <div style={col}>
-              <span className="l" id="c-l" style={{ marginBottom: 0 }}>소모임 (여러 개 고를 수 있어요)</span>
-              {clubNames.length === 0 ? (
-                <span className="small">아직 등록된 소모임이 없어요. 관리자가 소모임을 만들면 고를 수 있어요.</span>
+              <span className="l" id="c-l" style={{ marginBottom: 0 }}>내 소모임</span>
+              {me.clubs.length === 0 && <span className="small">아직 가입한 소모임이 없어요.</span>}
+              {me.clubs.length > 0 && (
+                <ul aria-labelledby="c-l" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {me.clubs.map((c) => (
+                    <li key={c.name} className="row" style={{ border: "2px solid var(--line)", borderRadius: 12, padding: "6px 6px 6px 12px", background: "var(--card)" }}>
+                      <b className="grow">{c.name}</b>
+                      {c.role && <span className="pill warn">{c.role}</span>}
+                      {c.role
+                        ? <span className="small" style={{ fontSize: 13 }}>관리자에게 변경 요청</span>
+                        : <button className="mini danger" type="button" disabled={saving} aria-label={`${c.name} 소모임에서 빠지기`}
+                            onClick={() => window.confirm(`${c.name} 소모임에서 빠질까요?`) && toggleClub(c.name)}>빼기</button>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!addingClub ? (
+                <button className="btn white" type="button" disabled={saving || joinable.length === 0} aria-expanded={false}
+                  style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: 16 }} onClick={() => { setAddingClub(true); setClubPick(joinable[0] ?? ""); }}>
+                  + 소모임 추가
+                </button>
               ) : (
-                <div className="pick" role="group" aria-labelledby="c-l">
-                  {clubNames.map((n) => {
-                    const seat = me.clubs.find((c) => c.name === n);
-                    return (
-                      <button key={n} type="button" className="opt rowopt" aria-pressed={Boolean(seat)} disabled={saving} onClick={() => toggleClub(n)}
-                        aria-describedby={seat?.role ? "c-role" : undefined}>
-                        <span className="grow" style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                          <span className="name">{n}</span>
-                          {seat?.role && <span className="pill warn">{seat.role}</span>}
-                        </span>
-                        <span className="tick" />
-                      </button>
-                    );
-                  })}
+                <div className="row" style={{ flexWrap: "wrap" }}>
+                  <select className="field" aria-label="가입할 소모임" style={{ flex: "1 1 160px", width: "auto", minHeight: 46 }} value={clubPick} onChange={(e) => setClubPick(e.target.value)}>
+                    {joinable.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <button className="btn" type="button" disabled={saving || !clubPick} style={{ width: "auto", minHeight: 46, fontSize: 16 }}
+                    onClick={async () => { await toggleClub(clubPick); setAddingClub(false); }}>추가</button>
+                  <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: 16 }} onClick={() => setAddingClub(false)}>취소</button>
                 </div>
               )}
-              <span className="small" id="c-role">누르면 바로 저장돼요. 소모임 직책(예: 회장)은 관리자가 정해요. 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요.</span>
+              <span className="small">
+                {clubNames.length === 0
+                  ? "아직 등록된 소모임이 없어요. 관리자가 소모임을 만들면 추가할 수 있어요."
+                  : joinable.length === 0 ? "등록된 소모임에 모두 가입했어요." : "소모임 직책(예: 회장)은 관리자가 정해요. 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요."}
+              </span>
             </div>
           </section>
 
