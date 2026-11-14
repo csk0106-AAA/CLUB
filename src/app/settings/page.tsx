@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { IconShield } from "@/components/Icons";
 import { Mascot } from "@/components/Mascot";
 import { MemberTabs } from "@/components/MemberTabs";
 import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS } from "@/components/ThemeBoot";
@@ -183,7 +185,21 @@ export default function SettingsPage() {
 
   return (
     <main className="app with-tabs">
-      <h1 className="title">설정</h1>
+      <div className="row">
+        <h1 className="title grow">설정</h1>
+        {/* 관리자 권한이 있는 회원에게만: 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
+        {me && me.perms.length > 0 && (
+          <Link href="/admin" aria-label="관리자 화면" title="관리자 화면"
+            style={{
+              display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+              minWidth: 56, minHeight: 52, padding: "4px 8px", borderRadius: 14, textDecoration: "none",
+              border: "2px solid var(--line)", background: "var(--card)", color: "var(--blue-t)", font: "700 12px var(--body)",
+            }}>
+            <IconShield size={24} />
+            관리자
+          </Link>
+        )}
+      </div>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!me && !error && <p className="small">불러오는 중이에요…</p>}
       {me && pr && (

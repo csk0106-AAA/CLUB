@@ -1,14 +1,14 @@
-/* 하단 탭이 5~6개여도 360px 화면에 들어가도록 간격·글자·아이콘을 줄인다. */
+/* 하단 탭 5개가 360px 화면에도 넉넉히 들어가도록 */
 .many {
-  gap: 2px;
-  padding-left: 4px;
-  padding-right: 4px;
+  gap: 4px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 .many :global(.tab) {
   min-width: 0;
-  padding: 0 1px;
-  font-size: clamp(10.5px, 3vw, 13px);
-  letter-spacing: -0.04em;
+  padding: 0 2px;
+  font-size: clamp(11.5px, 3.4vw, 13px);
+  letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -21,7 +21,7 @@
   letter-spacing: 0; box-shadow: 0 0 0 2px var(--bg, #fff);
 }
 .many :global(.tab) svg {
-  width: 23px;
-  height: 23px;
+  width: 25px;
+  height: 25px;
   flex: none;
 }

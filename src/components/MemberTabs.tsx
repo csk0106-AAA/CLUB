@@ -4,29 +4,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { setBadge } from "@/lib/push-client";
-import { IconBoard, IconGear, IconHome, IconOrg, IconProfileBook, IconShield } from "./Icons";
+import { IconBoard, IconGear, IconHome, IconOrg, IconProfileBook } from "./Icons";
 import css from "./MemberTabs.module.css";
 
-// 관리자 권한 여부는 화면을 옮겨 다녀도 한 번만 묻는다(탭이 깜빡이지 않게).
-let adminCache: boolean | null = null;
-
-// 하단 탭: 행사 / 게시글 / 조직도 / 프로필 북 / 설정 / 관리자(관리자 권한이 있는 회원만).
+// 하단 탭: 행사 / 게시글 / 조직도 / 프로필 북 / 설정.
+// 관리자 화면은 설정 안(설정 화면 위쪽 관리자 아이콘)으로 들어가므로, 관리자 화면에서는 "설정" 탭이 켜진다.
 // 이 탭을 쓰는 화면은 <main className="app with-tabs"> 로 감싼다.
 type Tab = "events" | "board" | "org" | "profiles" | "settings" | "admin";
 type Counts = { events: number; posts: number; profiles: number };
 // 탭 → 새 글 종류(lib/unread.ts)
 const UNREAD_OF: Partial<Record<Tab, keyof Counts>> = { events: "events", board: "posts", profiles: "profiles" };
 
-export function MemberTabs({ on }: { on: Tab }) {
-  const [isAdmin, setIsAdmin] = useState<boolean>(adminCache ?? on === "admin");
-  useEffect(() => {
-    if (adminCache !== null) return;
-    api<{ perms: string[] }>("/api/me").then((r) => {
-      if (!r.ok) return;
-      adminCache = r.data.perms.length > 0;
-      setIsAdmin(adminCache);
-    });
-  }, []);
+export function MemberTabs({ on: tab }: { on: Tab }) {
+  const on: Tab = tab === "admin" ? "settings" : tab;
 
   // 새 글 숫자: 지금 연 탭은 "봤음"으로 표시하고, 나머지 탭의 숫자를 받는다(1분마다 다시 확인).
   const [unread, setUnread] = useState<Counts>({ events: 0, posts: 0, profiles: 0 });
@@ -54,7 +44,6 @@ export function MemberTabs({ on }: { on: Tab }) {
     { key: "org", href: "/org", label: "조직도", icon: <IconOrg /> },
     { key: "profiles", href: "/profiles", label: "프로필 북", icon: <IconProfileBook /> },
     { key: "settings", href: "/settings", label: "설정", icon: <IconGear /> },
-    ...(isAdmin ? [{ key: "admin", href: "/admin", label: "관리자", icon: <IconShield /> }] : []),
   ];
   return (
     <nav className={`tabs ${css.many}`} aria-label="메뉴">
@@ -74,7 +63,5 @@ export function MemberTabs({ on }: { on: Tab }) {
   );
 }
 
-// 로그아웃하면 다른 계정으로 들어올 수 있으니 기억한 값을 지운다.
-export function resetTabsCache() {
-  adminCache = null;
-}
+// (예전 관리자 탭용 기억 값 초기화. 관리자 탭이 설정 안으로 옮겨져 지금은 할 일이 없다.)
+export function resetTabsCache() {}
