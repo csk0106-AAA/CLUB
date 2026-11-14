@@ -263,14 +263,25 @@ export default function SettingsPage() {
           {/* 2. 화면 모드 */}
           <section className="card" aria-labelledby="s-theme" style={col}>
             <b id="s-theme" style={sectionTitle}>화면 모드</b>
-            <div className="pick" role="group" aria-labelledby="s-theme">
-              {THEME_OPTS.map((o) => (
-                <button key={o.v} type="button" className="opt rowopt" aria-pressed={pr.theme === o.v} onClick={() => pr.theme !== o.v && savePrefs({ theme: o.v })}>
-                  <span className="grow"><span className="name">{o.label}</span><span className="small">{o.sub}</span></span>
-                  <span className="tick" />
-                </button>
-              ))}
+            {/* 작은 선택 칸 3개를 가로로 */}
+            <div role="group" aria-labelledby="s-theme" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+              {THEME_OPTS.map((o) => {
+                const on = pr.theme === o.v;
+                return (
+                  <button key={o.v} type="button" aria-pressed={on} title={o.sub} onClick={() => !on && savePrefs({ theme: o.v })}
+                    style={{
+                      minHeight: 44, padding: "6px 4px", borderRadius: 12, cursor: "pointer",
+                      border: `2px solid ${on ? "var(--blue)" : "var(--line)"}`,
+                      background: on ? "var(--blue-bg)" : "var(--card)", color: on ? "var(--blue-t)" : "var(--ink)",
+                      font: "700 15px var(--body)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    }}>
+                    <span aria-hidden="true">{o.v === "system" ? "◐" : o.v === "light" ? "☀" : "☾"}</span>
+                    {o.label}
+                  </button>
+                );
+              })}
             </div>
+            <span className="small">{THEME_OPTS.find((o) => o.v === pr.theme)?.sub}</span>
           </section>
 
           {/* 2-1. 글자 크기 (이 기기만) */}
