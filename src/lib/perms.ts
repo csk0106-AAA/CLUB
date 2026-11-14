@@ -1,6 +1,6 @@
 import { parseJson } from "./api";
 import { memberClubs } from "./lists";
-import { getSetting } from "./store";
+import { getSetting, getStore } from "./store";
 
 // 권한 모델
 //  - 그룹 권한: Settings "permGroups" = { "pos:회장": ["all"], "club:회장": ["board"], … }
@@ -57,4 +57,31 @@ export function isClubOfficer(m: M): boolean {
 export function canWritePosts(m: M, groups: PermGroups): boolean {
   const p = effectivePerms(m, groups);
   return p.includes("all") || p.includes("board") || isClubOfficer(m);
+}
+
+// ---- 권한 변경 검사(서버) ----
+
+// 지금 DB 기준으로 이 회원이 "모든 권한"인지(세션은 로그인 때 값이라 다시 계산한다)
+export async function isAllNow(mid: string): Promise<boolean> {
+  const me = (await (await getStore()).list("Members")).find((m) => m.id === mid);
+  return !!me && effectivePerms(me, await getPermGroups()).includes("all");
+}
+
+type MI = M & { id?: string };
+
+// 바뀌기 전/후 회원과 그룹 권한을 비교한다.
+//  - 누군가의 최종 권한이 바뀌면 "모든 권한" 관리자만 할 수 있다.
+//  - 바뀐 뒤에도 "모든 권한" 회원이 한 명 이상 있어야 한다.
+// 문제가 있으면 [메시지, 상태코드], 없으면 null.
+export function checkPermChange(
+  before: MI[], gBefore: PermGroups, after: MI[], gAfter: PermGroups, actorIsAll: boolean,
+): [string, number] | null {
+  const prev = new Map(before.map((m) => [m.id ?? "", effectivePerms(m, gBefore).join("|")]));
+  const next = new Map(after.map((m) => [m.id ?? "", effectivePerms(m, gAfter).join("|")]));
+  const ids = new Set([...prev.keys(), ...next.keys()]);
+  const changed = [...ids].some((id) => (prev.get(id) ?? "") !== (next.get(id) ?? ""));
+  if (!changed) return null;
+  if (!actorIsAll) return ["권한이 바뀌는 변경은 “모든 권한” 관리자만 할 수 있어요.", 403];
+  if (![...next.values()].some((p) => p === "all")) return ["“모든 권한”을 가진 회원이 한 명 이상 있어야 해요. 다른 회원에게 먼저 모든 권한을 주세요.", 400];
+  return null;
 }

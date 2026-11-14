@@ -9,6 +9,7 @@ export function GET() {
       background_color: "#ffffff",
       theme_color: "#58cc02",
       lang: "ko",
+      icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
     },
     { headers: { "Content-Type": "application/manifest+json" } },
   );

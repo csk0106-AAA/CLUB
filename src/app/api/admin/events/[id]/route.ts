@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
+import { audienceInput } from "@/lib/audience";
+import { getLists } from "@/lib/lists";
+import { notifyEvent } from "@/lib/push";
 import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +48,14 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   // 조건별 회비 선택지: 회원구분(설정 값), 직책(명단에 있는 값)
   const kinds = (await getSetting<{ value: string }[]>("memberKinds", [])).map((k) => k.value);
-  // 직책: 명단에 있는 직책 + "일반회원"(직책이 없는 회원)
+  // 직책: "회원 구분" 화면의 직책 목록 + 명단에만 있는 직책 + "일반회원"(직책이 없는 회원)
+  const listed = (await getLists()).positions;
   const positions = [
-    ...[...new Set(members.map((m) => m.position?.trim()).filter((p) => p && p !== "-" && p !== GENERAL_POSITION))].sort((a, b) => a.localeCompare(b, "ko")),
-    GENERAL_POSITION,
+    ...new Set([
+      ...listed.filter((p) => p !== GENERAL_POSITION),
+      ...[...new Set(members.map((m) => m.position?.trim() ?? "").filter((p) => p && p !== "-" && p !== GENERAL_POSITION && !listed.includes(p)))].sort((a, b) => a.localeCompare(b, "ko")),
+      GENERAL_POSITION,
+    ]),
   ];
   return NextResponse.json({ event: { ...event, feeRules: readRules(event.feeRules) }, rows, options: { kinds, positions } });
 }
@@ -66,6 +73,7 @@ const patch = z.object({
   account: z.string().max(120).optional(),
   accountHolder: z.string().max(60).optional(),
   feeRules: feeRules.optional(), // 조건별 회비
+  audience: audienceInput.optional(), // 공개 대상(비우면 전체 회원)
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -74,13 +82,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const parsed = patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 회비는 숫자만 넣어 주세요.");
-  const { published, feeRules: rules, ...rest } = parsed.data;
+  const { published, feeRules: rules, audience, ...rest } = parsed.data;
   const s = await getStore();
+  const before = (await s.list("Events")).find((e) => e.id === id);
+  if (!before) return bad("행사를 찾을 수 없어요.", 404);
   const row = await s.update("Events", id, {
     ...rest,
     ...(rules === undefined ? {} : { feeRules: JSON.stringify(rules) }),
     ...(published === undefined ? {} : { published: String(published) }),
+    ...(audience === undefined ? {} : { audience: audience.mode === "all" ? "" : JSON.stringify(audience) }),
   });
   if (!row) return bad("행사를 찾을 수 없어요.", 404);
+  // 회원에게 공개된 행사가 새로 공개되거나 내용이 바뀌면 알림(배지·휴대폰)
+  const changed = Object.keys(parsed.data).some((k) => k !== "status");
+  if (row.published === "true" && changed) {
+    await notifyEvent(id, before.published === "true" ? "update" : "new");
+  }
   return NextResponse.json({ event: row });
 }

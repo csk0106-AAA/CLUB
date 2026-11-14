@@ -21,9 +21,44 @@
   --red-t: #b3261e;
   --orange-bg: #fff0d5;
   --orange-t: #8f5200;
+  /* 표면·보조 색 (다크 모드에서 바뀜) */
+  --card: #ffffff;          /* 카드·버튼·말풍선 바탕 */
+  --blue-line: #9adcf9;     /* 선택된 탭·내 말풍선 테두리 */
+  --green-line: #9ae05a;
+  --off-bg: #e5e5e5;        /* 비활성 버튼·잠긴 노드 */
+  --off-line: #cfcfcf;
+  --off-ink: #6b6b6b;
+  --ic-ink: #ffffff;        /* 진한 색 동그라미 위 글자 */
   --display: "Jua", "Noto Sans KR", sans-serif;
   --body: "Noto Sans KR", system-ui, sans-serif;
   color-scheme: light;
+}
+
+/* 다크 모드: 기기 설정(시스템)이 다크이고 회원이 "기본(밝은)"을 고르지 않았을 때, 또는 회원이 "다크"를 골랐을 때.
+   두 블록의 값은 같게 유지한다. 사회자 화면(.host)은 원래 어두운 무대라 따로 둔다. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131f24; --page: #0b1418; --card: #1a2a31; --soft: #202f36; --line: #37464f;
+    --ink: #eef4f7; --sub: #a9bcc6;
+    --green-bg: #1d3a14; --green-t: #8ee04f; --green-line: #3d7a1a;
+    --blue-bg: #0f3347; --blue-t: #7fd1fa; --blue-line: #2a6f92;
+    --red-bg: #3b2023; --red-t: #ff8f8f;
+    --orange-bg: #3d2a0d; --orange-t: #ffc266;
+    --off-bg: #2c3d45; --off-line: #37464f; --off-ink: #a9bcc6;
+    --ic-ink: #131f24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131f24; --page: #0b1418; --card: #1a2a31; --soft: #202f36; --line: #37464f;
+  --ink: #eef4f7; --sub: #a9bcc6;
+  --green-bg: #1d3a14; --green-t: #8ee04f; --green-line: #3d7a1a;
+  --blue-bg: #0f3347; --blue-t: #7fd1fa; --blue-line: #2a6f92;
+  --red-bg: #3b2023; --red-t: #ff8f8f;
+  --orange-bg: #3d2a0d; --orange-t: #ffc266;
+  --off-bg: #2c3d45; --off-line: #37464f; --off-ink: #a9bcc6;
+  --ic-ink: #131f24;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -69,9 +104,9 @@ body {
 }
 .btn:active:not(:disabled) { transform: translateY(3px); border-bottom-width: 1px; }
 .btn.blue { background: var(--blue); border-bottom-color: var(--blue-d); color: #06324a; }
-.btn.white { background: #fff; color: var(--blue-t); border: 2px solid var(--line); border-bottom-width: 4px; }
+.btn.white { background: var(--card); color: var(--blue-t); border: 2px solid var(--line); border-bottom-width: 4px; }
 .btn.red { background: var(--red); border-bottom-color: var(--red-d); color: #3d0505; }
-.btn:disabled { background: #e5e5e5; border-bottom-color: #cfcfcf; color: #6b6b6b; cursor: not-allowed; }
+.btn:disabled { background: var(--off-bg); border-bottom-color: var(--off-line); color: var(--off-ink); cursor: not-allowed; }
 .btn:focus-visible, .field:focus-visible, .opt:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
 .field {
@@ -95,14 +130,14 @@ label.l { font-size: 15px; font-weight: 700; color: var(--sub); display: block; 
 .opt {
   display: flex; align-items: flex-start; flex-direction: column; gap: 4px;
   width: 100%; min-height: 58px; padding: 12px 14px; text-align: left;
-  border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 16px; background: #fff;
+  border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 16px; background: var(--card);
   font: 700 17px var(--body); color: var(--ink); cursor: pointer;
 }
 .opt:active { transform: translateY(2px); border-bottom-width: 2px; }
 .opt:disabled { opacity: 0.55; cursor: not-allowed; }
 .opt .name { font: 400 20px var(--display); }
 
-.card { border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 16px; padding: 12px 14px; background: #fff; }
+.card { border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 16px; padding: 12px 14px; background: var(--card); color: var(--ink); }
 
 .msg { border-radius: 16px; padding: 12px 14px; font-weight: 700; font-size: 16px; }
 .msg.bad { background: var(--red-bg); color: var(--red-t); }
@@ -116,15 +151,15 @@ label.l { font-size: 15px; font-weight: 700; color: var(--sub); display: block; 
 .app.with-tabs { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0 auto; max-width: 560px;
-  display: flex; gap: 6px; border-top: 2px solid var(--line); background: #fff;
+  display: flex; gap: 6px; border-top: 2px solid var(--line); background: var(--bg);
   padding: 6px 8px max(10px, env(safe-area-inset-bottom));
 }
 @media (min-width: 900px) { .tabs { max-width: 720px; } }
 .tab {
   flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  font-size: 13px; font-weight: 700; color: #6b6b6b; text-decoration: none; border: 2px solid transparent; border-radius: 12px;
+  font-size: 13px; font-weight: 700; color: var(--sub); text-decoration: none; border: 2px solid transparent; border-radius: 12px;
 }
-.tab.on { color: var(--blue-t); background: var(--blue-bg); border-color: #9adcf9; }
+.tab.on { color: var(--blue-t); background: var(--blue-bg); border-color: var(--blue-line); }
 .tab svg { width: 26px; height: 26px; }
 .tab:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
@@ -132,7 +167,7 @@ label.l { font-size: 15px; font-weight: 700; color: var(--sub); display: block; 
 .lh { display: flex; align-items: center; gap: 12px; min-height: 44px; }
 .lh .x {
   width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 12px;
-  font-size: 28px; font-weight: 700; color: #6b6b6b; text-decoration: none;
+  font-size: 28px; font-weight: 700; color: var(--sub); text-decoration: none;
 }
 .lh .x:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .prog { flex: 1; height: 16px; background: var(--line); border-radius: 8px; overflow: hidden; }
@@ -145,14 +180,14 @@ label.l { font-size: 15px; font-weight: 700; color: var(--sub); display: block; 
 .say svg { flex: none; margin: 0; }
 .bubble {
   position: relative; border: 2px solid var(--line); border-radius: 16px; padding: 10px 14px;
-  font-weight: 700; font-size: 17px; line-height: 1.45; background: #fff; white-space: pre-wrap;
+  font-weight: 700; font-size: 17px; line-height: 1.45; background: var(--card); white-space: pre-wrap;
 }
 .bubble::before {
-  content: ""; position: absolute; left: -9px; bottom: 16px; width: 14px; height: 14px; background: #fff;
+  content: ""; position: absolute; left: -9px; bottom: 16px; width: 14px; height: 14px; background: var(--card);
   border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); transform: rotate(45deg);
 }
 .mine {
-  align-self: flex-end; max-width: 88%; background: var(--blue-bg); border: 2px solid #9adcf9; border-radius: 16px;
+  align-self: flex-end; max-width: 88%; background: var(--blue-bg); border: 2px solid var(--blue-line); border-radius: 16px;
   padding: 10px 14px; font-weight: 700; font-size: 17px; color: var(--blue-t); white-space: pre-wrap;
 }
 
@@ -160,7 +195,7 @@ label.l { font-size: 15px; font-weight: 700; color: var(--sub); display: block; 
 .fb { border-radius: 16px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; text-align: left; width: 100%; border: 0; font-family: var(--body); }
 .fb b { font: 400 19px var(--display); display: block; }
 .fb span.t { font-size: 15px; font-weight: 700; }
-.fb .ic { width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 900; color: #fff; }
+.fb .ic { width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 900; color: var(--ic-ink); }
 .fb.bad { background: var(--red-bg); color: var(--red-t); }
 .fb.bad .ic { background: var(--red-t); }
 .fb.good { background: var(--green-bg); color: var(--green-t); }
@@ -184,8 +219,8 @@ button.fb:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .nodewrap.l { padding-right: 90px; }
 .nodewrap.r { padding-left: 90px; }
 .node {
-  width: 84px; height: 78px; border-radius: 50% / 48%; border: 0; border-bottom: 8px solid #cfcfcf; background: #e5e5e5;
-  display: grid; place-items: center; color: #6b6b6b; position: relative; text-decoration: none;
+  width: 84px; height: 78px; border-radius: 50% / 48%; border: 0; border-bottom: 8px solid var(--off-line); background: var(--off-bg);
+  display: grid; place-items: center; color: var(--off-ink); position: relative; text-decoration: none;
 }
 .node svg { width: 36px; height: 36px; }
 .node.now { background: var(--green); border-bottom-color: var(--green-d); color: #fff; }
@@ -196,18 +231,18 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .nl { font: 400 17px var(--display); text-align: center; }
 .nl small { display: block; font: 500 14px var(--body); color: var(--sub); }
 .start {
-  position: absolute; top: -32px; left: 50%; transform: translateX(-50%); background: #fff; border: 2px solid var(--line);
+  position: absolute; top: -32px; left: 50%; transform: translateX(-50%); background: var(--card); border: 2px solid var(--line);
   border-radius: 12px; padding: 1px 10px; font: 400 16px var(--display); color: var(--green-t); white-space: nowrap;
 }
 .start::after {
-  content: ""; position: absolute; left: 50%; bottom: -7px; width: 10px; height: 10px; background: #fff;
+  content: ""; position: absolute; left: 50%; bottom: -7px; width: 10px; height: 10px; background: var(--card);
   border-right: 2px solid var(--line); border-bottom: 2px solid var(--line); transform: translateX(-50%) rotate(45deg);
 }
 
 /* 마이크 버튼 */
 .mic {
   width: 64px; min-height: 54px; flex: none; border-radius: 16px; border: 2px solid var(--line); border-bottom-width: 4px;
-  background: #fff; color: var(--blue-t); cursor: pointer; display: grid; place-items: center;
+  background: var(--card); color: var(--blue-t); cursor: pointer; display: grid; place-items: center;
 }
 .mic.on { background: var(--red); border-color: var(--red-d); color: #3d0505; }
 .mic:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
@@ -215,7 +250,7 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 /* 아래에서 올라오는 선택 창 */
 .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
 .sheet {
-  background: #fff; width: 100%; max-width: 560px; border-radius: 24px 24px 0 0;
+  background: var(--bg); color: var(--ink); width: 100%; max-width: 560px; border-radius: 24px 24px 0 0;
   padding: 20px 18px max(22px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px;
   max-height: 90vh; overflow: auto;
 }
@@ -261,7 +296,7 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .subnav { display: flex; gap: 6px; flex-wrap: wrap; }
 .subnav a, .tabsx button {
   min-height: 46px; display: inline-flex; align-items: center; padding: 0 16px; cursor: pointer;
-  border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 14px; background: #fff;
+  border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 14px; background: var(--card);
   font: 400 18px var(--display); color: var(--sub); text-decoration: none;
 }
 .subnav a.on, .tabsx button.on { border-color: var(--blue); background: var(--blue-bg); color: var(--blue-t); }
@@ -275,13 +310,13 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .tbl th { text-align: left; font-size: 14px; color: var(--sub); background: var(--soft); padding: 8px 12px; white-space: nowrap; }
 .tbl td { padding: 8px 12px; border-top: 2px solid var(--line); vertical-align: middle; }
 .mini {
-  min-height: 40px; border: 2px solid var(--line); border-bottom-width: 3px; border-radius: 12px; background: #fff;
+  min-height: 40px; border: 2px solid var(--line); border-bottom-width: 3px; border-radius: 12px; background: var(--card);
   color: var(--blue-t); font: 400 16px var(--display); padding: 0 12px; cursor: pointer; white-space: nowrap;
 }
 .mini:disabled { opacity: 0.5; cursor: not-allowed; }
 .mini.danger { color: var(--red-t); }
 .checks { display: flex; flex-wrap: wrap; gap: 8px; }
-.checks label { display: inline-flex; align-items: center; gap: 6px; font-size: 16px; border: 2px solid var(--line); border-radius: 12px; padding: 6px 12px; background: #fff; }
+.checks label { display: inline-flex; align-items: center; gap: 6px; font-size: 16px; border: 2px solid var(--line); border-radius: 12px; padding: 6px 12px; background: var(--card); }
 .checks input { width: 20px; height: 20px; }
 .num { font-variant-numeric: tabular-nums; }
 
@@ -290,7 +325,7 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .meter i { display: block; height: 100%; background: var(--green); }
 /* 순서 안내 (① › ② › …) */
 .flow { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 0; padding: 0; font-weight: 700; font-size: 15px; }
-.flow li:not([aria-hidden]) { background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 3px 10px; }
+.flow li:not([aria-hidden]) { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 3px 10px; }
 .flow li[aria-hidden] { color: var(--sub); }
 
 /* 동그라미 아바타·번호 (목업 ⑨ ⑩). 밝은 바탕색 위라 글자는 어두운 색으로 대비 4.5:1 이상 */
@@ -314,8 +349,8 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 /* 조직도 그림 (목업 .orgc) */
 .orgc { display: flex; flex-direction: column; gap: 10px; }
 .orow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.on1, .on2 { border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 14px; padding: 8px 12px; display: flex; flex-direction: column; background: #fff; min-width: 0; overflow-wrap: anywhere; }
-.on1 { align-self: center; min-width: min(200px, 100%); background: var(--green-bg); border-color: #9ae05a; text-align: center; }
+.on1, .on2 { border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 14px; padding: 8px 12px; display: flex; flex-direction: column; background: var(--card); min-width: 0; overflow-wrap: anywhere; }
+.on1 { align-self: center; min-width: min(200px, 100%); background: var(--green-bg); border-color: var(--green-line); text-align: center; }
 .on2.mid { align-self: center; min-width: min(240px, 100%); text-align: center; }
 .on1 span, .on2 span { font-size: 14px; color: var(--sub); }
 @media (max-width: 420px) { .orow { grid-template-columns: 1fr; } }
@@ -335,3 +370,33 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .df-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; pointer-events: none; }
 .df-hint { font-size: 14px; font-weight: 700; color: var(--red-t); min-height: 0; }
 .df-hint:not(:empty) { margin-top: 4px; }
+
+/* 다크 모드에서 화면 코드에 직접 적힌 흰 바탕(style="background: #fff")도 어두운 카드 색으로 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [style*="background: #fff"],
+  :root:not([data-theme="light"]) [style*="background:#fff"],
+  :root:not([data-theme="light"]) [style*="background: rgb(255, 255, 255)"] { background: var(--card) !important; }
+}
+:root[data-theme="dark"] [style*="background: #fff"],
+:root[data-theme="dark"] [style*="background:#fff"],
+:root[data-theme="dark"] [style*="background: rgb(255, 255, 255)"] { background: var(--card) !important; }
+
+/* 켜기·끄기 스위치 (button role="switch" aria-checked) */
+.switchrow { display: flex; align-items: center; gap: 12px; min-height: 48px; }
+.switchrow .grow { min-width: 0; }
+.switch {
+  flex: none; position: relative; width: 60px; height: 34px; border-radius: 17px; cursor: pointer; padding: 0;
+  border: 2px solid var(--line); background: var(--off-bg); transition: background 0.2s, border-color 0.2s;
+}
+.switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); transition: transform 0.2s;
+}
+.switch[aria-checked="true"] { background: var(--green); border-color: var(--green-d); }
+.switch[aria-checked="true"]::after { transform: translateX(26px); background: #fff; }
+.switch:disabled { opacity: 0.45; cursor: not-allowed; }
+.switch:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .switch, .switch::after { transition: none; } }
+/* 시간 입력 두 칸 (방해 금지 시간) */
+.timerange { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.timerange .field { width: auto; flex: 1 1 120px; min-height: 48px; font-variant-numeric: tabular-nums; }

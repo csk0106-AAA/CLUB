@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { memberFee, payable } from "@/lib/fee";
+import { eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET() {
   const me = members.find((m) => m.id === session.mid);
 
   const list = events
-    .filter((e) => e.published === "true")
+    .filter((e) => eventVisible(e, session.mid))
     .map((e) => {
       const a = mine.find((x) => x.eventId === e.id);
       const attending = a?.answer === "참석";

@@ -10,15 +10,62 @@ import { parseMembers } from "@/lib/member-import";
 type M = {
   id: string; no: string; name: string; kind: string; position: string; gender: string;
   company: string; title: string; birth: string; phone: string; ageGroup: string; perms: string[];
+  clubs: Seat[]; // 소모임 [{name, role}] (role 이 비면 일반 회원)
+  effective: string[]; // 최종 권한(그룹 ∪ 개인)
   fields: Record<string, string>; // 관리자가 만든 추가 항목(열)의 값
   genderEdit?: { from: string; to: string; at: string } | null; // 회원이 직접 바꾼 성별 기록
 };
-type Kind = { value: string; definition: string };
-
-const EMPTY: Omit<M, "id" | "no"> = {
-  name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", perms: [], fields: {},
+type Seat = { name: string; role: string };
+type Lists = { memberKinds: { value: string; definition: string }[]; positions: string[]; clubs: string[]; clubRoles: string[] };
+type Form = {
+  name: string; kind: string; position: string; gender: string; company: string; title: string;
+  birth: string; phone: string; ageGroup: string; clubs: Seat[]; fields: Record<string, string>;
 };
-const PERM_KEYS = ["all", "members", "events", "fees", "activities", "minutes"];
+
+const EMPTY: Form = {
+  name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", clubs: [], fields: {},
+};
+const OFF = " (목록에 없음)";
+const clubsText = (c: Seat[]) => c.map((x) => (x.role ? `${x.name}(${x.role})` : x.name)).join(", ");
+
+// 목록에서 고르는 칸. 지금 값이 목록에 없으면 "(목록에 없음)" 으로 함께 보여 준다.
+function ListSelect({ id, value, options, onChange, label }: { id?: string; value: string; options: string[]; onChange: (v: string) => void; label?: string }) {
+  return (
+    <select id={id} aria-label={label} className="field" value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">선택 안 함</option>
+      {value && !options.includes(value) && <option value={value}>{value}{OFF}</option>}
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+// 소모임 고르기: 소모임마다 체크하고, 고른 소모임은 소모임 직책을 정한다(비우면 일반 회원).
+function ClubsPicker({ value, clubs, roles, onChange }: { value: Seat[]; clubs: string[]; roles: string[]; onChange: (v: Seat[]) => void }) {
+  const names = [...clubs, ...value.map((c) => c.name).filter((n) => !clubs.includes(n))];
+  if (names.length === 0) return <span className="small">소모임이 없어요. <Link href="/admin/kinds">회원 구분</Link>에서 먼저 소모임을 더해 주세요.</span>;
+  return (
+    <div className="checks" role="group" aria-label="소모임">
+      {names.map((n, i) => {
+        const seat = value.find((c) => c.name === n);
+        return (
+          <label key={n} htmlFor={`f-club-${i}`} style={{ flexWrap: "wrap" }}>
+            <input id={`f-club-${i}`} type="checkbox" checked={!!seat}
+              onChange={(e) => onChange(e.target.checked ? [...value, { name: n, role: "" }] : value.filter((c) => c.name !== n))} />
+            {n}{clubs.includes(n) ? "" : OFF}
+            {seat && (
+              <select aria-label={`${n} 소모임 직책`} value={seat.role} style={{ minHeight: 32, borderRadius: 8, border: "2px solid var(--line)", fontSize: 15 }}
+                onChange={(e) => onChange(value.map((c) => (c.name === n ? { ...c, role: e.target.value } : c)))}>
+                <option value="">일반 회원</option>
+                {seat.role && !roles.includes(seat.role) && <option value={seat.role}>{seat.role}{OFF}</option>}
+                {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            )}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
 
 // 붙여 넣은 명단의 머리글에 추가 항목 이름이 있으면, 성명별로 그 열의 값을 모은다.
 // (기본 항목은 member-import 가 읽고, 추가 항목만 여기서 따로 읽는다)
@@ -58,9 +105,9 @@ function customFromImport(text: string, fields: string[]): Map<string, Record<st
 
 function Members() {
   const [list, setList] = useState<M[] | null>(null);
-  const [kinds, setKinds] = useState<Kind[]>([]);
-  const [meAll, setMeAll] = useState(false);
-  const [form, setForm] = useState<Omit<M, "id" | "no">>(EMPTY);
+  const [lists, setLists] = useState<Lists>({ memberKinds: [], positions: [], clubs: [], clubRoles: [] });
+  const kinds = lists.memberKinds;
+  const [form, setForm] = useState<Form>(EMPTY);
   const [editId, setEditId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -97,10 +144,9 @@ function Members() {
   }
 
   const load = useCallback(async () => {
-    const [m, s, me, f] = await Promise.all([
+    const [m, s, f] = await Promise.all([
       api<{ members: M[] }>("/api/admin/members"),
-      api<{ memberKinds: Kind[] }>("/api/admin/settings"),
-      api<{ perms: string[] }>("/api/me"),
+      api<Lists>("/api/admin/lists"),
       api<{ fields: string[] }>("/api/admin/members/fields"),
     ]);
     if (f.ok) {
@@ -109,8 +155,7 @@ function Members() {
     }
     if (m.ok) setList(m.data.members.map((x) => ({ ...x, fields: x.fields ?? {} })));
     else setMsg({ tone: "bad", text: m.error });
-    if (s.ok) setKinds(s.data.memberKinds);
-    if (me.ok) setMeAll(me.data.perms.includes("all"));
+    if (s.ok) setLists(s.data);
   }, []);
   useEffect(() => {
     load();
@@ -120,9 +165,10 @@ function Members() {
 
   function startEdit(m: M) {
     setEditId(m.id);
-    const { id: _id, no: _no, ...rest } = m;
-    void _id; void _no;
-    setForm(rest);
+    setForm({
+      name: m.name, kind: m.kind ?? "", position: m.position ?? "", gender: m.gender ?? "", company: m.company ?? "", title: m.title ?? "",
+      birth: m.birth ?? "", phone: m.phone ?? "", ageGroup: m.ageGroup ?? "", clubs: m.clubs ?? [], fields: m.fields ?? {},
+    });
     setMsg(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -164,7 +210,8 @@ function Members() {
   const counts = new Map<string, number>();
   list?.forEach((m) => counts.set(m.kind || "미지정", (counts.get(m.kind || "미지정") ?? 0) + 1));
   const shown = list?.filter((m) => filter === "전체" || (m.kind || "미지정") === filter) ?? [];
-  const admins = list?.filter((m) => m.perms.length > 0) ?? [];
+  const admins = list?.filter((m) => m.effective.length > 0) ?? [];
+  const kindTabs = [...kinds.map((k) => k.value), ...[...counts.keys()].filter((k) => k !== "미지정" && !kinds.some((x) => x.value === k))];
 
   return (
     <>
@@ -181,7 +228,7 @@ function Members() {
         {[...counts.entries()].map(([k, n]) => (
           <div className="card" key={k}><span className="small">{k}</span><div className="big">{n}명</div></div>
         ))}
-        <div className="card"><span className="small">관리자</span><div className="big">{admins.length} / 5</div><Link className="small" href="/admin/admins">관리자와 권한 보기 ›</Link></div>
+        <div className="card"><span className="small">권한자</span><div className="big">{admins.length}명</div><Link className="small" href="/admin/admins">권한설정 보기 ›</Link></div>
         {list && (
           <div className="card">
             <span className="small">남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}</span>
@@ -257,12 +304,12 @@ function Members() {
           <div><label className="l" htmlFor="f-name">성명</label><input id="f-name" className="field" value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
           <div>
             <label className="l" htmlFor="f-kind">회원구분</label>
-            <select id="f-kind" className="field" value={form.kind} onChange={(e) => set("kind", e.target.value)}>
-              <option value="">선택 안 함</option>
-              {kinds.map((k) => <option key={k.value} value={k.value}>{k.value}</option>)}
-            </select>
+            <ListSelect id="f-kind" value={form.kind} options={kinds.map((k) => k.value)} onChange={(v) => set("kind", v)} />
           </div>
-          <div><label className="l" htmlFor="f-pos">원우회 직책</label><input id="f-pos" className="field" value={form.position} onChange={(e) => set("position", e.target.value)} /></div>
+          <div>
+            <label className="l" htmlFor="f-pos">원우회 직책</label>
+            <ListSelect id="f-pos" value={form.position} options={lists.positions} onChange={(v) => set("position", v)} />
+          </div>
           <div>
             <label className="l" htmlFor="f-gender">성별</label>
             <select id="f-gender" className="field" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
@@ -279,17 +326,10 @@ function Members() {
           ))}
         </div>
         <div>
-          <span className="l">관리자 권한 (여러 개 선택 · 모든 권한 관리자만 바꿀 수 있어요)</span>
-          <div className="checks">
-            {PERM_KEYS.map((p) => (
-              <label key={p}>
-                <input type="checkbox" disabled={!meAll} checked={form.perms.includes(p)}
-                  onChange={(e) => set("perms", e.target.checked ? [...form.perms, p] : form.perms.filter((x) => x !== p))} />
-                {PERM_LABELS[p]}
-              </label>
-            ))}
-          </div>
+          <span className="l">소모임 (고른 소모임마다 소모임 직책을 정해요)</span>
+          <ClubsPicker value={form.clubs} clubs={lists.clubs} roles={lists.clubRoles} onChange={(v) => set("clubs", v)} />
         </div>
+        <span className="small">관리자 권한은 직책·소모임 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
         <div className="row">
           <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "auto", minWidth: 160 }}>{editId ? "저장" : "추가"}</button>
           {editId && <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>}
@@ -297,7 +337,7 @@ function Members() {
       </form>
 
       <div className="subnav" aria-label="회원구분 보기">
-        {["전체", ...kinds.map((k) => k.value), "미지정"].map((k) => (
+        {["전체", ...kindTabs, "미지정"].map((k) => (
           <a key={k} className={filter === k ? "on" : ""} href="#" onClick={(e) => { e.preventDefault(); setFilter(k); }}>{k}</a>
         ))}
       </div>
@@ -306,12 +346,15 @@ function Members() {
       {list && shown.length === 0 && <div className="msg info">해당하는 회원이 없어요.</div>}
       {shown.length > 0 && (
         <div className="tblw">
-          <table className="tbl" style={{ minWidth: 900 + custom.length * 110 }}>
-            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>권한</th><th></th></tr></thead>
+          <table className="tbl" style={{ minWidth: 1000 + custom.length * 110 }}>
+            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>권한</th><th></th></tr></thead>
             <tbody>
               {shown.map((m) => (
                 <tr key={m.id}>
-                  <td className="num">{m.no}</td><td><b>{m.name}</b></td><td>{m.kind}</td><td>{m.position}</td>
+                  <td className="num">{m.no}</td><td><b>{m.name}</b></td>
+                  <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}</td>
+                  <td>{m.position}{m.position && !lists.positions.includes(m.position) && <span className="small">{OFF}</span>}</td>
+                  <td>{clubsText(m.clubs ?? [])}</td>
                   <td>
                     {m.gender}
                     {m.genderEdit && (
@@ -325,7 +368,7 @@ function Members() {
                   </td>
                   <td>{m.company}</td><td>{m.title}</td><td className="num">{fmtDate(m.birth)}</td><td className="num">{m.phone}</td>
                   {custom.map((c) => <td key={c}>{m.fields[c] ?? ""}</td>)}
-                  <td>{m.perms.map((p) => <span key={p} className="pill blue" style={{ marginRight: 4 }}>{PERM_LABELS[p]}</span>)}</td>
+                  <td>{(m.effective ?? []).map((p) => <span key={p} className={`pill ${p === "all" ? "ok" : "blue"}`} style={{ marginRight: 4 }}>{PERM_LABELS[p] ?? p}</span>)}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini" type="button" onClick={() => startEdit(m)}>수정</button>{" "}
                     <button className="mini danger" type="button" onClick={() => remove(m)}>삭제</button>

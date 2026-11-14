@@ -1,34 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { DateField } from "@/components/DateField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 
-// from: 불러올 때의 이름(새로 추가한 구분은 빈 값). 저장할 때 이름이 달라졌으면 명단에도 반영된다.
-type Kind = { value: string; definition: string; from?: string };
-type S = { clubName: string; clubShortName: string; inviteCode: string; memberKinds: Kind[] };
+// 회원구분·직책·소모임 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
+type S = { clubName: string; clubShortName: string; inviteCode: string };
 
 function Settings() {
   const [s, setS] = useState<S | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [counts, setCounts] = useState<Record<string, number>>({});
   const [showCode, setShowCode] = useState(false);
 
   const load = useCallback(async () => {
-    const [r, m] = await Promise.all([
-      api<S>("/api/admin/settings"),
-      api<{ members: { kind: string }[] }>("/api/admin/members"),
-    ]);
-    if (r.ok) setS({ ...r.data, memberKinds: r.data.memberKinds.map((k) => ({ ...k, from: k.value })) });
+    const r = await api<S>("/api/admin/settings");
+    if (r.ok) setS(r.data);
     else setMsg({ tone: "bad", text: r.error });
-    if (m.ok) {
-      const c: Record<string, number> = {};
-      m.data.members.forEach((x) => { c[x.kind] = (c[x.kind] ?? 0) + 1; });
-      setCounts(c);
-    }
   }, []);
   useEffect(() => {
     load();
@@ -39,17 +30,14 @@ function Settings() {
     if (!s) return;
     setBusy(true);
     setMsg(null);
-    const r = await api<{ moved: number }>("/api/admin/settings", { method: "PUT", body: s });
+    const r = await api("/api/admin/settings", { method: "PUT", body: s });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg({ tone: "info", text: `저장했어요. 회원 화면에 바로 적용돼요.${r.data.moved ? ` 바뀐 회원구분 이름을 회원 ${r.data.moved}명의 명단에도 반영했어요.` : ""}` });
+    setMsg({ tone: "info", text: "저장했어요. 회원 화면에 바로 적용돼요." });
     load();
   }
 
   if (!s) return msg ? <div className="msg bad" role="alert">{msg.text}</div> : <p className="small">불러오는 중이에요…</p>;
-
-  const setKind = (i: number, patch: Partial<Kind>) =>
-    setS({ ...s, memberKinds: s.memberKinds.map((k, j) => (j === i ? { ...k, ...patch } : k)) });
 
   return (
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -78,23 +66,7 @@ function Settings() {
         </div>
       </div>
 
-      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={{ font: "400 20px var(--display)" }}>회원구분 값과 정의</b>
-        {s.memberKinds.map((k, i) => (
-          <div key={i} className="grid2" style={{ alignItems: "end" }}>
-            <div>
-              <label className="l" htmlFor={`k-v-${i}`}>구분 이름 · 현재 {k.from ? counts[k.from] ?? 0 : 0}명{k.from && k.from !== k.value ? ` (저장하면 “${k.from}” → “${k.value || "…"}”)` : ""}</label>
-              <input id={`k-v-${i}`} className="field" value={k.value} onChange={(e) => setKind(i, { value: e.target.value })} />
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
-              <div style={{ flex: 1 }}><label className="l" htmlFor={`k-d-${i}`}>정의</label><input id={`k-d-${i}`} className="field" value={k.definition} onChange={(e) => setKind(i, { definition: e.target.value })} /></div>
-              <button className="mini danger" type="button" disabled={s.memberKinds.length <= 1} onClick={() => setS({ ...s, memberKinds: s.memberKinds.filter((_, j) => j !== i) })} style={{ minHeight: 54 }}>삭제</button>
-            </div>
-          </div>
-        ))}
-        <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start" }} onClick={() => setS({ ...s, memberKinds: [...s.memberKinds, { value: "", definition: "" }] })}>+ 회원구분 추가</button>
-        <span className="small">구분 이름을 바꾸고 저장하면 그 구분으로 지정된 회원 명단과 화면 전체에 바로 적용돼요. 구분을 삭제해도 회원의 값은 남으니, 삭제 전에 회원 명단에서 다른 구분으로 옮겨 주세요.</span>
-      </div>
+      <span className="small">회원구분·직책·소모임 목록은 <Link href="/admin/kinds">회원 구분</Link> 메뉴에서 정해요.</span>
 
       <button className="btn" type="submit" disabled={busy} style={{ width: "auto", minWidth: 200, alignSelf: "flex-start" }}>{busy ? "저장 중…" : "저장"}</button>
       <ProfileReveal />

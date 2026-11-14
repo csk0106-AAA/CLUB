@@ -42,6 +42,11 @@ export function inAudience(a: Audience, memberId: string, authorId?: string): bo
   return a.memberIds.includes(memberId);
 }
 
+// 회원에게 이 행사가 보이는지: 공개(published) + 공개 대상에 포함
+export function eventVisible(e: { published?: string; audience?: string }, memberId: string): boolean {
+  return e.published === "true" && inAudience(readAudience(e.audience), memberId);
+}
+
 // 화면 표시용 요약
 export function audienceLabel(a: Audience, names?: { events?: Record<string, string> }): string {
   if (a.mode === "all") return "전체 회원";

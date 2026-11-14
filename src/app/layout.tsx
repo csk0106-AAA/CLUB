@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { THEME_BOOT } from "@/components/ThemeBoot";
+import { ThemeSync } from "@/components/ThemeSync";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,8 +18,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    // data-theme 은 그리기 전에 스크립트가 붙이므로 서버 HTML 과 달라도 경고하지 않는다
+    <html lang="ko" suppressHydrationWarning>
       <head>
+        {/* 화면 모드(밝은/다크): 이 기기에 저장된 값을 첫 화면 전에 적용 */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
@@ -25,7 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;700;900&display=swap"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <ThemeSync />
+        {children}
+      </body>
     </html>
   );
 }

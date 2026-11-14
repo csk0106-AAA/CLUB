@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { memberFee, payable } from "@/lib/fee";
+import { eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 
 const body = z.object({ sent: z.boolean() });
@@ -17,7 +18,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const s = await getStore();
   const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
-  const e = events.find((x) => x.id === id && x.published === "true");
+  const e = events.find((x) => x.id === id && eventVisible(x, g.s.mid));
   if (!e) return bad("행사를 찾을 수 없어요.", 404);
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);
   const me = members.find((m) => m.id === g.s.mid);

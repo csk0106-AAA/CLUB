@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { guard } from "@/lib/api";
 import { consentRequired, hasConsent } from "@/lib/consent";
+import { memberClubs } from "@/lib/lists";
 import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,13 @@ export async function GET() {
   const revealed = revealAt !== "" && Date.now() >= Date.parse(`${revealAt}:00+09:00`);
 
   const live = members.filter((m) => m.kind !== "회원대기");
+  // 실명 공개 뒤에만: 이름 / 회사명 / 회사 직책 / 소모임. 공개 전에는 이 값들을 아예 내려주지 않는다.
+  const card = (m: (typeof members)[number]) => ({ name: m.name, company: m.company ?? "", title: m.title ?? "", clubs: memberClubs(m).map((c) => c.name) });
   const authored = live.flatMap((m) => {
     const p = profiles.find((x) => x.memberId === m.id && x.introStatus === "approved");
-    return p ? [{ id: p.id, alias: p.alias, name: revealed ? m.name : "", mine: m.id === g.s.mid }] : [];
+    if (!p) return [];
+    const base = { id: p.id, alias: p.alias, mine: m.id === g.s.mid };
+    return [revealed ? { ...base, ...card(m) } : { ...base, name: "" }];
   });
   const missing = live.filter((m) => !profiles.some((x) => x.memberId === m.id && x.introStatus === "approved"));
 
@@ -29,6 +34,6 @@ export async function GET() {
     revealAt,
     items: authored.sort((a, b) => (revealed ? a.name.localeCompare(b.name, "ko") : a.alias.localeCompare(b.alias, "ko"))),
     missingCount: missing.length,
-    missing: revealed ? missing.map((m) => ({ name: m.name })) : [],
+    missing: revealed ? missing.map(card) : [],
   });
 }

@@ -8,9 +8,15 @@ import { api, fmtDateTime } from "@/lib/client";
 
 type Data = {
   revealed: boolean; revealAt: string;
-  items: { id: string; alias: string; name: string; mine: boolean }[];
-  missingCount: number; missing: { name: string }[];
+  // company·title·clubs 는 실명 공개 뒤에만 온다
+  items: { id: string; alias: string; name: string; mine: boolean; company?: string; title?: string; clubs?: string[] }[];
+  missingCount: number; missing: { name: string; company?: string; title?: string; clubs?: string[] }[];
 };
+
+// 실명 공개 뒤 표시: "올림피아드 / 대표 / 골프, 등산" (빈 항목은 건너뜀)
+function details(m: { company?: string; title?: string; clubs?: string[] }): string {
+  return [m.company, m.title, (m.clubs ?? []).join(", ")].filter((x) => x && x.trim()).join(" / ");
+}
 
 // 회원 프로필 북: 공개로 승인된 소개만 보인다. 공개 시점 전에는 별칭, 이후에는 실명.
 export default function ProfilesPage() {
@@ -83,14 +89,17 @@ export default function ProfilesPage() {
           <div className="pick">
             {d.items.map((p) => (
               <button key={p.id} type="button" className="opt" onClick={() => router.push(`/profiles/${p.id}`)}>
-                <span className="name">{d.revealed && p.name ? p.name : `“${p.alias}”`}</span>
+                <span className="name">
+                  {d.revealed && p.name ? p.name : `“${p.alias}”`}
+                  {d.revealed && p.name && details(p) && <span style={{ font: "700 16px var(--body)", color: "var(--sub)" }}> / {details(p)}</span>}
+                </span>
                 {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}
                 {p.mine && <span className="pill blue">내 소개</span>}
               </button>
             ))}
           </div>
           {d.revealed ? (
-            d.missing.length > 0 && <div className="card"><b>미작성</b><div className="small">{d.missing.map((m) => m.name).join(", ")}</div></div>
+            d.missing.length > 0 && <div className="card"><b>미작성</b><ul className="small" style={{ margin: "4px 0 0", paddingLeft: 20 }}>{d.missing.map((m, i) => <li key={i}>{[m.name, details(m)].filter(Boolean).join(" / ")}</li>)}</ul></div>
           ) : (
             d.missingCount > 0 && <p className="hint">아직 작성하지 않은 회원이 {d.missingCount}명 있어요.</p>
           )}

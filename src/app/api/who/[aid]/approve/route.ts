@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { findIdentity, termsFrom } from "@/lib/identity";
+import { notifyProfilePush } from "@/lib/push";
 import { getStore } from "@/lib/store";
 import { canJoin } from "@/lib/participants";
 import { loadWho, myProfile, myTruthLies, writeClosed } from "@/lib/who";
@@ -52,6 +53,8 @@ export async function POST(req: Request, ctx: Ctx) {
     if (tl) await s.update("TruthLies", tl.id, tlPatch);
     else await s.insert("TruthLies", { memberId: g.s.mid, eventActivityId: aid, ...tlPatch });
   }
+  // 프로필 북에 새 소개가 올라오거나 바뀌었다는 알림(본인 제외, 내용 없이 숫자만)
+  await notifyProfilePush(g.s.mid);
   return NextResponse.json({ ok: true, inActivity: inAct });
 }
 

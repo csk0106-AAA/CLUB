@@ -3,6 +3,7 @@ import { bad, guard } from "@/lib/api";
 import { DIRS, DIR_LABEL, carpoolState, cars } from "@/lib/carpool";
 import { roomState, rooms } from "@/lib/rooms";
 import { gTeams } from "@/lib/groups";
+import { eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const [events, sched, groups, members, state, all] = await Promise.all([
     s.list("Events"), s.list("EventSchedule"), s.list("Groupings"), s.list("Members"), carpoolState(id), cars(id),
   ]);
-  const ev = events.find((e) => e.id === id && e.published === "true");
+  const ev = events.find((e) => e.id === id && eventVisible(e, g.s.mid));
   if (!ev) return bad("행사를 찾을 수 없어요.", 404);
   const nm = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
 

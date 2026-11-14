@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guard, parseJson } from "@/lib/api";
 import { memberFee, payable } from "@/lib/fee";
+import { eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     s.list("EventActivities"),
     s.list("Members"),
   ]);
-  const e = events.find((x) => x.id === id && x.published === "true");
+  const e = events.find((x) => x.id === id && eventVisible(x, g.s.mid));
   if (!e) return bad("행사를 찾을 수 없어요.", 404);
 
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);

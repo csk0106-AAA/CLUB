@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eventStart } from "@/lib/activities";
 import { bad, guard, parseJson } from "@/lib/api";
 import { consentRequired, hasConsent } from "@/lib/consent";
+import { memberClubs } from "@/lib/lists";
 import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }>
   if (!p) return bad("프로필을 찾을 수 없어요.", 404);
   const revealAt = await getSetting<string>("profileRevealAt", "");
   const revealed = revealAt !== "" && Date.now() >= Date.parse(`${revealAt}:00+09:00`);
-  const name = revealed ? (await s.list("Members")).find((m) => m.id === p.memberId)?.name ?? "" : "";
+  // 실명 공개 뒤에만 이름 / 회사명 / 회사 직책 / 소모임을 내려준다(공개 전에는 빈 값).
+  const who = revealed ? (await s.list("Members")).find((m) => m.id === p.memberId) : undefined;
+  const name = who?.name ?? "";
+  const card = who ? { company: who.company ?? "", title: who.title ?? "", clubs: memberClubs(who).map((c) => c.name) } : { company: "", title: "", clubs: [] as string[] };
 
   const [tls, rounds, acts, events] = await Promise.all([
     s.list("TruthLies"), s.list("Rounds"), s.list("EventActivities"), s.list("Events"),
@@ -36,7 +40,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }>
 
   const mine = p.memberId === g.s.mid;
   return NextResponse.json({
-    alias: p.alias, name, introMd: p.introMd, mine, truthLies,
+    alias: p.alias, name, ...card, introMd: p.introMd, mine, truthLies,
     // 명리학: 성격·성향은 본인이 소개 페이지에 싣기로 한 경우만, 생애주기 전체 풀이는 본인에게만
     traitsMd: p.traitsShown === "true" ? p.traitsMd ?? "" : "",
     readingMd: mine ? p.readingMd ?? "" : "",

@@ -4,6 +4,7 @@ import { activityKind, guessStatus, liveView, preStatus, readConfig } from "@/li
 import { canJoin, isLimited } from "@/lib/participants";
 import { memberWorry } from "@/lib/worry";
 import { memberRound } from "@/lib/rounds";
+import { eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const s = await getStore();
   const [events, acts, lives] = await Promise.all([s.list("Events"), s.list("EventActivities"), s.list("LiveState")]);
-  const ev = events.find((e) => e.id === id && e.published === "true");
+  const ev = events.find((e) => e.id === id && eventVisible(e, g.s.mid));
   if (!ev) return bad("행사를 찾을 수 없어요.", 404);
 
   const mine = acts

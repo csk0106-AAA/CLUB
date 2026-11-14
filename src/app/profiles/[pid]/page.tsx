@@ -11,6 +11,7 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
   const router = useRouter();
   const [p, setP] = useState<{
     alias: string; name: string; introMd: string; mine: boolean;
+    company: string; title: string; clubs: string[]; // 실명 공개 뒤에만 값이 있다
     truthLies: { statements: string[]; lieIndex: number } | null;
     traitsMd: string; readingMd: string; sajuInfo: SajuInfo | null;
   } | null>(null);
@@ -33,6 +34,11 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
       {p && (
         <>
           <div className="row"><Mascot size={56} /><div><h1 className="title" style={{ fontSize: 26 }}>{p.name || `“${p.alias}”`}</h1>{p.name && <div className="small">별칭 “{p.alias}”</div>}</div></div>
+          {p.name && (
+            <p style={{ margin: 0, fontWeight: 700 }}>
+              {[p.name, p.company, p.title, (p.clubs ?? []).join(", ")].filter((x) => x && x.trim()).join(" / ")}
+            </p>
+          )}
           {p.mine && <span className="pill blue" style={{ alignSelf: "flex-start" }}>내 소개</span>}
           <article className="card" style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{p.introMd}</article>
           {p.truthLies && p.truthLies.statements.length === 3 && (

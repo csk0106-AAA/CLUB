@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { MAX_ADMINS, bad, guard } from "@/lib/api";
-import { can } from "@/lib/auth";
+import { bad, guard } from "@/lib/api";
 import { withGenderEdit } from "@/lib/gender-edit";
 import { fieldValues, withFields } from "@/lib/member-fields";
+import { checkPermChange, effectivePerms, getPermGroups, isAllNow } from "@/lib/perms";
 import { getStore } from "@/lib/store";
-import { memberBody } from "@/lib/schemas";
+import { clubsJson, memberBody } from "@/lib/schemas";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -14,28 +14,29 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const parsed = memberBody.extend({ fields: fieldValues }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
-  const { fields, ...d } = parsed.data;
+  const { fields, perms, clubs, ...d } = parsed.data;
 
   const s = await getStore();
   const all = await s.list("Members");
   const cur = all.find((m) => m.id === id);
   if (!cur) return bad("회원을 찾을 수 없어요.", 404);
 
-  const nextPerms = d.perms.join("|");
-  if (nextPerms !== cur.perms) {
-    if (!can(g.s, "all")) return bad("관리자 권한은 모든 권한 관리자만 바꿀 수 있어요.", 403);
-    const adminsAfter = all.filter((m) => (m.id === id ? nextPerms : m.perms)).length;
-    if (adminsAfter > MAX_ADMINS) return bad(`관리자는 최대 ${MAX_ADMINS}명까지예요.`);
-    // '모든 권한' 관리자가 아무도 없어지면 아무도 권한을 줄 수 없으므로 막는다.
-    const allAfter = all.filter((m) => (m.id === id ? nextPerms : m.perms).split("|").includes("all")).length;
-    if (allAfter === 0) return bad("모든 권한 관리자는 한 명 이상 있어야 해요.");
-  }
-
-  // fields 를 보내지 않으면(예: 관리자 권한만 바꿀 때) 추가 항목 값은 그대로 둔다.
+  // perms·clubs 를 보내지 않으면 지금 값을 그대로 둔다.
+  const patch: Record<string, string> = { ...d };
+  if (perms) patch.perms = perms.join("|");
+  if (clubs) patch.clubs = clubsJson(clubs);
+  // fields 를 보내지 않으면 추가 항목 값은 그대로 둔다.
   // 회원 수정 화면에서 저장(fields 포함)하면 관리자가 성별을 확인한 것으로 보고 "회원 수정" 기록을 지운다.
-  const row = await s.update("Members", id, {
-    ...d, perms: nextPerms, ...(fields ? { extra: withGenderEdit(withFields(cur.extra, fields), null) } : {}),
-  });
+  if (fields) patch.extra = withGenderEdit(withFields(cur.extra, fields), null);
+
+  // 직책·소모임 직책·개인 권한이 바뀌어 최종 권한이 달라지면 "모든 권한" 관리자만 할 수 있고,
+  // 모든 권한 회원이 한 명도 없게 되면 막는다.
+  const groups = await getPermGroups();
+  const after = all.map((m) => (m.id === id ? { ...m, ...patch } : m));
+  const err = checkPermChange(all, groups, after, groups, await isAllNow(g.s.mid));
+  if (err) return bad(err[0], err[1]);
+
+  const row = await s.update("Members", id, patch);
   return NextResponse.json({ member: row });
 }
 
@@ -45,9 +46,11 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   if (id === g.s.mid) return bad("내 계정은 지울 수 없어요.");
   const s = await getStore();
-  const cur = (await s.list("Members")).find((m) => m.id === id);
+  const all = await s.list("Members");
+  const cur = all.find((m) => m.id === id);
   if (!cur) return bad("회원을 찾을 수 없어요.", 404);
-  if (cur.perms) return bad("관리자는 먼저 권한을 없앤 뒤 지울 수 있어요.");
+  const groups = await getPermGroups();
+  if (effectivePerms(cur, groups).length > 0) return bad("권한이 있는 회원은 먼저 권한설정에서 권한을 없애거나 직책을 바꾼 뒤 지울 수 있어요.");
   await s.remove("Members", id);
   return NextResponse.json({ ok: true });
 }
