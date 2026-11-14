@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
+import { PasswordField } from "@/components/PasswordField";
 import { DateField } from "@/components/DateField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
@@ -14,7 +15,6 @@ function Settings() {
   const [s, setS] = useState<S | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [showCode, setShowCode] = useState(false);
 
   const load = useCallback(async () => {
     const r = await api<S>("/api/admin/settings");
@@ -50,10 +50,7 @@ function Settings() {
           <div><label className="l" htmlFor="s-short">줄여 쓰는 이름</label><input id="s-short" className="field" value={s.clubShortName} onChange={(e) => setS({ ...s, clubShortName: e.target.value })} /></div>
           <div>
             <label className="l" htmlFor="s-code">공통 초대코드 (연락처가 없는 회원용, 4자 이상)</label>
-            <div className="row">
-              <input id="s-code" className="field" type={showCode ? "text" : "password"} autoComplete="off" value={s.inviteCode} onChange={(e) => setS({ ...s, inviteCode: e.target.value })} />
-              <button className="mini" type="button" style={{ minHeight: 54 }} aria-pressed={showCode} onClick={() => setShowCode(!showCode)}>{showCode ? "숨기기" : "보기"}</button>
-            </div>
+            <PasswordField id="s-code" autoComplete="off" value={s.inviteCode} onChange={(v) => setS({ ...s, inviteCode: v })} />
           </div>
         </div>
         <span className="small">회원은 명단에 등록된 연락처 뒷자리 4자리로 로그인해요. 연락처가 없는 회원만 이 공통 초대코드를 써요.</span>

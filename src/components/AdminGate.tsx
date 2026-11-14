@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 import { MemberTabs } from "./MemberTabs";
+import { PasswordField } from "./PasswordField";
 
 type Me = { name: string; perms: string[]; admin: boolean; consent: boolean };
 
@@ -71,7 +72,7 @@ export function AdminGate(props: {
         <form onSubmit={unlock} style={{ display: "contents" }}>
           <div>
             <label className="l" htmlFor="pc">관리자 비밀번호</label>
-            <input id="pc" className="field" type="password" autoComplete="current-password" value={code} onChange={(e) => setCode(e.target.value)} />
+            <PasswordField id="pc" autoComplete="current-password" value={code} onChange={setCode} />
           </div>
           {error && <div className="msg bad" role="alert">{error}</div>}
           <div className="footer-actions">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { resetTabsCache } from "@/components/MemberTabs";
+import { PasswordField } from "@/components/PasswordField";
 
 type Club = { clubName: string; members: { id: string; name: string }[] };
 
@@ -84,15 +85,7 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="l" htmlFor="cd">초대코드 (내 연락처 뒷자리 4자리)</label>
-            <input
-              id="cd"
-              className="field"
-              type="password"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
+            <PasswordField id="cd" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} />
           </div>
           <p className="hint">사회자로 지정되었다면 받은 사회자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
           {error && <div className="msg bad" role="alert">{error}</div>}
