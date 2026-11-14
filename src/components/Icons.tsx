@@ -8,8 +8,8 @@ export function IconProfileBook({ size = 26 }: P) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M6 2h12a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="currentColor" />
-      <circle cx="12" cy="9" r="3" fill="#fff" />
-      <path d="M6.8 16.5c.5-2.6 2.5-3.8 5.2-3.8s4.7 1.2 5.2 3.8z" fill="#fff" />
+      <circle cx="12" cy="9" r="3" fill="var(--card, #fff)" />
+      <path d="M6.8 16.5c.5-2.6 2.5-3.8 5.2-3.8s4.7 1.2 5.2 3.8z" fill="var(--card, #fff)" />
       <path d="M2 6h3M2 10h3M2 14h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
@@ -27,6 +27,51 @@ export function IconShield({ size = 26 }: P) {
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6z" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round" />
       <path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+// 게시글(게시판) 탭
+export function IconBoard({ size = 26 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" strokeWidth="2.6" />
+      <path d="M7.5 8.5h9M7.5 12h9M7.5 15.5h5.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+// 조직도 탭
+export function IconOrg({ size = 26 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="8.5" y="2" width="7" height="5.5" rx="1.5" fill="currentColor" />
+      <rect x="2" y="16.5" width="7" height="5.5" rx="1.5" fill="currentColor" />
+      <rect x="15" y="16.5" width="7" height="5.5" rx="1.5" fill="currentColor" />
+      <path d="M12 7.5v4.5M5.5 16.5V12h13v4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+// 공지 표시(확성기)
+export function IconMegaphone({ size = 18 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 10v4a1 1 0 0 0 1 1h2l1.2 5h2.6L8.6 15H9l9 5V4L9 9H4a1 1 0 0 0-1 1z" fill="currentColor" />
+      <path d="M20.5 9.5a3 3 0 0 1 0 5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+// 상단 고정 표시(압정)
+export function IconPin({ size = 18 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 2h6l-1 6 4 4v2h-5v6l-1 2-1-2v-6H6v-2l4-4z" fill="currentColor" />
+    </svg>
+  );
+}
+// 첨부(클립)
+export function IconClip({ size = 18 }: P) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -59,8 +104,8 @@ export function IconQuestion({ size = 36 }: P) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="10" fill="currentColor" />
-      <path d="M9 9.5a3 3 0 1 1 4.5 2.6c-1 .6-1.5 1.2-1.5 2.4" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <circle cx="12" cy="18" r="1.5" fill="#fff" />
+      <path d="M9 9.5a3 3 0 1 1 4.5 2.6c-1 .6-1.5 1.2-1.5 2.4" stroke="var(--card, #fff)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="12" cy="18" r="1.5" fill="var(--card, #fff)" />
     </svg>
   );
 }

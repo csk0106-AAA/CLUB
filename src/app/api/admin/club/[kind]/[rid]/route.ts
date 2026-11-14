@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { bad, guard } from "@/lib/api";
+import { bad } from "@/lib/api";
 import { CLUB, clubError, isClubKind } from "@/lib/club";
 import { getStore } from "@/lib/store";
+import { clubGuard } from "../../_guard";
 
 type Ctx = { params: Promise<{ kind: string; rid: string }> };
 
@@ -9,12 +10,12 @@ async function find(ctx: Ctx) {
   const { kind, rid } = await ctx.params;
   if (!isClubKind(kind)) return { err: bad("없는 항목이에요.", 404) };
   const def = CLUB[kind];
-  const g = await guard(def.perm);
+  const g = await clubGuard(kind);
   if ("err" in g) return { err: g.err };
   const s = await getStore();
   const row = (await s.list(def.tab)).find((r) => r.id === rid);
   if (!row) return { err: bad("항목을 찾을 수 없어요.", 404) };
-  return { def, s, row, by: g.s.name };
+  return { def, s, row, by: g.name };
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
