@@ -122,4 +122,5 @@ export const PERM_LABELS: Record<string, string> = {
   fees: "회비·비용",
   activities: "활동·조편성",
   minutes: "회의록·회칙",
+  board: "게시글",
 };

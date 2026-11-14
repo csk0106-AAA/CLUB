@@ -5,6 +5,9 @@ export const TABS = {
   Members: [
     "id", "no", "name", "kind", "position", "gender", "company", "title",
     "birth", "phone", "ageGroup", "perms", "extra",
+    // clubs: 소모임 [{name, role}] JSON (lib/lists.ts). 회원이 설정에서 소모임을 고르고, role(소모임 직책)은 관리자가 정한다.
+    // prefs: 화면 모드·알림 설정 JSON (lib/prefs.ts)
+    "clubs", "prefs",
   ],
   Org: ["id", "dept", "role", "memberId", "clubName", "frequency", "leaderId"],
   // history: 조문 변경 기록 [{at, by, what}] JSON (최근 30개)
@@ -15,6 +18,8 @@ export const TABS = {
     "published", "fee", "feeDeadline", "account", "accountHolder",
     // feeRules: 조건별 회비 [{days, kind, position, amount}] JSON (lib/fee.ts). fee 는 기본 회비.
     "feeRules",
+    // audience: 공개 대상 JSON (lib/audience.ts). 비어 있으면 전체 회원.
+    "audience",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
@@ -65,6 +70,18 @@ export const TABS = {
   // 현장 진행: 한 사람씩 진행하는 라운드, 거짓 투표
   Rounds: ["id", "eventActivityId", "targetMemberId", "state", "orderNo", "nameRevealed", "updatedAt"],
   Votes: ["id", "roundId", "voterId", "chosenIndex", "createdAt"],
+  // 게시글. form: org|rules|fee|minutes|general|survey|poll|quiz (lib/board.ts). data: 양식별 내용 JSON.
+  // audience: 공개 대상 JSON(lib/audience.ts), files: 첨부 [{id,name,type,size,image}] JSON
+  Posts: [
+    "id", "form", "title", "body", "data", "audience", "notice", "pinned", "files",
+    "authorId", "createdAt", "updatedAt",
+  ],
+  // 첨부 파일 내용(base64). 게시글 목록을 읽을 때 같이 읽지 않도록 따로 둔다.
+  PostFiles: ["id", "postId", "name", "type", "size", "data", "createdAt"],
+  // 설문 응답, 투표, 퀴즈 답. answer: JSON
+  PostResponses: ["id", "postId", "memberId", "answer", "createdAt"],
+  // 휴대폰 알림(Web Push) 구독
+  PushSubs: ["id", "memberId", "endpoint", "keys", "createdAt"],
 } as const;
 
 export type TabName = keyof typeof TABS;

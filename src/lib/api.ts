@@ -51,5 +51,6 @@ export function parseJson<T>(text: string | undefined, fallback: T): T {
   }
 }
 
-export const ADMIN_PERMS = ["all", "members", "events", "fees", "activities", "minutes"] as const;
+// board: 게시글 작성과 게시글 양식 템플릿 수정 (조직도·회칙 게시글은 "all" 만)
+export const ADMIN_PERMS = ["all", "members", "events", "fees", "activities", "minutes", "board"] as const;
 export const MAX_ADMINS = 5;

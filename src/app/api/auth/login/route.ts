@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clearFails, createSession, lockedFor, recordFail } from "@/lib/auth";
 import { loginCode } from "@/lib/login-code";
+import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 
 const body = z.object({ memberId: z.string().min(1), code: z.string().min(1).max(64) });
@@ -35,7 +36,8 @@ export async function POST(req: Request) {
   }
 
   clearFails(memberId);
-  const perms = member.perms ? member.perms.split("|").filter(Boolean) : [];
+  // 최종 권한 = 직책·소모임 직책 그룹 권한 ∪ 개인 권한 (lib/perms.ts)
+  const perms = effectivePerms(member, await getPermGroups());
   await createSession({ mid: member.id, name: member.name, perms, admin: false });
   return NextResponse.json({ ok: true, name: member.name, isAdmin: perms.length > 0 });
 }
