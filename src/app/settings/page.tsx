@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { MemberTabs } from "@/components/MemberTabs";
-import { applyScale, applyTheme, readScale, SCALES } from "@/components/ThemeBoot";
+import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS } from "@/components/ThemeBoot";
 import { api } from "@/lib/client";
 import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
 import { disablePush, enablePush, pushSupported } from "@/lib/push-client";
@@ -59,10 +59,17 @@ export default function SettingsPage() {
   // 내 정보 입력칸(저장 버튼으로 한 번에 저장)
   const [form, setForm] = useState({ company: "", title: "", phone: "" });
   // 글자 크기: 이 기기에만 저장(서버 저장 없음)
-  const [scale, setScale] = useState("1");
-  useEffect(() => setScale(readScale()), []);
-  function pickScale(v: string) {
+  // 띠를 끄는 동안에는 미리보기만 바꾸고, 손을 떼면(또는 키보드로 바꾸면) 화면 전체에 적용한다.
+  const [scale, setScale] = useState(SCALE_DEFAULT);
+  const [applied, setApplied] = useState(SCALE_DEFAULT);
+  useEffect(() => {
+    const v = readScale();
     setScale(v);
+    setApplied(v);
+  }, []);
+  function commitScale(v: number) {
+    if (v === applied) return;
+    setApplied(v);
     applyScale(v);
   }
 
@@ -287,15 +294,26 @@ export default function SettingsPage() {
           {/* 2-1. 글자 크기 (이 기기만) */}
           <section className="card" aria-labelledby="s-scale" style={col}>
             <b id="s-scale" style={sectionTitle}>글자 크기</b>
-            <div className="quick" role="group" aria-labelledby="s-scale">
-              {SCALES.map((o) => (
-                <button key={o.v} type="button" className="opt" aria-pressed={scale === o.v} onClick={() => pickScale(o.v)}
-                  style={{ flex: "1 1 120px", width: "auto", minHeight: 50, alignItems: "center", justifyContent: "center" }}>
-                  <span className="name" style={{ fontSize: Math.round(19 * Number(o.v)) }}>{o.label}</span>
-                </button>
-              ))}
+            <div className="row" style={{ alignItems: "baseline" }}>
+              <span className="grow" style={{ fontSize: Math.round(17 * SCALE_LEVELS[scale - 1] / SCALE_LEVELS[applied - 1]) }} aria-hidden="true">가나다 Aa 123</span>
+              <b className="num" aria-hidden="true">{scale}단계{scale === SCALE_DEFAULT ? " (보통)" : ""}</b>
             </div>
-            <span className="small">글자와 버튼이 함께 커지거나 작아져요. 이 기기에만 저장돼요. 폭이 좁은 휴대폰(400px 미만)에서는 화면이 넘치지 않게 “아주 크게”도 “크게”만큼만 커져요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
+            <input
+              type="range" className="scale-range" min={1} max={10} step={1} value={scale}
+              aria-labelledby="s-scale" aria-valuetext={`${scale}단계${scale === SCALE_DEFAULT ? ", 보통" : ""}`}
+              onChange={(e) => setScale(Number(e.target.value))}
+              onPointerUp={(e) => commitScale(Number(e.currentTarget.value))}
+              onKeyUp={(e) => commitScale(Number(e.currentTarget.value))}
+              onBlur={(e) => commitScale(Number(e.currentTarget.value))}
+            />
+            <div className="scale-ticks" aria-hidden="true">
+              {SCALE_LEVELS.map((_, i) => <span key={i} aria-current={scale === i + 1}>{i + 1}</span>)}
+            </div>
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              <span className="small grow">1 작게 · 5 보통 · 10 크게. 띠를 끌다가 손을 떼면 화면 전체에 적용되고, 이 기기에만 저장돼요.</span>
+              {applied !== SCALE_DEFAULT && <button className="mini" type="button" onClick={() => { setScale(SCALE_DEFAULT); commitScale(SCALE_DEFAULT); }}>보통으로</button>}
+            </div>
+            <span className="small">폭이 좁은 휴대폰(400px 미만)에서는 화면이 넘치지 않게 7단계(120%)보다 크게는 키우지 않아요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
           </section>
 
           {/* 3. 받을 알림 */}

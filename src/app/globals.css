@@ -451,13 +451,14 @@ a.node:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
 .app-resizer:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 body.app-resizing { cursor: ew-resize; user-select: none; }
 
-/* 글자·화면 크기 (설정 > 글자 크기). --z 는 Popup·AppResizer 가 좌표를 계산할 때 쓴다.
-   좁은 휴대폰(400px 미만)에서는 가로가 넘치지 않도록 1.15배까지만 키운다. */
-html[data-scale="0.9"] { --z: 0.9; }
-html[data-scale="1.15"] { --z: 1.15; }
-html[data-scale="1.3"] { --z: 1.3; }
-@media (max-width: 399px) { html[data-scale="1.3"] { --z: 1.15; } }
+/* 글자·화면 크기 (설정 > 글자 크기 1~10단계). 배율 --z 는 스크립트(ThemeBoot)가 <html> 에 넣는다.
+   Popup·AppResizer 도 --z 로 좌표를 계산한다. 좁은 휴대폰(400px 미만)은 스크립트가 120%까지로 줄인다. */
 html[data-scale] body { zoom: var(--z, 1); }
+
+/* 글자 크기 띠(슬라이더) */
+.scale-range { width: 100%; height: 44px; accent-color: var(--blue); cursor: pointer; margin: 0; }
+.scale-ticks { display: grid; grid-template-columns: repeat(10, 1fr); font-size: 13px; color: var(--sub); text-align: center; margin-top: -4px; }
+.scale-ticks span[aria-current="true"] { color: var(--blue-t); font-weight: 800; }
 
 /* 시간 입력 두 칸 (방해 금지 시간) */
 .timerange { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
