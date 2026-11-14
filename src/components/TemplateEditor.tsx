@@ -1,6 +1,7 @@
 "use client";
 
 import type { TemplateConfig } from "@/lib/template-schema";
+import { DragHandle, useDragSort } from "./DragSort";
 
 export type EditableConfig = Omit<TemplateConfig, "id" | "version">;
 
@@ -25,6 +26,7 @@ export const modeOf = (c: Pick<EditableConfig, "mode" | "preEvent" | "onsite">):
 
 export function TemplateEditor({ value, onChange }: { value: EditableConfig; onChange: (v: EditableConfig) => void }) {
   const steps = value.onsite.steps;
+  const ds = useDragSort(steps, (next) => onChange({ ...value, onsite: { steps: next } }));
   const setStep = (i: number, patch: Partial<(typeof steps)[number]>) =>
     onChange({ ...value, onsite: { steps: steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) } });
   const pre = value.preEvent;
@@ -71,8 +73,15 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={{ font: "400 19px var(--display)" }}>현장 진행 단계</b>
-        {steps.map((st, i) => (
-          <div key={st.key} className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 10 }}>
+        {steps.length > 1 && <span className="small">단계 왼쪽 위 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
+        {steps.map((st, i) => {
+          const row = ds.item(i);
+          return (
+          <div key={st.key} ref={row.ref} className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 10, ...row.style }}>
+            <div className="row">
+              <DragHandle {...ds.handle(i, st.label || `단계 ${i + 1}`)} />
+              <b className="grow">{i + 1}. {st.label || "새 단계"}</b>
+            </div>
             <div className="grid2">
               <div><label className="l" htmlFor={`s-l-${i}`}>단계 이름</label><input id={`s-l-${i}`} className="field" value={st.label} onChange={(e) => setStep(i, { label: e.target.value })} /></div>
               <div><label className="l" htmlFor={`s-b-${i}`}>사회자 버튼 이름 (비우면 버튼 없음)</label><input id={`s-b-${i}`} className="field" value={st.hostButton ?? ""} onChange={(e) => setStep(i, { hostButton: e.target.value || undefined })} /></div>
@@ -90,12 +99,11 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
               </div>
             </div>
             <div className="row">
-              <button className="mini" type="button" disabled={i === 0} onClick={() => onChange({ ...value, onsite: { steps: swap(steps, i, i - 1) } })}>위로</button>
-              <button className="mini" type="button" disabled={i === steps.length - 1} onClick={() => onChange({ ...value, onsite: { steps: swap(steps, i, i + 1) } })}>아래로</button>
               <button className="mini danger" type="button" disabled={steps.length <= 1} onClick={() => onChange({ ...value, onsite: { steps: steps.filter((_, j) => j !== i) } })}>단계 지우기</button>
             </div>
           </div>
-        ))}
+          );
+        })}
         <button
           className="btn white"
           type="button"
@@ -109,11 +117,6 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
   );
 }
 
-function swap<T>(arr: T[], a: number, b: number): T[] {
-  const out = [...arr];
-  [out[a], out[b]] = [out[b], out[a]];
-  return out;
-}
 function nextKey(steps: { key: string }[]): string {
   let n = steps.length + 1;
   while (steps.some((s) => s.key === `step-${n}`)) n++;

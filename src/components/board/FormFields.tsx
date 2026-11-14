@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { DateField } from "@/components/DateField";
+import { DragHandle, useDragSort } from "@/components/DragSort";
 import { AGENDA_STATUS, DEFAULT_TEMPLATES, type FeeData, type Form, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { won } from "@/lib/client";
 
@@ -164,22 +165,19 @@ const Q_TYPES = [{ k: "single", l: "하나 고르기" }, { k: "multi", l: "여�
 function SurveyFields({ data, onChange }: P<SurveyData>) {
   const qs = data.questions ?? [];
   const setQ = (i: number, patch: Partial<SurveyData["questions"][number]>) => onChange({ ...data, questions: qs.map((q, j) => (j === i ? { ...q, ...patch } : q)) });
-  const move = (i: number, d: number) => {
-    const next = [...qs];
-    const [x] = next.splice(i, 1);
-    next.splice(i + d, 0, x);
-    onChange({ ...data, questions: next });
-  };
+  const ds = useDragSort(qs, (next) => onChange({ ...data, questions: next }));
   return (
     <section className="card" aria-label="설문 질문" style={col}>
       <b style={{ font: "400 19px var(--display)" }}>설문 질문</b>
-      {qs.map((q, i) => (
-        <div key={q.id} className="card" style={{ ...col, gap: 8, background: "var(--soft)" }}>
+      {qs.length > 1 && <span className="small">⠿ 손잡이를 끌어서 질문 순서를 바꿔요.</span>}
+      {qs.map((q, i) => {
+        const row = ds.item(i);
+        return (
+        <div key={q.id} ref={row.ref} className="card" style={{ ...col, gap: 8, background: "var(--soft)", ...row.style }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
+            <DragHandle {...ds.handle(i, `질문 ${i + 1}`)} />
             <b>질문 {i + 1}</b>
             <span className="grow" />
-            <button className="mini" type="button" aria-label={`질문 ${i + 1} 위로`} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>
-            <button className="mini" type="button" aria-label={`질문 ${i + 1} 아래로`} disabled={i === qs.length - 1} onClick={() => move(i, 1)}>▼</button>
             <button className="mini danger" type="button" disabled={qs.length <= 1} onClick={() => onChange({ ...data, questions: qs.filter((_, j) => j !== i) })}>질문 지우기</button>
           </div>
           <input className="field" aria-label={`질문 ${i + 1} 내용`} placeholder="질문" maxLength={300} value={q.q} onChange={(e) => setQ(i, { q: e.target.value })} />
@@ -193,7 +191,8 @@ function SurveyFields({ data, onChange }: P<SurveyData>) {
           </div>
           {q.type !== "text" && <Options label={`질문 ${i + 1} 보기`} list={q.options} onChange={(o) => setQ(i, { options: o })} />}
         </div>
-      ))}
+        );
+      })}
       {qs.length < 30 && (
         <button className="btn white" type="button" style={addBtn} onClick={() => onChange({ ...data, questions: [...qs, { id: `q${Date.now().toString(36)}`, type: "single", q: "", options: ["", ""] }] })}>+ 질문 추가</button>
       )}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
+import { DragHandle, useDragSort } from "@/components/DragSort";
 import { api } from "@/lib/client";
 
 type ListName = "memberKinds" | "positions" | "clubs" | "clubRoles";
@@ -61,12 +62,7 @@ function ListEditor({ list, data, onSaved }: { list: ListName; data: Data; onSav
   const dirty = JSON.stringify(items.map((i) => [i.value, i.definition ?? "", i.from ?? ""])) !==
     JSON.stringify(toItems(data, list).map((i) => [i.value, i.definition ?? "", i.from ?? ""]));
   const set = (key: number, patch: Partial<Item>) => setItems(items.map((i) => (i.key === key ? { ...i, ...patch } : i)));
-  const move = (idx: number, d: number) => {
-    const next = [...items];
-    const [x] = next.splice(idx, 1);
-    next.splice(idx + d, 0, x);
-    setItems(next);
-  };
+  const ds = useDragSort(items, setItems);
 
   function remove(it: Item) {
     const n = it.from ? counts[it.from] ?? 0 : 0;
@@ -97,14 +93,16 @@ function ListEditor({ list, data, onSaved }: { list: ListName; data: Data; onSav
       <b style={{ font: "400 20px var(--display)" }}>{info.title} <span className="num small">{items.length}개</span></b>
       <span className="small">{info.help}</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      {items.map((it, idx) => (
-        <div key={it.key} style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: idx ? "1px solid var(--line, #eee)" : undefined, paddingTop: idx ? 8 : 0 }}>
+      {items.length > 1 && <span className="small">왼쪽 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
+      {items.map((it, idx) => {
+        const row = ds.item(idx);
+        return (
+        <div key={it.key} ref={row.ref} style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: idx ? "1px solid var(--line)" : undefined, paddingTop: idx ? 8 : 0, ...row.style }}>
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+            <DragHandle {...ds.handle(idx, it.value || `${info.one} ${idx + 1}`)} />
             <input aria-label={`${info.one} 이름`} className="field" style={{ flex: "1 1 140px", width: "auto", minHeight: 46 }} maxLength={30} value={it.value}
               placeholder={`새 ${info.one} 이름`} onChange={(e) => set(it.key, { value: e.target.value })} />
             <span className="pill gray" title="지금 이 값을 쓰는 회원 수">{it.from ? counts[it.from] ?? 0 : 0}명</span>
-            <button className="mini" type="button" aria-label="위로" disabled={idx === 0} onClick={() => move(idx, -1)}>↑</button>
-            <button className="mini" type="button" aria-label="아래로" disabled={idx === items.length - 1} onClick={() => move(idx, 1)}>↓</button>
             <button className="mini danger" type="button" onClick={() => remove(it)}>삭제</button>
           </div>
           {list === "memberKinds" && (
@@ -113,7 +111,8 @@ function ListEditor({ list, data, onSaved }: { list: ListName; data: Data; onSav
           )}
           {it.from && it.from !== it.value.trim() && it.value.trim() && <span className="small">저장하면 “{it.from}” → “{it.value.trim()}”(으)로 바뀌어요.</span>}
         </div>
-      ))}
+        );
+      })}
       {items.length === 0 && <span className="small">아직 없어요. 아래에서 더해 주세요.</span>}
       {removed.length > 0 && <span className="small">저장하면 빠져요: {removed.join(", ")}</span>}
       <div className="row" style={{ flexWrap: "wrap" }}>
