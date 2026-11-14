@@ -117,7 +117,8 @@ function Members() {
   const [formErr, setFormErr] = useState("");
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [filter, setFilter] = useState("전체");
+  // 고른 회원구분(비어 있으면 전체)
+  const [filter, setFilter] = useState<string[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const preview = useMemo(() => parseMembers(importText), [importText]);
@@ -226,7 +227,7 @@ function Members() {
 
   const counts = new Map<string, number>();
   list?.forEach((m) => counts.set(m.kind || "미지정", (counts.get(m.kind || "미지정") ?? 0) + 1));
-  const shown = list?.filter((m) => filter === "전체" || (m.kind || "미지정") === filter) ?? [];
+  const shown = list?.filter((m) => filter.length === 0 || filter.includes(m.kind || "미지정")) ?? [];
   const admins = list?.filter((m) => m.effective.length > 0) ?? [];
   const kindTabs = [...kinds.map((k) => k.value), ...[...counts.keys()].filter((k) => k !== "미지정" && !kinds.some((x) => x.value === k))];
 
@@ -351,10 +352,18 @@ function Members() {
       </form>
       </Popup>
 
-      <div className="subnav" aria-label="회원구분 보기">
-        {["전체", ...kindTabs, "미지정"].map((k) => (
-          <a key={k} className={filter === k ? "on" : ""} href="#" onClick={(e) => { e.preventDefault(); setFilter(k); }}>{k}</a>
-        ))}
+      {/* 회원구분 보기: 한 줄, "전체" 외에는 여러 개를 함께 고를 수 있다(아무것도 안 고르면 전체) */}
+      <div className="subnav one" role="group" aria-label="회원구분 보기 (여러 개 선택 가능)">
+        <a className={filter.length === 0 ? "on" : ""} href="#" aria-pressed={filter.length === 0} onClick={(e) => { e.preventDefault(); setFilter([]); }}>전체</a>
+        {[...kindTabs, "미지정"].map((k) => {
+          const on = filter.includes(k);
+          return (
+            <a key={k} className={on ? "on" : ""} href="#" aria-pressed={on}
+              onClick={(e) => { e.preventDefault(); setFilter(on ? filter.filter((x) => x !== k) : [...filter, k]); }}>
+              {on ? "✓ " : ""}{k}
+            </a>
+          );
+        })}
       </div>
 
       {!list && <p className="small">불러오는 중이에요…</p>}
