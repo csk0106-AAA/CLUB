@@ -14,7 +14,7 @@ type Mine = {
   id: string; kind: string; kindLabel: string; club: string; eventId: string; eventName: string;
   status: string; createdAt: string; handledAt: string; handledByName: string; unseen: boolean;
 };
-export type AlertsData = { posts: { id: string; title: string; at: string }[]; toHandle: Handle[]; mine: Mine[]; count: number };
+export type AlertsData = { posts: { id: string; title: string; at: string; fresh: "new" | "updated" }[]; toHandle: Handle[]; mine: Mine[]; count: number };
 
 const STATUS: Record<string, { text: string; tone: string }> = {
   pending: { text: "확인 기다리는 중", tone: "warn" },
@@ -110,11 +110,12 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
 
       {d.posts.length > 0 && (
         <section aria-labelledby="al-h3" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h3 id="al-h3" style={sectionTitle}>새 글 {d.posts.length}개</h3>
+          <h3 id="al-h3" style={sectionTitle}>새 글·수정된 글 {d.posts.length}개</h3>
           <ul className="rows">
             {d.posts.map((p) => (
               <li key={p.id}>
                 <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none" }}>
+                  <span className={`chip ${p.fresh === "new" ? "violet" : "gray"}`} style={{ flex: "none" }}>{p.fresh === "new" ? "새 글" : "수정됨"}</span>
                   <span className="name grow" style={{ overflowWrap: "anywhere" }}>{p.title}</span>
                   <span className="small" style={{ flex: "none" }}>{fmtDate(p.at)}</span>
                 </Link>

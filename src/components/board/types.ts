@@ -20,6 +20,8 @@ export type PostSummary = {
   closed: boolean;
   audienceText: string;
   mine: boolean;
+  // 마지막으로 알림을 본 뒤: "new" 새로 올라온 글, "updated" 수정된 글(종 아이콘 숫자에 센 글과 같다)
+  fresh: "" | "new" | "updated";
 };
 
 export type PostFull = {
@@ -42,6 +44,9 @@ export type PostFull = {
 export type PostDetail = {
   post: PostFull;
   canEdit: boolean;
+  // 회칙·회비 글: 고칠 수 있는 사람에게만 관리 화면 주소(없으면 "")
+  manageHref: string;
+  canDelete: boolean;
   seeResults: boolean;
   mine: unknown;
   results: unknown;

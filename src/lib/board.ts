@@ -4,8 +4,10 @@ import { z } from "zod";
 // 화면과 서버가 함께 쓰므로 서버 전용 모듈(store, auth …)을 가져오지 않는다.
 //
 // Posts.data (양식별 JSON)
-//  rules   : {}                                         — 본문은 안내 문구, 회칙 조문은 Rules 표에서 실시간으로 보여 준다
+//  rules   : { v:2, rules:[{id, chapter, article, body, version}] } — 관리자 › 회칙에서 올린 그때의 확정 조문(스냅숏)
+//            예전 글 {} 은 Rules 표의 확정 조문을 실시간으로 보여 준다
 //  fee     : { defaultAmount, rules:[{kind, position, amount}], deadline, account, accountHolder }
+//            + 회비관리·소모임 회비에서 올린 글(v:2)은 period, periodStart, periodEnd, monthDay, note, club(소모임) 도 담는다(lib/published.ts)
 //  minutes : { heldAt, place, attendees, agenda:[{title, status, note}], followUp }
 //  general : {}
 //  survey  : { questions:[{id, type:"text"|"single"|"multi", q, options[]}], deadline }
@@ -19,13 +21,15 @@ import { z } from "zod";
 export const FORMS = ["rules", "fee", "minutes", "general", "survey", "poll", "quiz"] as const;
 export type Form = (typeof FORMS)[number];
 export const isForm = (f: string): f is Form => (FORMS as readonly string[]).includes(f);
-// 글쓰기에서 고를 수 있는 양식. 회의록(minutes)은 이제 "회의" 일정의 회의록에서 쓴다(예전 회의록 글은 읽기만).
-export const WRITE_FORMS: Form[] = FORMS.filter((f) => f !== "minutes");
+// 글쓰기에서 고를 수 있는 양식.
+//  - 회의록(minutes)은 "회의" 일정의 회의록에서 쓴다(예전 회의록 글은 읽기만).
+//  - 회칙(rules)·회비(fee)는 관리 화면(관리자 › 회칙 / 회비관리 / 소모임 회비)에서 만들어 올린다(lib/published.ts).
+export const WRITE_FORMS: Form[] = FORMS.filter((f) => f !== "minutes" && f !== "rules" && f !== "fee");
 export const isWriteForm = (f: string): f is Form => (WRITE_FORMS as string[]).includes(f);
 
 export const FORM_LABEL: Record<Form, string> = {
   rules: "회칙",
-  fee: "연회비 안내",
+  fee: "회비 안내",
   minutes: "회의록",
   general: "일반",
   survey: "설문",
@@ -62,6 +66,18 @@ export const feeData = z.object({
   accountHolder: t(40).default(""),
 });
 export type FeeData = z.infer<typeof feeData>;
+// 회비관리에서 올린 회비 글(스냅숏, v:2)에 더 들어 있는 값. 예전 글에는 없다.
+export type FeeSnap = FeeData & {
+  v?: number;
+  club?: string;
+  period?: "annual" | "monthly";
+  periodStart?: string;
+  periodEnd?: string;
+  monthDay?: string;
+  note?: string;
+  // 예전 글이 비어 있을 때 회비관리 설정을 그대로 보여 주는 경우
+  fromDues?: boolean;
+};
 
 export const minutesData = z.object({
   heldAt: t(30).default(""),

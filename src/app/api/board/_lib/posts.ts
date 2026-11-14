@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { ALL, audienceInput, audienceLabel, type Audience } from "@/lib/audience";
-import { DATA_SCHEMA, isClosed, isForm, RESPONSE_FORMS, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
-import { duesAccount, duesAmount, PERIOD_LABEL, readDues } from "@/lib/dues";
-import { feeFor } from "@/lib/fee";
+import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
+import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published";
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 import { audienceOf, canEdit, canSeeResults, memberNames, readFiles, type Me } from "./server";
@@ -29,16 +29,18 @@ export async function parsePost(raw: unknown, me: Me, fixedForm?: string): Promi
   if (!p.success) return { ok: false, error: zodMessage(p.error) };
   const form = fixedForm ?? p.data.form;
   if (!isForm(form)) return { ok: false, error: "양식을 골라 주세요." };
-  if (form === "rules" && !me.isAll) return { ok: false, error: "회칙 글은 전체 관리자만 쓸 수 있어요.", status: 403 };
+  // 새 글: 글쓰기 양식만. 회칙·회비 글은 관리 화면에서 올린다.
+  if (!fixedForm && !isWriteForm(form)) {
+    return {
+      ok: false,
+      error: form === "rules" ? "회칙은 관리자 › 회원관리 › 회칙에서 올려 주세요." : form === "fee" ? "회비 글은 관리자 › 회비관리(소모임은 소모임 회비)에서 올려 주세요." : "이 양식은 글쓰기에서 쓸 수 없어요.",
+    };
+  }
   const d = DATA_SCHEMA[form].safeParse(p.data.data ?? {});
   if (!d.success) return { ok: false, error: zodMessage(d.error, "양식 내용을 확인해 주세요.") };
-  let audience: Audience = ALL;
-  if (p.data.audience.mode !== "all") {
-    const ids = new Set((await (await getStore()).list("Members")).map((m) => m.id));
-    const memberIds = [...new Set(p.data.audience.memberIds)].filter((id) => ids.has(id));
-    if (memberIds.length === 0) return { ok: false, error: "공개 대상 회원을 한 명 이상 골라 주세요." };
-    audience = { ...p.data.audience, memberIds };
-  }
+  const aud = await cleanAudience(p.data.audience);
+  if (typeof aud === "string") return { ok: false, error: aud };
+  const audience: Audience = aud;
   return {
     ok: true,
     v: {
@@ -57,7 +59,8 @@ async function eventNames(): Promise<Record<string, string>> {
   return Object.fromEntries(ev.map((e) => [e.id, e.name]));
 }
 
-export async function summaries(me: Me, posts: Row[]) {
+// fresh: 종 아이콘 숫자에 들어간 글(lib/unread.ts postFreshness)과 같은 기준의 "새 글"/"수정됨" 표시
+export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" | "updated"> = new Map()) {
   const [names, evs, responses] = await Promise.all([memberNames(), eventNames(), (await getStore()).list("PostResponses")]);
   const mine = new Set(responses.filter((r) => r.memberId === me.row.id).map((r) => r.postId));
   return posts.map((p) => {
@@ -79,6 +82,7 @@ export async function summaries(me: Me, posts: Row[]) {
       closed: typeof data.deadline === "string" ? isClosed(data.deadline) : false,
       audienceText: audienceLabel(audienceOf(p), { events: evs }),
       mine: p.authorId === me.row.id,
+      fresh: fresh.get(p.id) ?? "",
     };
   });
 }
@@ -93,7 +97,9 @@ export async function detail(me: Me, p: Row) {
   const form = p.form as Form;
   const names = await memberNames();
   const data = parseJson<Record<string, unknown>>(p.data, {});
-  const full = canSeeResults(me, p);
+  const managed = managedOf(p);
+  const mayManage = managed ? await canManage(me.row, me.perms, managed) : false;
+  const full = canSeeResults(me, p) || mayManage;
   const responses = RESPONSE_FORMS.includes(form) ? (await s.list("PostResponses")).filter((r) => r.postId === p.id) : [];
   const mineRow = responses.find((r) => r.memberId === me.row.id);
   const mine = mineRow ? parseJson<unknown>(mineRow.answer, null) : null;
@@ -101,31 +107,37 @@ export async function detail(me: Me, p: Row) {
   let results: unknown = null;
 
   if (form === "rules") {
-    const rules = (await s.list("Rules")).filter((r) => r.confirmed === "true");
-    extra.rules = rules.map((r) => ({ id: r.id, chapter: r.chapter, article: r.article, body: r.body, version: r.version }));
+    if (Array.isArray(data.rules)) {
+      // 관리자 › 회칙에서 올린 그때의 조문(스냅숏)
+      extra.rules = data.rules;
+    } else {
+      // 예전 회칙 글: 지금 확정된 조문을 그대로
+      const rules = (await s.list("Rules")).filter((r) => r.confirmed === "true");
+      extra.rules = rules.map((r) => ({ id: r.id, chapter: r.chapter, article: r.article, body: r.body, version: r.version }));
+    }
+    delete data.rules;
   }
 
   if (form === "minutes") extra.agendaLabels = await getSetting<AgendaLabels>(AGENDA_LABELS_KEY, {});
 
-  // 연회비 글에 금액을 따로 적지 않았으면 관리자 "모임회비관리" 설정을 그대로 보여 준다(상단 고정 연회비 안내).
-  if (form === "fee" && !String(data.defaultAmount ?? "").trim() && !(Array.isArray(data.rules) && data.rules.length)) {
+  // 예전 회비 글에 금액을 따로 적지 않았으면 관리자 회비관리 설정을 그대로 보여 준다.
+  // 회비관리에서 올린 글(v:2)과 금액을 적은 예전 글은 글에 담긴 값(올린 그때의 내용)으로 보여 준다.
+  if (form === "fee" && data.v !== 2 && !String(data.defaultAmount ?? "").trim() && !(Array.isArray(data.rules) && data.rules.length)) {
     const d = await readDues();
-    extra.myFee = { amount: duesAmount(d, { kind: me.row.kind, position: me.row.position }), kind: me.row.kind ?? "", position: me.row.position ?? "" };
     data.defaultAmount = d.amount;
-    data.rules = full ? d.rules.map((r) => ({ kind: "", position: r.position, amount: r.amount })).concat(d.kindRules.map((r) => ({ kind: r.kind, position: "", amount: r.amount }))) : [];
+    data.rules = d.rules;
     data.account = duesAccount(d);
     data.accountHolder = d.holder;
-    data.deadline = "";
-    data.dueText = [d.dueText, d.note].filter(Boolean).join("\n");
-    data.period = PERIOD_LABEL[d.period];
+    data.period = d.period;
+    data.periodStart = d.periodStart;
+    data.periodEnd = d.periodEnd;
+    data.monthDay = d.monthDay;
+    data.note = d.note;
     data.fromDues = true;
-  } else if (form === "fee") {
-    const rules = Array.isArray(data.rules) ? (data.rules as { kind: string; position: string; amount: string }[]) : [];
-    const amount = feeFor(
-      { fee: String(data.defaultAmount ?? ""), feeRules: JSON.stringify(rules.map((r) => ({ days: "", kind: r.kind, position: r.position, amount: r.amount }))) },
-      { kind: me.row.kind, position: me.row.position },
-      null,
-    );
+  }
+  if (form === "fee") {
+    const rules = Array.isArray(data.rules) ? (data.rules as DuesRule[]) : [];
+    const amount = duesAmount({ amount: String(data.defaultAmount ?? ""), rules }, { kind: me.row.kind, position: me.row.position });
     extra.myFee = { amount, kind: me.row.kind ?? "", position: me.row.position ?? "" };
     // 다른 회원의 금액 표는 작성자·관리자에게만
     if (!full) data.rules = [];
@@ -190,6 +202,9 @@ export async function detail(me: Me, p: Row) {
       authorId: p.authorId, authorName: names.get(p.authorId) ?? "", createdAt: p.createdAt, updatedAt: p.updatedAt,
     },
     canEdit: canEdit(me, p),
+    // 회칙·회비 글: 고칠 수 있는 사람에게만 관리 화면 주소(“수정”은 그 화면을 연다)와 삭제
+    manageHref: managed && mayManage ? manageHref(managed, me.perms) : "",
+    canDelete: managed ? mayManage : canEdit(me, p),
     seeResults: full,
     mine,
     results,

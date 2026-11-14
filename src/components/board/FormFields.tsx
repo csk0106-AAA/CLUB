@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { DateField } from "@/components/DateField";
 import { DragHandle, useDragSort } from "@/components/DragSort";
-import { AGENDA_STATUS, DEFAULT_TEMPLATES, type FeeData, type Form, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { AGENDA_STATUS, DEFAULT_TEMPLATES, type Form, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { won } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -28,7 +28,6 @@ export function FormFields({ form, data, onChange, kinds, positions, agendaLabel
   agendaLabels: Record<string, string>;
 }) {
   const set = (d: unknown) => onChange(d as Data);
-  if (form === "fee") return <FeeFields data={withDefaults<FeeData>(form, data)} onChange={set} kinds={kinds} positions={positions} />;
   if (form === "minutes") return <MinutesFields data={withDefaults<MinutesData>(form, data)} onChange={set} labels={agendaLabels} />;
   if (form === "survey") return <SurveyFields data={withDefaults<SurveyData>(form, data)} onChange={set} />;
   if (form === "poll") return <PollFields data={withDefaults<PollData>(form, data)} onChange={set} />;
@@ -36,28 +35,32 @@ export function FormFields({ form, data, onChange, kinds, positions, agendaLabel
   return null;
 }
 
-/* ───── 연회비 안내 ───── */
-function FeeFields({ data, onChange, kinds, positions }: P<FeeData> & { kinds: string[]; positions: string[] }) {
+/* ───── 조건별 금액(회비관리·소모임 회비) ─────
+   기본 금액 + 회원구분·직책 조건 줄. 빈 조건("")은 "전체", 직책 "일반회원"은 직책 없는 회원.
+   회원에게 맞는 줄 중 조건이 가장 많은 줄(같으면 위쪽 줄)을 쓰고, 맞는 줄이 없으면 기본 금액을 쓴다(lib/fee.ts). */
+export type AmountRule = { kind: string; position: string; amount: string };
+export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit = "회비" }: {
+  amount: string;
+  rules: AmountRule[];
+  onChange: (amount: string, rules: AmountRule[]) => void;
+  kinds: string[];
+  positions: string[];
+  unit?: string;
+}) {
   const id = useId();
-  const rules = data.rules ?? [];
-  const setRules = (r: FeeData["rules"]) => onChange({ ...data, rules: r });
+  const setRules = (r: AmountRule[]) => onChange(amount, r);
+  const keys = rules.map((r) => `${r.kind}|${r.position}`);
+  const dup = keys.some((k, i) => keys.indexOf(k) !== i);
   return (
-    <section className="card" aria-label="연회비" style={col}>
-      <b style={{ font: `700 ${fs(17)} var(--display)` }}>연회비</b>
-      <div className="msg info">기본 금액과 조건별 금액을 모두 비워 두면 관리자 › 회원관리 › 모임회비관리의 회비·계좌·납부 안내를 그대로 보여 줘요. 이 글에만 다른 금액을 쓰려면 아래에 적어 주세요.</div>
-      <span className="small">기본 금액 위에 회원구분·직책별 금액을 줄로 더할 수 있어요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 기본 금액을 써요. 직책의 “일반회원”은 직책이 없는 회원이에요. 회원에게는 <b>본인 연회비만</b> 보여요.</span>
-      <div>
-        <label className="l" htmlFor={`${id}-def`}>기본 금액(원) — 비우면 연회비 없음</label>
-        <input id={`${id}-def`} className="field" inputMode="numeric" value={data.defaultAmount} onChange={(e) => onChange({ ...data, defaultAmount: e.target.value.replace(/\D/g, "").slice(0, 9) })} />
-        {data.defaultAmount && <span className="hint">{won(data.defaultAmount)}</span>}
-      </div>
+    <div style={col}>
+      <span className="small">회원구분·직책마다 금액이 다르면 “조건별 금액”을 더해 주세요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고(같으면 위쪽 줄), 맞는 줄이 없으면 기본 금액을 써요. 직책의 “일반회원”은 직책이 없는 회원이에요.</span>
       {rules.length > 0 && (
         <div className="tblw">
-          <table className="tbl" style={{ minWidth: 480 }}>
+          <table className="tbl" style={{ minWidth: 440 }}>
             <thead><tr><th>회원구분</th><th>직책</th><th>금액(원)</th><th><span className="sr-only">삭제</span></th></tr></thead>
             <tbody>
               {rules.map((r, i) => {
-                const upd = (patch: Partial<FeeData["rules"][number]>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+                const upd = (patch: Partial<AmountRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
                 return (
                   <tr key={i}>
                     <td>
@@ -72,7 +75,10 @@ function FeeFields({ data, onChange, kinds, positions }: P<FeeData> & { kinds: s
                         {[...new Set([...positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
                       </select>
                     </td>
-                    <td><input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "").slice(0, 9) })} /></td>
+                    <td>
+                      <input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "").slice(0, 9) })} />
+                      {r.amount && <span className="hint num">{won(r.amount)}</span>}
+                    </td>
                     <td><button className="mini danger" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button></td>
                   </tr>
                 );
@@ -81,14 +87,15 @@ function FeeFields({ data, onChange, kinds, positions }: P<FeeData> & { kinds: s
           </table>
         </div>
       )}
-      <button className="btn white" type="button" style={addBtn} onClick={() => setRules([...rules, { kind: "", position: "", amount: "" }])}>+ 조건별 금액 줄 추가</button>
-      {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
-      <div className="grid2">
-        <div><label className="l" htmlFor={`${id}-dl`}>납부기한</label><DateField id={`${id}-dl`} mode="date" value={data.deadline} onChange={(v) => onChange({ ...data, deadline: v })} /></div>
-        <div><label className="l" htmlFor={`${id}-acc`}>계좌</label><input id={`${id}-acc`} className="field" maxLength={100} placeholder="예: ○○은행 000-0000-0000" value={data.account} onChange={(e) => onChange({ ...data, account: e.target.value })} /></div>
-        <div><label className="l" htmlFor={`${id}-hd`}>예금주</label><input id={`${id}-hd`} className="field" maxLength={40} value={data.accountHolder} onChange={(e) => onChange({ ...data, accountHolder: e.target.value })} /></div>
+      <button className="btn white" type="button" style={addBtn} onClick={() => setRules([...rules, { kind: "", position: "", amount: "" }])}>+ 조건별 금액 추가</button>
+      {rules.some((r) => !r.amount) && <span className="small" role="alert" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
+      {dup && <span className="small" role="alert" style={{ color: "var(--red-t)" }}>같은 조건의 줄이 두 번 있어요. 하나를 삭제해 주세요.</span>}
+      <div>
+        <label className="l" htmlFor={`${id}-def`}>기본 금액(원) — 조건에 맞는 줄이 없을 때, 비우면 {unit} 없음</label>
+        <input id={`${id}-def`} className="field" inputMode="numeric" placeholder="예) 300000" value={amount} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 9), rules)} />
+        {amount && <span className="hint num">{won(amount)}</span>}
       </div>
-    </section>
+    </div>
   );
 }
 

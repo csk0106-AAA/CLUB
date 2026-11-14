@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
+import { AdminIssues } from "@/components/AdminIssues";
 import { Avatar, type AvatarView } from "@/components/Avatars";
 import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
@@ -441,5 +442,5 @@ function Members() {
 }
 
 export default function MembersPage() {
-  return <AdminGate mode="members" need={["members"]} active="/admin/members"><Members /></AdminGate>;
+  return <AdminGate mode="members" need={["members"]} active="/admin/members"><AdminIssues /><Members /></AdminGate>;
 }

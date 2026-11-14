@@ -4,7 +4,8 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { MemberSearch } from "@/app/events/[id]/MemberSearch";
-import { api, won } from "@/lib/client";
+import { ClubDuesEditor } from "@/components/ClubDuesEditor";
+import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Info = { intro: string; cycle: string; place: string; bank: string; account: string; holder: string; feeAmount: string; feeText: string; policy: string };
@@ -74,7 +75,7 @@ function Club({ name }: { name: string }) {
       <section className="card" aria-label="소모임 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>소모임 회원</b>
         <span className="small">
-          직책(회장 등)을 정하면 그 회원이 소모임 일정의 참관자를 정할 수 있고 게시글도 쓸 수 있어요.
+          직책(대표 등)을 정하면 그 회원이 소모임 일정의 참관자를 정할 수 있고 게시글도 쓸 수 있어요. 첫 번째 직책({data.clubRoles[0] ?? "대표"})은 소모임 회비도 정하고 올릴 수 있어요.
           {leaders.length > 0 && <> 지금: {leaders.map((l) => `${l.role} ${l.name}`).join(", ")}</>}
         </span>
         {roster.length === 0 && <span className="small">아직 회원이 없어요. 아래에서 더해 주세요.</span>}
@@ -120,12 +121,6 @@ function Club({ name }: { name: string }) {
           <div><label className="l" htmlFor="c-holder">예금주</label><input id="c-holder" className="field" maxLength={60} value={info.holder} onChange={(e) => setI("holder", e.target.value)} /></div>
         </div>
         <span className="small">이 소모임으로 일정을 만들면 이 계좌가 일정 입금계좌로 먼저 들어가요.</span>
-        <b>소모임 회비 (선택)</b>
-        <div className="grid2">
-          <div><label className="l" htmlFor="c-fee">금액 (원)</label><input id="c-fee" className="field" inputMode="numeric" value={info.feeAmount} onChange={(e) => setI("feeAmount", e.target.value.replace(/\D/g, "").slice(0, 9))} /></div>
-          <div><label className="l" htmlFor="c-feetext">회비 안내</label><input id="c-feetext" className="field" maxLength={200} placeholder="예) 연 1회, 3월에 걷어요" value={info.feeText} onChange={(e) => setI("feeText", e.target.value)} /></div>
-        </div>
-        {info.feeAmount && <span className="small">회비: {won(info.feeAmount)}{info.feeText ? ` · ${info.feeText}` : ""}</span>}
         <div>
           <label className="l" htmlFor="c-policy">운영 정책 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
           <textarea id="c-policy" className="field" rows={6} maxLength={3000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
@@ -133,6 +128,10 @@ function Club({ name }: { name: string }) {
         </div>
         <button className="btn" type="submit" disabled={busy || !infoDirty} style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }}>{busy ? "저장 중…" : "기본 정보 저장"}</button>
       </form>
+
+      <section className="card" aria-label="소모임 회비" style={{ display: "flex", flexDirection: "column", gap: 12, background: "var(--soft)" }}>
+        <ClubDuesEditor club={data.name} />
+      </section>
     </>
   );
 }

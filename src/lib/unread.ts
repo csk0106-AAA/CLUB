@@ -1,6 +1,7 @@
 import { eventJoinable, inAudience, readAudience } from "./audience";
 import { readPrefs } from "./prefs";
 import { countIn } from "./club-requests";
+import { getPermGroups } from "./perms";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 
@@ -47,18 +48,34 @@ function newPostsIn(posts: Row[], mid: string, since: string): Row[] {
   );
 }
 
-// 홈 화면 알림 창의 "새 글" 목록(최근 것 먼저)
-export async function newPostsOf(mid: string): Promise<Row[]> {
-  const [posts, seen] = await Promise.all([(await getStore()).list("Posts"), getSeen(mid)]);
-  return newPostsIn(posts, mid, seen.posts).sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt));
+// 종 아이콘 숫자에 들어가는 글: 마지막으로 본 뒤 올라오거나 바뀐 글. "받을 알림"에서 공지글을 끄면 없다.
+// 홈 화면 목록의 "새 글"/"수정됨" 표시와 알림 창 목록이 모두 이 기준을 쓴다(숫자와 표시가 같게).
+function countedPosts(posts: Row[], me: Row, seen: Seen): Row[] {
+  return readPrefs(me.prefs).notify.posts ? newPostsIn(posts, me.id, seen.posts) : [];
+}
+
+// 홈 화면 알림 창의 "새 글" 목록(최근 것 먼저). fresh: 처음 본 뒤 새로 올라온 글이면 "new", 예전 글이 바뀌었으면 "updated"
+export async function newPostsOf(mid: string): Promise<(Row & { fresh: "new" | "updated" })[]> {
+  const s = await getStore();
+  const [posts, members, seen] = await Promise.all([s.list("Posts"), s.list("Members"), getSeen(mid)]);
+  const me = members.find((m) => m.id === mid);
+  if (!me) return [];
+  return countedPosts(posts, me, seen)
+    .sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt))
+    .map((p) => ({ ...p, fresh: later(p.createdAt, seen.posts) ? "new" : "updated" }));
+}
+
+// 홈 화면 게시글 목록 표시용: 글 id → "new" | "updated"
+export async function postFreshness(mid: string): Promise<Map<string, "new" | "updated">> {
+  return new Map((await newPostsOf(mid)).map((p) => [p.id, p.fresh]));
 }
 
 // 여러 회원의 숫자를 한 번에 센다(알림 보낼 때 표를 한 번만 읽도록).
 export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
   const s = await getStore();
-  const [members, events, posts, profiles, stamps, requests] = await Promise.all([
+  const [members, events, posts, profiles, stamps, requests, groups] = await Promise.all([
     s.list("Members"), s.list("Events"), s.list("Posts"), s.list("Profiles"),
-    getSetting<Record<string, string>>("eventStamps", {}), s.list("ClubRequests"),
+    getSetting<Record<string, string>>("eventStamps", {}), s.list("ClubRequests"), getPermGroups(),
   ]);
   const out = new Map<string, Counts>();
   for (const mid of mids) {
@@ -67,15 +84,15 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
     const prefs = readPrefs(me.prefs);
     const seen = await getSeen(mid);
     const ev = events.filter((e) => eventJoinable(e, me) && later(stamps[e.id], seen.events)).length;
-    const po = newPostsIn(posts, mid, seen.posts).length;
+    const po = countedPosts(posts, me, seen).length;
     const pr = profiles.filter((p) =>
       p.memberId !== mid && p.introStatus === "approved" && later(p.updatedAt || p.approvedAt, seen.profiles),
     ).length;
     out.set(mid, {
       events: prefs.notify.events ? ev : 0,
-      posts: prefs.notify.posts ? po : 0,
+      posts: po,
       profiles: prefs.notify.profiles ? pr : 0,
-      alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid)),
+      alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)),
     });
   }
   return out;

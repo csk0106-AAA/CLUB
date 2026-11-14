@@ -1,7 +1,7 @@
 import { readObservers } from "./audience";
 import { clubLeaders } from "./clubs";
 import { memberClubs } from "./lists";
-import { ownPerms } from "./perms";
+import { effectivePerms, getPermGroups, type PermGroups } from "./perms";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
@@ -16,14 +16,15 @@ export type ReqStatus = "pending" | "approved" | "declined";
 export const KIND_LABEL: Record<ReqKind, string> = { join: "소모임 가입", observe: "일정 1회 참관" };
 
 // 이 소모임 신청을 처리할 회원 id 목록
-export function handlersOf(members: Row[], club: string): string[] {
+// groups: 직책·소모임 직책 그룹 권한(Settings permGroups). 회장 그룹으로 받은 "모든 권한"도 처리자로 본다.
+export function handlersOf(members: Row[], club: string, groups: PermGroups = {}): string[] {
   const leaders = clubLeaders(members, club).map((l) => l.id).filter(Boolean);
   if (leaders.length) return leaders;
-  return members.filter((m) => m.kind !== "회원대기" && ownPerms(m).includes("all")).map((m) => m.id);
+  return members.filter((m) => m.kind !== "회원대기" && effectivePerms(m, groups).includes("all")).map((m) => m.id);
 }
 
-export function canHandle(members: Row[], club: string, mid: string): boolean {
-  return handlersOf(members, club).includes(mid);
+export function canHandle(members: Row[], club: string, mid: string, groups: PermGroups = {}): boolean {
+  return handlersOf(members, club, groups).includes(mid);
 }
 
 const inClub = (m: Row | undefined, club: string) => !!m && memberClubs(m).some((c) => c.name === club);
@@ -46,13 +47,13 @@ export function pendingDup(rows: Row[], kind: ReqKind, club: string, memberId: s
 export async function requestCounts(mid: string): Promise<{ toHandle: number; results: number }> {
   const s = await getStore();
   const [rows, members] = await Promise.all([s.list("ClubRequests"), s.list("Members")]);
-  return countIn(rows, members, mid);
+  return countIn(rows, members, mid, await getPermGroups());
 }
 
-export function countIn(rows: Row[], members: Row[], mid: string): { toHandle: number; results: number } {
+export function countIn(rows: Row[], members: Row[], mid: string, groups: PermGroups = {}): { toHandle: number; results: number } {
   const handlerCache = new Map<string, string[]>();
   const hs = (club: string) => {
-    if (!handlerCache.has(club)) handlerCache.set(club, handlersOf(members, club));
+    if (!handlerCache.has(club)) handlerCache.set(club, handlersOf(members, club, groups));
     return handlerCache.get(club)!;
   };
   return {

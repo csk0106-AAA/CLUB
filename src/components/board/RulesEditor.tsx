@@ -5,7 +5,7 @@ import { api, fmtDateTime } from "@/lib/client";
 import { Popup } from "../Popup";
 import { fs } from "@/lib/fs";
 
-// 회칙 조문 편집(예전 관리자 > 회칙 탭에서 옮겨 옴). 조문마다 "저장"을 누르면 바로 반영되고 변경 기록이 남는다.
+// 회칙 조문 편집(관리자 › 회원관리 › 회칙 화면). 조문마다 "저장"을 누르면 바로 반영되고 변경 기록이 남는다.
 // "확정"으로 표시한 조문만 회원의 회칙 글에 보인다. 전체 관리자만 쓸 수 있다(/api/admin/club/rules).
 type Note = { tone: "bad" | "info"; text: string } | null;
 type RuleLog = { at: string; by: string; what: string; before?: string };
@@ -154,7 +154,7 @@ export function RulesEditor() {
   return (
     <section aria-label="회칙 조문 편집" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>회칙 조문</b>
-      <span className="small">조문마다 “저장”을 누르면 바로 반영돼요(글 저장과 따로예요). “확정”으로 표시한 조문만 회원에게 보여요. 저장할 때마다 변경 기록이 남아요.</span>
+      <span className="small">조문마다 “저장”을 누르면 바로 저장돼요. “확정”으로 표시한 조문만 게시글로 올라가요(아래 “게시글 업로드”). 저장할 때마다 변경 기록이 남아요.</span>
       <Msg n={note} />
       <div className="row"><button className="mini" type="button" aria-expanded={paste} onClick={() => setPaste(!paste)}>{paste ? "붙여넣기 닫기" : "회칙 붙여넣기 · 파일"}</button></div>
       {paste && <RulesPaste onDone={load} />}

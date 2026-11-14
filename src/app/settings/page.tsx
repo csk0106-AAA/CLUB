@@ -9,6 +9,7 @@ import { Mascot } from "@/components/Mascot";
 import { Avatar, type AvatarView } from "@/components/Avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { MemberTabs } from "@/components/MemberTabs";
+import tabsCss from "@/components/MemberTabs.module.css";
 import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS, SCALE_NARROW_MAX } from "@/components/ThemeBoot";
 import { api } from "@/lib/client";
 import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
@@ -18,7 +19,7 @@ import { fs } from "@/lib/fs";
 type Me = {
   name: string; perms: string[]; admin: boolean; consent: boolean; gender: string;
   company: string; title: string; phone: string;
-  clubs: { name: string; role: string }[]; clubOptions: string[];
+  clubs: { name: string; role: string }[]; clubOptions: string[]; headClubs: string[];
   prefs: Prefs;
   avatar: AvatarView;
 };
@@ -70,6 +71,8 @@ export default function SettingsPage() {
   const [joinMsg, setJoinMsg] = useState("");
   // 내가 보낸 소모임 가입 신청 중 아직 처리되지 않은 것(소모임 이름)
   const [pendingJoins, setPendingJoins] = useState<string[]>([]);
+  // 관리자가 처리할 일 수(관리자 아이콘의 빨간 숫자)
+  const [issues, setIssues] = useState(0);
   const loadPending = () =>
     api<{ mine: { kind: string; club: string; status: string }[] }>("/api/alerts").then((r) => {
       if (r.ok) setPendingJoins(r.data.mine.filter((x) => x.kind === "join" && x.status === "pending").map((x) => x.club));
@@ -112,6 +115,7 @@ export default function SettingsPage() {
         setMe(r.data);
         setForm({ company: r.data.company, title: r.data.title, phone: r.data.phone });
         applyTheme(r.data.prefs.theme);
+        if (r.data.perms.length > 0) api<{ count: number }>("/api/admin/issues").then((x) => x.ok && setIssues(x.data.count));
       } else if (r.status === 401) router.replace("/");
       else setError(r.error);
     });
@@ -229,8 +233,9 @@ export default function SettingsPage() {
           <div className="icons">
             {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
             {me && me.perms.length > 0 && (
-              <Link href="/admin" aria-label="관리자 화면" title="관리자 화면" style={headIcon}>
+              <Link href="/admin" aria-label={issues > 0 ? `관리자 화면, 처리할 일 ${issues}개` : "관리자 화면"} title="관리자 화면" style={headIcon}>
                 <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+                {issues > 0 && <span className={tabsCss.badge} aria-hidden="true">{issues > 99 ? "99+" : issues}</span>}
               </Link>
             )}
             {me && (
@@ -311,6 +316,9 @@ export default function SettingsPage() {
                     <li key={c.name} className="row" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "6px 6px 6px 12px", background: "var(--card)" }}>
                       <b className="grow">{c.name}</b>
                       {c.role && <span className="pill ok">{c.role}</span>}
+                      {me.headClubs.includes(c.name) && (
+                        <Link href={`/clubs/${encodeURIComponent(c.name)}/dues`} className="mini" style={{ textDecoration: "none" }} aria-label={`${c.name} 회비 관리`}>회비 관리</Link>
+                      )}
                       {c.role
                         ? <span className="small" style={{ fontSize: fs(13) }}>관리자에게 변경 요청</span>
                         : <button className="mini danger" type="button" disabled={saving} aria-label={`${c.name} 소모임에서 빠지기`}

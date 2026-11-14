@@ -10,7 +10,6 @@ import {
 } from "@/lib/board";
 import { api } from "@/lib/client";
 import { FormFields } from "./FormFields";
-import { RulesEditor } from "./RulesEditor";
 import { fileUrl, type BoardMeta, type PostFull } from "./types";
 import { fs } from "@/lib/fs";
 
@@ -18,7 +17,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 const ALL_AUD: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
-// 글쓰기·고치기 화면. 양식을 고르면 그 양식의 기본 템플릿(제목·내용·양식 내용)을 불러온다.
+// 글쓰기·수정 화면(회칙·회비 글은 관리 화면에서 올린다). 양식을 고르면 그 양식의 기본 템플릿(제목·내용·양식 내용)을 불러온다.
 // 팝업 창 안에서 쓸 때: onDone(저장 후 글 id), onCancel(취소), onDirty(작성 중인지) 를 넘긴다.
 export function PostEditor({ initial, onDone, onCancel, onDirty }: {
   initial?: PostFull;
@@ -66,7 +65,6 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
     setTitle(t.title);
     setBody(t.body);
     setData(clone(t.data));
-    if (f === "rules" || f === "fee") { setNotice(true); setPinned(true); }
     setDirty(false);
     setNote(null);
   }
@@ -149,8 +147,8 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
   if (!meta) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
   if (!initial && !meta.me.canWrite) return <div className="msg bad" role="alert">글은 관리자와 소모임 직책자만 쓸 수 있어요.</div>;
 
-  const forms = WRITE_FORMS.filter((f) => f !== "rules" || meta.me.isAll);
-  const canTpl = meta.me.tplAdmin && form && (form !== "rules" || meta.me.isAll);
+  const forms = WRITE_FORMS;
+  const canTpl = meta.me.tplAdmin && !!form;
   const images = files.filter((f) => f.image);
   const docs = files.filter((f) => !f.image);
 
@@ -178,12 +176,11 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
             <input id={`${uid}-t`} className="field" maxLength={100} value={title} onChange={(e) => touch(setTitle)(e.target.value)} />
           </div>
           <div>
-            <label className="l" htmlFor={`${uid}-b`}>{form === "rules" ? "안내 문구 (회칙 조문 위에 보여요, 선택)" : form === "fee" ? "안내 문구" : "내용"}</label>
+            <label className="l" htmlFor={`${uid}-b`}>내용</label>
             <textarea id={`${uid}-b`} className="field" rows={form === "general" ? 10 : 5} maxLength={10000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }} value={body} onChange={(e) => touch(setBody)(e.target.value)} />
           </div>
 
           <FormFields form={form} data={data} onChange={touch(setData)} kinds={meta.kinds} positions={meta.positions} agendaLabels={meta.agendaLabels} />
-          {form === "rules" && meta.me.isAll && <RulesEditor />}
 
           <AudiencePicker value={audience} onChange={touch(setAudience)} />
 

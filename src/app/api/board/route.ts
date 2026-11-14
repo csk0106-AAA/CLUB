@@ -3,6 +3,7 @@ import { bad } from "@/lib/api";
 import { migrateMinutesPosts } from "@/lib/event-migrate";
 import { notifyPost } from "@/lib/notify";
 import { getStore } from "@/lib/store";
+import { postFreshness } from "@/lib/unread";
 import { parsePost, sortPosts, summaries } from "./_lib/posts";
 import { canSee, ensureBoard, forbid, getMe } from "./_lib/server";
 
@@ -17,12 +18,12 @@ export async function GET() {
   const { me } = m;
   const posts = (await (await getStore()).list("Posts")).filter((p) => canSee(me, p)).sort(sortPosts);
   return NextResponse.json({
-    posts: await summaries(me, posts),
+    posts: await summaries(me, posts, await postFreshness(me.row.id)),
     me: { canWrite: me.canWrite, manage: me.manage, isAll: me.isAll, tplAdmin: me.tplAdmin },
   });
 }
 
-// 글쓰기: 관리자(all/board)와 소모임 직책자. 회칙 글은 전체 관리자만.
+// 글쓰기: 관리자(all/board)와 소모임 직책자. 회칙·회비 글은 관리 화면에서만 올린다(400).
 export async function POST(req: Request) {
   const m = await getMe();
   if ("err" in m) return m.err;

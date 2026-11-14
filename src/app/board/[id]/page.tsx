@@ -7,7 +7,7 @@ import { IconMegaphone, IconPin } from "@/components/Icons";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Attachments, FeeView, MinutesView, PollBox, QuizBox, RulesView, SurveyBox } from "@/components/board/PostView";
 import type { PostDetail } from "@/components/board/types";
-import { FORM_LABEL, type FeeData, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { FORM_LABEL, type FeeSnap, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -30,14 +30,18 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   }, [load]);
 
   async function remove() {
-    if (!d || !window.confirm("이 글을 지울까요? 첨부 파일과 응답도 함께 지워져요.")) return;
+    if (!d || !window.confirm("이 게시글을 삭제할까요? 첨부 파일과 응답도 함께 지워져요.")) return;
     const r = await api(`/api/board/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (!r.ok) return setError(r.error);
     router.replace("/board");
   }
 
   const p = d?.post;
-  const edited = p && p.updatedAt && p.updatedAt !== p.createdAt;
+  // 회칙·회비 글은 올릴 때마다 "업데이트 시각 · 올린 사람", 일반 글은 고친 적이 있으면 업데이트 시각
+  const edited = !!p && !!p.updatedAt && (p.updatedAt !== p.createdAt || p.form === "fee" || p.form === "rules");
+  // 수정 버튼: 회칙·회비 글은 그 관리 화면으로, 일반 글은 게시판 수정 화면으로
+  const editHref = d ? (d.manageHref || (d.canEdit ? `/board/${d.post.id}/edit` : "")) : "";
+  const btn = { width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" } as const;
 
   return (
     <main className="app with-tabs">
@@ -53,13 +57,13 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           </div>
           <h1 className="title" style={{ overflowWrap: "anywhere" }}>{p.title}</h1>
           <span className="small">
-            {p.authorName || "운영진"} · {fmtDateTime(p.createdAt)}{edited ? ` · ${fmtDateTime(p.updatedAt)} 고침` : ""}
+            {edited ? "업데이트" : "작성"} {fmtDateTime(edited ? p.updatedAt : p.createdAt)} · {p.authorName || "운영진"}
             {p.audienceText !== "전체 회원" ? ` · 공개: ${p.audienceText}` : ""}
           </span>
           {p.body && <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7, overflowWrap: "anywhere" }}>{p.body}</p>}
 
           {p.form === "rules" && d.rules && <RulesView rules={d.rules} />}
-          {p.form === "fee" && d.myFee && <FeeView data={p.data as unknown as FeeData} myFee={d.myFee} full={d.seeResults} />}
+          {p.form === "fee" && d.myFee && <FeeView data={p.data as unknown as FeeSnap} myFee={d.myFee} full={d.seeResults} />}
           {p.form === "minutes" && <MinutesView data={p.data as unknown as MinutesData} labels={d.agendaLabels ?? {}} />}
           {p.form === "poll" && <PollBox key={JSON.stringify(d.mine)} id={p.id} data={p.data as unknown as PollData} mine={d.mine as Any} results={d.results as Any} onDone={load} />}
           {p.form === "survey" && <SurveyBox key={JSON.stringify(d.mine)} id={p.id} data={p.data as unknown as SurveyData} mine={d.mine as Any} results={d.results as Any} onDone={load} />}
@@ -67,11 +71,16 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
 
           <Attachments files={p.files} />
 
-          {d.canEdit && (
+          {(editHref || d.canDelete) && (
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <Link href={`/board/${p.id}/edit`} className="btn white" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>{p.form === "rules" ? "글·회칙 고치기" : "고치기"}</Link>
-              <button className="btn red" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={remove}>지우기</button>
+              {editHref && <Link href={editHref} className="btn white" style={btn}>수정</Link>}
+              {d.canDelete && <button className="btn red" type="button" style={btn} onClick={remove}>게시글 삭제</button>}
             </div>
+          )}
+          {d.manageHref && (
+            <span className="small">
+              {p.form === "rules" ? "회칙" : "회비"} 글은 “수정”을 누르면 나오는 관리 화면에서 내용을 고친 뒤 이 글로 다시 올려요.
+            </span>
           )}
         </article>
       )}

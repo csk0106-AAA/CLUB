@@ -48,6 +48,8 @@ export default function BoardPage() {
   }, [router]);
   useEffect(() => {
     load();
+    // 관리자 › 회원관리의 "처리할 일"에서 들어오면 알림 창을 바로 연다(/board?alerts=1)
+    if (new URLSearchParams(window.location.search).get("alerts") === "1") setAlertsOpen(true);
     api<Me>("/api/me").then((r) => r.ok && setWho(r.data));
     api<{ clubName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.clubName));
   }, [load]);
@@ -76,6 +78,9 @@ export default function BoardPage() {
 
   const pinned = posts?.filter((p) => p.pinned) ?? [];
   const rest = posts?.filter((p) => !p.pinned) ?? [];
+  // 종 아이콘 숫자에 센 글: 새로 올라온 글은 "새 글", 바뀐 글은 "수정됨"(알림 창을 열면 사라져요)
+  const freshChip = (p: PostSummary) =>
+    p.fresh === "new" ? <span className="chip violet">새 글</span> : p.fresh === "updated" ? <span className="chip gray">수정됨</span> : null;
   const responseChip = (p: PostSummary) =>
     p.responded ? <span className="chip violet">참여 ✓</span> : p.closed ? <span className="chip gray">마감</span> : <span className="chip red">참여 전</span>;
 
@@ -133,6 +138,7 @@ export default function BoardPage() {
                   ? <span className="chip red"><IconMegaphone size={12} />공지</span>
                   : <span className="chip line">{FORM_LABEL[p.form]}</span>}
                 <span className="t">{p.title}</span>
+                {freshChip(p)}
                 {RESPONSE_FORMS.includes(p.form) && responseChip(p)}
                 <span className="small" style={{ fontSize: fs(12), flex: "none", display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={12} />고정</span>
               </Link>
@@ -147,8 +153,9 @@ export default function BoardPage() {
             <li key={p.id}>
               <Link href={`/board/${p.id}`} className="post">
                 <span className="meta">
-                  <b>{p.authorName || "운영진"}</b><span>· {fmtDate(p.createdAt)}</span>
+                  <b>{p.authorName || "운영진"}</b><span>· {fmtDate(p.updatedAt || p.createdAt)}</span>
                   {p.notice && <span className="chip red"><IconMegaphone size={12} />공지</span>}
+                  {freshChip(p)}
                   <span style={{ marginLeft: "auto", display: "inline-flex", gap: 4 }}>
                     {RESPONSE_FORMS.includes(p.form) && responseChip(p)}
                     <span className="chip line">{FORM_LABEL[p.form]}</span>

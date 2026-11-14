@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmtSize, isClosed, type FeeData, type FileMeta, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { fmtSize, isClosed, type FeeSnap, type FileMeta, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
 import { agendaTone } from "./FormFields";
 import { fileUrl, type PostDetail } from "./types";
@@ -78,14 +78,24 @@ export function RulesView({ rules }: { rules: NonNullable<PostDetail["rules"]> }
   );
 }
 
-/* ───── 연회비 ───── */
-export function FeeView({ data: raw, myFee, full }: { data: FeeData; myFee: NonNullable<PostDetail["myFee"]>; full: boolean }) {
-  // 모임회비관리 설정에서 온 경우 period(연회비/월회비)와 dueText(납부 안내)가 함께 온다.
-  const data = raw as FeeData & { period?: string; dueText?: string; fromDues?: boolean };
-  const label = data.period || "연회비";
+/* ───── 회비 ───── */
+const ymd = (d?: string) => (d ? d.replace(/-/g, "/") : "");
+// 입금 기한 한 줄(lib/dues.ts duesDueLabel 과 같은 규칙)
+function dueLabel(d: FeeSnap): string {
+  if (d.period === "monthly") return d.monthDay ? `매월 ${d.monthDay}일까지` : "";
+  if (d.periodStart && d.periodEnd) return `${ymd(d.periodStart)} ~ ${ymd(d.periodEnd)}`;
+  if (d.periodEnd) return `${ymd(d.periodEnd)}까지`;
+  if (d.periodStart) return `${ymd(d.periodStart)}부터`;
+  return d.deadline ? `${fmtDate(d.deadline)}까지` : "";
+}
+
+export function FeeView({ data, myFee, full }: { data: FeeSnap; myFee: NonNullable<PostDetail["myFee"]>; full: boolean }) {
+  // 회비관리에서 올린 글(v:2)은 period(연회비/월회비)·입금 기간·메모를 함께 담고 있다. 예전 글은 연회비 + 납부기한.
+  const label = data.club ? "회비" : data.period === "monthly" ? "월회비" : "연회비";
   const [copied, setCopied] = useState(false);
   const has = Number(myFee.amount) > 0;
   const who = [myFee.kind, myFee.position].filter(Boolean).join(" · ");
+  const due = dueLabel(data);
   async function copy() {
     try {
       await navigator.clipboard.writeText(data.account);
@@ -96,7 +106,7 @@ export function FeeView({ data: raw, myFee, full }: { data: FeeData; myFee: NonN
   return (
     <>
       <div className="card center">
-        <span className="small">내 {label}{who ? ` (${who})` : ""}</span>
+        <span className="small">{data.club ? `${data.club} ` : ""}내 {label}{who ? ` (${who})` : ""}</span>
         <div className="title num" style={{ fontSize: fs(36) }}>{has ? won(myFee.amount) : "없어요"}</div>
       </div>
       {has && (
@@ -107,15 +117,20 @@ export function FeeView({ data: raw, myFee, full }: { data: FeeData; myFee: NonN
           {data.account && <button className="mini" type="button" style={{ marginTop: 8 }} onClick={copy}>{copied ? "복사했어요 ✓" : "계좌번호 복사"}</button>}
         </div>
       )}
-      {has && data.deadline && <div className="card"><span className="small">납부기한</span><div style={{ font: `700 ${fs(19)} var(--body)` }}>{fmtDate(data.deadline)}까지</div></div>}
-      {data.dueText && <div className="card"><span className="small">납부 안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.dueText}</div></div>}
-      {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 회원관리 › 모임회비관리에서 바꿀 수 있어요.</span>}
+      {has && due && (
+        <div className="card">
+          <span className="small">{data.period === "monthly" ? "입금일" : data.periodStart ? "입금 기간" : "납부기한"}</span>
+          <div className="num" style={{ font: `700 ${fs(19)} var(--body)` }}>{due}</div>
+        </div>
+      )}
+      {data.note && <div className="card"><span className="small">안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.note}</div></div>}
+      {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 회원관리 › 회비관리에서 바꿀 수 있어요.</span>}
       {full && (
         <details className="card">
-          <summary style={{ fontWeight: 700, cursor: "pointer" }}>전체 금액표 (작성자·관리자만 보여요)</summary>
+          <summary style={{ fontWeight: 700, cursor: "pointer" }}>전체 금액표 (담당 관리자만 보여요)</summary>
           <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
-            <li>기본: {data.defaultAmount ? won(data.defaultAmount) : "없음"}</li>
             {(data.rules ?? []).map((r, i) => <li key={i}>{[r.kind, r.position].filter(Boolean).join(" · ") || "전체"}: {won(r.amount)}</li>)}
+            <li>{(data.rules ?? []).length ? "그 밖의 회원(기본 금액)" : "모든 회원"}: {data.defaultAmount ? won(data.defaultAmount) : "없음"}</li>
           </ul>
         </details>
       )}

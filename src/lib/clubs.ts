@@ -4,7 +4,7 @@ import { getSetting, setSetting } from "./store";
 
 // 소모임 기본 정보. Settings "clubInfo" = { [소모임 이름]: ClubInfo }
 //  intro: 소개, cycle: 모임 주기, place: 장소, bank/account/holder: 입금계좌,
-//  feeAmount: 소모임 회비(숫자 문자열, 선택), feeText: 회비 안내, policy: 운영 정책(여러 줄)
+//  feeAmount/feeText: 예전 소모임 회비 칸(이제 소모임 회비는 Settings "clubDues" — 처음 열 때 여기 값으로 채운다), policy: 운영 정책(여러 줄)
 // 소모임 회원과 직책은 Members.clubs([{name, role}])에 있다. role 이 있으면 그 소모임의 회장(직책자).
 export const clubInfoInput = z.object({
   intro: z.string().trim().max(1000).default(""),

@@ -5,6 +5,7 @@ import { eventVisible } from "@/lib/audience";
 import { alreadyIn, handlersOf, pendingDup } from "@/lib/club-requests";
 import { getLists } from "@/lib/lists";
 import { pushTo } from "@/lib/push";
+import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
     createdAt: new Date().toISOString(), handledBy: "", handledAt: "", resultSeen: "",
   });
   try {
-    await pushTo(handlersOf(members, club), "alerts", me.id);
+    await pushTo(handlersOf(members, club, await getPermGroups()), "alerts", me.id);
   } catch (e) {
     console.error("[push] 소모임 신청 알림 실패", e);
   }

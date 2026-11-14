@@ -5,6 +5,7 @@ import { ALL, inAudience, readAudience, type Audience } from "@/lib/audience";
 import type { Session } from "@/lib/auth";
 import { DEFAULT_TEMPLATES, isForm, type FileMeta, type Form, type Template } from "@/lib/board";
 import { effectivePerms, getPermGroups, isClubOfficer } from "@/lib/perms";
+import { managedOf } from "@/lib/published";
 import { getSetting, getStore, setSetting } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 
@@ -37,8 +38,9 @@ export const forbid = (msg = "이 작업을 할 권한이 없어요.") => NextRe
 
 export const audienceOf = (p: Row): Audience => readAudience(p.audience);
 export const canSee = (me: Me, p: Row) => inAudience(audienceOf(p), me.row.id, p.authorId);
-// 회칙 글은 전체 관리자만, 그 밖에는 작성자나 관리자
-export const canEdit = (me: Me, p: Row) => (p.form === "rules" ? me.isAll : me.manage || p.authorId === me.row.id);
+// 게시판에서 고치기·지우기: 작성자나 관리자(all/board).
+// 회칙·회비·소모임 회비 글은 게시판에서 고치지 않는다(관리 화면에서 다시 올린다 — lib/published.ts 의 canManage).
+export const canEdit = (me: Me, p: Row) => !managedOf(p) && (me.manage || p.authorId === me.row.id);
 // 응답 전체(결과)를 볼 수 있는 사람
 export const canSeeResults = (me: Me, p: Row) => me.manage || p.authorId === me.row.id;
 

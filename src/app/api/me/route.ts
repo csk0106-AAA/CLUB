@@ -6,6 +6,7 @@ import { memberGenderPatch, withSelfEdits } from "@/lib/gender-edit";
 import { getLists, memberClubs } from "@/lib/lists";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { mergePrefs, prefsInput, readPrefs } from "@/lib/prefs";
+import { headClubsOf } from "@/lib/published";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,8 @@ async function view(s: Sess, me: Member) {
     title: me.title ?? "",
     phone: me.phone ?? "",
     clubs: memberClubs(me),
+    // 내가 회장(대표)인 소모임: 설정 › 내 소모임에서 소모임 회비 화면으로 가는 버튼
+    headClubs: await headClubsOf(me),
     clubOptions: clubs,
     prefs: readPrefs(me.prefs),
     avatar: avatarView(me),

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { canHandle, KIND_LABEL, type ReqKind } from "@/lib/club-requests";
+import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 import { countsOf, markSeen, newPostsOf } from "@/lib/unread";
@@ -18,6 +19,7 @@ export async function GET() {
   if ("err" in g) return g.err;
   const mid = g.s.mid;
   const s = await getStore();
+  const groups = await getPermGroups();
   const [rows, members, events, posts, counts] = await Promise.all([
     s.list("ClubRequests"), s.list("Members"), s.list("Events"), newPostsOf(mid), countsOf(mid),
   ]);
@@ -27,7 +29,7 @@ export async function GET() {
   const recent = (a: Row, b: Row) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
 
   const toHandle = rows
-    .filter((r) => r.status === "pending" && r.memberId !== mid && canHandle(members, r.club, mid))
+    .filter((r) => r.status === "pending" && r.memberId !== mid && canHandle(members, r.club, mid, groups))
     .sort(recent)
     .map((r) => ({
       id: r.id, kind: r.kind, kindLabel: label(r.kind), club: r.club, eventId: r.eventId, eventName: evName(r.eventId),
@@ -43,7 +45,8 @@ export async function GET() {
       unseen: r.status !== "pending" && r.resultSeen !== "true",
     }));
   return NextResponse.json({
-    posts: posts.slice(0, 30).map((p) => ({ id: p.id, title: p.title, at: p.updatedAt || p.createdAt })),
+    // 종 아이콘 숫자에 센 글 전부(홈 목록의 "새 글"/"수정됨" 표시와 같은 글)
+    posts: posts.map((p) => ({ id: p.id, title: p.title, at: p.updatedAt || p.createdAt, fresh: p.fresh })),
     toHandle,
     mine,
     count: counts.posts + counts.alerts,
