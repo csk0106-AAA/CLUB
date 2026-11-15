@@ -205,8 +205,11 @@ function Detail({ id }: { id: string }) {
       "",
       ...body,
       "",
-      `모임 앱에서 참석 여부를 알려 주세요 👉 ${window.location.origin}`,
+      "모임 앱에서 참석 여부를 알려 주세요.",
       "로그인: 내 이름 선택 + 연락처 뒷자리 4자리",
+      "",
+      // 맨 마지막: 이 일정 바로가기(로그인하면 바로 이 일정 화면이 열려요)
+      `👉 일정 바로가기: ${window.location.origin}/events/${id}`,
     ];
     try {
       await navigator.clipboard.writeText(lines.join("\n"));

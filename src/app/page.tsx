@@ -45,7 +45,10 @@ export default function LoginPage() {
       }
       resetTabsCache();
       // 진행자 접속번호로 들어오면 활동 진행 화면만 쓴다.
-      router.push(d.host ? "/host" : "/board");
+      // 바로가기 링크(?next=/events/…)로 왔으면 그 화면으로. 같은 사이트 안의 경로만 허용한다.
+      const next = new URLSearchParams(window.location.search).get("next") ?? "";
+      const safeNext = next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "";
+      router.push(d.host ? "/host" : safeNext || "/board");
     } catch {
       setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
     } finally {

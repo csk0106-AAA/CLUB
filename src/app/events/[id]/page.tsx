@@ -75,7 +75,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const load = useCallback(async () => {
     const m = await api<{ consent: boolean; livePerms?: string[] }>("/api/me");
-    if (!m.ok) return void (m.status === 401 ? router.replace("/") : setError(m.error));
+    // 로그인 전에 일정 바로가기 링크로 들어왔으면, 로그인 뒤 이 일정으로 돌아오게 한다
+    if (!m.ok) return void (m.status === 401 ? router.replace(`/?next=${encodeURIComponent(`/events/${id}`)}`) : setError(m.error));
     if (!m.data.consent) return void router.replace("/events");
     setManage(canManageOf(m.data.livePerms));
     const [r, mine] = await Promise.all([
