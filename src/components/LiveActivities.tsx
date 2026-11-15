@@ -129,7 +129,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
               const icon = NODE_ICON[a.kind] ?? <IconStar size={36} />;
               const label = `${a.name} · ${n.sub}`;
               return (
-                <div key={a.id} className={`nodewrap ${i % 2 === 0 ? "l" : "r"}`}>
+                <div key={a.id} className="nodewrap">
                   <div style={{ position: "relative" }}>
                     {i === firstNow && <span className="start" aria-hidden="true">시작!</span>}
                     {n.href ? (

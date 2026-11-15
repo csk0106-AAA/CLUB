@@ -370,10 +370,9 @@ button.fb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; 
 }
 .unit b { font: 700 calc(16px * var(--fs, 1)) var(--display); display: block; }
 .unit span { font-size: calc(13px * var(--fs, 1)); font-weight: 500; color: var(--sub); }
-.path { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: calc(30px * var(--fs, 1)) 0 8px; }
-.nodewrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; width: 100%; }
-.nodewrap.l { padding-right: 90px; }
-.nodewrap.r { padding-left: 90px; }
+/* 함께할 활동: 한 줄에 3개씩 가로로, 왼쪽부터 채우고 넘치면 다음 줄로 */
+.path { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); justify-items: center; align-items: start; gap: 14px 8px; padding: calc(30px * var(--fs, 1)) 0 8px; }
+.nodewrap { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; min-width: 0; width: 100%; }
 .node {
   width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--line); background: var(--off-bg);
   display: grid; place-items: center; color: var(--off-ink); position: relative; text-decoration: none;
