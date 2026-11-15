@@ -6,15 +6,17 @@ import { AiGuidesEditor, aiPointKeys } from "@/components/AiGuidesEditor";
 import { Mascot } from "@/components/Mascot";
 import { Popup } from "@/components/Popup";
 import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "@/components/TemplateEditor";
-import { api } from "@/lib/client";
+import { api, fmtDate } from "@/lib/client";
+import { families, sourceLabel, type Family, type TplRow } from "@/lib/template-families";
 import type { TemplateConfig } from "@/lib/template-schema";
 import { fs } from "@/lib/fs";
 
-type T = { id: string; origin: string; version: number; config: TemplateConfig };
+type T = TplRow;
 
+// 편집기에 넣는 값: 서버가 정하는 값(id, 버전, 출처)은 뺀다
 const strip = (c: TemplateConfig): EditableConfig => {
-  const { id: _i, version: _v, ...rest } = c;
-  void _i; void _v;
+  const { id: _i, version: _v, derivedFrom: _d, sourceEvent: _s, ...rest } = c;
+  void _i; void _v; void _d; void _s;
   return rest;
 };
 const BLANK: EditableConfig = {
@@ -25,19 +27,28 @@ const BLANK: EditableConfig = {
   onsite: { steps: [{ key: "step-1", label: "시작", memberScreen: "wait", unlock: "host_click", hostButton: "시작" }] },
 };
 
+const hasAi = (c: TemplateConfig) => Object.values(c.aiGuides ?? {}).some((v) => v.trim()) || !!c.aiCommon?.trim() || !!c.interview?.questions?.length;
+const summary = (c: TemplateConfig) =>
+  `${modeOf(c) === "team" ? "팀 활동 · " : "전체 활동 · "}${c.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}${c.preEvent.enabled ? `사전 작성 있음 (일정 ${c.preEvent.opensBeforeDays ?? 14}일 전 ~ ${c.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 ${c.onsite.steps.length}단계`;
+
 function Templates() {
   const [list, setList] = useState<T[] | null>(null);
-  const [edit, setEditRaw] = useState<{ id: string | null; value: EditableConfig; orig: string } | null>(null);
+  // 편집 창. base 가 있으면 그 버전을 바탕으로 새 버전을 만들고, 없으면 새 템플릿(v1)을 만든다.
+  const [edit, setEditRaw] = useState<{ base: T | null; next: number; value: EditableConfig; orig: string } | null>(null);
   const [editErr, setEditErr] = useState("");
+  const fams = list ? families(list) : [];
+  const famOf = (t: T) => fams.find((f) => f.versions.some((v) => v.id === t.id));
   // 편집 창 열기(처음 값을 기억해 두고, 바뀐 게 있으면 닫기 전에 물어본다)
-  const openEdit = (id: string | null, value: EditableConfig) => {
+  const openEdit = (base: T | null, value: EditableConfig) => {
     setEditErr("");
-    setEditRaw({ id, value, orig: JSON.stringify(value) });
+    setEditRaw({ base, next: base ? famOf(base)?.nextVersion ?? base.version + 1 : 1, value, orig: JSON.stringify(value) });
   };
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [guideFor, setGuideFor] = useState<T | null>(null); // AI 지침을 고치는 템플릿
+  const [guideFor, setGuideFor] = useState<T | null>(null); // AI 지침을 고치는 버전
+  const [verFor, setVerFor] = useState<string | null>(null); // 버전 목록 창을 연 템플릿(v1 id)
+  const verFam = fams.find((f) => f.id === verFor) ?? null;
 
   const load = useCallback(async () => {
     const r = await api<{ templates: T[] }>("/api/admin/templates");
@@ -52,41 +63,109 @@ function Templates() {
     if (!edit) return;
     setBusy(true);
     setEditErr("");
-    const r = edit.id
-      ? await api(`/api/admin/templates/${edit.id}`, { method: "PUT", body: edit.value })
-      : await api("/api/admin/templates", { body: edit.value });
+    const r = edit.base
+      ? await api<{ unchanged?: boolean; template: { version: number } }>(`/api/admin/templates/${edit.base.id}`, { method: "PUT", body: edit.value })
+      : await api<{ unchanged?: boolean; template: { version: number } }>("/api/admin/templates", { body: edit.value });
     setBusy(false);
     if (!r.ok) return setEditErr(r.error);
-    setMsg({ tone: "info", text: "저장했어요. 이미 일정에 넣은 활동은 그대로고, 앞으로 넣는 활동부터 바뀐 설정을 써요." });
+    setMsg({
+      tone: "info",
+      text: !edit.base
+        ? "새 템플릿(v1)을 만들었어요. 일정에 넣을 때 고를 수 있어요."
+        : r.data.unchanged
+          ? "바뀐 내용이 없어서 새 버전을 만들지 않았어요."
+          : `새 버전(v${r.data.template.version})을 만들었어요. 원래 버전(v${edit.base.version})과 이미 일정에 넣은 활동은 그대로예요.`,
+    });
     setEditRaw(null);
     load();
   }
 
   async function remove(t: T) {
-    if (!window.confirm(`“${t.config.name}” 템플릿을 지울까요? 이미 일정에 넣은 활동은 그대로 남아요.`)) return;
+    const label = t.version > 1 ? `“${t.config.name}”의 v${t.version} 버전` : `“${t.config.name}” 템플릿`;
+    if (!window.confirm(`${label}을 지울까요?`)) return;
     const r = await api(`/api/admin/templates/${t.id}`, { method: "DELETE" });
     setMsg(r.ok ? { tone: "info", text: "지웠어요." } : { tone: "bad", text: r.error });
     load();
+  }
+
+  // 복제: 버전이 아니라 새 템플릿(v1)이 따로 생긴다는 것을 먼저 알려 준다
+  async function duplicate(t: T) {
+    if (!window.confirm(`복제하면 “${t.config.name}”의 버전이 아니라 새로운 활동 템플릿(v1)이 따로 만들어져요.\n“${t.config.name}”의 버전을 만들려면 “수정”을 눌러 주세요.\n\n계속할까요?`)) return;
+    openEdit(null, { ...strip(t.config), name: `${t.config.name} (복제)` });
+  }
+
+  const nextOf = (t: T) => famOf(t)?.nextVersion ?? t.version + 1;
+
+  // 템플릿 카드(목록: v1 카드 / 버전 창: 버전 카드)
+  function card(t: T, fam?: Family, inVersions?: boolean) {
+    const count = fam?.versions.length ?? 1;
+    return (
+      <div key={t.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+        <div className="row" style={{ width: "100%", flexWrap: "wrap" }}>
+          {inVersions ? (
+            <>
+              <span className={`pill ${t.version === 1 ? "ok" : "blue"}`}>v{t.version}</span>
+              {fam && fam.latest.id === t.id && count > 1 && <span className="pill warn">최신</span>}
+            </>
+          ) : (
+            <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "기본 템플릿" : "내가 만든 템플릿"} v1</span>
+          )}
+          <span className="grow" />
+          {!inVersions && fam && count >= 2 && (
+            <button className="mini" type="button" aria-haspopup="dialog" aria-label={`“${t.config.name}” 버전 ${count}개 보기`} onClick={() => { setMsg(null); setVerFor(fam.id); }}>
+              ver{count}
+            </button>
+          )}
+        </div>
+        <b style={{ font: `700 ${fs(18)} var(--display)` }}>{t.config.name}</b>
+        <span className="small">{t.config.description}</span>
+        <span className="small">{summary(t.config)}</span>
+        {inVersions && (
+          <span className="small">
+            {sourceLabel(t)}{t.createdAt ? ` · ${fmtDate(t.createdAt)}` : ""}{t.uses ? ` · 일정 활동 ${t.uses}개가 써요` : ""}
+          </span>
+        )}
+        {!inVersions && fam && count >= 2 && (
+          <span className="small">최신: v{fam.latest.version} · {sourceLabel(fam.latest)}</span>
+        )}
+        <div className="row" style={{ flexWrap: "wrap" }}>
+          <button className="mini" type="button" aria-haspopup="dialog" onClick={() => { setVerFor(null); openEdit(t, strip(t.config)); }}>
+            {inVersions ? "이 버전으로 새 버전 만들기" : "수정"}
+          </button>
+          {!inVersions && <button className="mini" type="button" aria-haspopup="dialog" onClick={() => duplicate(t)}>복제</button>}
+          <button className="mini" type="button" onClick={() => { setMsg(null); setVerFor(null); setGuideFor(t); }}>
+            AI 지침{hasAi(t.config) ? " ✓" : ""}
+          </button>
+          {t.deletable && <button className="mini danger" type="button" onClick={() => remove(t)}>삭제</button>}
+        </div>
+      </div>
+    );
   }
 
   return (
     <>
       <p className="small" style={{ margin: 0 }}>
         활동 템플릿은 일정에 넣을 활동의 설계도예요. 사전 작성이 있는지, 현장에서 어떤 단계로 진행하는지, 사회자가 버튼을 누를 때 회원 화면이 언제 켜지는지를 여기서 정해요.
+        처음 만든 템플릿이 v1이고, 고칠 때마다(일정에서 고친 것 포함) 새 버전 v2, v3…이 생겨요.
       </p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
 
       {guideFor ? (
         <AiGuidesEditor
-          title={guideFor.config.name}
+          title={guideFor.version > 1 ? `${guideFor.config.name} v${guideFor.version}` : guideFor.config.name}
           keys={aiPointKeys(guideFor.config)}
           initial={{ aiGuides: guideFor.config.aiGuides ?? {}, aiCommon: guideFor.config.aiCommon, interview: guideFor.config.interview }}
-          scope="template"
+          saveNote={`저장하면 이 템플릿의 새 버전(v${nextOf(guideFor)})으로 저장돼요. 지금 버전(v${guideFor.version})과 이미 일정에 넣은 활동은 그대로예요.`}
           onClose={() => setGuideFor(null)}
           onSave={async (ai) => {
-            const r = await api(`/api/admin/templates/${guideFor.id}/ai-guides`, { method: "PUT", body: ai });
+            const r = await api<{ unchanged?: boolean; version: number }>(`/api/admin/templates/${guideFor.id}/ai-guides`, { method: "PUT", body: ai });
             if (!r.ok) return r.error;
-            setMsg({ tone: "info", text: `“${guideFor.config.name}”의 AI 지침을 저장했어요. 이 템플릿으로 넣은 일정 활동에도 바로 적용돼요.` });
+            setMsg({
+              tone: "info",
+              text: r.data.unchanged
+                ? "바뀐 내용이 없어서 새 버전을 만들지 않았어요."
+                : `“${guideFor.config.name}”의 AI 지침을 새 버전(v${r.data.version})으로 저장했어요. 일정에 넣을 때 이 버전을 고를 수 있어요.`,
+            });
             setGuideFor(null);
             load();
             return null;
@@ -96,26 +175,7 @@ function Templates() {
         <>
           {!list && !msg && <p className="small">불러오는 중이에요…</p>}
           <div className="cards">
-            {list?.map((t) => (
-              <div key={t.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
-                <span className={`pill ${t.origin === "default" ? "ok" : t.origin === "event" ? "warn" : "blue"}`}>
-                  {t.origin === "default" ? "기본 템플릿" : t.origin === "event" && t.config.sourceEvent
-                    ? `일정 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}`
-                    : "내가 만든 템플릿"} v{t.version}
-                </span>
-                <b style={{ font: `700 ${fs(18)} var(--display)` }}>{t.config.name}</b>
-                <span className="small">{t.config.description}</span>
-                <span className="small">{modeOf(t.config) === "team" ? "팀 활동 · " : "전체 활동 · "}{t.config.participants === "selected" ? "관리자 선택 회원만 · " : "전체 회원 · "}{t.config.preEvent.enabled ? `사전 작성 있음 (일정 ${t.config.preEvent.opensBeforeDays ?? 14}일 전 ~ ${t.config.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 {t.config.onsite.steps.length}단계</span>
-                <div className="row" style={{ flexWrap: "wrap" }}>
-                  <button className="mini" type="button" onClick={() => openEdit(t.id, strip(t.config))}>수정</button>
-                  <button className="mini" type="button" onClick={() => openEdit(null, { ...strip(t.config), name: `${t.config.name} (복사본)` })}>복제</button>
-                  <button className="mini" type="button" onClick={() => { setMsg(null); setGuideFor(t); }}>
-                    AI 지침{Object.values(t.config.aiGuides ?? {}).some((v) => v.trim()) || t.config.aiCommon?.trim() || t.config.interview?.questions?.length ? " ✓" : ""}
-                  </button>
-                  {t.origin !== "default" && <button className="mini danger" type="button" onClick={() => remove(t)}>삭제</button>}
-                </div>
-              </div>
-            ))}
+            {fams.map((f) => card(f.root, f))}
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn" type="button" style={{ width: "auto", minWidth: 200 }} aria-haspopup="dialog" onClick={() => openEdit(null, BLANK)}>+ 새 템플릿 만들기</button>
@@ -123,7 +183,7 @@ function Templates() {
               {aiOpen ? "AI 대화 닫기" : "AI와 새 활동 만들기"}
             </button>
           </div>
-          <p className="small" style={{ margin: 0 }}>기존 템플릿을 “복제”해서 필요한 부분만 고쳐 쓰는 것이 가장 빨라요. 새 활동이 필요하면 AI에게 설명하고 초안을 받아 다듬을 수 있어요.</p>
+          <p className="small" style={{ margin: 0 }}>기존 템플릿을 “복제”해서 필요한 부분만 고쳐 쓰는 것이 가장 빨라요. 복제하면 버전이 아니라 새 템플릿(v1)이 따로 생겨요. 새 활동이 필요하면 AI에게 설명하고 초안을 받아 다듬을 수 있어요.</p>
           {aiOpen && (
             <AiMaker
               onOpen={(value) => { openEdit(null, value); setAiOpen(false); }}
@@ -134,21 +194,41 @@ function Templates() {
       )}
 
       <Popup
+        id="template-versions"
+        width={760}
+        title={verFam ? `“${verFam.root.config.name}” 버전 ${verFam.versions.length}개` : "버전"}
+        open={!!verFam}
+        onClose={() => setVerFor(null)}
+      >
+        {verFam && (
+          <>
+            <span className="small">최신 버전부터 보여요. 버전은 고치지 않고, 어느 버전에서든 “이 버전으로 새 버전 만들기”를 누르면 그 내용을 바탕으로 새 버전(v{verFam.nextVersion})이 생겨요. 일정 활동이 쓰는 버전은 지울 수 없어요.</span>
+            <div className="cards">
+              {verFam.versions.map((t) => card(t, verFam, true))}
+            </div>
+          </>
+        )}
+      </Popup>
+
+      <Popup
         id="template-editor"
         width={900}
-        title={edit?.id ? "템플릿 수정" : "새 템플릿 만들기"}
+        title={edit?.base ? `새 버전 만들기 · ${edit.base.config.name} v${edit.base.version} → v${edit.next}` : "새 템플릿 만들기"}
         open={!!edit}
         onClose={() => setEditRaw(null)}
         dirty={!!edit && JSON.stringify(edit.value) !== edit.orig}
         footer={edit && (
           <>
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48 }} onClick={() => setEditRaw(null)}>취소</button>
-            <button className="btn" type="button" disabled={busy || !edit.value.name.trim()} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
+            <button className="btn" type="button" disabled={busy || !edit.value.name.trim()} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={save}>
+              {busy ? "저장 중…" : edit.base ? `새 버전(v${edit.next})으로 저장` : "저장"}
+            </button>
           </>
         )}
       >
         {edit && (
           <>
+            {edit.base && <span className="small">저장하면 새 버전(v{edit.next})이 생겨요. 원래 버전(v{edit.base.version})과 이미 일정에 넣은 활동은 바뀌지 않아요.</span>}
             {editErr && <div className="msg bad" role="alert">{editErr}</div>}
             <TemplateEditor value={edit.value} onChange={(value) => setEditRaw({ ...edit, value })} />
           </>
@@ -157,6 +237,7 @@ function Templates() {
     </>
   );
 }
+
 
 // ⑱ AI와 새 활동 만들기: 대화로 설명 → AI가 템플릿 설정 초안 → 미리보기 → 저장 또는 편집기에서 다듬기
 type Chat = { role: "user" | "assistant"; content: string };

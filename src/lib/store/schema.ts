@@ -36,7 +36,9 @@ export const TABS = {
   EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner"],
   EventPrep: ["id", "eventId", "item", "owner", "done"],
   EventSchedule: ["id", "eventId", "at", "title"],
-  ActivityTemplates: ["id", "name", "version", "config", "origin"],
+  // 템플릿 버전: 처음 만든 행이 v1(origin default/custom)이고, 고칠 때마다 새 행이 v2, v3…으로 생긴다(origin "version").
+  // 새 버전의 config.derivedFrom 은 v1 id, config.sourceEvent 는 일정에서 고쳤을 때 그 일정. 한 번 만든 버전은 고치지 않는다(lib/template-versions.ts).
+  ActivityTemplates: ["id", "name", "version", "config", "origin", "createdAt"],
   // startsAt/endsAt: 이 활동이 진행되는 날짜와 시간(한국 시간, YYYY-MM-DDTHH:mm). 비어 있으면 시간 제한 없음.
   // hostId: 사회자(회원 id), hostCode: 사회자 접속번호(이 번호로 로그인하면 활동 진행 화면만 보인다)
   EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode"],

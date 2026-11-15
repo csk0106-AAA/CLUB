@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
+import { families, sourceLabel, type TplRow } from "@/lib/template-families";
 import type { TemplateConfig } from "@/lib/template-schema";
 import { CapsuleAdmin } from "./CapsuleAdmin";
 import { DateField } from "./DateField";
@@ -26,10 +27,7 @@ type Act = {
   hostId: string;
   hostCode: string;
 };
-type Tpl = { id: string; origin?: string; config: TemplateConfig };
-// 템플릿 이름(일정 템플릿이면 "이름 (일정명_날짜)")
-const tplLabel = (t?: Tpl) =>
-  !t ? "" : t.origin === "event" && t.config.sourceEvent ? `${t.config.name} (${t.config.sourceEvent.name}_${t.config.sourceEvent.date})` : t.config.name;
+type Tpl = TplRow;
 type Att = {
   confirmed: boolean; confirmedAt: string; by: string; selectedCount: number;
   members: { id: string; name: string; answer: string; days: string; selected: boolean }[];
@@ -265,7 +263,11 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   useEffect(() => {
     api<{ members: { id: string; name: string }[] }>("/api/public/club").then((r) => r.ok && setMembers(r.data.members));
   }, []);
-  const [pick, setPick] = useState("");
+  const [pick, setPick] = useState(""); // 고른 템플릿(v1 id)
+  const [pickVer, setPickVer] = useState(""); // 고른 버전 id (버전이 2개 이상일 때 두 번째 단계에서)
+  const [addStep, setAddStep] = useState<1 | 2>(1);
+  const fams = families(tpls);
+  const nextVerOf = (templateId: string) => fams.find((f) => f.versions.some((v) => v.id === templateId))?.nextVersion;
   const [edit, setEdit] = useState<{ id: string; value: EditableConfig; orig: string } | null>(null);
   const [editErr, setEditErr] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -283,20 +285,32 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     else setMsg({ tone: "bad", text: a.error });
     if (t.ok) {
       setTpls(t.data.templates);
-      setPick((p) => p || t.data.templates[0]?.id || "");
+      setPick((p) => p || families(t.data.templates)[0]?.id || "");
     }
   }, [eventId]);
   useEffect(() => {
     load();
   }, [load]);
 
-  async function add() {
+  const pickFam = fams.find((f) => f.id === pick);
+  // 1단계: 템플릿 고르기 → 버전이 2개 이상이면 2단계(버전 고르기, 처음엔 최신), 아니면 바로 넣는다
+  function next() {
+    if (!pickFam) return;
+    if (pickFam.versions.length >= 2) {
+      setPickVer(pickFam.latest.id);
+      setAddErr("");
+      setAddStep(2);
+    } else add(pickFam.root.id);
+  }
+
+  async function add(templateId: string) {
     setBusy(true);
     setAddErr("");
-    const r = await api(`/api/admin/events/${eventId}/activities`, { body: { templateId: pick } });
+    const r = await api(`/api/admin/events/${eventId}/activities`, { body: { templateId } });
     setBusy(false);
     if (!r.ok) return setAddErr(r.error);
-    setMsg({ tone: "info", text: "활동을 넣었어요. 템플릿 설정이 복사돼서 이 일정에서만 따로 고칠 수 있어요." });
+    const v = tpls.find((t) => t.id === templateId);
+    setMsg({ tone: "info", text: `활동을 넣었어요${v ? ` (${v.config.name} v${v.version})` : ""}. 이 일정에서 고치면 그 템플릿의 새 버전으로 저장돼요.` });
     setAddOpen(false);
     load();
   }
@@ -305,10 +319,17 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     if (!edit) return;
     setBusy(true);
     setEditErr("");
-    const r = await api(`/api/admin/events/${eventId}/activities/${edit.id}`, { method: "PATCH", body: edit.value });
+    const r = await api<{ unchanged?: boolean; version?: number }>(`/api/admin/events/${eventId}/activities/${edit.id}`, { method: "PATCH", body: edit.value });
     setBusy(false);
     if (!r.ok) return setEditErr(r.error);
-    setMsg({ tone: "info", text: "이 일정의 활동 설정을 저장했어요." });
+    setMsg({
+      tone: "info",
+      text: r.data.unchanged
+        ? "바뀐 내용이 없어서 새 버전을 만들지 않았어요."
+        : r.data.version
+          ? `활동 설정을 템플릿의 새 버전(v${r.data.version})으로 저장했어요. 이 일정 활동이 그 버전을 써요.`
+          : "이 일정의 활동 설정을 저장했어요.",
+    });
     setEdit(null);
     load();
   }
@@ -338,17 +359,20 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           aiCommon: (t ?? guideFor).config.aiCommon,
           interview: (t ?? guideFor).config.interview,
         }}
-        scope="event"
-        templateName={tplLabel(t) || guideFor.config.name}
+        saveNote={t
+          ? `저장하면 “${t.config.name}” 템플릿의 새 버전(v${nextVerOf(t.id) ?? t.version + 1})으로 저장되고 이 일정 활동이 그 버전을 써요. 다른 일정은 쓰던 버전을 그대로 써요.`
+          : "이 활동의 원래 템플릿이 없어서 이 일정 활동에만 저장돼요."}
         onClose={() => setGuideFor(null)}
-        onSave={async (ai, target) => {
-          const r = await api<{ label?: string; templateName?: string }>(`/api/admin/events/${eventId}/activities/${guideFor.id}/ai-guides`, { method: "PUT", body: { ...ai, target } });
+        onSave={async (ai) => {
+          const r = await api<{ unchanged?: boolean; version: number; label?: string }>(`/api/admin/events/${eventId}/activities/${guideFor.id}/ai-guides`, { method: "PUT", body: ai });
           if (!r.ok) return r.error;
           setMsg({
             tone: "info",
-            text: target === "template"
-              ? `AI 지침을 “${r.data.templateName ?? "원래"}” 템플릿에도 반영했어요. 이 템플릿을 쓰는 다른 일정 활동에도 적용돼요.`
-              : `AI 지침을 이 일정 활동에만 저장했어요.${r.data.label ? ` 템플릿 보관함에 “일정 템플릿 · ${r.data.label}”로 보여요.` : ""}`,
+            text: r.data.unchanged
+              ? "바뀐 내용이 없어서 새 버전을 만들지 않았어요."
+              : r.data.version
+                ? `AI 지침을 템플릿의 새 버전(v${r.data.version})으로 저장했어요. 이 일정 활동이 그 버전을 써요.`
+                : "AI 지침을 이 일정 활동에 저장했어요.",
           });
           setGuideFor(null);
           load();
@@ -373,7 +397,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           <div className="row" style={{ flexWrap: "wrap" }}>
             <b style={{ font: `700 ${fs(18)} var(--display)` }}>{a.config.name}</b>
             <span className="pill gray">
-              {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.origin === "event" && t.config.sourceEvent ? `일정 템플릿 · ${t.config.sourceEvent.name}_${t.config.sourceEvent.date}` : `템플릿 v${a.templateVersion}`; })()}
+              {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.config.sourceEvent ? `템플릿 v${t.version} · ${sourceLabel(t)}` : `템플릿 v${t?.version ?? a.templateVersion}`; })()}
             </span>
             <span className={`pill ${a.pre.enabled ? "blue" : "warn"}`}>{a.pre.enabled ? "사전 작성 있음" : "현장에서만"}</span>
             <span className="pill gray">{modeOf(a.config) === "team" ? "팀 활동" : "전체 활동"}</span>
@@ -441,27 +465,57 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
 
       {canEdit && tpls.length > 0 && (
         <>
-          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setAddErr(""); setAddOpen(true); }}>+ 템플릿에서 활동 추가</button>
-          <Popup id="activity-add" title="템플릿에서 활동 추가" open={addOpen} onClose={() => setAddOpen(false)}>
-            <form onSubmit={(e) => { e.preventDefault(); add(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {addErr && <div className="msg bad" role="alert">{addErr}</div>}
-              <div>
-                <label className="l" htmlFor="act-pick">활동 템플릿</label>
-                <select id="act-pick" className="field" value={pick} onChange={(e) => setPick(e.target.value)}>
-                  {tpls.map((t) => <option key={t.id} value={t.id}>{tplLabel(t)}</option>)}
-                </select>
-              </div>
-              {(() => {
-                const t = tpls.find((x) => x.id === pick);
-                return t ? (
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setAddErr(""); setAddStep(1); setAddOpen(true); }}>+ 템플릿에서 활동 추가</button>
+          <Popup id="activity-add" title={addStep === 2 && pickFam ? `버전 고르기 · ${pickFam.root.config.name}` : "템플릿에서 활동 추가"} open={addOpen} onClose={() => setAddOpen(false)}>
+            {addStep === 1 || !pickFam ? (
+              <form onSubmit={(e) => { e.preventDefault(); next(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {addErr && <div className="msg bad" role="alert">{addErr}</div>}
+                <div>
+                  <label className="l" htmlFor="act-pick">활동 템플릿</label>
+                  <select id="act-pick" className="field" value={pick} onChange={(e) => setPick(e.target.value)}>
+                    {fams.map((f) => <option key={f.id} value={f.id}>{f.root.config.name}{f.versions.length >= 2 ? ` (버전 ${f.versions.length}개)` : ""}</option>)}
+                  </select>
+                </div>
+                {pickFam && (
                   <span className="small">
-                    {t.config.description ? `${t.config.description} · ` : ""}{modeOf(t.config) === "team" ? "팀 활동" : "전체 활동"} · {t.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {t.config.onsite.steps.length}단계
+                    {pickFam.root.config.description ? `${pickFam.root.config.description} · ` : ""}{modeOf(pickFam.root.config) === "team" ? "팀 활동" : "전체 활동"} · {pickFam.root.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {pickFam.root.config.onsite.steps.length}단계
                   </span>
-                ) : null;
-              })()}
-              <span className="small">템플릿 설정이 복사돼서 이 일정에서만 따로 고칠 수 있어요.</span>
-              <button className="btn" type="submit" disabled={busy || !pick} style={{ width: "auto", minWidth: 140, alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }}>추가</button>
-            </form>
+                )}
+                <span className="small">
+                  {pickFam && pickFam.versions.length >= 2
+                    ? "이 템플릿은 버전이 여러 개라서 다음 단계에서 쓸 버전을 골라요."
+                    : "템플릿 설정이 복사돼요. 이 일정에서 고치면 그 템플릿의 새 버전으로 저장돼요."}
+                </span>
+                <button className="btn" type="submit" disabled={busy || !pickFam} style={{ width: "auto", minWidth: 140, alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }}>
+                  {pickFam && pickFam.versions.length >= 2 ? "다음: 버전 고르기" : busy ? "넣는 중…" : "추가"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); add(pickVer); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {addErr && <div className="msg bad" role="alert">{addErr}</div>}
+                <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <legend className="l">쓸 버전 (최신 버전부터)</legend>
+                  {pickFam.versions.map((v) => (
+                    <label key={v.id} className="card" style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", ...(pickVer === v.id ? { borderColor: "var(--blue)", background: "var(--blue-bg)" } : {}) }}>
+                      <input type="radio" name="act-ver" value={v.id} checked={pickVer === v.id} onChange={() => setPickVer(v.id)} style={{ marginTop: 4 }} />
+                      <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span className="row" style={{ flexWrap: "wrap" }}>
+                          <b>{v.config.name}</b>
+                          <span className={`pill ${v.version === 1 ? "ok" : "blue"}`}>v{v.version}</span>
+                          {v.id === pickFam.latest.id && <span className="pill warn">최신</span>}
+                        </span>
+                        <span className="small">{sourceLabel(v)}{v.createdAt ? ` · ${fmtDate(v.createdAt)}` : ""}</span>
+                        <span className="small">{modeOf(v.config) === "team" ? "팀 활동" : "전체 활동"} · {v.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {v.config.onsite.steps.length}단계</span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+                <div className="row" style={{ flexWrap: "wrap" }}>
+                  <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(15) }} onClick={() => setAddStep(1)}>이전</button>
+                  <button className="btn" type="submit" disabled={busy || !pickVer} style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(15) }}>{busy ? "넣는 중…" : "이 버전으로 추가"}</button>
+                </div>
+              </form>
+            )}
           </Popup>
         </>
       )}
@@ -476,13 +530,21 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
         footer={edit && (
           <>
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48 }} onClick={() => setEdit(null)}>취소</button>
-            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={saveEdit}>저장</button>
+            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={saveEdit}>{busy ? "저장 중…" : "저장"}</button>
           </>
         )}
       >
         {edit && (
           <>
-            <span className="small">여기서 고친 내용은 이 일정에만 적용돼요. 템플릿 보관함은 바뀌지 않아요.</span>
+            <span className="small">
+              {(() => {
+                const act = acts?.find((x) => x.id === edit.id);
+                const t = act ? tpls.find((x) => x.id === act.templateId) : undefined;
+                return t
+                  ? `저장하면 “${t.config.name}” 템플릿의 새 버전(v${nextVerOf(t.id) ?? t.version + 1})으로 저장되고 이 일정 활동이 그 버전을 써요. 다른 일정은 쓰던 버전을 그대로 써요.`
+                  : "이 활동의 원래 템플릿이 없어서 이 일정 활동에만 저장돼요.";
+              })()}
+            </span>
             {editErr && <div className="msg bad" role="alert">{editErr}</div>}
             <TemplateEditor value={edit.value} onChange={(value) => setEdit({ ...edit, value })} />
           </>

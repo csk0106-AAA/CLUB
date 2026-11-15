@@ -60,8 +60,8 @@ export const templateConfigSchema = z.object({
   // 활동 방식: all(전체 활동) / team(팀 활동). 팀 배정은 템플릿에 넣지 않고 일정 > 활동에서 한다.
   // 비어 있으면 타임캡슐(현장 작성)은 팀, 나머지는 전체로 본다(lib/activities.ts activityMode).
   mode: z.enum(["all", "team"]).optional(),
-  // 일정 활동에서 AI 지침을 "이 일정에만" 저장할 때 만든 일정 템플릿의 출처
-  derivedFrom: z.string().optional(), // 원래 템플릿 id
+  // 템플릿 버전(v2 이상)의 출처: derivedFrom 은 그 템플릿의 v1 id, sourceEvent 는 일정에서 고쳐 만든 버전이면 그 일정
+  derivedFrom: z.string().optional(), // v1 템플릿 id
   sourceEvent: z.object({ id: z.string(), name: z.string(), date: z.string() }).optional(),
 });
 
