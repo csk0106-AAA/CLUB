@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { canHandle, KIND_LABEL, type ReqKind } from "@/lib/club-requests";
+import { canHandle, isAttend, reqLabel } from "@/lib/club-requests";
 import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -25,14 +25,13 @@ export async function GET() {
   ]);
   const name = (id: string) => members.find((m) => m.id === id)?.name ?? "(지운 회원)";
   const evName = (id: string) => (id ? events.find((e) => e.id === id)?.name ?? "" : "");
-  const label = (k: string) => KIND_LABEL[k as ReqKind] ?? "신청";
   const recent = (a: Row, b: Row) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
 
   const toHandle = rows
     .filter((r) => r.status === "pending" && r.memberId !== mid && canHandle(members, r.club, mid, groups))
     .sort(recent)
     .map((r) => ({
-      id: r.id, kind: r.kind, kindLabel: label(r.kind), club: r.club, eventId: r.eventId, eventName: evName(r.eventId),
+      id: r.id, kind: r.kind, kindLabel: reqLabel(r), attend: isAttend(r), club: r.club, eventId: r.eventId, eventName: evName(r.eventId),
       memberName: name(r.memberId), message: r.message, createdAt: r.createdAt,
     }));
   const mine = rows
@@ -40,7 +39,7 @@ export async function GET() {
     .sort(recent)
     .slice(0, 20)
     .map((r) => ({
-      id: r.id, kind: r.kind, kindLabel: label(r.kind), club: r.club, eventId: r.eventId, eventName: evName(r.eventId),
+      id: r.id, kind: r.kind, kindLabel: reqLabel(r), attend: isAttend(r), club: r.club, eventId: r.eventId, eventName: evName(r.eventId),
       status: r.status, createdAt: r.createdAt, handledAt: r.handledAt, handledByName: r.handledBy ? name(r.handledBy) : "",
       unseen: r.status !== "pending" && r.resultSeen !== "true",
     }));

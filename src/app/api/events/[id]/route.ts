@@ -3,6 +3,7 @@ import { bad, guard, parseJson } from "@/lib/api";
 import { memberFee, payable } from "@/lib/fee";
 import { eventVisible, inClubOrObserver, readObservers } from "@/lib/audience";
 import { clubLeaders } from "@/lib/clubs";
+import { isAttend } from "@/lib/club-requests";
 import { memberClubs } from "@/lib/lists";
 import { fixLegacyTypes } from "@/lib/event-migrate";
 import { getStore } from "@/lib/store";
@@ -32,13 +33,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 회비는 이 회원의 참석일·회원구분·직책에 맞는 금액만 내려준다(다른 조건의 금액은 보내지 않는다).
   // 소모임 일정: 소모임 이름, 회장(직책자) 이름, 내가 그 소모임 직책자인지(참관자 추가 카드)
   const club = (e.club ?? "").trim();
-  // 내가 속하지 않은 소모임 일정이면 읽기만 된다(참석 신청 대신 가입·참관 신청 카드)
+  // 내가 속하지 않은 소모임 일정이면 읽기만 된다(참석 신청 대신 "소모임 관리자에게 요청하기")
   const canApply = inClubOrObserver(e, { id: g.s.mid, clubs: me?.clubs });
-  // 내 가입·참관 신청의 최근 상태("" = 보낸 적 없음)
-  const latest = (kind: string) =>
-    requests
-      .filter((r) => r.memberId === g.s.mid && r.kind === kind && r.club === club && (kind === "join" || r.eventId === id))
-      .sort((p, q) => q.createdAt.localeCompare(p.createdAt))[0]?.status ?? "";
+  // 이 일정에 보낸 내 참석 요청(참관/가입 + 참석) 중 가장 최근 것. 소모임 밖 회원에게만 보여 준다.
+  const myReq = requests
+    .filter((r) => r.memberId === g.s.mid && r.eventId === id && isAttend(r))
+    .sort((p, q) => (q.createdAt ?? "").localeCompare(p.createdAt ?? ""))[0];
   const leaders = club ? clubLeaders(members, club) : [];
   const observers = readObservers(e.observers);
   const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
@@ -68,7 +68,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       observer: !!club && observers.includes(g.s.mid) && !leaders.some((l) => l.id === g.s.mid) && !(me && memberClubs(me).some((c) => c.name === club)),
       canObserve: !!club && leaders.some((l) => l.id === g.s.mid),
       canApply,
-      requests: club && !canApply ? { join: latest("join"), observe: latest("observe") } : null,
+      // 내 참석 요청: status pending(관리자 확인 중) | approved | declined
+      attendReq: club && myReq
+        ? { id: myReq.id, kind: myReq.kind, status: myReq.status, message: myReq.message, createdAt: myReq.createdAt, handledAt: myReq.handledAt }
+        : null,
     },
     activities,
     apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "" } : null,

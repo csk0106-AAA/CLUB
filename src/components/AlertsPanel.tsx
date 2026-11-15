@@ -8,7 +8,7 @@ import { refreshUnread } from "./MemberTabs";
 import { fs } from "@/lib/fs";
 
 type Handle = {
-  id: string; kind: string; kindLabel: string; club: string; eventId: string; eventName: string;
+  id: string; kind: string; kindLabel: string; attend?: boolean; club: string; eventId: string; eventName: string;
   memberName: string; message: string; createdAt: string;
 };
 type Mine = {
@@ -49,14 +49,14 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   }, [load]);
 
   async function decide(h: Handle, decision: "approve" | "decline") {
-    if (decision === "decline" && !window.confirm(`${h.memberName} 님의 ${h.kindLabel} 신청을 거절할까요?`)) return;
+    if (decision === "decline" && !window.confirm(`${h.memberName} 님의 ${h.kindLabel}을 거절할까요?`)) return;
     setBusy(h.id);
     setNote("");
     const r = await api(`/api/club-requests/${h.id}`, { method: "PATCH", body: { decision } });
     setBusy("");
     if (!r.ok) return setError(r.error);
     setNote(decision === "approve"
-      ? `${h.memberName} 님의 ${h.kindLabel} 신청을 승인했어요.${h.kind === "join" ? ` 이제 ${h.club} 회원이에요.` : " 이제 이 일정에 참석 신청할 수 있어요."}`
+      ? `${h.memberName} 님의 ${h.kindLabel}을 승인했어요.${h.kind === "join" ? ` 이제 ${h.club} 회원이에요.` : ""}${h.attend ? " 이 일정에 참석 신청까지 됐어요." : h.kind === "join" ? "" : " 이제 이 일정에 참석 신청할 수 있어요."}`
       : `${h.memberName} 님의 신청을 거절했어요.`);
     await load(true);
   }

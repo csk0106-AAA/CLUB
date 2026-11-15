@@ -11,7 +11,7 @@ import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
 import { ScheduleView } from "@/components/ScheduleBoard";
 import { Sheet } from "@/components/Sheet";
-import { ClubRequestCard } from "./ClubRequestCard";
+import { ClubRequestCard, type AttendReq } from "./ClubRequestCard";
 import { ObserversCard } from "./ObserversCard";
 import { api, fmtDateDow, fmtDays, fmtDaySpan, won } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -22,7 +22,7 @@ type Detail = {
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
     canApply?: boolean; // false: 내가 속하지 않은 소모임 일정(읽기만)
-    requests?: { join: string; observe: string } | null; // 내 가입·참관 신청 상태
+    attendReq?: AttendReq; // 소모임 관리자에게 보낸 내 참석 요청(참관/가입 + 참석)
   };
   activities: { id: string; name: string }[];
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
@@ -146,6 +146,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
   const hasFee = !!e.fee || !!e.feePending;
   const actNames = d.activities.map((a) => a.name);
+  // 참석인데 여러 날 일정(워크숍) 날짜를 아직 안 골랐으면(예: 소모임 관리자가 참석 요청을 승인한 직후) 날짜를 고르게 한다.
+  const needDays = e.type === "워크숍" && answer === "참석" && e.canApply !== false && (d.apply?.days.length ?? 0) === 0 && days.length > 0;
 
   return (
     <main className="app with-tabs">
@@ -213,17 +215,24 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {e.canObserve && <ObserversCard eventId={id} />}
 
       {/* 참석 신청(예전 일정 개요의 아래쪽 그대로) */}
-      {answer === "참석" && (
-        <div className="msg info">
-          참석 신청했어요{d.apply && d.apply.days.length > 0 ? ` · ${fmtDays(d.apply.days)}` : ""}
+      {answer === "참석" && e.canApply !== false && (
+        <div className="msg info" role="status">
+          <b>신청 완료 ✓</b>{d.apply && d.apply.days.length > 0 ? ` · ${fmtDays(d.apply.days)}` : ""}
           {d.apply?.paid ? " · 회비 입금 확인됨 ✓" : ""}
+          {e.attendReq?.status === "approved" ? " · 소모임 관리자가 승인했어요" : ""}
         </div>
       )}
-      {answer === "불참" && <div className="msg info">참석 안함으로 알렸어요. 마음이 바뀌면 언제든 바꿀 수 있어요.</div>}
+      {needDays && (
+        <button className="fb bad" type="button" style={{ alignItems: "center" }} onClick={() => { setSel([]); setPicking(true); }}>
+          <span className="ic" aria-hidden="true">!</span>
+          <span className="grow"><b>참석 날짜를 골라 주세요</b><span className="t">날짜를 골라야 참가비가 정해져요 · 고르기 ›</span></span>
+        </button>
+      )}
+      {answer === "불참" && e.canApply !== false && <div className="msg info">참석 안함으로 알렸어요. 마음이 바뀌면 언제든 바꿀 수 있어요.</div>}
 
       {e.canApply === false && e.club ? (
         <>
-          <ClubRequestCard eventId={id} club={e.club} requests={e.requests ?? null} onSent={load} />
+          <ClubRequestCard eventId={id} club={e.club} leaders={e.clubLeaders ?? []} req={e.attendReq ?? null} onChange={load} />
           <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
         </>
       ) : !e.startsAt && answer === "" ? (

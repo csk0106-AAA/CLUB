@@ -100,8 +100,10 @@ export const TABS = {
   // 소모임 가입 신청(kind=join) / 소모임 일정 1회 참관 신청(kind=observe, eventId 필수).
   // status: pending | approved | declined. 처리는 그 소모임 직책자(lib/club-requests.ts).
   // resultSeen: 신청한 회원이 결과 알림을 봤으면 "true"
+  // attend: "true"면 소모임 일정 화면에서 보낸 참석 요청(참관 또는 가입 + 그 일정 참석). eventId 필수.
+  //   승인되면 그 일정의 EventApplies 를 참석으로 넣는다(lib/club-requests.ts attendApprove).
   ClubRequests: [
-    "id", "kind", "club", "eventId", "memberId", "message", "status", "createdAt", "handledBy", "handledAt", "resultSeen",
+    "id", "kind", "club", "eventId", "memberId", "message", "status", "createdAt", "handledBy", "handledAt", "resultSeen", "attend",
   ],
   // 개발 요청: 템플릿 편집기의 "AI에게 요청"에서 지금 기능으로는 안 되는 것(새 코드가 필요한 것)을 개발자에게 남긴다.
   // templateId/eventId: 요청한 곳(비어 있을 수 있음), requestedBy: 요청한 관리자 이름, status: 접수 | 진행 중 | 완료 | 보류

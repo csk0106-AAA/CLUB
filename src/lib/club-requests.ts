@@ -10,10 +10,11 @@ import type { Row } from "./store/types";
 //    직책자가 아직 없는 소모임이면 전체 관리자(perms 에 all)가 대신 처리한다.
 //  - 승인: join → 회원의 Members.clubs 에 그 소모임(직책 없음)을 더한다.
 //          observe → 그 일정의 참관자(Events.observers)에 더한다.
+//  - attend="true"(소모임 일정 화면의 "소모임 관리자에게 요청하기"): 위 승인에 더해 그 일정에 참석 신청까지 넣는다.
 //  - 결과는 신청한 회원의 알림(홈 화면 종 아이콘)에 뜨고, 본 뒤에는 숫자에서 빠진다(resultSeen).
 export type ReqKind = "join" | "observe";
 export type ReqStatus = "pending" | "approved" | "declined";
-export const KIND_LABEL: Record<ReqKind, string> = { join: "소모임 가입", observe: "일정 1회 참관" };
+export const KIND_LABEL: Record<ReqKind, string> = { join: "소모임 가입 신청", observe: "일정 1회 참관 신청" };
 
 // 이 소모임 신청을 처리할 회원 id 목록
 // groups: 직책·소모임 직책 그룹 권한(Settings permGroups). 회장 그룹으로 받은 "모든 권한"도 처리자로 본다.
@@ -34,6 +35,33 @@ export function alreadyIn(kind: ReqKind, me: Row | undefined, club: string, ev?:
   if (inClub(me, club)) return true;
   if (kind === "observe" && ev && me) return readObservers(ev.observers).includes(me.id);
   return false;
+}
+
+// 소모임 일정 화면에서 보낸 "참석 요청"(참관/가입 + 그 일정 참석)인지
+export const isAttend = (r: Row) => r.attend === "true";
+
+// 알림 목록에 보일 신청 이름
+export function reqLabel(r: Row): string {
+  if (isAttend(r)) return r.kind === "join" ? "가입 + 참석 신청" : "참관 + 참석 신청";
+  return KIND_LABEL[r.kind as ReqKind] ?? "신청";
+}
+
+// 이 회원이 이 일정에 보낸 처리 대기 중인 참석 요청(일정마다 하나만)
+export function pendingAttend(rows: Row[], memberId: string, eventId: string): Row | undefined {
+  return rows.find((r) => r.status === "pending" && isAttend(r) && r.memberId === memberId && r.eventId === eventId);
+}
+
+// 참석 요청 승인: 그 일정의 참석 신청을 "참석"으로 넣는다(이미 있으면 답만 참석으로, 고른 날짜는 그대로).
+// 여러 날 일정(워크숍)은 날짜를 비워 두면 회원이 일정 화면에서 날짜를 고른다.
+export async function attendApprove(memberId: string, eventId: string): Promise<void> {
+  if (!eventId) return;
+  const s = await getStore();
+  const cur = (await s.list("EventApplies")).find((a) => a.eventId === eventId && a.memberId === memberId);
+  if (cur) {
+    if (cur.answer !== "참석") await s.update("EventApplies", cur.id, { answer: "참석" });
+  } else {
+    await s.insert("EventApplies", { eventId, memberId, answer: "참석", days: "", paid: "false" });
+  }
 }
 
 // 같은 회원·종류·소모임(참관이면 같은 일정)의 처리 대기 신청
