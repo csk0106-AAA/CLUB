@@ -243,17 +243,23 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       ) : (
         <div className="footer-actions">
           {answer === "" && <p className="hint center">참석 여부를 알려 주세요. 나중에 바꿀 수 있어요.</p>}
-          <div className="row">
-            <button className="btn" type="button" disabled={busy || answer === "참석"} onClick={() => apply("참석")}>
+          {/* 신청 완료 · 참석 안함 · (워크숍) 참석 날짜 바꾸기를 한 줄에 */}
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn" type="button" disabled={busy || answer === "참석"} onClick={() => apply("참석")}
+              style={{ flex: "1 1 0", minWidth: 0, padding: "0 6px", fontSize: fs(15, 1.2), whiteSpace: "nowrap" }}>
               {answer === "참석" ? "신청 완료 ✓" : "참석 신청하기"}
             </button>
-            <button className={`btn ${answer === "불참" ? "blue" : "white"}`} type="button" disabled={busy || answer === "불참"} onClick={() => apply("불참")}>
+            <button className={`btn ${answer === "불참" ? "blue" : "white"}`} type="button" disabled={busy || answer === "불참"} onClick={() => apply("불참")}
+              style={{ flex: "1 1 0", minWidth: 0, padding: "0 6px", fontSize: fs(15, 1.2), whiteSpace: "nowrap" }}>
               참석 안함
             </button>
+            {answer === "참석" && e.type === "워크숍" && (
+              <button className="btn white" type="button" aria-label="참석 날짜 바꾸기" onClick={() => { setSel(d.apply?.days ?? []); setPicking(true); }}
+                style={{ flex: "1 1 0", minWidth: 0, padding: "0 6px", fontSize: fs(15, 1.2), whiteSpace: "nowrap" }}>
+                날짜 바꾸기
+              </button>
+            )}
           </div>
-          {answer === "참석" && e.type === "워크숍" && (
-            <button className="btn white" type="button" onClick={() => { setSel(d.apply?.days ?? []); setPicking(true); }}>참석 날짜 바꾸기</button>
-          )}
         </div>
       )}
 
