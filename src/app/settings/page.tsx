@@ -223,7 +223,7 @@ export default function SettingsPage() {
       {/* 홈 화면과 같은 윗줄: 캐릭터(왼쪽) + 관리자(권한이 있을 때만)·로그아웃 아이콘(오른쪽). 다음 줄: 이름 */}
       <header className="topbar">
         <div className="row">
-          {me ? <Avatar member={me} size={48} fallback="mascot" /> : <Mascot size={48} />}
+          {me ? <Avatar member={me} size={48} /> : <Mascot size={48} />}
           <div className="who">
             {me && <b>{me.name}</b>}
             {me && (me.title || me.clubs.length > 0)

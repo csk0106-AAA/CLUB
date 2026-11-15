@@ -54,7 +54,7 @@ export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?
     <>
       <header className="topbar">
         <div className="row">
-          {who ? <Avatar member={who} size={40} fallback="mascot" /> : <Mascot size={40} />}
+          {who ? <Avatar member={who} size={40} /> : <Mascot size={40} />}
           <div className="who">
             {club && <span>{club}</span>}
             {who && <b>{who.name}</b>}

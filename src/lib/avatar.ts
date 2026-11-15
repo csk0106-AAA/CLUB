@@ -7,7 +7,8 @@ import type { Row } from "./store/types";
 // 사진 내용은 MemberPhotos 에 base64 로 따로 둔다(256×256 으로 줄여서 올린다).
 // 화면에는 avatarView 로 바꿔 내려준다: 사진은 /api/avatar/<회원 id>?v=<사진 id> (바꾸면 주소가 달라져 캐시가 새로 받는다).
 
-export const AVATAR_KEYS = ["sprout", "bear", "cat", "fox", "owl", "penguin", "rabbit", "whale"] as const;
+export const AVATAR_KEYS = ["sprout", "rat", "ox", "tiger", "rabbit", "dragon", "snake", "horse", "sheep", "monkey", "rooster", "dog", "pig"] as const;
+// 예전 캐릭터(bear·cat·fox·owl·penguin·whale)처럼 목록에 없는 key 는 readAvatar 가 null(기본 새싹이)로 본다.
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
