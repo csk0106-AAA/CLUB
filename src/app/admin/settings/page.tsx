@@ -111,5 +111,5 @@ function ProfileReveal() {
 }
 
 export default function SettingsPage() {
-  return <AdminGate mode="members" need={["members"]} active="/admin/settings"><Settings /></AdminGate>;
+  return <AdminGate mode="group" need={["members"]} active="/admin/settings"><Settings /></AdminGate>;
 }

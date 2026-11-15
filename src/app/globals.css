@@ -682,3 +682,6 @@ body.app-resizing { cursor: ew-resize; user-select: none; }
 
 /* 한국어 줄바꿈: 낱말 중간("반갑습니/다")에서 끊지 않고 띄어쓰기에서 바꾼다. 아주 긴 낱말만 필요할 때 끊는다. */
 body { word-break: keep-all; overflow-wrap: anywhere; }
+
+/* 관리자 위쪽 메뉴 5개(모임설정·회원관리·일정관리·소모임관리·활동 템플릿)가 휴대폰 한 줄에 들어가게 */
+@media (max-width: 420px) { .modes { gap: 12px; } .modes a { font-size: calc(14px * min(var(--fs, 1), 1.15)); } }

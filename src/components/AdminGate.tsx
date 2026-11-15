@@ -10,8 +10,9 @@ import { PasswordField } from "./PasswordField";
 
 type Me = { name: string; perms: string[]; admin: boolean; consent: boolean; clubOfficerOf?: string[] };
 
-export type AdminMode = "members" | "events" | "clubs" | "templates";
+export type AdminMode = "group" | "members" | "events" | "clubs" | "templates";
 const MODES: { key: AdminMode; href: string; label: string }[] = [
+  { key: "group", href: "/admin/settings", label: "모임설정" },
   { key: "members", href: "/admin/members", label: "회원관리" },
   { key: "events", href: "/admin/events", label: "일정관리" },
   { key: "clubs", href: "/admin/clubs", label: "소모임관리" },
@@ -125,7 +126,7 @@ export function AdminGate(props: {
 
   const sub =
     props.mode === "members"
-      ? [{ href: "/admin/settings", label: "모임 설정" }, { href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/members", label: "회원 명단" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/dues", label: "회비관리" }, { href: "/admin/rules", label: "회칙" }]
+      ? [{ href: "/admin/kinds", label: "회원 구분" }, { href: "/admin/members", label: "회원 명단" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한설정" }, { href: "/admin/dues", label: "회비관리" }, { href: "/admin/rules", label: "회칙" }]
       : props.mode === "templates"
         ? [{ href: "/admin/templates", label: "활동 템플릿" }, { href: "/admin/dev-requests", label: "개발 요청" }]
         : props.mode === "clubs"
