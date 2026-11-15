@@ -128,7 +128,8 @@ function Templates() {
         {!inVersions && fam && count >= 2 && (
           <span className="small">최신: v{fam.latest.version} · {sourceLabel(fam.latest)}</span>
         )}
-        <div className="row" style={{ flexWrap: "wrap" }}>
+        {/* 수정·복제·AI 지침 줄은 카드 맨 아래에 맞춘다(같은 줄의 카드끼리 높이가 달라도 버튼 줄이 나란히) */}
+        <div className="row" style={{ flexWrap: "wrap", marginTop: "auto", paddingTop: 6 }}>
           <button className="mini" type="button" aria-haspopup="dialog" onClick={() => { setVerFor(null); openEdit(t, strip(t.config)); }}>
             {inVersions ? "이 버전으로 새 버전 만들기" : "수정"}
           </button>
