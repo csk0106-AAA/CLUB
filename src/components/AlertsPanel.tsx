@@ -15,7 +15,11 @@ type Mine = {
   id: string; kind: string; kindLabel: string; club: string; eventId: string; eventName: string;
   status: string; createdAt: string; handledAt: string; handledByName: string; unseen: boolean;
 };
-export type AlertsData = { posts: { id: string; title: string; at: string; fresh: "new" | "updated" }[]; toHandle: Handle[]; mine: Mine[]; count: number };
+type CommentAlert = { id: string; postId: string; title: string; name: string; at: string };
+export type AlertsData = {
+  posts: { id: string; title: string; at: string; fresh: "new" | "updated" }[]; toHandle: Handle[]; mine: Mine[];
+  comments: CommentAlert[]; count: number;
+};
 
 const STATUS: Record<string, { text: string; tone: string }> = {
   pending: { text: "확인 기다리는 중", tone: "warn" },
@@ -27,7 +31,7 @@ const what = (r: { kindLabel: string; club: string; eventName: string }) =>
   `${r.club} ${r.kindLabel}${r.eventName ? ` · ${r.eventName}` : ""}`;
 
 // 홈 화면 종 아이콘을 누르면 뜨는 알림 목록.
-// 열면(불러온 뒤) 새 글과 내 신청 결과를 "봤음"으로 표시한다. 처리할 신청은 승인·거절해야 숫자에서 빠진다.
+// 열면(불러온 뒤) 새 글, 내 글에 달린 댓글, 내 신청 결과를 "봤음"으로 표시한다. 처리할 신청은 승인·거절해야 숫자에서 빠진다.
 export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   const [d, setD] = useState<AlertsData | null>(null);
   const [error, setError] = useState("");
@@ -62,7 +66,8 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   }
 
   if (!d) return error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>;
-  const empty = d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0;
+  const comments = d.comments ?? [];
+  const empty = d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -86,6 +91,23 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
               </div>
             </div>
           ))}
+        </section>
+      )}
+
+      {comments.length > 0 && (
+        <section aria-labelledby="al-h4" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 id="al-h4" style={sectionTitle}>내 글에 달린 댓글 {comments.length}개</h3>
+          <ul className="rows">
+            {comments.map((c) => (
+              <li key={c.id}>
+                <Link href={`/board/${c.postId}#comments`} className="opt rowopt" style={{ textDecoration: "none" }}>
+                  <span aria-hidden="true" style={{ flex: "none" }}>💬</span>
+                  <span className="name grow" style={{ overflowWrap: "anywhere" }}>{c.name} 님이 ‘{c.title}’에 댓글을 남겼어요</span>
+                  <span className="small" style={{ flex: "none" }}>{fmtDate(c.at)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

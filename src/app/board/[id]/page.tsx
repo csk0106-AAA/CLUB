@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { IconMegaphone, IconPin } from "@/components/Icons";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Attachments, FeeView, MinutesView, PollBox, QuizBox, RulesView, SurveyBox } from "@/components/board/PostView";
+import { PostTalk } from "@/components/board/PostTalk";
 import type { PostDetail } from "@/components/board/types";
 import { FORM_LABEL, type FeeSnap, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDateTime } from "@/lib/client";
@@ -30,7 +31,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   }, [load]);
 
   async function remove() {
-    if (!d || !window.confirm("이 게시글을 삭제할까요? 첨부 파일과 응답도 함께 지워져요.")) return;
+    if (!d || !window.confirm("이 게시글을 삭제할까요? 첨부 파일·응답·댓글도 함께 지워져요.")) return;
     const r = await api(`/api/board/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (!r.ok) return setError(r.error);
     router.replace("/board");
@@ -82,6 +83,8 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               {p.form === "rules" ? "회칙" : "회비"} 글은 “수정”을 누르면 나오는 관리 화면에서 내용을 고친 뒤 이 글로 다시 올려요.
             </span>
           )}
+
+          {d.talk && <PostTalk key={p.id} postId={p.id} initial={d.talk} />}
         </article>
       )}
       <MemberTabs on="board" />

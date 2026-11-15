@@ -14,7 +14,7 @@ import type { Row } from "./store/types";
 //  - "받을 알림"에서 끈 종류는 0으로 센다.
 export type Kind = "events" | "posts" | "profiles";
 export const KINDS: Kind[] = ["events", "posts", "profiles"];
-// alerts: 소모임 신청 알림(내가 처리할 신청 + 아직 안 본 내 신청 결과). "받을 알림" 설정과 상관없이 센다.
+// alerts: 소모임 신청 알림(내가 처리할 신청 + 아직 안 본 내 신청 결과) + 내 글에 새로 달린 댓글. "받을 알림" 설정과 상관없이 센다.
 export type Counts = Record<Kind, number> & { alerts: number };
 type Seen = Record<Kind, string>;
 
@@ -127,12 +127,39 @@ export async function postFreshness(mid: string): Promise<Map<string, "new" | "u
   return new Map((await newPostsOf(mid)).map((p) => [p.id, p.fresh]));
 }
 
+/* ───── 내 글에 달린 댓글 알림 ─────
+   Settings "commentSeen:<회원 id>" = 종 알림 창을 마지막으로 연 시각(ISO). 없으면 지금까지 달린 댓글이 모두 새 알림.
+   내 글(작성자 = 나)에 다른 회원이 그 뒤에 단 댓글. 글을 지우면 댓글도 지워져서 알림도 사라진다. */
+const commentSeenKey = (mid: string) => `commentSeen:${mid}`;
+
+function commentAlertsIn(posts: Row[], comments: Row[], mid: string, since: string): Row[] {
+  const minePosts = new Set(posts.filter((p) => p.authorId === mid).map((p) => p.id));
+  return comments.filter((c) => minePosts.has(c.postId) && c.memberId !== mid && (!since || later(c.createdAt, since)));
+}
+
+// 종 알림 창의 "내 글에 달린 댓글"(최근 것 먼저)
+export async function commentAlertsOf(mid: string): Promise<{ id: string; postId: string; title: string; name: string; at: string }[]> {
+  const s = await getStore();
+  const [posts, comments, members, since] = await Promise.all([s.list("Posts"), s.list("PostComments"), s.list("Members"), getSetting<string>(commentSeenKey(mid), "")]);
+  return commentAlertsIn(posts, comments, mid, since)
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+    .map((c) => ({
+      id: c.id, postId: c.postId, title: posts.find((p) => p.id === c.postId)?.title ?? "",
+      name: members.find((m) => m.id === c.memberId)?.name ?? "(지운 회원)", at: c.createdAt,
+    }));
+}
+
+export async function markCommentsSeen(mid: string): Promise<void> {
+  await setSetting(commentSeenKey(mid), new Date().toISOString());
+}
+
 // 여러 회원의 숫자를 한 번에 센다(알림 보낼 때 표를 한 번만 읽도록).
 export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
   const s = await getStore();
-  const [members, events, posts, profiles, stamps, first, requests, groups] = await Promise.all([
+  const [members, events, posts, profiles, stamps, first, requests, groups, comments] = await Promise.all([
     s.list("Members"), s.list("Events"), s.list("Posts"), s.list("Profiles"),
     getSetting<Stamps>("eventStamps", {}), getSetting<Stamps>("eventFirstPublished", {}), s.list("ClubRequests"), getPermGroups(),
+    s.list("PostComments"),
   ]);
   const out = new Map<string, Counts>();
   for (const mid of mids) {
@@ -145,11 +172,13 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
     // 프로필 북 목록에 나오는 회원(회원대기 제외)의 소개만 센다(목록의 NEW·UP 표시와 같게)
     const listed = new Set(members.filter((m) => m.kind !== "회원대기").map((m) => m.id));
     const pr = profiles.filter((p) => listed.has(p.memberId) && profileFresh(p, mid, seen)).length;
+    const co = commentAlertsIn(posts, comments, mid, await getSetting<string>(commentSeenKey(mid), "")).length;
     out.set(mid, {
       events: prefs.notify.events ? ev : 0,
       posts: po,
       profiles: prefs.notify.profiles ? pr : 0,
-      alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)),
+      // 소모임 신청(처리할 것 + 안 본 결과) + 내 글에 새로 달린 댓글
+      alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)) + co,
     });
   }
   return out;

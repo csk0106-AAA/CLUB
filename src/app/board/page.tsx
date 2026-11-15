@@ -55,6 +55,17 @@ export default function BoardPage() {
   const rest = posts?.filter((p) => !p.pinned) ?? [];
   // 종 아이콘 숫자에 센 글: 새로 올라온 글은 NEW, 바뀐 글은 UP(알림 창을 열면 사라져요)
   const freshChip = (p: PostSummary) => <FreshChip fresh={p.fresh} />;
+  // 반응·댓글 수(하나라도 있는 글만): "👍 3 · 💬 2"
+  const talkCounts = (p: PostSummary) => {
+    if (!p.reactions && !p.comments) return null;
+    const parts = [p.reactions ? `👍 ${p.reactions}` : "", p.comments ? `💬 ${p.comments}` : ""].filter(Boolean).join(" · ");
+    const label = [p.reactions ? `반응 ${p.reactions}개` : "", p.comments ? `댓글 ${p.comments}개` : ""].filter(Boolean).join(", ");
+    return (
+      <span className="small num" style={{ fontSize: fs(12), flex: "none" }}>
+        <span aria-hidden="true">{parts}</span><span className="sr-only">{label}</span>
+      </span>
+    );
+  };
   const responseChip = (p: PostSummary) =>
     p.responded ? <span className="chip violet">참여 ✓</span> : p.closed ? <span className="chip gray">마감</span> : <span className="chip red">참여 전</span>;
 
@@ -91,6 +102,7 @@ export default function BoardPage() {
                   ? <span className="chip red"><IconMegaphone size={12} />공지</span>
                   : <span className="chip line">{FORM_LABEL[p.form]}</span>}
                 <span className="t">{p.title}</span>
+                {talkCounts(p)}
                 {freshChip(p)}
                 {RESPONSE_FORMS.includes(p.form) && responseChip(p)}
                 <span className="small" style={{ fontSize: fs(12), flex: "none", display: "inline-flex", alignItems: "center", gap: 2 }}><IconPin size={12} />고정</span>
@@ -124,8 +136,9 @@ export default function BoardPage() {
                     <img src={fileUrl(p.thumb)} alt="" loading="lazy" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, flex: "none", border: "1px solid var(--line)" }} />
                   )}
                 </span>
-                {(p.fileCount > 0 || p.audienceText !== "전체 회원") && (
+                {(p.fileCount > 0 || p.audienceText !== "전체 회원" || p.reactions > 0 || p.comments > 0) && (
                   <span className="meta">
+                    {talkCounts(p)}
                     {p.fileCount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconClip size={13} />첨부 {p.fileCount}</span>}
                     {p.audienceText !== "전체 회원" && <span>{p.audienceText}</span>}
                   </span>

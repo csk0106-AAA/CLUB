@@ -5,7 +5,7 @@ import { canHandle, isAttend, reqLabel } from "@/lib/club-requests";
 import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
-import { countsOf, markSeen, newPostsOf } from "@/lib/unread";
+import { commentAlertsOf, countsOf, markCommentsSeen, markSeen, newPostsOf } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +20,8 @@ export async function GET() {
   const mid = g.s.mid;
   const s = await getStore();
   const groups = await getPermGroups();
-  const [rows, members, events, posts, counts] = await Promise.all([
-    s.list("ClubRequests"), s.list("Members"), s.list("Events"), newPostsOf(mid), countsOf(mid),
+  const [rows, members, events, posts, counts, comments] = await Promise.all([
+    s.list("ClubRequests"), s.list("Members"), s.list("Events"), newPostsOf(mid), countsOf(mid), commentAlertsOf(mid),
   ]);
   const name = (id: string) => members.find((m) => m.id === id)?.name ?? "(지운 회원)";
   const evName = (id: string) => (id ? events.find((e) => e.id === id)?.name ?? "" : "");
@@ -48,19 +48,22 @@ export async function GET() {
     posts: posts.map((p) => ({ id: p.id, title: p.title, at: p.updatedAt || p.createdAt, fresh: p.fresh })),
     toHandle,
     mine,
+    // 내 글에 다른 회원이 새로 단 댓글(알림 창을 마지막으로 연 뒤. 숫자는 counts.alerts 에 들어 있다)
+    comments: comments.slice(0, 30),
     count: counts.posts + counts.alerts,
   });
 }
 
 const body = z.object({ seen: z.literal(true) });
 
-// 알림 창을 열어 본 뒤: 새 글과 내 신청 결과를 "봤음"으로 표시한다(처리할 신청은 처리해야 숫자에서 빠진다).
+// 알림 창을 열어 본 뒤: 새 글, 내 글에 달린 댓글, 내 신청 결과를 "봤음"으로 표시한다(처리할 신청은 처리해야 숫자에서 빠진다).
 export async function POST(req: Request) {
   const g = await guard();
   if ("err" in g) return g.err;
   if (!body.safeParse(await req.json().catch(() => null)).success) return bad("요청을 확인해 주세요.");
   const s = await getStore();
   await markSeen(g.s.mid, "posts");
+  await markCommentsSeen(g.s.mid);
   const rows = await s.list("ClubRequests");
   for (const r of rows.filter((x) => x.memberId === g.s.mid && x.status !== "pending" && x.resultSeen !== "true")) {
     await s.update("ClubRequests", r.id, { resultSeen: "true" });

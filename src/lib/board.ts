@@ -48,6 +48,19 @@ export const FORM_HINT: Record<Form, string> = {
 // 응답을 받는 양식
 export const RESPONSE_FORMS: Form[] = ["survey", "poll", "quiz"];
 
+// 반응·댓글을 받는 글: 글쓰기로 올린 글(일반·설문·투표·퀴즈, 예전 회의록 글 포함).
+// 관리 화면에서 올린 회칙·회비(소모임 회비 포함) 글은 받지 않는다(lib/published.ts managedOf 와 같은 기준).
+export const talkable = (form: string) => form !== "rules" && form !== "fee";
+export const REACTIONS = [
+  { key: "like", emoji: "👍", label: "좋아요" },
+  { key: "congrats", emoji: "👏", label: "축하해요" },
+  { key: "thanks", emoji: "🙏", label: "감사해요" },
+  { key: "cheer", emoji: "💪", label: "응원해요" },
+] as const;
+export type ReactionKey = (typeof REACTIONS)[number]["key"];
+export const isReaction = (k: unknown): k is ReactionKey => REACTIONS.some((r) => r.key === k);
+export const COMMENT_MAX = 1000;
+
 // 회의록 안건 상태(lib/club.ts 의 AGENDA_STATUS 와 같은 값. 화면에서 쓰려고 여기에 둔다)
 export const AGENDA_STATUS = ["논의 전", "확정·실행완료", "새로운 안건", "보류·삭제", "후속 조치"] as const;
 

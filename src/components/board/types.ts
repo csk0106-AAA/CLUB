@@ -1,4 +1,5 @@
 import type { Audience } from "@/lib/audience";
+import type { AvatarView } from "@/lib/avatar";
 import type { FileMeta, Form, Template } from "@/lib/board";
 
 // 게시판 화면에서 쓰는 API 응답 모양 (/api/board …)
@@ -22,6 +23,18 @@ export type PostSummary = {
   mine: boolean;
   // 마지막으로 알림을 본 뒤: "new" 새로 올라온 글, "updated" 수정된 글(종 아이콘 숫자에 센 글과 같다)
   fresh: "" | "new" | "updated";
+  // 반응 수·댓글 수
+  reactions: number;
+  comments: number;
+};
+
+// 반응·댓글 (/api/board/[id] 의 talk, /api/board/[id]/reactions·comments 응답)
+export type PostTalk = {
+  reactions: { type: string; count: number; mine: boolean; names: string[] }[];
+  comments: {
+    id: string; name: string; avatar: AvatarView; body: string;
+    createdAt: string; edited: boolean; canEdit: boolean; canDelete: boolean;
+  }[];
 };
 
 export type PostFull = {
@@ -53,6 +66,8 @@ export type PostDetail = {
   rules?: { id: string; chapter: string; article: string; body: string; version: string }[];
   myFee?: { amount: string; kind: string; position: string };
   agendaLabels?: Record<string, string>;
+  // 반응·댓글(회칙·회비 글은 null)
+  talk: PostTalk | null;
 };
 
 export type BoardMeta = {

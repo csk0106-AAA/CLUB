@@ -5,6 +5,7 @@ import { canManage, managedOf } from "@/lib/published";
 import { getStore } from "@/lib/store";
 import { detail, parsePost } from "../_lib/posts";
 import { canEdit, canSee, ensureBoard, findPost, forbid, getMe, readFiles } from "../_lib/server";
+import { removeTalk } from "../_lib/talk";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -40,7 +41,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   return NextResponse.json({ id: p.id });
 }
 
-// 게시글 삭제: 첨부 파일과 응답도 함께 지운다.
+// 게시글 삭제: 첨부 파일·응답·반응·댓글도 함께 지운다.
 // 일반 글은 작성자나 관리자(all/board), 회칙·회비 글은 그 관리 화면을 쓸 수 있는 사람만.
 export async function DELETE(_req: Request, ctx: Ctx) {
   const m = await getMe();
@@ -53,6 +54,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const s = await getStore();
   for (const f of readFiles(p)) await s.remove("PostFiles", f.id);
   for (const r of (await s.list("PostResponses")).filter((r) => r.postId === p.id)) await s.remove("PostResponses", r.id);
+  await removeTalk(p.id);
   await s.remove("Posts", p.id);
   return NextResponse.json({ ok: true });
 }

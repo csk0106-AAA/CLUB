@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { ALL, audienceInput, audienceLabel, type Audience } from "@/lib/audience";
-import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, talkable, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published";
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 import { audienceOf, canEdit, canSeeResults, memberNames, readFiles, type Me } from "./server";
+import { talkCounts, talkOf } from "./talk";
 
 const t = (max: number) => z.string().trim().max(max);
 
@@ -61,7 +62,7 @@ async function eventNames(): Promise<Record<string, string>> {
 
 // fresh: 종 아이콘 숫자에 들어간 글(lib/unread.ts postFreshness)과 같은 기준의 "새 글"/"수정됨" 표시
 export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" | "updated"> = new Map()) {
-  const [names, evs, responses] = await Promise.all([memberNames(), eventNames(), (await getStore()).list("PostResponses")]);
+  const [names, evs, responses, talk] = await Promise.all([memberNames(), eventNames(), (await getStore()).list("PostResponses"), talkCounts()]);
   const mine = new Set(responses.filter((r) => r.memberId === me.row.id).map((r) => r.postId));
   return posts.map((p) => {
     const files = readFiles(p);
@@ -83,6 +84,9 @@ export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" |
       audienceText: audienceLabel(audienceOf(p), { events: evs }),
       mine: p.authorId === me.row.id,
       fresh: fresh.get(p.id) ?? "",
+      // 반응·댓글 수(회칙·회비 글은 받지 않아서 0)
+      reactions: talkable(p.form) ? talk.get(p.id)?.reactions ?? 0 : 0,
+      comments: talkable(p.form) ? talk.get(p.id)?.comments ?? 0 : 0,
     };
   });
 }
@@ -208,6 +212,8 @@ export async function detail(me: Me, p: Row) {
     seeResults: full,
     mine,
     results,
+    // 반응·댓글(회칙·회비 글은 null)
+    talk: talkable(form) ? await talkOf(me, p.id) : null,
     ...extra,
   };
 }

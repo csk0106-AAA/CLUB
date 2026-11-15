@@ -95,6 +95,12 @@ export const TABS = {
   MemberPhotos: ["id", "memberId", "type", "size", "data", "createdAt"],
   // 설문 응답, 투표, 퀴즈 답. answer: JSON
   PostResponses: ["id", "postId", "memberId", "answer", "createdAt"],
+  // 게시글 반응(좋아요 등). type: lib/board.ts REACTIONS 의 key. 회원당 글 하나에 종류별로 한 줄(누르면 켜고 끈다).
+  // 관리 화면에서 올린 회칙·회비 글에는 받지 않는다(lib/board.ts talkable).
+  PostReactions: ["id", "postId", "memberId", "type", "createdAt"],
+  // 게시글 댓글(답글 없이 한 줄로). body 최대 1000자. 지우면 행을 지운다. updatedAt 이 있으면 "수정됨".
+  // 글쓴이 알림: 내 글에 남이 단 댓글 중 Settings "commentSeen:<회원 id>"(ISO) 뒤의 것(lib/unread.ts)
+  PostComments: ["id", "postId", "memberId", "body", "createdAt", "updatedAt"],
   // 휴대폰 알림(Web Push) 구독
   PushSubs: ["id", "memberId", "endpoint", "keys", "createdAt"],
   // 소모임 가입 신청(kind=join) / 소모임 일정 1회 참관 신청(kind=observe, eventId 필수).
