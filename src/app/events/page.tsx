@@ -182,7 +182,7 @@ export default function EventsPage() {
       {drafts.length > 0 && (
         <section aria-label="공개 전 초안" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <b style={{ font: `700 ${fs(16)} var(--display)` }}>공개 전 초안 {drafts.length}개</b>
-          <span className="small">관리 권한이 있는 회원에게만 보여요. 누르면 일정 관리 화면에서 내용을 채우고 “회원에게 전달”할 수 있어요.</span>
+          <span className="small">관리 권한이 있는 회원에게만 보여요. 누르면 일정 관리 화면에서 내용을 채우고 “공개 및 회원전달”을 누를 수 있어요.</span>
           <div className="evlist">{drafts.map(item)}</div>
         </section>
       )}

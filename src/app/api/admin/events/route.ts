@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     account = duesAccount(d);
     accountHolder = d.holder;
   }
-  // 새 일정은 초안이고 회원에게 공개되지 않는다. 개요를 채운 뒤 '회원에게 전달'로 공개한다.
+  // 새 일정은 초안이고 회원에게 공개되지 않는다. 개요를 채운 뒤 '공개 및 회원전달'로 공개한다(상태: 초안 → 공개).
   const ev = await s.insert("Events", {
     type, name, club, account, accountHolder, startsAt, endsAt, place, audience,
     status: "초안", published: "false", pinned: String(parsed.data.pinned === true),

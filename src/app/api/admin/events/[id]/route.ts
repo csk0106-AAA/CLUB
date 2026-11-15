@@ -116,7 +116,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const row = await s.update("Events", id, {
     ...rest,
     ...(rules === undefined ? {} : { feeRules: JSON.stringify(rules) }),
-    ...(published === undefined ? {} : { published: String(published) }),
+    // 상태값은 공개 여부와 같은 뜻: 공개 / 초안
+    ...(published === undefined ? {} : { published: String(published), status: published ? "공개" : "초안" }),
     ...(pinned === undefined ? {} : { pinned: String(pinned) }),
     ...(audience === undefined ? {} : { audience: audience.mode === "all" ? "" : JSON.stringify(audience) }),
   });

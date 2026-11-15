@@ -172,7 +172,7 @@ function Detail({ id }: { id: string }) {
     });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg({ tone: "info", text: published === true ? "회원에게 전달했어요. 이제 회원 화면에 보여요." : published === false ? "공개를 취소했어요." : "저장했어요." });
+    setMsg({ tone: "info", text: published === true ? (ev?.published === "true" ? "저장했어요. 공개 상태 그대로 회원 화면에 반영돼요." : "공개하고 회원에게 전달했어요. 이제 회원 화면에 보여요.") : published === false ? "공개를 취소했어요. 다시 초안이에요." : "저장했어요." });
     load();
   }
 
@@ -269,7 +269,7 @@ function Detail({ id }: { id: string }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
-          <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "회원에게 공개 중" : "초안"}</span>
+          <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "초안"}</span>
           <Link href={ev.published === "true" ? `/events/${id}/overview` : "/events"} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
             {ev.published === "true" ? "회원 화면에서 보기 ›" : "‹ 일정 목록"}
           </Link>
@@ -417,7 +417,7 @@ function Detail({ id }: { id: string }) {
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="submit" disabled={busy} style={{ width: "auto", minWidth: 160 }}>임시 저장</button>
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }} onClick={() => save(true)}>
-              {ev.published === "true" ? "저장하고 계속 공개" : "회원에게 전달"}
+              {ev.published === "true" ? "저장 (공개 유지)" : "공개 및 회원전달"}
             </button>
             {ev.published === "true" && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minWidth: 160 }} onClick={() => save(false)}>공개 취소</button>}
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
