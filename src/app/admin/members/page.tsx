@@ -382,8 +382,8 @@ function Members() {
             <li key={m.id} className="mrow">
               <Avatar member={m} size={36} />
               <span className="who">
-                <b>{m.name}{m.position && <small>{m.position}</small>}</b>
-                <span>{[[m.company, m.title].filter(Boolean).join(" "), clubsText(m.clubs ?? [])].filter(Boolean).join(" · ") || "정보를 입력해 주세요"}</span>
+                <b>{m.name}</b>
+                <span>{[m.position, [m.company, m.title].filter(Boolean).join(" "), clubsText(m.clubs ?? [])].filter(Boolean).join(" · ") || "정보를 입력해 주세요"}</span>
                 {m.genderEdit && (
                   <span style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>
                     <span className="chip warn">성별 회원 수정 ({m.genderEdit.from || "없음"}→{m.genderEdit.to})</span>
@@ -409,7 +409,7 @@ function Members() {
               {shown.map((m) => (
                 <tr key={m.id}>
                   <td className="num">{m.no}</td>
-                  <td><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Avatar member={m} size={26} /><b>{m.name}</b></span></td>
+                  <td><b>{m.name}</b></td>
                   <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}</td>
                   <td>{m.position}{m.position && !lists.positions.includes(m.position) && <span className="small">{OFF}</span>}</td>
                   <td>{clubsText(m.clubs ?? [])}</td>
