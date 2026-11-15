@@ -36,7 +36,7 @@ type Opts = { kinds: string[]; positions: string[]; clubs: ClubOpt[]; dues: { ac
 const TABS = [
   { key: "over", label: "개요" },
   { key: "minutes", label: "회의록" }, // 회의 일정만
-  { key: "apply", label: "참석 신청" },
+  { key: "apply", label: "신청현황" },
   { key: "fee", label: "회비" },
   { key: "act", label: "활동" },
   { key: "sched", label: "세부 일정" },
@@ -146,7 +146,7 @@ function Detail({ id }: { id: string }) {
     if (!ev) return;
     setBusy(true);
     setMsg(null);
-    // 참관자는 참석 신청 탭에서 따로 저장하고, 공개 대상(audience)은 이 화면에서 바꾸지 않는다.
+    // 참관자는 신청현황 탭에서 따로 저장하고, 공개 대상(audience)은 이 화면에서 바꾸지 않는다.
     // 맨 위 고정(pinned)은 스위치를 누를 때 바로 저장한다.
     const { id: _id, type: _t, published: _p, observers: _o, audience: _a, pinned: _pin, ...fields } = ev as Ev & { observers?: unknown; audience?: unknown };
     void _id; void _t; void _p; void _o; void _a; void _pin;
@@ -313,9 +313,6 @@ function Detail({ id }: { id: string }) {
             <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
-            {!light && <><div><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
-            <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div></>}
           </div>
 
           <div>
@@ -326,72 +323,6 @@ function Detail({ id }: { id: string }) {
             <span className="hint">{ev.booking.length}/2000자 · 회원 화면에도 줄바꿈 그대로 보여요.</span>
           </div>
 
-          {/* 회비: 회원구분 / 직책 / 참석일 조건별 (회의·미팅은 없음) */}
-          {!light && <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: `700 ${fs(17)} var(--display)` }}>회비</b>
-            <span className="small">
-              회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
-              회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
-            </span>
-            {rules.length === 0 && <span className="small">아직 회비가 없어요. 회비를 받는 일정이라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
-            {rules.length > 0 && (
-              <div className="tblw">
-                <table className="tbl" style={{ minWidth: 620 }}>
-                  <thead>
-                    <tr><th>회원구분</th><th>직책</th><th>참석일</th><th>금액(원)</th><th style={{ width: 70 }}><span className="sr-only">삭제</span></th></tr>
-                  </thead>
-                  <tbody>
-                    {rules.map((r, i) => {
-                      const upd = (patch: Partial<FeeRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-                      const sel = { minHeight: 44, padding: "0 8px" } as const;
-                      return (
-                        <tr key={i}>
-                          <td>
-                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 회원구분`} value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
-                              <option value="">전체</option>
-                              {[...new Set([...opts.kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
-                            </select>
-                          </td>
-                          <td>
-                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 직책`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
-                              <option value="">전체</option>
-                              {[...new Set([...opts.positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
-                            </select>
-                          </td>
-                          <td>
-                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 참석일`} value={r.days} onChange={(e) => upd({ days: e.target.value })}>
-                              <option value="">전체</option>
-                              {Array.from({ length: dayCount }, (_, d) => d + 1).map((d) => (
-                                <option key={d} value={String(d)}>{d === 1 ? "1일" : `${d}일 (${d - 1}박${d}일)`}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} />
-                          </td>
-                          <td>
-                            <button className="mini danger" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }}
-              onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>
-              + 회비 줄 추가
-            </button>
-            {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
-            {dist.length > 0 && <span className="small">현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
-          </section>}
-          {!light && <div>
-            <span className="l">주요 활동 (활동 탭에서 고른 것이 자동으로 들어가요)</span>
-            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-              {actNames.length ? actNames.map((n) => <span key={n} className="pill blue" style={{ fontSize: fs(15) }}>{n}</span>) : <span className="small">아직 넣은 활동이 없어요.</span>}
-            </div>
-          </div>}
           <EventPreview ev={infoEv} rules={rules} actNames={actNames} schedule={schedule} />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="submit" disabled={busy} style={{ width: "auto", minWidth: 160 }}>임시 저장</button>
@@ -485,6 +416,78 @@ function Detail({ id }: { id: string }) {
 
       {tab === "fee" && (
         <>
+          {/* 회비 설정(개요에서 옮겨 옴): 입금 기한·계좌·예금주와 조건별 회비 줄. 아래 "회비 저장"으로 저장해요. */}
+          <div className="grid2">
+            {!light && <><div><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
+            <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
+            <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div></>}
+          </div>
+          {/* 회비: 회원구분 / 직책 / 참석일 조건별 (회의·미팅은 없음) */}
+          {!light && <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <b style={{ font: `700 ${fs(17)} var(--display)` }}>회비</b>
+            <span className="small">
+              회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
+              회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
+            </span>
+            {rules.length === 0 && <span className="small">아직 회비가 없어요. 회비를 받는 일정이라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
+            {rules.length > 0 && (
+              <div className="tblw">
+                <table className="tbl" style={{ minWidth: 620 }}>
+                  <thead>
+                    <tr><th>회원구분</th><th>직책</th><th>참석일</th><th>금액(원)</th><th style={{ width: 70 }}><span className="sr-only">삭제</span></th></tr>
+                  </thead>
+                  <tbody>
+                    {rules.map((r, i) => {
+                      const upd = (patch: Partial<FeeRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+                      const sel = { minHeight: 44, padding: "0 8px" } as const;
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 회원구분`} value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
+                              <option value="">전체</option>
+                              {[...new Set([...opts.kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 직책`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
+                              <option value="">전체</option>
+                              {[...new Set([...opts.positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <select className="field" style={sel} aria-label={`${i + 1}번째 줄 참석일`} value={r.days} onChange={(e) => upd({ days: e.target.value })}>
+                              <option value="">전체</option>
+                              {Array.from({ length: dayCount }, (_, d) => d + 1).map((d) => (
+                                <option key={d} value={String(d)}>{d === 1 ? "1일" : `${d}일 (${d - 1}박${d}일)`}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} />
+                          </td>
+                          <td>
+                            <button className="mini danger" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }}
+              onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>
+              + 회비 줄 추가
+            </button>
+            {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
+            {dist.length > 0 && <span className="small">현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
+          </section>}
+          {!light && (
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 160 }} onClick={() => save()}>회비 저장</button>
+              <span className="small">회비 설정을 저장해요. 공개 상태는 그대로예요.</span>
+            </div>
+          )}
           <div className="cards">
             <div className="card"><span className="small">입금 완료</span><div className="big" style={{ color: "var(--green-t)" }}>{paid.length}명</div><span className="small">{won(totalPaid)} / {won(totalOwed)}</span></div>
             <div className="card"><span className="small">미입금</span><div className="big" style={{ color: "var(--red-t)" }}>{attend.length - paid.length}명</div></div>
