@@ -85,7 +85,7 @@ export async function eligibleTargets(aid: string, join: Set<string> | null = nu
 
 export type ActionResult = { ok: true } | { ok: false; error: string; status?: number };
 
-// 사회자 버튼. 규칙(순서)을 서버가 지키고, 회원 화면은 LiveState 로 켜고 끈다.
+// 진행자 버튼. 규칙(순서)을 서버가 지키고, 회원 화면은 LiveState 로 켜고 끈다.
 export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: string): Promise<ActionResult> {
   const s = await getStore();
   const aid = ctx.act.id;

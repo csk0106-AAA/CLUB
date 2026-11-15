@@ -6,7 +6,7 @@ import { currentRound, liveRow } from "@/lib/rounds";
 import { getStore } from "@/lib/store";
 import { loadWho } from "@/lib/who";
 
-// 당사자가 휴대폰에서 "저예요"를 누르면 사회자 화면에 이름이 공개된다.
+// 당사자가 휴대폰에서 "저예요"를 누르면 진행자 화면에 이름이 공개된다.
 // 템플릿 설정상 이 단계의 회원 화면이 '저예요 버튼'으로 켜져 있을 때만 동작한다.
 export async function POST(_req: Request, ctx: { params: Promise<{ aid: string }> }) {
   const g = await guard();

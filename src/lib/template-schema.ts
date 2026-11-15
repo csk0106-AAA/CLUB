@@ -4,7 +4,7 @@ import { z } from "zod";
 // 새 템플릿(AI가 만든 것 포함)은 이 스키마를 통과해야 저장된다.
 
 // 회원 화면이 언제 켜지는지
-//  host_click : 사회자/관리자가 버튼을 누르면 켜짐
+//  host_click : 진행자/관리자가 버튼을 누르면 켜짐
 //  immediate  : 단계가 시작되면 바로 켜짐
 // (지정 일시에 켜지는 'scheduled'는 필요해질 때 추가한다.)
 export const unlockSchema = z.enum(["host_click", "immediate"]);
@@ -23,7 +23,7 @@ export const stepSchema = z.object({
   label: z.string().min(1),
   memberScreen: memberScreenSchema,
   unlock: unlockSchema,
-  // 사회자 화면에 보이는 버튼 이름. 예: "투표", "타임캡슐 작성하기"
+  // 진행자 화면에 보이는 버튼 이름. 예: "투표", "타임캡슐 작성하기"
   hostButton: z.string().optional(),
 });
 
@@ -60,6 +60,9 @@ export const templateConfigSchema = z.object({
   // 활동 방식: all(전체 활동) / team(팀 활동). 팀 배정은 템플릿에 넣지 않고 일정 > 활동에서 한다.
   // 비어 있으면 타임캡슐(현장 작성)은 팀, 나머지는 전체로 본다(lib/activities.ts activityMode).
   mode: z.enum(["all", "team"]).optional(),
+  // 진행자: required 이면 이 활동은 진행자가 있어야 진행할 수 있다(일정 › 활동에서 진행자와 진행자 접속번호를 정한다).
+  // note: 진행자에게 주는 안내(예: 프로젝터를 띄울 노트북 준비). 진행자 사람·번호는 일정마다 정하므로 템플릿에 넣지 않는다.
+  host: z.object({ required: z.boolean(), note: z.string().max(500).optional() }).optional(),
   // 템플릿 버전(v2 이상)의 출처: derivedFrom 은 그 템플릿의 v1 id, sourceEvent 는 일정에서 고쳐 만든 버전이면 그 일정
   derivedFrom: z.string().optional(), // v1 템플릿 id
   sourceEvent: z.object({ id: z.string(), name: z.string(), date: z.string() }).optional(),
@@ -92,6 +95,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
       ],
     },
     scoring: { enabled: true, tieBreak: "roulette" },
+    host: { required: true },
   },
   {
     id: "worry-draw",
@@ -107,6 +111,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
         { key: "reveal", label: "이름 오픈", memberScreen: "view", unlock: "host_click", hostButton: "이름 오픈" },
       ],
     },
+    host: { required: true },
   },
   {
     id: "time-capsule",
@@ -121,5 +126,6 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
         { key: "seal", label: "봉인", memberScreen: "wait", unlock: "host_click", hostButton: "봉인하기" },
       ],
     },
+    host: { required: true },
   },
 ];

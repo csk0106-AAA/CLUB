@@ -79,7 +79,7 @@ const NODE_ICON: Record<string, React.ReactNode> = {
   capsule: <IconLock />,
 };
 
-// 활동 카드. 2초마다 서버 상태를 확인해서 사회자가 버튼을 누르면 회원 화면이 바로 켜진다.
+// 활동 카드. 2초마다 서버 상태를 확인해서 진행자가 버튼을 누르면 회원 화면이 바로 켜진다.
 // layout="path" 이면 목업 ⑥처럼 길 모양 노드로 보여 주고, 진행 중인 활동만 아래에 카드로 보여 준다.
 export function LiveActivities({ eventId, layout = "cards" }: { eventId: string; layout?: "cards" | "path" }) {
   const [list, setList] = useState<Live[] | null>(null);
@@ -220,7 +220,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
               a.live.active && (
                 <div className={`msg ${a.live.unlocked ? "" : "info"}`} role="status" style={a.live.unlocked ? { background: "var(--green-bg)", color: "var(--green-t)" } : undefined}>
                   진행 중: {a.live.stepLabel}
-                  {a.live.unlocked ? ` · ${SCREEN_NOTE[a.live.memberScreen] ?? "화면이 열렸어요"}` : " · 사회자가 열면 시작돼요"}
+                  {a.live.unlocked ? ` · ${SCREEN_NOTE[a.live.memberScreen] ?? "화면이 열렸어요"}` : " · 진행자가 열면 시작돼요"}
                 </div>
               )
             )}
@@ -281,7 +281,7 @@ function WorryPanel({ aid, w, reload }: { aid: string; w: Worry; reload: () => P
   );
 }
 
-/* ───── 현장 진행: 회원 휴대폰 화면 (사회자 버튼에 따라 바뀐다) ───── */
+/* ───── 현장 진행: 회원 휴대폰 화면 (진행자 버튼에 따라 바뀐다) ───── */
 const STMT_COLOR = ["var(--red-bg)", "var(--chip)", "var(--soft)"];
 
 function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload: () => Promise<void> }) {
@@ -370,14 +370,14 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
       </>
     );
   } else if (round.state === "voting" && round.statements.length > 0 && !round.isTarget) {
-    // 문장은 내려왔지만 사회자가 아직 회원 화면의 투표를 켜지 않은 경우: 미리 읽기만 할 수 있다.
+    // 문장은 내려왔지만 진행자가 아직 회원 화면의 투표를 켜지 않은 경우: 미리 읽기만 할 수 있다.
     body = (
       <>
         <b style={{ font: `700 ${fs(18)} var(--display)` }}>거짓은 어느 것일까요?</b>
         <span className="small">두 개는 진실, 한 개는 거짓이에요.</span>
         {stmtList(-1)}
         <button className="btn" type="button" disabled>확인</button>
-        <p className="hint center" role="status">사회자가 투표를 열면 선택할 수 있어요.</p>
+        <p className="hint center" role="status">진행자가 투표를 열면 선택할 수 있어요.</p>
       </>
     );
   } else if (round.state === "closed") {
@@ -411,7 +411,7 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
       </>
     );
   } else {
-    body = <div className="msg info" role="status">사회자가 진행하고 있어요. 화면을 켜 두고 기다려 주세요.</div>;
+    body = <div className="msg info" role="status">진행자가 진행하고 있어요. 화면을 켜 두고 기다려 주세요.</div>;
   }
 
   return (

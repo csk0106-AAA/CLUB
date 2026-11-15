@@ -40,7 +40,7 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
     else setNote({ tone: "bad", text: r.error });
   }, [aid, router]);
 
-  // 사회자가 작성을 열고 닫는 것을 따라가도록 2초마다 확인한다.
+  // 진행자가 작성을 열고 닫는 것을 따라가도록 2초마다 확인한다.
   useEffect(() => {
     let stop = false;
     let t: ReturnType<typeof setTimeout>;
@@ -108,7 +108,7 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
       {!d.opened && (
         <>
           {!d.canWrite && d.canJoin && (
-            <div className="msg info" role="status">사회자가 “타임캡슐 작성하기”를 열면 쓸 수 있어요. 이 화면을 켜 두세요.</div>
+            <div className="msg info" role="status">진행자가 “타임캡슐 작성하기”를 열면 쓸 수 있어요. 이 화면을 켜 두세요.</div>
           )}
           {d.hasGoal && <div className="msg info" role="status">내 목표를 봉인함에 넣었어요 ✓</div>}
           {d.hasPact && <div className="msg info" role="status">우리 팀 약속이 저장돼 있어요 ✓</div>}

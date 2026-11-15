@@ -44,7 +44,7 @@ export default function LoginPage() {
         return;
       }
       resetTabsCache();
-      // 사회자 접속번호로 들어오면 활동 진행 화면만 쓴다.
+      // 진행자 접속번호로 들어오면 활동 진행 화면만 쓴다.
       router.push(d.host ? "/host" : "/board");
     } catch {
       setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
@@ -88,7 +88,7 @@ export default function LoginPage() {
             <label className="l" htmlFor="cd">초대코드 (내 연락처 뒷자리 4자리)</label>
             <PasswordField id="cd" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} />
           </div>
-          <p className="hint">사회자로 지정되었다면 받은 사회자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
+          <p className="hint">진행자로 지정되었다면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
           {error && <div className="msg bad" role="alert">{error}</div>}
           <div className="footer-actions">
             <button className="btn" type="submit" disabled={busy || !code}>

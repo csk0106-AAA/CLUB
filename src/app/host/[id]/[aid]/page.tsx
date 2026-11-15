@@ -38,11 +38,12 @@ const NO = [
 const namesLine = (names: string[], max = 6) =>
   names.length <= max ? names.join(", ") : `${names.slice(0, max).join(", ")} 외 ${names.length - max}명`;
 
-// 사회자 전체화면(프로젝터용). 2초마다 서버 상태를 읽고, 큰 버튼으로 진행한다.
+// 진행자 전체화면(프로젝터용). 2초마다 서버 상태를 읽고, 큰 버튼으로 진행한다.
 export default function HostPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
   const [st, setSt] = useState<Stage | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(""); // 진행자 없이 관리자가 진행할 때 같은 안내
   const [denied, setDenied] = useState(false);
   const [pickId, setPickId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -79,6 +80,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
     const r = await api(`/api/admin/events/${id}/activities/${aid}/round`, { body: { action, targetMemberId } });
     setBusy(false);
     if (!r.ok) setError(r.error);
+    else setNotice((r.data as { warning?: string }).warning ?? "");
     await load();
   }
 
@@ -106,6 +108,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
       </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}
+      {notice && <div className="msg info" role="status">{notice}</div>}
       {st.missingSteps.length > 0 && (
         <div className="msg bad" role="alert">이 활동의 템플릿에 필요한 단계가 없어요: {st.missingSteps.join(", ")}. 활동 설정에서 단계를 추가해 주세요.</div>
       )}
@@ -170,14 +173,14 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
                     <span className="sub">사전 추측 참여</span>
                     <b className="num">{r.guessJoined} / {r.guessEligible}명</b>
                   </div>
-                  <span className="sub">다음 순서는 사회자가 정하거나 무작위로 뽑을 수 있어요.</span>
+                  <span className="sub">다음 순서는 진행자가 정하거나 무작위로 뽑을 수 있어요.</span>
                 </div>
               )}
               {r && r.state !== "intro" && (
                 <div className="panel">
                   <h3>정답 이름</h3>
                   <div className={`namebox ${r.nameRevealed ? "on" : ""}`} aria-live="polite">{r.nameRevealed ? r.name : "?"}</div>
-                  {r.state === "reveal" && !r.nameRevealed && <span className="sub">당사자 휴대폰에 “저예요” 버튼이 떠 있어요. 사회자가 대신 공개할 수도 있어요.</span>}
+                  {r.state === "reveal" && !r.nameRevealed && <span className="sub">당사자 휴대폰에 “저예요” 버튼이 떠 있어요. 진행자가 대신 공개할 수도 있어요.</span>}
                   {r.state === "answer" && <span className="sub">사전 추측으로 맞힌 분 {r.correctGuessers.length}명{r.correctGuessers.length ? `: ${r.correctGuessers.join(", ")}` : ""}</span>}
                 </div>
               )}
@@ -201,8 +204,8 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
             </div>
           </div>
 
-          {/* 사회자 버튼 */}
-          <div className="controls" role="group" aria-label="사회자 버튼">
+          {/* 진행자 버튼 */}
+          <div className="controls" role="group" aria-label="진행자 버튼">
             {!r || r.state === "answer" ? (
               <>
                 <button className="btn" type="button" disabled={busy || st.remaining === 0} onClick={() => act("open")}>{r ? "다음 사람 ›" : "소개 열기 (무작위)"}</button>

@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, hostGuard } from "@/lib/api";
 import { liveView, readConfig } from "@/lib/activities";
+import { hostGate } from "@/lib/host-gate";
 import { onsiteGate } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 
 const body = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("activate"), step: z.string().min(1) }), // 사회자가 단계 버튼을 누름 → 회원 화면 켜짐
+  z.object({ action: z.literal("activate"), step: z.string().min(1) }), // 진행자가 단계 버튼을 누름 → 회원 화면 켜짐
   z.object({ action: z.literal("lock") }), // 회원 화면을 다시 잠금(예: 투표 마감)
   z.object({ action: z.literal("reset") }), // 현장 진행 처음으로
 ]);
 
-// 사회자 컨트롤. 어떤 버튼이 있는지, 누르면 회원 화면이 무엇으로 바뀌는지는 모두 템플릿 설정이 정한다.
+// 진행자 컨트롤. 어떤 버튼이 있는지, 누르면 회원 화면이 무엇으로 바뀌는지는 모두 템플릿 설정이 정한다.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
@@ -28,6 +29,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; ai
   const cur = (await s.list("LiveState")).find((l) => l.eventActivityId === aid);
   let step = cur?.step ?? "";
   let unlocked = cur?.memberUnlocked === "true";
+  let warning: string | undefined;
 
   const d = parsed.data;
   if (d.action === "activate") {
@@ -36,6 +38,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; ai
     // 관리자 선택 회원 활동은 활동 전에 출석 체크를 완료해야 시작할 수 있다.
     const gate = await onsiteGate(cfg, act);
     if (gate) return bad(gate, 409);
+    // 진행자가 꼭 있어야 하는 활동인데 진행자가 없으면: 관리자는 알려만 주고, 그 밖에는 막는다.
+    const hg = hostGate(cfg, act, g.s);
+    if (hg.block) return bad(hg.block, 409);
+    warning = hg.warn;
     step = st.key;
     unlocked = true; // host_click, immediate 모두 이 시점에 켜진다
   } else if (d.action === "lock") {
@@ -50,5 +56,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; ai
   if (cur) await s.update("LiveState", cur.id, patch);
   else await s.insert("LiveState", { eventActivityId: aid, ...patch });
 
-  return NextResponse.json({ live: liveView(cfg, { step, memberUnlocked: String(unlocked) }) });
+  return NextResponse.json({ live: liveView(cfg, { step, memberUnlocked: String(unlocked) }), ...(warning ? { warning } : {}) });
 }

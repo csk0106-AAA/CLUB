@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { liveView } from "@/lib/activities";
 import { bad, hostGuard } from "@/lib/api";
+import { hostGate } from "@/lib/host-gate";
 import { joinSet } from "@/lib/participants";
 import { liveRow } from "@/lib/rounds";
 import {
@@ -11,7 +12,7 @@ import {
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; aid: string }> };
 
-// 사회자 전체화면이 읽는 곳. 뽑히기 전 고민과 작성자는 내려주지 않는다.
+// 진행자 전체화면이 읽는 곳. 뽑히기 전 고민과 작성자는 내려주지 않는다.
 export async function GET(_req: Request, ctx: Ctx) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
@@ -57,7 +58,7 @@ const body = z.object({
   minutes: z.number().int().min(1).max(120).optional(),
 });
 
-// 사회자 버튼: 고민 뽑기(카테고리 지정 가능), 일시정지, 재개, 연장, 건너뛰기, 이름 오픈, AI 관점
+// 진행자 버튼: 고민 뽑기(카테고리 지정 가능), 일시정지, 재개, 연장, 건너뛰기, 이름 오픈, AI 관점
 export async function POST(req: Request, ctx: Ctx) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
@@ -66,7 +67,10 @@ export async function POST(req: Request, ctx: Ctx) {
   if (typeof w === "string") return bad(w, 404);
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청을 확인해 주세요.");
+  // 진행자가 꼭 있어야 하는 활동인데 진행자가 없으면: 관리자는 알려만 주고, 그 밖에는 막는다(고민 뽑기에서).
+  const hg: ReturnType<typeof hostGate> = parsed.data.action === "draw" ? hostGate(w.cfg, w.act, g.s) : {};
+  if (hg.block) return bad(hg.block, 409);
   const r = await doWorryAction(w, parsed.data.action, { category: parsed.data.category, minutes: parsed.data.minutes });
   if (!r.ok) return bad(r.error, r.status ?? 400);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, ...(hg.warn ? { warning: hg.warn } : {}) });
 }

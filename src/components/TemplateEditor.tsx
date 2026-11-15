@@ -15,7 +15,7 @@ export const SCREEN_LABELS: Record<string, string> = {
   view: "결과 보기",
 };
 export const UNLOCK_LABELS: Record<string, string> = {
-  host_click: "사회자가 버튼을 누르면 켜짐",
+  host_click: "진행자가 버튼을 누르면 켜짐",
   immediate: "단계가 시작되면 바로 켜짐",
 };
 
@@ -56,6 +56,26 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
       </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>진행자</b>
+        <div className="checks">
+          <label>
+            <input type="checkbox" checked={!!value.host?.required}
+              onChange={(e) => onChange({ ...value, host: { ...value.host, required: e.target.checked } })} />
+            이 활동은 진행자가 있어야 해요
+          </label>
+        </div>
+        <span className="small">
+          켜 두면 일정 › 활동에서 진행자(회원 중 한 명)와 진행자 접속번호를 정할 때까지 “진행자 필요”로 표시되고, 진행자 없이는 현장 진행을 시작할 수 없어요(관리자가 직접 진행하는 것은 돼요).
+          진행자 사람과 번호는 일정마다 달라서 템플릿에는 넣지 않아요.
+        </span>
+        <label className="l" htmlFor="t-host-note" style={{ marginBottom: 0 }}>진행자에게 줄 안내 (선택)</label>
+        <textarea id="t-host-note" className="field" rows={2} maxLength={500} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
+          placeholder="예: 프로젝터에 진행자 화면을 띄울 노트북을 준비해 주세요."
+          value={value.host?.note ?? ""}
+          onChange={(e) => onChange({ ...value, host: { required: !!value.host?.required, ...(e.target.value ? { note: e.target.value } : {}) } })} />
+      </div>
+
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>일정 전 사전 작성</b>
         <div className="checks">
           <label>
@@ -85,7 +105,7 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
             </div>
             <div className="grid2">
               <div><label className="l" htmlFor={`s-l-${i}`}>단계 이름</label><input id={`s-l-${i}`} className="field" value={st.label} onChange={(e) => setStep(i, { label: e.target.value })} /></div>
-              <div><label className="l" htmlFor={`s-b-${i}`}>사회자 버튼 이름 (비우면 버튼 없음)</label><input id={`s-b-${i}`} className="field" value={st.hostButton ?? ""} onChange={(e) => setStep(i, { hostButton: e.target.value || undefined })} /></div>
+              <div><label className="l" htmlFor={`s-b-${i}`}>진행자 버튼 이름 (비우면 버튼 없음)</label><input id={`s-b-${i}`} className="field" value={st.hostButton ?? ""} onChange={(e) => setStep(i, { hostButton: e.target.value || undefined })} /></div>
               <div>
                 <label className="l" htmlFor={`s-s-${i}`}>회원 휴대폰에 보이는 화면</label>
                 <select id={`s-s-${i}`} className="field" value={st.memberScreen} onChange={(e) => setStep(i, { memberScreen: e.target.value as typeof st.memberScreen })}>

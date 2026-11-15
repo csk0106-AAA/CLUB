@@ -6,7 +6,7 @@ import { applyTheme } from "./ThemeBoot";
 
 // 로그인한 회원의 저장된 화면 모드(/api/me prefs.theme)를 이 기기에 맞춘다.
 // 한 번 맞추면 다시 부르지 않고, 첫 화면(로그인)으로 돌아가면 다음 화면에서 다시 확인한다(다른 회원이 로그인할 수 있으므로).
-// 로그인 전(401)·사회자 화면·연결 오류는 조용히 넘어간다.
+// 로그인 전(401)·진행자 화면·연결 오류는 조용히 넘어간다.
 export function ThemeSync() {
   const path = usePathname() ?? "";
   const done = useRef(false);

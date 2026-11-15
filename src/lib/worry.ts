@@ -119,7 +119,7 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     cur.endsAt = new Date(now).toISOString(); // 건너뛰기: 남은 시간을 끝내고 이름 오픈으로 넘어간다
     cur.remainingMs = null;
   } else if (action === "reveal") {
-    // 사회자는 대화 중에도 언제든 작성자 이름을 오픈할 수 있다(타이머는 그대로 흐른다).
+    // 진행자는 대화 중에도 언제든 작성자 이름을 오픈할 수 있다(타이머는 그대로 흐른다).
     await s.update("Worries", current.id, { nameRevealed: "true" });
     await setLive(aid, "reveal", true, payload);
     return { ok: true };

@@ -23,13 +23,14 @@ const fmt = (ms: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-// 사회자 전체화면: 고민 뽑기. 뽑힌 고민의 내용만 크게 보이고 작성자는 이름 오픈 전까지 숨겨진다.
+// 진행자 전체화면: 고민 뽑기. 뽑힌 고민의 내용만 크게 보이고 작성자는 이름 오픈 전까지 숨겨진다.
 export default function WorryHostPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
   const [st, setSt] = useState<Stage | null>(null);
   const [recv, setRecv] = useState(0);
   const [now, setNow] = useState(0);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(""); // 진행자 없이 관리자가 진행할 때 같은 안내
   const [denied, setDenied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cat, setCat] = useState("");
@@ -68,6 +69,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
     const r = await api(`/api/admin/events/${id}/activities/${aid}/worry`, { body: { action, ...extra } });
     setBusy(false);
     if (!r.ok) setError(r.error);
+    else setNotice((r.data as { warning?: string }).warning ?? "");
     await load();
   }
 
@@ -128,6 +130,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
       </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}
+      {notice && <div className="msg info" role="status">{notice}</div>}
       {st.missingSteps.length > 0 && <div className="msg bad" role="alert">이 활동의 템플릿에 필요한 단계가 없어요: {st.missingSteps.join(", ")}.</div>}
 
       <div className="stage">
@@ -174,7 +177,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      <div className="controls" role="group" aria-label="사회자 버튼">
+      <div className="controls" role="group" aria-label="진행자 버튼">
         {canDraw && (
           <>
             <button className="btn" type="button" disabled={busy || !!spin || st.counts.remaining === 0} onClick={draw}>{c ? "다음 고민 뽑기" : "고민 뽑기"}</button>

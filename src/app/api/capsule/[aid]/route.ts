@@ -56,7 +56,7 @@ const put = z.object({
   pacts: z.array(z.string().trim().min(1).max(200)).length(2).optional(),
 });
 
-// 작성(저장). 사회자가 작성을 열기 전, 봉인 후에는 받지 않는다. 본문은 암호화해서 저장한다.
+// 작성(저장). 진행자가 작성을 열기 전, 봉인 후에는 받지 않는다. 본문은 암호화해서 저장한다.
 export async function PUT(req: Request, ctx: Ctx) {
   const g = await guard();
   if ("err" in g) return g.err;
@@ -64,7 +64,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   const c = await loadCapsule(aid);
   if (typeof c === "string") return bad(c, 404);
   if (!(await canJoin(c.cfg, c.act, c.ev, g.s.mid))) return bad(NOT_ATTENDEE, 403);
-  if (!(await canWriteNow(c.cfg, aid))) return bad("지금은 작성할 수 없어요. 사회자가 작성을 열면 쓸 수 있어요.", 409);
+  if (!(await canWriteNow(c.cfg, aid))) return bad("지금은 작성할 수 없어요. 진행자가 작성을 열면 쓸 수 있어요.", 409);
   const cfg = await capsuleCfg(aid);
   if (isOpened(cfg.openAt)) return bad("이미 열린 타임캡슐은 고칠 수 없어요.", 409);
 

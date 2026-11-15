@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const member = (await s.list("Members")).find((m) => m.id === memberId);
   // 개인 초대코드 = 명단에 등록된 연락처 뒷자리 4자리. 연락처가 없는 회원만 공통 초대코드를 쓴다.
   const expected = member ? await loginCode(member) : "";
-  // 사회자 접속번호: 이 회원이 사회자로 지정된 활동 중 번호가 맞는 것. 맞으면 활동 진행 화면만 쓰는 세션을 만든다.
+  // 진행자 접속번호: 이 회원이 진행자로 지정된 활동 중 번호가 맞는 것. 맞으면 활동 진행 화면만 쓰는 세션을 만든다.
   if (member && code.trim() !== expected) {
     const hosting = (await s.list("EventActivities")).filter((a) => a.hostId === member.id && a.hostCode && a.hostCode === code.trim());
     if (hosting.length > 0) {

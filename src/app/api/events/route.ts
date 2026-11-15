@@ -24,7 +24,7 @@ const todayKst = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 });
-  if (session.host) return NextResponse.json({ error: "사회자 접속 중에는 활동 진행 화면만 볼 수 있어요.", hostOnly: true }, { status: 403 });
+  if (session.host) return NextResponse.json({ error: "진행자 접속 중에는 활동 진행 화면만 볼 수 있어요.", hostOnly: true }, { status: 403 });
 
   // 예전 데이터 옮기기(여러 번 불러도 같다): 게시판 회의록 → 회의 일정, 전체정기모임 → 정기모임
   await migrateMinutesPosts().catch(() => 0);

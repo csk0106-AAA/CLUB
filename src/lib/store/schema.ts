@@ -37,10 +37,11 @@ export const TABS = {
   EventPrep: ["id", "eventId", "item", "owner", "done"],
   EventSchedule: ["id", "eventId", "at", "title"],
   // 템플릿 버전: 처음 만든 행이 v1(origin default/custom)이고, 고칠 때마다 새 행이 v2, v3…으로 생긴다(origin "version").
-  // 새 버전의 config.derivedFrom 은 v1 id, config.sourceEvent 는 일정에서 고쳤을 때 그 일정. 한 번 만든 버전은 고치지 않는다(lib/template-versions.ts).
+  // 새 버전의 config.derivedFrom 은 v1 id, config.sourceEvent 는 일정에서 고쳤을 때 그 일정.
+  // 저장 방법(수정=이 버전 고치기 / 새 버전 / 새 활동)은 고치는 사람이 고른다(lib/template-versions.ts saveTemplate).
   ActivityTemplates: ["id", "name", "version", "config", "origin", "createdAt"],
   // startsAt/endsAt: 이 활동이 진행되는 날짜와 시간(한국 시간, YYYY-MM-DDTHH:mm). 비어 있으면 시간 제한 없음.
-  // hostId: 사회자(회원 id), hostCode: 사회자 접속번호(이 번호로 로그인하면 활동 진행 화면만 보인다)
+  // hostId: 진행자(회원 id), hostCode: 진행자 접속번호(이 번호로 로그인하면 활동 진행 화면만 보인다)
   EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode"],
   // 활동별 출석 체크: 자동 명단(날짜 선택 기반)을 관리자가 고칠 때만 행이 생긴다. present: true(출석) / false(결석)
   Attendance: ["id", "eventActivityId", "memberId", "present"],
@@ -100,6 +101,9 @@ export const TABS = {
   ClubRequests: [
     "id", "kind", "club", "eventId", "memberId", "message", "status", "createdAt", "handledBy", "handledAt", "resultSeen",
   ],
+  // 개발 요청: 템플릿 편집기의 "AI에게 요청"에서 지금 기능으로는 안 되는 것(새 코드가 필요한 것)을 개발자에게 남긴다.
+  // templateId/eventId: 요청한 곳(비어 있을 수 있음), requestedBy: 요청한 관리자 이름, status: 접수 | 진행 중 | 완료 | 보류
+  DevRequests: ["id", "templateId", "eventId", "title", "detail", "why", "requestedBy", "status", "createdAt", "updatedAt"],
 } as const;
 
 export type TabName = keyof typeof TABS;

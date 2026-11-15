@@ -47,7 +47,7 @@ export function isOpened(openAt: string, now = Date.now()): boolean {
   return !Number.isNaN(t) && now >= t;
 }
 
-// 작성은 사회자가 작성 단계를 열어서 회원 화면이 '작성'으로 켜져 있을 때만 가능하다(템플릿 설정을 따른다).
+// 작성은 진행자가 작성 단계를 열어서 회원 화면이 '작성'으로 켜져 있을 때만 가능하다(템플릿 설정을 따른다).
 export async function canWriteNow(cfg: TemplateConfig, aid: string): Promise<boolean> {
   const v = liveView(cfg, await liveRow(aid));
   return v.unlocked && v.memberScreen === "write";

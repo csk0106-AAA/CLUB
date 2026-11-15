@@ -69,7 +69,7 @@ export async function PUT(req: Request, ctx: Ctx) {
 
 const confirmBody = z.object({ confirmed: z.boolean() });
 
-// 출석 체크 완료/해제. 완료해야 사회자가 현장 진행(소개 열기, 고민 뽑기, 작성 열기)을 시작할 수 있다.
+// 출석 체크 완료/해제. 완료해야 진행자가 현장 진행(소개 열기, 고민 뽑기, 작성 열기)을 시작할 수 있다.
 export async function POST(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;

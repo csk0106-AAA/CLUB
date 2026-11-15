@@ -8,6 +8,7 @@ export type TplRow = {
   familyId: string; // v1 id
   createdAt: string;
   uses: number; // 이 버전을 쓰는 일정 활동 수
+  useEvents: string[]; // 이 버전을 쓰는 일정 id(겹치지 않게)
   deletable: boolean;
   deleteWhy: string;
   config: TemplateConfig;

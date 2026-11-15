@@ -12,7 +12,7 @@ export async function api<T = unknown>(path: string, init?: { method?: string; b
       cache: "no-store",
     });
     const data = await r.json().catch(() => ({}));
-    // 사회자 접속번호로 들어온 세션이 다른 화면을 열면 사회자 첫 화면으로 보낸다.
+    // 진행자 접속번호로 들어온 세션이 다른 화면을 열면 진행자 첫 화면으로 보낸다.
     if (r.status === 403 && (data as { hostOnly?: boolean }).hostOnly && !window.location.pathname.startsWith("/host")) {
       window.location.href = "/host";
     }

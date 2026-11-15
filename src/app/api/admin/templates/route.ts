@@ -7,7 +7,7 @@ import { deleteBlock, editable, familyIdOf } from "@/lib/template-versions";
 export const dynamic = "force-dynamic";
 
 // 활동 템플릿 보관함: 모든 버전 행을 돌려준다. familyId(v1 id)로 묶어서 보여 준다.
-//  uses: 이 버전을 쓰는 일정 활동 수, deletable/deleteWhy: 지울 수 있는지
+//  uses: 이 버전을 쓰는 일정 활동 수, useEvents: 그 일정 id들, deletable/deleteWhy: 지울 수 있는지
 export async function GET() {
   const g = await guard(["activities", "events"]);
   if ("err" in g) return g.err;
@@ -24,6 +24,8 @@ export async function GET() {
       familyId: familyIdOf(r),
       createdAt: r.createdAt ?? "",
       uses: acts.filter((a) => a.templateId === r.id).length,
+      // 이 버전을 쓰는 일정 id(겹치지 않게) — “수정(이 버전 고치기)” 전에 몇 곳에 반영되는지 알려 준다
+      useEvents: [...new Set(acts.filter((a) => a.templateId === r.id).map((a) => a.eventId))],
       deletable: !why,
       deleteWhy: why ?? "",
       config,

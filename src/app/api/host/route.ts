@@ -5,8 +5,8 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-// 사회자 첫 화면: 사회자 접속번호로 들어온 회원이 진행할 활동 목록.
-// 관리자가 열면 mode "admin" 만 알려 준다(사회자 화면의 "돌아가기" 버튼을 고르는 데 쓴다).
+// 진행자 첫 화면: 진행자 접속번호로 들어온 회원이 진행할 활동 목록.
+// 관리자가 열면 mode "admin" 만 알려 준다(진행자 화면의 "돌아가기" 버튼을 고르는 데 쓴다).
 export async function GET() {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 });

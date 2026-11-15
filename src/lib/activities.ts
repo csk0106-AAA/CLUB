@@ -91,7 +91,7 @@ export function activityMode(cfg: TemplateConfig): "all" | "team" {
 }
 
 export type LiveView = {
-  active: boolean; // 사회자가 현장 단계를 시작했는지
+  active: boolean; // 진행자가 현장 단계를 시작했는지
   stepKey: string;
   stepLabel: string;
   unlocked: boolean; // 회원 화면이 켜졌는지

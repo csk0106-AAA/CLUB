@@ -96,7 +96,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기"
         right={d.canJoin ? <span className={`pill ${d.mine.length ? "ok" : "gray"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
       <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: fs(20) }}>{d.activity.name}</h1></div>
-      <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 일정에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 사회자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
+      <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 일정에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 진행자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
       {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDate(d.pre.opensAt)} ~ ${fmtDate(d.pre.closesAt)} 예요.` : ""}</div>}
@@ -162,7 +162,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="l">이 고민의 이름 공개 방식 (꼭 골라 주세요)</legend>
             <div className="pick">
-              <button type="button" className="opt" aria-pressed={anon === false} onClick={() => setAnon(false)}><span className="name">{anon === false ? "✓ " : ""}실명으로</span><span className="small">사회자가 이름을 공개해요</span></button>
+              <button type="button" className="opt" aria-pressed={anon === false} onClick={() => setAnon(false)}><span className="name">{anon === false ? "✓ " : ""}실명으로</span><span className="small">진행자가 이름을 공개해요</span></button>
               <button type="button" className="opt" aria-pressed={anon === true} onClick={() => setAnon(true)}><span className="name">{anon === true ? "✓ " : ""}익명으로</span><span className="small">“익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요</span></button>
             </div>
           </fieldset>

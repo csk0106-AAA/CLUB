@@ -64,7 +64,7 @@ export async function joinSet(cfg: TemplateConfig, act: Row, ev?: Row): Promise<
   return roster ? new Set([...roster].filter((id) => allowed.has(id))) : allowed;
 }
 
-// 사회자가 현장 진행(소개 열기, 고민 뽑기, 작성 열기)을 시작하기 전에 출석 체크가 끝났는지.
+// 진행자가 현장 진행(소개 열기, 고민 뽑기, 작성 열기)을 시작하기 전에 출석 체크가 끝났는지.
 // 끝나지 않았다면 안내 문구를, 괜찮다면 null 을 돌려준다.
 export async function onsiteGate(cfg: TemplateConfig, act: Row): Promise<string | null> {
   if (!isLimited(cfg)) return null;

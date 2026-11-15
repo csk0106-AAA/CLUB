@@ -1,12 +1,14 @@
-import { newTemplateId, readConfig } from "./activities";
+import { activityKind, activityMode, newTemplateId, readConfig } from "./activities";
 import type { Row, Store } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
 
 // 활동 템플릿 버전 관리
 //  - 처음 만든 템플릿(기본 템플릿 또는 직접/AI로 만든 템플릿)이 v1 이다. origin: default | custom
-//  - 템플릿을 고치면(템플릿 화면의 수정·AI 지침, 일정 활동의 수정·AI 지침) 기존 행은 그대로 두고
-//    새 행을 v2, v3…으로 만든다. origin: "version", config.derivedFrom: v1 id, config.sourceEvent: 일정에서 고쳤으면 그 일정
-//  - 한 번 만든 버전은 고치지 않는다. 일정 활동은 넣을 때 고른 버전(templateId)을 계속 쓴다.
+//  - 저장 방법은 고치는 사람이 고른다(템플릿 화면·일정 활동 모두, 설정과 AI 지침 모두) — saveTemplate
+//    fix     : 지금 버전 행을 제자리에서 고친다(오류 수정·빠진 조건 추가). 이 버전을 쓰는 일정 활동의 설정 사본도 함께 바꾼다.
+//    version : 새 행을 v2, v3…으로 만든다. origin "version", config.derivedFrom: v1 id, config.sourceEvent: 일정에서 고쳤으면 그 일정
+//    new     : 정체성이 바뀐 활동 — 새 템플릿(v1, origin custom)으로 따로 만든다(이름이 달라야 한다).
+//  - 일정 활동은 넣을 때 고른 버전(templateId)을 쓴다. 일정에서 새 버전/새 활동으로 저장하면 그 활동만 새 것으로 바꾼다.
 //  - 복제는 버전이 아니라 새 템플릿(v1)을 만든다.
 
 export type SourceEvent = { id: string; name: string; date: string };
@@ -66,6 +68,111 @@ export async function createVersion(s: Store, base: Row, input: Editable, source
     id, name: config.name, version: String(version), config: JSON.stringify(config), origin: "version", createdAt: new Date().toISOString(),
   });
   return { id, version, config, row };
+}
+
+export type SaveMode = "fix" | "version" | "new";
+export const SAVE_MODES = ["fix", "version", "new"] as const;
+
+// 이 버전을 쓰는 일정 활동 중 지금 진행 중인 단계가 새 설정에 없으면 막는다(진행 상태가 가리킬 곳이 없어진다).
+async function liveConflict(s: Store, templateId: string, input: Editable, onlyAct?: string): Promise<string | null> {
+  const [acts, lives] = await Promise.all([s.list("EventActivities"), s.list("LiveState")]);
+  const ids = new Set(acts.filter((a) => (onlyAct ? a.id === onlyAct : a.templateId === templateId)).map((a) => a.id));
+  const keys = new Set(input.onsite.steps.map((x) => x.key));
+  const hit = lives.find((l) => ids.has(l.eventActivityId) && l.step && !keys.has(l.step));
+  return hit ? "지금 진행 중인 단계는 지울 수 없어요. 현장 진행을 먼저 되돌려 주세요." : null;
+}
+
+// 수정: 이 버전 행을 제자리에서 고친다. id·버전 번호·출처는 그대로. 이 버전을 쓰는 일정 활동의 설정 사본도 바꾼다
+// (활동 일시·진행자 같은 일정별 값은 따로 저장돼 있어서 그대로다).
+export async function fixVersion(s: Store, base: Row, input: Editable): Promise<{ config: TemplateConfig; propagated: number }> {
+  const cur = readConfig(base.config);
+  const version = cur?.version ?? versionOf(base);
+  const config: TemplateConfig = {
+    ...editable(input), id: base.id, version,
+    ...(cur?.derivedFrom ? { derivedFrom: cur.derivedFrom } : {}),
+    ...(cur?.sourceEvent ? { sourceEvent: cur.sourceEvent } : {}),
+  };
+  const json = JSON.stringify(config);
+  await s.update("ActivityTemplates", base.id, { name: config.name, config: json });
+  let propagated = 0;
+  for (const a of await s.list("EventActivities")) {
+    if (a.templateId !== base.id || a.config === json) continue;
+    await s.update("EventActivities", a.id, { config: json, templateVersion: String(version) });
+    propagated++;
+  }
+  return { config, propagated };
+}
+
+// 새 활동: 새 템플릿 묶음(v1)을 만든다.
+export async function createFamily(s: Store, input: Editable): Promise<{ id: string; version: number; config: TemplateConfig }> {
+  const id = newTemplateId();
+  const config: TemplateConfig = { ...editable(input), id, version: 1 };
+  await s.insert("ActivityTemplates", {
+    id, name: config.name, version: "1", config: JSON.stringify(config), origin: "custom", createdAt: new Date().toISOString(),
+  });
+  return { id, version: 1, config };
+}
+
+export type SaveResult =
+  | { ok: true; mode: SaveMode; unchanged?: boolean; id: string; version: number; config: TemplateConfig; propagated?: number }
+  | { ok: false; error: string; status?: number };
+
+// 저장 방법(수정/새 버전/새 활동)에 따라 저장한다. base 는 고치는 버전 행.
+//  act: 일정 활동에서 저장할 때 그 활동 id(새 버전/새 활동이면 진행 중 단계 검사는 이 활동만)
+export async function saveTemplate(
+  s: Store, base: Row, input: Editable, mode: SaveMode,
+  opts: { name?: string; sourceEvent?: SourceEvent; act?: string } = {},
+): Promise<SaveResult> {
+  const cur = readConfig(base.config);
+  if (!cur) return { ok: false, error: "템플릿을 읽을 수 없어요.", status: 500 };
+  if (mode === "new") {
+    const name = (opts.name ?? input.name).trim();
+    if (!name) return { ok: false, error: "새 활동의 이름을 적어 주세요." };
+    const rows = await s.list("ActivityTemplates");
+    const famName = readConfig(rows.find((r) => r.id === familyIdOf(base))?.config)?.name ?? cur.name;
+    if (name === cur.name.trim() || name === famName.trim()) return { ok: false, error: "새 활동은 원래 활동과 다른 이름으로 저장해 주세요." };
+    if (rows.some((r) => !isVersionRow(r) && readConfig(r.config)?.name.trim() === name)) return { ok: false, error: `“${name}” 템플릿이 이미 있어요. 다른 이름을 적어 주세요.` };
+    const v = await createFamily(s, { ...input, name });
+    return { ok: true, mode, ...v };
+  }
+  if (sameConfig(cur, input)) return { ok: true, mode, unchanged: true, id: base.id, version: cur.version, config: cur };
+  const why = await liveConflict(s, base.id, input, mode === "fix" ? undefined : opts.act);
+  if (why) return { ok: false, error: why, status: 409 };
+  if (mode === "fix") {
+    const v = await fixVersion(s, base, input);
+    return { ok: true, mode, id: base.id, version: v.config.version, config: v.config, propagated: v.propagated };
+  }
+  const v = await createVersion(s, base, input, opts.sourceEvent);
+  return { ok: true, mode, id: v.id, version: v.version, config: v.config };
+}
+
+// 진행자 화면이 있는 활동(소개·고민·팀 활동)은 진행자가 있어야 한다.
+export function needsHostScreen(cfg: TemplateConfig): boolean {
+  const k = activityKind(cfg);
+  return k === "who" || k === "worry" || activityMode(cfg) === "team";
+}
+
+// 한 번만: 진행자 화면이 있는 템플릿(과 그 설정을 복사해 둔 일정 활동)에 host.required 를 넣는다.
+// 이미 host 를 정한 템플릿은 건드리지 않는다.
+export async function migrateTemplateHost(s: Store): Promise<{ templates: number; acts: number } | null> {
+  const flag = "templateHostMigrated";
+  if ((await s.list("Settings")).some((r) => r.id === flag)) return null;
+  const out = { templates: 0, acts: 0 };
+  const fix = (json: string | undefined): string | null => {
+    const cfg = readConfig(json);
+    if (!cfg || cfg.host || !needsHostScreen(cfg)) return null;
+    return JSON.stringify({ ...cfg, host: { required: true } });
+  };
+  for (const r of await s.list("ActivityTemplates")) {
+    const next = fix(r.config);
+    if (next) { await s.update("ActivityTemplates", r.id, { config: next }); out.templates++; }
+  }
+  for (const a of await s.list("EventActivities")) {
+    const next = fix(a.config);
+    if (next) { await s.update("EventActivities", a.id, { config: next }); out.acts++; }
+  }
+  await s.insert("Settings", { id: flag, value: JSON.stringify({ at: new Date().toISOString(), ...out }) });
+  return out;
 }
 
 // 지울 수 있는지: 일정 활동이 쓰는 버전은 지울 수 없고, v1 은 다른 버전이 없는 직접 만든 템플릿만 지운다.

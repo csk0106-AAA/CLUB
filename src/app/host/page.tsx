@@ -13,7 +13,7 @@ type Item = {
 };
 type Data = { mode: "host" | "admin" | "member"; name: string; items: Item[] };
 
-// 사회자 첫 화면: 사회자 접속번호로 로그인한 회원은 여기와 활동 진행 화면만 쓴다.
+// 진행자 첫 화면: 진행자 접속번호로 로그인한 회원은 여기와 활동 진행 화면만 쓴다.
 export default function HostHome() {
   const router = useRouter();
   const [d, setD] = useState<Data | null>(null);
@@ -49,8 +49,8 @@ export default function HostHome() {
   if (d.mode !== "host") {
     return (
       <main className="app">
-        <h1 className="title">사회자 화면</h1>
-        <div className="msg info">사회자 접속번호로 로그인하면 내가 진행할 활동이 여기에 보여요.{d.mode === "admin" ? " 관리자는 일정 › 활동에서 사회자 전체화면을 열 수 있어요." : ""}</div>
+        <h1 className="title">진행자 화면</h1>
+        <div className="msg info">진행자 접속번호로 로그인하면 내가 진행할 활동이 여기에 보여요.{d.mode === "admin" ? " 관리자는 일정 › 활동에서 진행자 전체화면을 열 수 있어요." : ""}</div>
         <div className="footer-actions">
           <button className="btn white" type="button" onClick={() => router.push("/events")}>돌아가기</button>
         </div>
@@ -63,12 +63,12 @@ export default function HostHome() {
       <div className="say" style={{ alignItems: "center" }}>
         <Mascot size={56} />
         <div className="grow">
-          <b style={{ font: "700 20px var(--display)" }}>{d.name} 님, 사회자로 들어왔어요</b>
+          <b style={{ font: "700 20px var(--display)" }}>{d.name} 님, 진행자로 들어왔어요</b>
           <div className="small">진행할 활동만 보여요. 회원으로 참여하려면 로그아웃하고 평소 초대코드로 다시 들어오세요.</div>
         </div>
       </div>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      {d.items.length === 0 && <div className="msg info">지금 진행할 활동이 없어요. 관리자에게 사회자 지정을 확인해 주세요.</div>}
+      {d.items.length === 0 && <div className="msg info">지금 진행할 활동이 없어요. 관리자에게 진행자 지정을 확인해 주세요.</div>}
 
       {d.items.map((it) => (
         <section key={it.id} className="card" aria-label={it.name} style={{ display: "flex", flexDirection: "column", gap: 10 }}>

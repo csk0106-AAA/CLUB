@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { DEFAULT_TEMPLATES } from "../template-schema";
-import { migrateTemplateVersions } from "../template-versions";
+import { migrateTemplateHost, migrateTemplateVersions } from "../template-versions";
 import type { Row, Store } from "./types";
 import { LocalStore } from "./local";
 
@@ -29,6 +29,7 @@ async function seed(s: Store): Promise<void> {
   await seedActivities(s);
   await seedInterview(s);
   await migrateTemplateVersions(s);
+  await migrateTemplateHost(s);
 }
 
 export const DEFAULT_QUESTIONS = [

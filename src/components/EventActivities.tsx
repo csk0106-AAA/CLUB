@@ -7,8 +7,10 @@ import { families, sourceLabel, type TplRow } from "@/lib/template-families";
 import type { TemplateConfig } from "@/lib/template-schema";
 import { CapsuleAdmin } from "./CapsuleAdmin";
 import { DateField } from "./DateField";
+import { AiAssist } from "./AiAssist";
 import { AiGuidesEditor, aiPointKeys } from "./AiGuidesEditor";
 import { Popup } from "./Popup";
+import { SaveChoices, savedText, type SaveMode } from "./SaveChoices";
 import { TeamBoard } from "./TeamBoard";
 import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "./TemplateEditor";
 import { fs } from "@/lib/fs";
@@ -41,8 +43,10 @@ const PRE_TEXT: Record<string, string> = {
   closed: "사전 작성 마감",
 };
 
-// 사회자 지정: 회원 중 한 명 + 사회자 접속번호. 사회자는 이 번호로 로그인하면 활동 진행 화면만 보고,
+// 진행자 지정: 회원 중 한 명 + 진행자 접속번호. 진행자는 이 번호로 로그인하면 활동 진행 화면만 보고,
 // 평소 초대코드로 로그인하면 일반 회원으로 활동에 참여한다.
+// 템플릿이 진행자를 요구하면(host.required) 펼쳐 두고, 정할 때까지 “진행자 필요”를 보여 준다.
+// 진행자 사람·번호는 일정마다 달라서 템플릿이 아니라 여기(일정 활동)에 저장한다.
 function HostSetting({ eventId, a, canEdit, members, onChange }: {
   eventId: string; a: Act; canEdit: boolean; members: { id: string; name: string }[]; onChange: () => void;
 }) {
@@ -62,7 +66,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setHostId(r.data.hostId);
     setCode(r.data.hostCode);
-    setMsg({ tone: "info", text: clear ? "사회자 지정을 풀었어요." : "사회자를 저장했어요. 사회자에게 접속번호를 알려 주세요." });
+    setMsg({ tone: "info", text: clear ? "진행자 지정을 풀었어요." : "진행자를 저장했어요. 진행자에게 접속번호를 알려 주세요." });
     onChange();
   }
 
@@ -70,24 +74,33 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
     setCode(String(Math.floor(100000 + Math.random() * 900000)));
   }
 
+  const required = !!a.config.host?.required;
   return (
-    <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-      <b style={{ font: `700 ${fs(16)} var(--display)` }}>사회자</b>
+    <details open={required || !!a.hostId || undefined} style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+      <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <b style={{ font: `700 ${fs(16)} var(--display)` }}>진행자</b>
+        {required && !a.hostId && <span className="pill warn">진행자 필요</span>}
+        {a.hostId && <span className="pill ok">{hostName || "지정됨"}</span>}
+        {!required && !a.hostId && <span className="pill gray">선택</span>}
+      </summary>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+      {required && !a.hostId && <div className="msg info" role="status">이 활동은 진행자가 있어야 해요(템플릿 설정). 진행자를 정해야 현장 진행을 시작할 수 있어요. 관리자가 직접 진행하는 것은 돼요.</div>}
+      {a.config.host?.note && <span className="small"><b>진행자 안내:</b> {a.config.host.note}</span>}
       <span className="small">
-        사회자가 로그인 화면에서 자기 이름을 고르고 <b>사회자 접속번호</b>를 넣으면 이 활동의 진행 화면만 보여요.
+        진행자가 로그인 화면에서 자기 이름을 고르고 <b>진행자 접속번호</b>를 넣으면 이 활동의 진행 화면만 보여요.
         평소 초대코드(연락처 뒷자리)로 들어오면 일반 회원으로 활동에 참여해요.
       </span>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       <div className="grid2">
         <div>
-          <label className="l" htmlFor={`hs-${a.id}`}>사회자 (회원 중 선택)</label>
+          <label className="l" htmlFor={`hs-${a.id}`}>진행자 (회원 중 선택)</label>
           <select id={`hs-${a.id}`} className="field" value={hostId} disabled={!canEdit || busy} onChange={(e) => setHostId(e.target.value)}>
             <option value="">정하지 않음</option>
             {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="l" htmlFor={`hc-${a.id}`}>사회자 접속번호 (숫자 4~8자리)</label>
+          <label className="l" htmlFor={`hc-${a.id}`}>진행자 접속번호 (숫자 4~8자리)</label>
           <div className="row">
             <input id={`hc-${a.id}`} className="field" inputMode="numeric" maxLength={8} value={code} disabled={!canEdit || busy || !hostId}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))} />
@@ -98,13 +111,14 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="btn" type="button" disabled={busy || !dirty || (Boolean(hostId) && code.length < 4)} style={{ width: "auto", minWidth: 140, minHeight: 46, fontSize: fs(15) }} onClick={() => save()}>
-            {busy ? "저장 중…" : "사회자 저장"}
+            {busy ? "저장 중…" : "진행자 저장"}
           </button>
           {a.hostId && <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={() => save(true)}>지정 풀기</button>}
         </div>
       )}
-      {a.hostId && !dirty && <span className="small">지금 사회자: {hostName} · 접속번호 {a.hostCode}</span>}
-    </div>
+      {a.hostId && !dirty && <span className="small">지금 진행자: {hostName} · 접속번호 {a.hostCode}</span>}
+      </div>
+    </details>
   );
 }
 
@@ -135,7 +149,7 @@ function Schedule({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; 
 }
 
 // 출석 체크(참여 대상이 “관리자 선택 회원”일 때): 활동 전에 참여할 사람을 고르고 완료한다.
-// 완료해야 사회자가 활동을 시작할 수 있고, 선택된 회원만 활동에 참여하고 정보가 노출된다.
+// 완료해야 진행자가 활동을 시작할 수 있고, 선택된 회원만 활동에 참여하고 정보가 노출된다.
 function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; canEdit: boolean; onChange: () => void }) {
   const base = `/api/admin/events/${eventId}/activities/${a.id}/attendance`;
   const [att, setAtt] = useState<Att | null>(null);
@@ -205,7 +219,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
         <span className="pill blue">선택 {sel.size}명</span>
         <span className={`pill ${att.confirmed ? "ok" : "warn"}`}>{att.confirmed ? "완료" : "활동 전에 완료해 주세요"}</span>
       </div>
-      {!att.confirmed && <div className="msg info">참여할 사람을 고르고 아래 “선택 저장”을 누르면 출석 체크가 완료돼 사회자가 활동을 시작할 수 있어요. 선택하지 않은 회원은 활동에 들어가지 않아요.</div>}
+      {!att.confirmed && <div className="msg info">참여할 사람을 고르고 아래 “선택 저장”을 누르면 출석 체크가 완료돼 진행자가 활동을 시작할 수 있어요. 선택하지 않은 회원은 활동에 들어가지 않아요.</div>}
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
@@ -255,7 +269,7 @@ function Progress({ eventId, aid }: { eventId: string; aid: string }) {
   );
 }
 
-// 일정 관리의 '활동' 탭: 템플릿에서 활동 추가, 일정별 수정, 사회자 컨트롤(시험 조작)
+// 일정 관리의 '활동' 탭: 템플릿에서 활동 추가, 일정별 수정, 진행자 컨트롤(시험 조작)
 export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
   const [acts, setActs] = useState<Act[] | null>(null);
   const [tpls, setTpls] = useState<Tpl[]>([]);
@@ -310,29 +324,26 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     setBusy(false);
     if (!r.ok) return setAddErr(r.error);
     const v = tpls.find((t) => t.id === templateId);
-    setMsg({ tone: "info", text: `활동을 넣었어요${v ? ` (${v.config.name} v${v.version})` : ""}. 이 일정에서 고치면 그 템플릿의 새 버전으로 저장돼요.` });
+    setMsg({ tone: "info", text: `활동을 넣었어요${v ? ` (${v.config.name} v${v.version})` : ""}. 이 일정에서 고칠 때 저장 방법(수정 · 새 버전 · 새 활동)을 골라요.` });
     setAddOpen(false);
     load();
   }
 
-  async function saveEdit() {
+  // 저장 방법: fix(이 활동이 쓰는 템플릿 버전 고치기) / version(새 버전) / new(새 활동)
+  async function saveEdit(mode: SaveMode = "version", name?: string) {
     if (!edit) return;
     setBusy(true);
     setEditErr("");
-    const r = await api<{ unchanged?: boolean; version?: number }>(`/api/admin/events/${eventId}/activities/${edit.id}`, { method: "PATCH", body: edit.value });
+    const r = await api<{ mode?: SaveMode; unchanged?: boolean; version?: number; name?: string; propagated?: number }>(`/api/admin/events/${eventId}/activities/${edit.id}`, { method: "PATCH", body: { config: edit.value, mode, name } });
     setBusy(false);
     if (!r.ok) return setEditErr(r.error);
-    setMsg({
-      tone: "info",
-      text: r.data.unchanged
-        ? "바뀐 내용이 없어서 새 버전을 만들지 않았어요."
-        : r.data.version
-          ? `활동 설정을 템플릿의 새 버전(v${r.data.version})으로 저장했어요. 이 일정 활동이 그 버전을 써요.`
-          : "이 일정의 활동 설정을 저장했어요.",
-    });
+    setMsg({ tone: "info", text: r.data.version ? savedText(r.data, "활동 설정", true) : r.data.unchanged ? savedText(r.data, "활동 설정") : "이 일정의 활동 설정을 저장했어요." });
     setEdit(null);
     load();
   }
+  // 이 활동이 쓰는 템플릿 버전과, 그 버전을 쓰는 다른 일정 수
+  const tplOf = (a: Act | undefined) => (a ? tpls.find((x) => x.id === a.templateId) : undefined);
+  const otherEventsOf = (t: Tpl | undefined) => (t ? t.useEvents.filter((e) => e !== eventId).length : 0);
 
   async function remove(a: Act) {
     if (!window.confirm(`“${a.config.name}” 활동을 이 일정에서 뺄까요?`)) return;
@@ -342,9 +353,9 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   }
 
   async function live(a: Act, body: { action: "activate"; step: string } | { action: "lock" } | { action: "reset" }) {
-    const r = await api(`/api/admin/events/${eventId}/activities/${a.id}/live`, { body });
+    const r = await api<{ warning?: string }>(`/api/admin/events/${eventId}/activities/${a.id}/live`, { body });
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg(null);
+    setMsg(r.data.warning ? { tone: "info", text: r.data.warning } : null);
     load();
   }
 
@@ -359,21 +370,13 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           aiCommon: (t ?? guideFor).config.aiCommon,
           interview: (t ?? guideFor).config.interview,
         }}
-        saveNote={t
-          ? `저장하면 “${t.config.name}” 템플릿의 새 버전(v${nextVerOf(t.id) ?? t.version + 1})으로 저장되고 이 일정 활동이 그 버전을 써요. 다른 일정은 쓰던 버전을 그대로 써요.`
-          : "이 활동의 원래 템플릿이 없어서 이 일정 활동에만 저장돼요."}
+        saveNote="이 활동의 원래 템플릿이 없어서 이 일정 활동에만 저장돼요."
+        choices={t ? { version: t.version, nextVersion: nextVerOf(t.id) ?? t.version + 1, baseName: t.config.name, otherEvents: otherEventsOf(t), inEvent: true } : undefined}
         onClose={() => setGuideFor(null)}
-        onSave={async (ai) => {
-          const r = await api<{ unchanged?: boolean; version: number; label?: string }>(`/api/admin/events/${eventId}/activities/${guideFor.id}/ai-guides`, { method: "PUT", body: ai });
+        onSave={async (ai, mode, name) => {
+          const r = await api<{ mode?: SaveMode; unchanged?: boolean; version: number; name?: string; propagated?: number }>(`/api/admin/events/${eventId}/activities/${guideFor.id}/ai-guides`, { method: "PUT", body: { ...ai, mode, name } });
           if (!r.ok) return r.error;
-          setMsg({
-            tone: "info",
-            text: r.data.unchanged
-              ? "바뀐 내용이 없어서 새 버전을 만들지 않았어요."
-              : r.data.version
-                ? `AI 지침을 템플릿의 새 버전(v${r.data.version})으로 저장했어요. 이 일정 활동이 그 버전을 써요.`
-                : "AI 지침을 이 일정 활동에 저장했어요.",
-          });
+          setMsg({ tone: "info", text: r.data.version ? savedText(r.data, "AI 지침", true) : r.data.unchanged ? savedText(r.data, "AI 지침") : "AI 지침을 이 일정 활동에 저장했어요." });
           setGuideFor(null);
           load();
           return null;
@@ -424,7 +427,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           <HostSetting eventId={eventId} a={a} canEdit={canEdit} members={members} onChange={load} />
           {a.config.preEvent.steps.includes("worry_write") && (
             <Link href={`/host/worry/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(16), textDecoration: "none" }}>
-              사회자 전체화면 열기 (고민 뽑기) ⛶
+              진행자 전체화면 열기 (고민 뽑기) ⛶
             </Link>
           )}
           {!a.config.preEvent.steps.includes("ai_interview") && !a.config.preEvent.steps.includes("worry_write") && a.config.onsite.steps.some((s) => s.memberScreen === "write") ? (
@@ -439,12 +442,13 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           )}
           {a.config.preEvent.steps.includes("ai_interview") && (
             <Link href={`/host/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(16), textDecoration: "none" }}>
-              사회자 전체화면 열기 ⛶
+              진행자 전체화면 열기 ⛶
             </Link>
           )}
 
           <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            <b style={{ font: `700 ${fs(16)} var(--display)` }}>사회자 컨트롤</b>
+            <b style={{ font: `700 ${fs(16)} var(--display)` }}>진행자 컨트롤</b>
+            {a.config.host?.required && !a.hostId && <span className="small">진행자가 아직 없어요. 관리자는 여기서 직접 진행할 수 있어요.</span>}
             <div className="row" style={{ flexWrap: "wrap" }}>
               {a.config.onsite.steps.filter((s) => s.hostButton).map((s) => (
                 <button key={s.key} className={`btn ${a.live.stepKey === s.key && a.live.unlocked ? "blue" : ""}`} type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: s.key })}>
@@ -484,7 +488,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                 <span className="small">
                   {pickFam && pickFam.versions.length >= 2
                     ? "이 템플릿은 버전이 여러 개라서 다음 단계에서 쓸 버전을 골라요."
-                    : "템플릿 설정이 복사돼요. 이 일정에서 고치면 그 템플릿의 새 버전으로 저장돼요."}
+                    : "템플릿 설정이 복사돼요. 이 일정에서 고칠 때 수정 · 새 버전 · 새 활동 중에서 골라 저장해요."}
                 </span>
                 <button className="btn" type="submit" disabled={busy || !pickFam} style={{ width: "auto", minWidth: 140, alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }}>
                   {pickFam && pickFam.versions.length >= 2 ? "다음: 버전 고르기" : busy ? "넣는 중…" : "추가"}
@@ -527,12 +531,28 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
         open={!!edit}
         onClose={() => setEdit(null)}
         dirty={!!edit && JSON.stringify(edit.value) !== edit.orig}
-        footer={edit && (
-          <>
-            <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48 }} onClick={() => setEdit(null)}>취소</button>
-            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={saveEdit}>{busy ? "저장 중…" : "저장"}</button>
-          </>
-        )}
+        footer={edit && (() => {
+          const t = tplOf(acts?.find((x) => x.id === edit.id));
+          return t ? (
+            <SaveChoices
+              busy={busy}
+              disabled={!edit.value.name.trim()}
+              version={t.version}
+              nextVersion={nextVerOf(t.id) ?? t.version + 1}
+              baseName={t.config.name}
+              suggestName={edit.value.name !== t.config.name ? edit.value.name : `${t.config.name} (새 활동)`}
+              otherEvents={otherEventsOf(t)}
+              inEvent
+              onSave={saveEdit}
+              onCancel={() => setEdit(null)}
+            />
+          ) : (
+            <>
+              <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48 }} onClick={() => setEdit(null)}>취소</button>
+              <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 140, minHeight: 48 }} onClick={() => saveEdit("fix")}>{busy ? "저장 중…" : "저장"}</button>
+            </>
+          );
+        })()}
       >
         {edit && (
           <>
@@ -540,12 +560,14 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               {(() => {
                 const act = acts?.find((x) => x.id === edit.id);
                 const t = act ? tpls.find((x) => x.id === act.templateId) : undefined;
+                const others = otherEventsOf(t);
                 return t
-                  ? `저장하면 “${t.config.name}” 템플릿의 새 버전(v${nextVerOf(t.id) ?? t.version + 1})으로 저장되고 이 일정 활동이 그 버전을 써요. 다른 일정은 쓰던 버전을 그대로 써요.`
+                  ? `이 활동은 “${t.config.name}” v${t.version}을 써요. 고친 뒤 아래에서 저장 방법을 골라요. 수정은 v${t.version}을 고치고${others ? `(이 버전을 쓰는 다른 일정 ${others}곳에도 반영)` : ""}, 새 버전은 v${nextVerOf(t.id) ?? t.version + 1}로 저장해 이 일정 활동이 그 버전을 쓰고, 새 활동은 다른 이름의 새 템플릿(v1)으로 저장해 이 일정 활동이 그것을 써요.`
                   : "이 활동의 원래 템플릿이 없어서 이 일정 활동에만 저장돼요.";
               })()}
             </span>
             {editErr && <div className="msg bad" role="alert">{editErr}</div>}
+            <AiAssist value={edit.value} eventId={eventId} templateId={acts?.find((x) => x.id === edit.id)?.templateId} onApply={(value) => setEdit({ ...edit, value })} />
             <TemplateEditor value={edit.value} onChange={(value) => setEdit({ ...edit, value })} />
           </>
         )}

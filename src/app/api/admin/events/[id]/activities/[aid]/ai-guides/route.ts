@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { readConfig } from "@/lib/activities";
 import { aiSettingsInput, cleanAiSettings } from "@/lib/ai-guides";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
-import { createVersion, eventSource, sameConfig } from "@/lib/template-versions";
+import { eventSource, SAVE_MODES, saveTemplate } from "@/lib/template-versions";
 
 type Ctx = { params: Promise<{ id: string; aid: string }> };
 
-// 일정 활동의 AI 지침 저장: 이 활동이 쓰는 템플릿의 새 버전(vN, “일정명_날짜에서 수정”)으로 저장하고
-// 이 활동이 그 버전을 쓰게 한다. 다른 일정의 활동은 쓰던 버전을 그대로 쓴다.
+// 일정 활동의 AI 지침 저장. 저장 방법(mode)은 설정 저장과 같다.
+//  fix: 이 활동이 쓰는 템플릿 버전을 고친다 / version: 새 버전을 만들고 이 활동이 그 버전을 쓴다(기본)
+//  new: 새 활동 템플릿(v1, name 필요)을 만들고 이 활동이 그것을 쓴다
+const body = aiSettingsInput.extend({ mode: z.enum(SAVE_MODES).default("version"), name: z.string().max(100).optional() });
+
 export async function PUT(req: Request, ctx: Ctx) {
   const g = await guard("activities");
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
-  const parsed = aiSettingsInput.safeParse(await req.json().catch(() => null));
+  const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("지침은 4000자, 질문은 300자까지 쓸 수 있어요.");
 
   const s = await getStore();
@@ -23,20 +27,22 @@ export async function PUT(req: Request, ctx: Ctx) {
   const cfg = readConfig(act?.config);
   if (!act || !ev || !cfg) return bad("활동을 찾을 수 없어요.", 404);
 
-  const ai = cleanAiSettings(cfg, parsed.data);
+  const { mode, name, ...input } = parsed.data;
+  const ai = cleanAiSettings(cfg, input);
   const tpl = tpls.find((t) => t.id === act.templateId);
   const tplCfg = readConfig(tpl?.config);
-  // 새 버전 = 이 일정 활동의 설정 + 새 AI 설정
+  // 저장할 설정 = 이 일정 활동의 설정 + 새 AI 설정
   const next = { ...cfg, ...ai };
-  if (tplCfg && sameConfig(tplCfg, next) && sameConfig(cfg, next)) {
-    return NextResponse.json({ unchanged: true, templateId: act.templateId, version: tplCfg.version });
-  }
   if (!tpl || !tplCfg) {
     // 원래 템플릿이 없어진 활동: 이 활동의 설정에만 저장한다
     await s.update("EventActivities", aid, { config: JSON.stringify(next) });
-    return NextResponse.json({ templateId: "", version: 0 });
+    return NextResponse.json({ mode: "fix", templateId: "", version: 0, propagated: 0 });
   }
-  const v = await createVersion(s, tpl, next, eventSource(ev));
-  await s.update("EventActivities", aid, { templateId: v.id, templateVersion: String(v.version), config: JSON.stringify(v.config) });
-  return NextResponse.json({ templateId: v.id, version: v.version, label: `${v.config.sourceEvent?.name}_${v.config.sourceEvent?.date}` });
+  const r = await saveTemplate(s, tpl, next, mode, { name, sourceEvent: eventSource(ev), act: aid });
+  if (!r.ok) return bad(r.error, r.status);
+  if (r.unchanged) return NextResponse.json({ unchanged: true, mode: r.mode, templateId: act.templateId, version: tplCfg.version });
+  if (r.mode !== "fix") {
+    await s.update("EventActivities", aid, { templateId: r.id, templateVersion: String(r.version), config: JSON.stringify(r.config) });
+  }
+  return NextResponse.json({ mode: r.mode, templateId: r.id, version: r.version, name: r.config.name, propagated: r.propagated ?? 0 });
 }

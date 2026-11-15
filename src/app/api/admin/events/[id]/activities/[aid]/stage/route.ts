@@ -7,7 +7,7 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-// 사회자 전체화면이 2초마다 읽는 곳. 이름과 정답은 공개 단계가 되기 전에는 내려주지 않는다.
+// 진행자 전체화면이 2초마다 읽는 곳. 이름과 정답은 공개 단계가 되기 전에는 내려주지 않는다.
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
@@ -62,7 +62,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
 
   const showStatements = state === "voting" || state === "closed" || state === "answer";
   const counts = [0, 1, 2].map((i) => rv.filter((v) => Number(v.chosenIndex) === i).length);
-  // 아직 투표하지 않은 분(사회자 화면에만, 투표 중·마감 단계에서만)
+  // 아직 투표하지 않은 분(진행자 화면에만, 투표 중·마감 단계에서만)
   const votedIds = new Set(rv.map((v) => v.voterId));
   const notVoted = state === "voting" || state === "closed"
     ? eligible.filter((m) => !votedIds.has(m.id)).map((m) => m.name).sort((a, b) => a.localeCompare(b, "ko"))

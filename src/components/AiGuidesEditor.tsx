@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
+import { SaveChoices, type SaveMode } from "./SaveChoices";
 
 type Point = { key: string; label: string; hint: string };
 
@@ -13,7 +14,8 @@ export const aiPointKeys = (c: { preEvent: { steps: string[] } }): string[] =>
   : [];
 
 // AI 지침 편집기(지점별). 템플릿 보관함과 일정 활동에서 연다.
-// 저장하면 그 템플릿의 새 버전(vN)이 생긴다. saveNote 로 무엇이 바뀌는지 알려 준다.
+// 저장 방법은 설정 저장과 같이 고른다(choices): 수정(이 버전 고치기) / 새 버전 / 새 활동.
+// choices 가 없으면(원래 템플릿이 없어진 일정 활동) 저장 버튼 하나와 saveNote 안내만 보인다.
 export type AiSettings = {
   aiGuides: Record<string, string>;
   aiCommon?: string;
@@ -24,11 +26,12 @@ export function AiGuidesEditor(props: {
   title: string;
   keys: string[];
   initial: AiSettings;
-  saveNote: string; // 저장 버튼 옆 안내(예: 새 버전 vN으로 저장돼요)
-  onSave: (ai: AiSettings) => Promise<string | null>; // 오류 문구 또는 null
+  saveNote?: string; // choices 가 없을 때 저장 버튼 옆 안내
+  choices?: { version: number; nextVersion: number; baseName: string; otherEvents: number; inEvent?: boolean };
+  onSave: (ai: AiSettings, mode: SaveMode, name?: string) => Promise<string | null>; // 오류 문구 또는 null
   onClose: () => void;
 }) {
-  const { title, keys, initial, saveNote, onSave, onClose } = props;
+  const { title, keys, initial, saveNote, choices, onSave, onClose } = props;
   type Info = { points: Point[]; pointGuides: Record<string, string>; guidelines: string; questions: string[]; followUpMax: number };
   const [info, setInfo] = useState<Info | null>(null);
   const [guides, setGuides] = useState<Record<string, string>>({ ...initial.aiGuides });
@@ -50,11 +53,11 @@ export function AiGuidesEditor(props: {
     });
   }, [initial.interview]);
 
-  async function save() {
+  async function save(mode: SaveMode = "fix", name?: string) {
     if (hasInterview && !questions.some((q) => q.trim())) return setErr("인터뷰 질문을 하나 이상 넣어 주세요.");
     setBusy(true);
     setErr("");
-    const e = await onSave({ aiGuides: guides, aiCommon: common, ...(hasInterview ? { interview: { questions, followUpMax } } : {}) });
+    const e = await onSave({ aiGuides: guides, aiCommon: common, ...(hasInterview ? { interview: { questions, followUpMax } } : {}) }, mode, name);
     setBusy(false);
     if (e) setErr(e);
   }
@@ -124,11 +127,31 @@ export function AiGuidesEditor(props: {
       )}
       {keys.length > 0 && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
-          <span className="small" id="ag-save-note">{saveNote}</span>
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            <button className="btn" type="button" aria-describedby="ag-save-note" disabled={busy || !info} style={{ width: "auto", minWidth: 160 }} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
-            <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={onClose}>취소</button>
-          </div>
+          {choices ? (
+            <>
+              <b style={{ font: `700 ${fs(16)} var(--display)` }}>어떻게 저장할까요?</b>
+              <SaveChoices
+                busy={busy}
+                disabled={!info}
+                version={choices.version}
+                nextVersion={choices.nextVersion}
+                baseName={choices.baseName}
+                suggestName={`${choices.baseName} (새 활동)`}
+                otherEvents={choices.otherEvents}
+                inEvent={choices.inEvent}
+                onSave={save}
+                onCancel={onClose}
+              />
+            </>
+          ) : (
+            <>
+              <span className="small" id="ag-save-note">{saveNote}</span>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <button className="btn" type="button" aria-describedby="ag-save-note" disabled={busy || !info} style={{ width: "auto", minWidth: 160 }} onClick={() => save()}>{busy ? "저장 중…" : "저장"}</button>
+                <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={onClose}>취소</button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </section>
