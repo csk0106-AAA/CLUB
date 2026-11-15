@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSession, getSession, lockedFor, recordFail, clearFails } from "@/lib/auth";
+import { memberClubs } from "@/lib/lists";
+import { getStore } from "@/lib/store";
 
 const body = z.object({ passcode: z.string().min(1).max(128) });
 
-// 관리자 2차 확인. 로그인한 회원 중 관리자 권한이 있는 사람만 통과할 수 있다.
+// 관리자 2차 확인. 관리자 권한이 있거나 소모임 직책자(소모임관리·활동 템플릿용)만 통과할 수 있다.
 export async function POST(req: Request) {
   const session = await getSession();
-  if (!session || session.perms.length === 0) {
-    return NextResponse.json({ error: "관리자 권한이 없어요." }, { status: 403 });
+  if (!session || session.host) return NextResponse.json({ error: "관리자 권한이 없어요." }, { status: 403 });
+  if (session.perms.length === 0) {
+    const me = (await (await getStore()).list("Members")).find((m) => m.id === session.mid);
+    if (!me || !memberClubs(me).some((c) => c.role)) {
+      return NextResponse.json({ error: "관리자 권한이 없어요." }, { status: 403 });
+    }
   }
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "비밀번호를 입력해 주세요." }, { status: 400 });

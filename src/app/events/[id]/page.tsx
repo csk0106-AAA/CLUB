@@ -245,8 +245,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           {answer === "참석" && e.type === "워크숍" && (
             <button className="btn white" type="button" onClick={() => { setSel(d.apply?.days ?? []); setPicking(true); }}>참석 날짜 바꾸기</button>
           )}
-          {/* 한 페이지가 되었으므로 "일정으로 돌아가기"는 이 화면 맨 위(일정 정보)로 올라간다 */}
-          {answer !== "" && <button className="btn white" type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>일정으로 돌아가기</button>}
         </div>
       )}
 

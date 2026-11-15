@@ -30,9 +30,11 @@ export async function adminOrOfficer(perm: string | string[]): Promise<OfficerGu
   const list = Array.isArray(perm) ? perm : [perm];
   const adminOk = list.some((p) => can(s, p));
   const me = (await (await getStore()).list("Members")).find((m) => m.id === s.mid);
-  const officerOf = me ? memberClubs(me).filter((c) => c.role).map((c) => c.name) : [];
+  // 소모임 직책자도 관리자 기능을 쓸 때는 관리자 비밀번호(2차 인증)를 거쳐야 한다(session.admin).
+  const officerOf = me && s.admin ? memberClubs(me).filter((c) => c.role).map((c) => c.name) : [];
   if (!adminOk && officerOf.length === 0) {
-    return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
+    const isOfficer = !!me && memberClubs(me).some((c) => c.role);
+    return { err: NextResponse.json({ error: isOfficer && !s.admin ? "관리자 비밀번호를 먼저 입력해 주세요." : "이 작업을 할 권한이 없어요." }, { status: 403 }) };
   }
   return { s, adminOk, officerOf };
 }

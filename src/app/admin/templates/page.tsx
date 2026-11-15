@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { AiGuidesEditor, aiPointKeys } from "@/components/AiGuidesEditor";
-import { Mascot } from "@/components/Mascot";
 import { AiAssist } from "@/components/AiAssist";
 import { Popup } from "@/components/Popup";
 import { SaveChoices, savedText, type SaveMode } from "@/components/SaveChoices";
-import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "@/components/TemplateEditor";
+import { modeOf, TemplateEditor, type EditableConfig } from "@/components/TemplateEditor";
 import { api, fmtDate } from "@/lib/client";
 import { families, sourceLabel, type Family, type TplRow } from "@/lib/template-families";
 import type { TemplateConfig } from "@/lib/template-schema";
@@ -48,7 +47,6 @@ function Templates() {
   };
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
   const [guideFor, setGuideFor] = useState<T | null>(null); // AI 지침을 고치는 버전
   const [verFor, setVerFor] = useState<string | null>(null); // 버전 목록 창을 연 템플릿(v1 id)
   const verFam = fams.find((f) => f.id === verFor) ?? null;
@@ -180,17 +178,8 @@ function Templates() {
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn" type="button" style={{ width: "auto", minWidth: 200 }} aria-haspopup="dialog" onClick={() => openEdit(null, BLANK)}>+ 새 템플릿 만들기</button>
-            <button className="btn white" type="button" style={{ width: "auto", minWidth: 220 }} aria-expanded={aiOpen} onClick={() => setAiOpen(!aiOpen)}>
-              {aiOpen ? "AI 대화 닫기" : "AI와 새 활동 만들기"}
-            </button>
           </div>
-          <p className="small" style={{ margin: 0 }}>기존 템플릿을 “복제”해서 필요한 부분만 고쳐 쓰는 것이 가장 빨라요. 복제하면 버전이 아니라 새 템플릿(v1)이 따로 생겨요. 새 활동이 필요하면 AI에게 설명하고 초안을 받아 다듬을 수 있어요.</p>
-          {aiOpen && (
-            <AiMaker
-              onOpen={(value) => { openEdit(null, value); setAiOpen(false); }}
-              onSaved={() => { setMsg({ tone: "info", text: "AI가 만든 템플릿을 보관함에 저장했어요. 다음 일정부터 고를 수 있어요." }); setAiOpen(false); load(); }}
-            />
-          )}
+          <p className="small" style={{ margin: 0 }}>기존 템플릿을 “복제”해서 필요한 부분만 고쳐 쓰는 것이 가장 빨라요. 복제하면 버전이 아니라 새 템플릿(v1)이 따로 생겨요. 새 활동은 “+ 새 템플릿 만들기” 안의 “AI에게 요청”으로 설명하면 AI가 초안을 만들어 줘요.</p>
         </>
       )}
 
@@ -252,93 +241,6 @@ function Templates() {
   );
 }
 
-
-// ⑱ AI와 새 활동 만들기: 대화로 설명 → AI가 템플릿 설정 초안 → 미리보기 → 저장 또는 편집기에서 다듬기
-type Chat = { role: "user" | "assistant"; content: string };
-function AiMaker({ onOpen, onSaved }: { onOpen: (v: EditableConfig) => void; onSaved: () => void }) {
-  const [chat, setChat] = useState<Chat[]>([]);
-  const [input, setInput] = useState("");
-  const [draft, setDraft] = useState<EditableConfig | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const end = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: "nearest" });
-  }, [chat.length, busy]);
-
-  async function send(text: string) {
-    const t = text.trim();
-    if (!t) return;
-    const next: Chat[] = [...chat, { role: "user", content: t }];
-    setChat(next);
-    setInput("");
-    setBusy(true);
-    setErr("");
-    const r = await api<{ reply: string; config: EditableConfig | null }>("/api/admin/templates/ai", { body: { messages: next } });
-    setBusy(false);
-    if (!r.ok) return setErr(r.error);
-    // 다음 대화에서 AI가 직전 초안을 고칠 수 있도록 설정도 함께 기록해 둔다.
-    const memo = r.data.config ? `${r.data.reply}\n[초안 설정] ${JSON.stringify(r.data.config)}` : r.data.reply;
-    setChat([...next, { role: "assistant", content: memo }]);
-    if (r.data.config) setDraft(r.data.config);
-  }
-
-  async function save() {
-    if (!draft) return;
-    setBusy(true);
-    const r = await api("/api/admin/templates", { body: draft });
-    setBusy(false);
-    if (!r.ok) return setErr(r.error);
-    onSaved();
-  }
-
-  const shown = (c: Chat) => c.content.split("\n[초안 설정]")[0];
-
-  return (
-    <section className="card" aria-label="AI와 새 활동 만들기" style={{ display: "flex", flexDirection: "column", gap: 12, background: "var(--soft)" }}>
-      <div className="say" style={{ alignItems: "center" }}><Mascot size={46} /><b style={{ font: `700 ${fs(17)} var(--display)` }}>AI와 새 활동 만들기</b></div>
-      <div role="log" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: fs(15) }}>어떤 활동을 만들고 싶으세요? 인원, 시간, 진행 방식을 알려 주세요.</div></div>
-        {chat.map((c, i) =>
-          c.role === "user"
-            ? <div key={i} className="mine" style={{ fontSize: fs(15) }}>{c.content}</div>
-            : <div key={i} className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: fs(15) }}>{shown(c)}</div></div>,
-        )}
-        {busy && <div className="say"><Mascot size={40} /><div className="bubble" style={{ fontSize: fs(15) }}>만드는 중이에요…</div></div>}
-        <div ref={end} />
-      </div>
-      {err && <div className="msg bad" role="alert">{err}</div>}
-
-      {draft && (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="pill blue" style={{ alignSelf: "flex-start" }}>초안 미리보기</span>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>{draft.name}</b>
-          {draft.description && <span className="small">{draft.description}</span>}
-          <span className="small">
-            {draft.participants === "selected" ? "관리자 선택 회원만" : "전체 회원"} · {draft.preEvent.enabled ? `사전 작성 (일정 ${draft.preEvent.opensBeforeDays ?? 14}일 전 ~ ${draft.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"}
-          </span>
-          <ol className="flow">
-            {draft.onsite.steps.map((s) => <li key={s.key}>{s.label}{s.hostButton ? ` · 버튼 “${s.hostButton}”` : ""} · {SCREEN_LABELS[s.memberScreen] ?? s.memberScreen}</li>)}
-          </ol>
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 180 }} onClick={save}>보관함에 저장</button>
-            <button className="btn white" type="button" style={{ width: "auto", minWidth: 180 }} onClick={() => onOpen(draft)}>편집기에서 다듬기</button>
-          </div>
-        </div>
-      )}
-
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <button className="mini" type="button" disabled={busy || !draft} onClick={() => send("더 짧게 진행되도록 단계를 줄여 주세요.")}>더 짧게</button>
-        <button className="mini" type="button" disabled={busy || !draft} onClick={() => send("사전 작성 없이 현장에서만 진행하도록 바꿔 주세요.")}>현장에서만</button>
-      </div>
-      <form className="row" onSubmit={(e) => { e.preventDefault(); send(input); }}>
-        <input className="field" aria-label="AI에게 요청" placeholder="예: 명함 대신 한 줄 키워드로 소개하는 20분짜리 아이스브레이킹" value={input} maxLength={1000} onChange={(e) => setInput(e.target.value)} />
-        <button className="btn" type="submit" disabled={busy || !input.trim()} style={{ width: 96, flex: "none" }}>보내기</button>
-      </form>
-      <span className="small">승인(저장)하면 템플릿 보관함에 들어가고, 다음 일정부터 고를 수 있어요. 앱에 없는 입력 방식은 “진행 안내형”(회원 휴대폰에 지금 단계만 보임)으로 만들어져요.</span>
-    </section>
-  );
-}
 
 export default function TemplatesPage() {
   return <AdminGate mode="templates" need={["activities", "events"]} active="/admin/templates"><Templates /></AdminGate>;

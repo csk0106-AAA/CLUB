@@ -74,7 +74,7 @@ export function AdminGate(props: {
   const officerOf = me.clubOfficerOf ?? [];
   const officer = officerOf.length > 0;
   const hasNeed = need.length === 0 || me.perms.includes("all") || need.some((p) => me.perms.includes(p));
-  // 소모임 직책자로 들어가는 화면: 소모임관리·활동 템플릿이고, 관리자 권한으로는 이 화면 권한이 없을 때(비밀번호 없이)
+  // 소모임 직책자로 들어가는 화면: 소모임관리·활동 템플릿이고, 관리자 권한으로는 이 화면 권한이 없을 때(관리자 비밀번호는 필요)
   const asOfficer = officer && !!props.mode && OFFICER_MODES.includes(props.mode) && !(isAdmin && hasNeed);
   const modes = isAdmin ? MODES : MODES.filter((m) => OFFICER_MODES.includes(m.key));
 
@@ -100,7 +100,8 @@ export function AdminGate(props: {
     );
   }
 
-  if (!me.admin && !asOfficer) {
+  // 소모임 직책자도 관리자 기능을 쓸 때는 관리자 비밀번호를 한 번 더 입력한다.
+  if (!me.admin) {
     return (
       <main className="app with-tabs">
         <h1 className="title">관리자 확인</h1>
@@ -156,7 +157,7 @@ export function AdminGate(props: {
         </nav>
       </header>
       {sub.length > 0 && (
-        <nav className="subnav one" aria-label="하위 메뉴">
+        <nav className="subnav menu" aria-label="하위 메뉴">
           {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""} aria-current={props.active === s.href ? "page" : undefined}>{s.label}</Link>)}
         </nav>
       )}
