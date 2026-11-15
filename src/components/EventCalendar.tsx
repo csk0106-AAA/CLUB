@@ -14,6 +14,7 @@ import { fs } from "@/lib/fs";
 export type CalEvent = {
   id: string; name: string; type: string; startsAt: string; endsAt: string; club?: string;
   pinned: boolean; needsAnswer: boolean; canApply: boolean; myAnswer: string;
+  fresh?: "new" | "updated" | null; // 마지막으로 본 뒤 새로 공개(N) / 바뀜(U)
 };
 
 const WD = ["일", "월", "화", "수", "목", "금", "토"];
@@ -135,8 +136,9 @@ export function EventCalendar<T extends CalEvent>({ events, renderItem, hrefOf }
                   <Link key={e.id} href={hrefOf(e)}
                     className={[css.chip, tone(e), e.needsAnswer ? css.need : "", s.contL ? css.contL : "", s.contR ? css.contR : ""].join(" ")}
                     style={{ gridRow: s.lane + 2, gridColumn: `${s.start + 1} / span ${s.end - s.start + 1}` }}
-                    aria-label={`${e.name}${time ? `, ${time}` : ""}${extra ? `, ${extra}` : ""}`}>
+                    aria-label={`${e.name}${time ? `, ${time}` : ""}${extra ? `, ${extra}` : ""}${e.fresh === "new" ? ", 새 글" : e.fresh === "updated" ? ", 업데이트된 글" : ""}`}>
                     {e.needsAnswer && <b className={css.bang} aria-hidden="true">!</b>}
+                    {e.fresh && <b className={css.fresh} aria-hidden="true">{e.fresh === "new" ? "N" : "U"}</b>}
                     <span aria-hidden="true">{time ? `${time} ` : ""}{e.name}</span>
                   </Link>
                 );
@@ -164,6 +166,7 @@ export function EventCalendar<T extends CalEvent>({ events, renderItem, hrefOf }
         <span><i className={`${css.sw} ${css.cMute}`} aria-hidden="true" />불참·다른 소모임</span>
         <span><i className={`${css.sw} ${css.need}`} aria-hidden="true" /><b className={css.bang}>!</b> 참석 여부 체크 필요</span>
         <span><i className={css.swAttend} aria-hidden="true" />내가 참석하는 일정이 있는 날</span>
+        <span><b className={css.fresh} aria-hidden="true">N</b> 새 일정 · <b className={css.fresh} aria-hidden="true">U</b> 바뀐 일정</span>
       </div>
 
       <h3 id="cal-day-h" tabIndex={-1} style={{ font: `700 ${fs(16)} var(--display)`, margin: "4px 0 0", outline: "none" }}>

@@ -78,9 +78,9 @@ export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: str
   return sent;
 }
 
-// 일정이 공개되거나 바뀌었을 때: 배지용 시각을 남기고, 공개 대상에게 알린다.
-export async function notifyEvent(eventId: string, _kind: "new" | "update"): Promise<void> {
-  await stampEvent(eventId);
+// 일정이 공개되거나 바뀌었을 때: 배지용 시각(새로 공개면 처음 공개 시각도)을 남기고, 공개 대상에게 알린다.
+export async function notifyEvent(eventId: string, kind: "new" | "update"): Promise<void> {
+  await stampEvent(eventId, kind === "new");
   try {
     const s = await getStore();
     const [events, members] = await Promise.all([s.list("Events"), s.list("Members")]);

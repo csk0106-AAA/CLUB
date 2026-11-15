@@ -46,7 +46,12 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
-  await s.update("Profiles", profile.id, { introMd: d.introMd, draftMd: d.introMd, introStatus: "approved", approvedAt: now, updatedAt: now });
+  // firstApprovedAt: 처음 공개한 시각(프로필 북의 NEW / UP 구분). 이미 있으면 그대로,
+  // 이 열이 생기기 전에 공개한 적이 있으면(approvedAt) 그 시각으로 채운다(다시 공개해도 NEW 가 아니라 UP).
+  await s.update("Profiles", profile.id, {
+    introMd: d.introMd, draftMd: d.introMd, introStatus: "approved", approvedAt: now, updatedAt: now,
+    ...(profile.firstApprovedAt ? {} : { firstApprovedAt: profile.approvedAt || now }),
+  });
   if (inAct && d.statements) {
     const tl = await myTruthLies(g.s.mid, aid);
     const tlPatch = { statements: JSON.stringify(d.statements), lieIndex: String(d.lieIndex), status: "approved", approvedAt: now };

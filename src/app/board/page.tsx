@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConsentSheet } from "@/components/ConsentSheet";
+import { FreshChip } from "@/components/FreshChip";
 import { IconClip, IconMegaphone, IconPin } from "@/components/Icons";
 import { type AvatarView } from "@/components/Avatars";
 import { MainHeader } from "@/components/MainHeader";
@@ -52,9 +53,8 @@ export default function BoardPage() {
 
   const pinned = posts?.filter((p) => p.pinned) ?? [];
   const rest = posts?.filter((p) => !p.pinned) ?? [];
-  // 종 아이콘 숫자에 센 글: 새로 올라온 글은 "새 글", 바뀐 글은 "수정됨"(알림 창을 열면 사라져요)
-  const freshChip = (p: PostSummary) =>
-    p.fresh === "new" ? <span className="chip violet">새 글</span> : p.fresh === "updated" ? <span className="chip gray">수정됨</span> : null;
+  // 종 아이콘 숫자에 센 글: 새로 올라온 글은 NEW, 바뀐 글은 UP(알림 창을 열면 사라져요)
+  const freshChip = (p: PostSummary) => <FreshChip fresh={p.fresh} />;
   const responseChip = (p: PostSummary) =>
     p.responded ? <span className="chip violet">참여 ✓</span> : p.closed ? <span className="chip gray">마감</span> : <span className="chip red">참여 전</span>;
 

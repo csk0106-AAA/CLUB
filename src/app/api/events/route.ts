@@ -5,6 +5,7 @@ import { eventVisible, inClubOrObserver } from "@/lib/audience";
 import { fixLegacyTypes, migrateMinutesPosts } from "@/lib/event-migrate";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
+import { eventFreshness } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,8 @@ export async function GET() {
   const today = todayKst();
   const perms = me ? effectivePerms(me, await getPermGroups()) : [];
   const manager = ["all", "events", "fees"].some((p) => perms.includes(p));
+  // NEW / UP 표시(하단 일정 탭 숫자와 같은 기준). 화면이 목록을 받은 뒤 "봤음"으로 표시한다.
+  const freshness = await eventFreshness(session.mid);
 
   const list = events
     .filter((e) => eventVisible(e, me ?? session.mid) || (manager && e.published !== "true"))
@@ -68,6 +71,7 @@ export async function GET() {
         // 참석 여부를 아직 안 알림(날짜가 정해지고 지나지 않은, 신청할 수 있는 일정만)
         needsAnswer: !draft && canApply && myAnswer === "" && !!e.startsAt && !past,
         draft, // 공개 전 초안(관리자에게만 보임)
+        fresh: draft ? null : freshness.get(e.id) ?? null, // "new" | "updated" | null
         // 참석 신청하고 회비를 내지 않았으면 회비 알림
         feeDue: attending && hasFee && a?.paid !== "true",
         feePaid: attending && hasFee && a?.paid === "true",

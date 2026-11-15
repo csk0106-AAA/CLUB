@@ -17,8 +17,9 @@ const TAB_MAX = 1.2;
 type Tab = "events" | "board" | "org" | "profiles" | "settings" | "admin";
 // alerts: 소모임 가입·참관 신청 알림(lib/unread.ts)
 type Counts = { events: number; posts: number; profiles: number; alerts: number };
-// 탭을 열면 "봤음"으로 표시하는 종류. 홈은 종 아이콘 알림 창을 열어야 새 글을 "봤음"으로 표시한다.
-const SEEN_ON_OPEN: Partial<Record<Tab, "events" | "profiles">> = { events: "events", profiles: "profiles" };
+// "봤음" 표시는 탭을 여는 순간이 아니라 각 화면이 정한다:
+//  일정·프로필 북: 목록을 받아 NEW / UP 을 그린 뒤 markSeenAfterList() (이번 방문 동안은 표시가 남고, 다음에 열면 사라진다)
+//  홈: 종 아이콘 알림 창을 열어야 새 글을 "봤음"으로 표시한다.
 // 탭 숫자: 홈은 종 아이콘과 같은 숫자(새 글 + 소모임 신청 알림)
 const countOf = (t: Tab, c: Counts): number =>
   t === "board" ? c.posts + c.alerts : t === "events" ? c.events : t === "profiles" ? c.profiles : 0;
@@ -26,10 +27,9 @@ const countOf = (t: Tab, c: Counts): number =>
 export function MemberTabs({ on: tab }: { on: Tab }) {
   const on: Tab = tab === "admin" ? "settings" : tab === "org" ? "board" : tab;
 
-  // 새 글 숫자: 지금 연 탭은 "봤음"으로 표시하고, 나머지 탭의 숫자를 받는다(1분마다 다시 확인).
+  // 새 글 숫자: 탭마다 숫자를 받는다(지금 연 탭은 숫자를 감춤, 1분마다 다시 확인).
   const [unread, setUnread] = useState<Counts>({ events: 0, posts: 0, profiles: 0, alerts: 0 });
   useEffect(() => {
-    const seenKind = SEEN_ON_OPEN[on];
     let stop = false;
     const apply = (r: { ok: boolean; data?: Counts }) => {
       if (stop || !r.ok || !r.data) return;
@@ -37,8 +37,7 @@ export function MemberTabs({ on: tab }: { on: Tab }) {
       setBadge(r.data.events + r.data.posts + r.data.profiles + (r.data.alerts ?? 0));
     };
     const refresh = () => api<Counts>("/api/unread").then(apply);
-    if (seenKind) api<Counts>("/api/unread", { body: { kind: seenKind } }).then(apply);
-    else refresh();
+    refresh();
     const t = setInterval(() => {
       if (document.visibilityState === "visible") refresh();
     }, 60_000);
@@ -77,6 +76,13 @@ export function MemberTabs({ on: tab }: { on: Tab }) {
 // 홈 화면 알림 창 등에서 숫자가 바뀌었을 때 하단 탭·앱 배지를 다시 세게 한다.
 export function refreshUnread() {
   window.dispatchEvent(new Event("club:unread"));
+}
+
+// 일정·프로필 북 화면: 목록(NEW / UP 포함)을 받은 뒤 "봤음"으로 표시하고 하단 탭·앱 배지 숫자를 다시 센다.
+// 서버는 목록을 줄 때 이전에 본 시각으로 NEW / UP 을 정하므로, 이번 방문 동안은 표시가 남는다.
+export async function markSeenAfterList(kind: "events" | "profiles") {
+  await api("/api/unread", { body: { kind } });
+  refreshUnread();
 }
 
 // (예전 관리자 탭용 기억 값 초기화. 관리자 탭이 설정 안으로 옮겨져 지금은 할 일이 없다.)

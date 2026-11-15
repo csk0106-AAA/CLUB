@@ -4,6 +4,7 @@ import { avatarView } from "@/lib/avatar";
 import { consentRequired, hasConsent } from "@/lib/consent";
 import { memberClubs } from "@/lib/lists";
 import { getSetting, getStore } from "@/lib/store";
+import { profileFreshness } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function GET() {
   const [members, profiles] = await Promise.all([s.list("Members"), s.list("Profiles")]);
   const revealAt = await getSetting<string>("profileRevealAt", "");
   const revealed = revealAt !== "" && Date.now() >= Date.parse(`${revealAt}:00+09:00`);
+  const freshness = await profileFreshness(g.s.mid);
 
   const live = members.filter((m) => m.kind !== "회원대기");
   // 실명 공개 뒤에만: 이름 / 회사명 / 회사 직책 / 소모임. 공개 전에는 이 값들을 아예 내려주지 않는다.
@@ -28,7 +30,8 @@ export async function GET() {
   const authored = live.flatMap((m) => {
     const p = profiles.find((x) => x.memberId === m.id && x.introStatus === "approved");
     if (!p) return [];
-    const base = { id: p.id, alias: p.alias, mine: m.id === g.s.mid };
+    // fresh: NEW / UP 표시(하단 프로필 북 탭 숫자와 같은 기준). 별칭 목록에도 실어도 신원은 드러나지 않는다.
+    const base = { id: p.id, alias: p.alias, mine: m.id === g.s.mid, fresh: freshness.get(p.id) ?? null };
     return [revealed ? { ...base, ...card(m) } : { ...base, name: "" }];
   });
   const missing = live.filter((m) => !profiles.some((x) => x.memberId === m.id && x.introStatus === "approved"));

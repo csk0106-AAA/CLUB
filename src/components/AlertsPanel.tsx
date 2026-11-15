@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
+import { FreshChip } from "./FreshChip";
 import { refreshUnread } from "./MemberTabs";
 import { fs } from "@/lib/fs";
 
@@ -115,7 +116,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
             {d.posts.map((p) => (
               <li key={p.id}>
                 <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none" }}>
-                  <span className={`chip ${p.fresh === "new" ? "violet" : "gray"}`} style={{ flex: "none" }}>{p.fresh === "new" ? "새 글" : "수정됨"}</span>
+                  <FreshChip fresh={p.fresh} style={{ flex: "none" }} />
                   <span className="name grow" style={{ overflowWrap: "anywhere" }}>{p.title}</span>
                   <span className="small" style={{ flex: "none" }}>{fmtDate(p.at)}</span>
                 </Link>

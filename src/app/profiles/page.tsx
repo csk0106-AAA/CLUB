@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, type AvatarView } from "@/components/Avatars";
 import { MainHeader } from "@/components/MainHeader";
-import { MemberTabs } from "@/components/MemberTabs";
+import { FreshChip, type Fresh } from "@/components/FreshChip";
+import { MemberTabs, markSeenAfterList } from "@/components/MemberTabs";
 import { Sheet } from "@/components/Sheet";
 import { api, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -12,7 +13,8 @@ import { fs } from "@/lib/fs";
 type Data = {
   revealed: boolean; revealAt: string;
   // company·title·clubs 는 실명 공개 뒤에만 온다
-  items: { id: string; alias: string; name: string; mine: boolean; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
+  // fresh: 마지막으로 본 뒤 처음 공개(NEW) / 다시 공개·수정(UP)
+  items: { id: string; alias: string; name: string; mine: boolean; fresh?: Fresh | null; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
   missingCount: number; missing: { name: string; company?: string; title?: string; clubs?: string[] }[];
 };
 
@@ -36,6 +38,8 @@ export default function ProfilesPage() {
     if (r.ok) {
       setD(r.data);
       setLocked(false);
+      // 목록을 받은 뒤 "봤음"으로 표시(NEW / UP 은 이번 방문 동안 남고, 다음에 열면 사라진다)
+      markSeenAfterList("profiles");
     } else if (r.status === 401) router.replace("/");
     else if (r.status === 403) {
       setLocked(true);
@@ -102,6 +106,7 @@ export default function ProfilesPage() {
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 0 }}>
                   <span className="name">
                     {d.revealed && p.name ? p.name : `“${p.alias}”`}
+                    {p.fresh && <FreshChip fresh={p.fresh} style={{ marginLeft: 6, verticalAlign: "middle" }} />}
                     {d.revealed && p.name && details(p) && <span style={{ font: `400 ${fs(13)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
                   </span>
                   {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}

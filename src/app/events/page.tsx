@@ -7,7 +7,8 @@ import { EventCalendar } from "@/components/EventCalendar";
 import { EventCreate } from "@/components/EventCreate";
 import { IconPin } from "@/components/Icons";
 import { MainHeader } from "@/components/MainHeader";
-import { MemberTabs } from "@/components/MemberTabs";
+import { FreshChip, type Fresh } from "@/components/FreshChip";
+import { MemberTabs, markSeenAfterList } from "@/components/MemberTabs";
 import { api, fmtDate, fmtWhen, TYPE_TONE } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -30,6 +31,7 @@ type Ev = {
   canApply: boolean;
   needsAnswer: boolean;
   draft?: boolean; // 공개 전 초안(일정 관리 권한이 있는 회원에게만 온다)
+  fresh?: Fresh | null; // 마지막으로 본 뒤 새로 공개(NEW) / 바뀜(UP)
 };
 type Me = { name: string; consent: boolean; admin: boolean; livePerms?: string[]; clubOptions?: string[] };
 type View = "list" | "calendar";
@@ -73,8 +75,11 @@ export default function EventsPage() {
       }
       setMe(m.data);
       const e = await api<{ events: Ev[] }>("/api/events");
-      if (e.ok) setEvents(e.data.events);
-      else setError("일정 목록을 불러오지 못했어요. 화면을 새로 고쳐 주세요.");
+      if (e.ok) {
+        setEvents(e.data.events);
+        // 목록을 받은 뒤 "봤음"으로 표시(NEW / UP 은 이번 방문 동안 남고, 다음에 열면 사라진다)
+        markSeenAfterList("events");
+      } else setError("일정 목록을 불러오지 못했어요. 화면을 새로 고쳐 주세요.");
     })();
   }, [router]);
 
@@ -115,6 +120,7 @@ export default function EventsPage() {
             {e.pinned && !e.past && <span className="chip red"><IconPin size={12} />고정</span>}
             <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
             {e.draft && <span className="chip gray">초안 · 회원에게 안 보임</span>}
+            <FreshChip fresh={e.fresh} />
             {status}
           </span>
           <span className="body">
