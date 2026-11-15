@@ -11,7 +11,7 @@ import { fs } from "@/lib/fs";
 type Info = { intro: string; cycle: string; place: string; bank: string; account: string; holder: string; feeAmount: string; feeText: string; policy: string };
 type M = { id: string; name: string; kind: string; position: string };
 type Seat = M & { role: string };
-type Data = { name: string; info: Info; roster: Seat[]; members: M[]; clubRoles: string[] };
+type Data = { name: string; info: Info; roster: Seat[]; members: M[]; clubRoles: string[]; canEditRoles: boolean };
 type Note = { tone: "bad" | "info"; text: string } | null;
 
 function Club({ name }: { name: string }) {
@@ -77,17 +77,20 @@ function Club({ name }: { name: string }) {
         <span className="small">
           직책(대표 등)을 정하면 그 회원이 소모임 일정의 참관자를 정할 수 있고 게시글도 쓸 수 있어요. 첫 번째 직책({data.clubRoles[0] ?? "대표"})은 소모임 회비도 정하고 올릴 수 있어요.
           {leaders.length > 0 && <> 지금: {leaders.map((l) => `${l.role} ${l.name}`).join(", ")}</>}
+          {!data.canEditRoles && <> 소모임 직책을 정하거나 바꾸고, 직책자를 빼는 것은 관리자만 할 수 있어요. 일반 회원은 더하거나 뺄 수 있어요.</>}
         </span>
         {roster.length === 0 && <span className="small">아직 회원이 없어요. 아래에서 더해 주세요.</span>}
         {roster.map((s) => (
           <div key={s.id} className="row" style={{ flexWrap: "wrap", gap: 6 }}>
             <b className="grow" style={{ minWidth: 100 }}>{s.name} <span className="small">{[s.kind, s.position].filter(Boolean).join(" · ")}</span></b>
-            <select className="field" style={{ width: "auto", minWidth: 120, minHeight: 44 }} aria-label={`${s.name} 소모임 직책`} value={s.role}
+            <select className="field" style={{ width: "auto", minWidth: 120, minHeight: 44 }} aria-label={`${s.name} 소모임 직책`} value={s.role} disabled={!data.canEditRoles}
               onChange={(e) => setRoster(roster.map((x) => (x.id === s.id ? { ...x, role: e.target.value } : x)))}>
               <option value="">일반 회원</option>
               {[...new Set([...data.clubRoles, ...(s.role ? [s.role] : [])])].map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
-            <button className="mini danger" type="button" onClick={() => setRoster(roster.filter((x) => x.id !== s.id))}>빼기</button>
+            {(data.canEditRoles || !data.roster.find((x) => x.id === s.id)?.role) && (
+              <button className="mini danger" type="button" onClick={() => setRoster(roster.filter((x) => x.id !== s.id))}>빼기</button>
+            )}
           </div>
         ))}
         <MemberSearch

@@ -3,21 +3,28 @@
 import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { EventHeadCard, FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, type FeeView } from "@/components/EventInfoCard";
 import { IconStar } from "@/components/Icons";
 import { LiveActivities } from "@/components/LiveActivities";
 import { EventMinutes } from "@/components/EventMinutes";
 import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
-import { clubLine, ObserversCard } from "./ObserversCard";
-import { api, fmtDaySpan, fmtWhen, TYPE_TONE, won } from "@/lib/client";
+import { ScheduleView } from "@/components/ScheduleBoard";
+import { Sheet } from "@/components/Sheet";
+import { ClubRequestCard } from "./ClubRequestCard";
+import { ObserversCard } from "./ObserversCard";
+import { api, fmtDateDow, fmtDays, fmtDaySpan, won } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Detail = {
   event: {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
-    fee: string;
-    club?: string; clubLeaders?: { name: string; role: string }[]; canObserve?: boolean;
+    booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
+    club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
+    canApply?: boolean; // false: 내가 속하지 않은 소모임 일정(읽기만)
+    requests?: { join: string; observe: string } | null; // 내 가입·참관 신청 상태
   };
+  activities: { id: string; name: string }[];
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
   feeDue: boolean;
 };
@@ -34,33 +41,91 @@ function dday(startsAt: string, endsAt: string): string {
   if (today <= end) return "오늘 진행";
   return "";
 }
-const days = (list: string[]) => fmtDaySpan(list);
+// 일정 기간의 날짜 목록 (최대 7일)
+function eventDays(startsAt: string, endsAt: string): string[] {
+  const from = startsAt.slice(0, 10);
+  const to = (endsAt || startsAt).slice(0, 10);
+  if (!from) return [];
+  const out: string[] = [];
+  const d = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T00:00:00`);
+  while (d <= end && out.length < 7) {
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
 // 일정·회비 관리 권한(지금 DB 기준)이 있으면 "일정 관리" 버튼
 const canManageOf = (p?: string[]) => !!p && ["all", "events", "fees"].some((x) => p.includes(x));
 
-// ⑥ 일정 홈: D-day, 회비 알림, 활동 길
-export default function EventHomePage({ params }: { params: Promise<{ id: string }> }) {
+// 일정 화면(한 페이지): 일정을 누르면 모두 여기로 온다(참석 여부를 알렸든 안 알렸든).
+//  위: D-day · 회비 알림 · 일정 카드(유형·이름·일시·장소)
+//  가운데: 주요 활동 · 내 참가비 · 안내 · 일정 — "펼쳐서 보기"로 여닫는다(관리자 개요의 "회원에게 보이는 모습"과 같은 조각)
+//  아래: 참석 신청(참석 신청했어요 … 일정으로 돌아가기)
+export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [d, setD] = useState<Detail | null>(null);
+  const [schedule, setSchedule] = useState<{ at: string; title: string }[]>([]);
   const [error, setError] = useState("");
   const [manage, setManage] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [sel, setSel] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     const m = await api<{ consent: boolean; livePerms?: string[] }>("/api/me");
     if (!m.ok) return void (m.status === 401 ? router.replace("/") : setError(m.error));
     if (!m.data.consent) return void router.replace("/events");
     setManage(canManageOf(m.data.livePerms));
-    const r = await api<Detail>(`/api/events/${id}`);
+    const [r, mine] = await Promise.all([
+      api<Detail>(`/api/events/${id}`),
+      api<{ schedule: { at: string; title: string }[] }>(`/api/events/${id}/mine`),
+    ]);
     if (!r.ok) return setError(r.error);
-    // 참석 여부를 아직 안 알렸으면 개요부터 보여 준다.
-    if (!r.data.apply || r.data.apply.answer === "") return void router.replace(`/events/${id}/overview`);
     setD(r.data);
+    if (mine.ok) setSchedule(mine.data.schedule);
   }, [id, router]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // 신청을 마친 뒤: 회비가 있으면 회비 안내, 없으면 이 화면 그대로
+  const next = (fee: string) => {
+    if (fee) router.push(`/events/${id}/fee`);
+  };
+
+  async function apply(answer: "참석" | "불참") {
+    if (!d) return;
+    setBusy(true);
+    setError("");
+    const r = await api(`/api/events/${id}/apply`, { body: { answer } });
+    if (!r.ok) {
+      setBusy(false);
+      return setError(r.error);
+    }
+    await load();
+    setBusy(false);
+    if (answer === "참석" && d.event.type === "워크숍") {
+      setSel(d.apply?.days ?? []);
+      setPicking(true);
+    } else if (answer === "참석") {
+      next(d.event.fee);
+    }
+  }
+
+  async function saveDays() {
+    setBusy(true);
+    const r = await api(`/api/events/${id}/apply`, { body: { answer: "참석", days: sel } });
+    setBusy(false);
+    if (!r.ok) return setError(r.error);
+    setPicking(false);
+    // 참석 날짜에 따라 회비가 달라질 수 있으므로 날짜를 저장한 뒤의 내 회비로 다음 화면을 정한다.
+    const fresh = await api<Detail>(`/api/events/${id}`);
+    if (fresh.ok) setD(fresh.data);
+    next(fresh.ok ? fresh.data.event.fee : d?.event.fee ?? "");
+  }
 
   if (error && !d) {
     return (
@@ -75,7 +140,12 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
 
   const e = d.event;
   const dd = dday(e.startsAt, e.endsAt);
-  const tripDays = e.type === "워크숍" && d.apply?.answer === "참석" ? days(d.apply.days) : "";
+  const answer = d.apply?.answer ?? "";
+  const tripDays = e.type === "워크숍" && answer === "참석" ? fmtDaySpan(d.apply?.days ?? []) : "";
+  const days = eventDays(e.startsAt, e.endsAt);
+  const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
+  const hasFee = !!e.fee || !!e.feePending;
+  const actNames = d.activities.map((a) => a.name);
 
   return (
     <main className="app with-tabs">
@@ -104,22 +174,100 @@ export default function EventHomePage({ params }: { params: Promise<{ id: string
         <Link href="/events" className="small" style={{ fontWeight: 700, color: "var(--blue-t)", textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>‹ 일정 목록으로</Link>
         {manage && <Link className="mini" href={`/admin/events/${id}`} style={{ minHeight: 40 }}>일정 관리</Link>}
       </div>
+      {error && <div className="msg bad" role="alert">{error}</div>}
 
-      <Link href={`/events/${id}/overview`} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, textDecoration: "none", color: "inherit" }}>
-        <div>
-          <span className={`pill ${TYPE_TONE[e.type] ?? "gray"}`}>{e.type}</span>
-          <b style={{ display: "block", font: `700 ${fs(17)} var(--display)` }}>{e.name}</b>
-          <div className="small">{fmtWhen(e.startsAt, e.endsAt, e.place)}</div>
-          {e.club && <div className="small">소모임: {clubLine(e.club, e.clubLeaders)}</div>}
-        </div>
-        <span className="small" style={{ fontWeight: 700, color: "var(--blue-t)", whiteSpace: "nowrap" }}>일정 개요 ›</span>
-      </Link>
-      {d.apply?.answer === "불참" && <div className="msg info">참석 안함으로 알렸어요. 일정 개요에서 언제든 바꿀 수 있어요.</div>}
+      <EventHeadCard ev={e}>
+        {e.observer && <div className="small">참관자로 초대받았어요.</div>}
+      </EventHeadCard>
+
+      {/* 주요 활동: 펼치면 예전 일정 홈의 활동 길(함께할 활동)과 진행 중 카드. 일정 당일에는 처음부터 펼쳐 둔다. */}
+      {actNames.length > 0 && (
+        <Fold title="주요 활동" summary={actNames.join(" · ")} defaultOpen={dd === "오늘 진행"}>
+          <LiveActivities eventId={id} layout="path" />
+        </Fold>
+      )}
+      {hasFee && (
+        <Fold title="내 참가비" summary={feeSummary(e, fee)}>
+          <FeeDetail ev={e} fee={fee} />
+          {d.apply?.paid && <div className="small" style={{ color: "var(--green-t)" }}>회비 입금 확인됨 ✓</div>}
+          {d.feeDue && (
+            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minWidth: 180 }} onClick={() => router.push(`/events/${id}/fee`)}>
+              {d.apply?.payNotice ? "입금 확인 기다리는 중 · 안내 보기" : "입금 안내 보기 · 입금 알리기"}
+            </button>
+          )}
+        </Fold>
+      )}
+      {e.booking?.trim() && (
+        <Fold title="안내" summary={noticeSummary(e.booking)}>
+          <NoticeText text={e.booking.trim()} />
+        </Fold>
+      )}
+      {schedule.length > 0 && (
+        <Fold title="일정" summary={`세부 일정 ${schedule.length}개`}>
+          <ScheduleView items={schedule} />
+        </Fold>
+      )}
 
       {e.type === "회의" && <EventMinutes eventId={id} />}
-      <LiveActivities eventId={id} layout="path" />
-      <MineInfo eventId={id} />
+      <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />
       {e.canObserve && <ObserversCard eventId={id} />}
+
+      {/* 참석 신청(예전 일정 개요의 아래쪽 그대로) */}
+      {answer === "참석" && (
+        <div className="msg info">
+          참석 신청했어요{d.apply && d.apply.days.length > 0 ? ` · ${fmtDays(d.apply.days)}` : ""}
+          {d.apply?.paid ? " · 회비 입금 확인됨 ✓" : ""}
+        </div>
+      )}
+      {answer === "불참" && <div className="msg info">참석 안함으로 알렸어요. 마음이 바뀌면 언제든 바꿀 수 있어요.</div>}
+
+      {e.canApply === false && e.club ? (
+        <>
+          <ClubRequestCard eventId={id} club={e.club} requests={e.requests ?? null} onSent={load} />
+          <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
+        </>
+      ) : !e.startsAt && answer === "" ? (
+        <div className="footer-actions">
+          <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>날짜가 정해지면 알려 드려요</b><span className="t">일정이 확정되면 그때 참석 여부를 받을게요.</span></div></div>
+          <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
+        </div>
+      ) : (
+        <div className="footer-actions">
+          {answer === "" && <p className="hint center">참석 여부를 알려 주세요. 나중에 바꿀 수 있어요.</p>}
+          <div className="row">
+            <button className="btn" type="button" disabled={busy || answer === "참석"} onClick={() => apply("참석")}>
+              {answer === "참석" ? "신청 완료 ✓" : "참석 신청하기"}
+            </button>
+            <button className={`btn ${answer === "불참" ? "blue" : "white"}`} type="button" disabled={busy || answer === "불참"} onClick={() => apply("불참")}>
+              참석 안함
+            </button>
+          </div>
+          {answer === "참석" && e.type === "워크숍" && (
+            <button className="btn white" type="button" onClick={() => { setSel(d.apply?.days ?? []); setPicking(true); }}>참석 날짜 바꾸기</button>
+          )}
+          {/* 한 페이지가 되었으므로 "일정으로 돌아가기"는 이 화면 맨 위(일정 정보)로 올라간다 */}
+          {answer !== "" && <button className="btn white" type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>일정으로 돌아가기</button>}
+        </div>
+      )}
+
+      {picking && (
+        <Sheet title="졸업여행 참석 날짜를 골라요" mascot>
+          <p className="small" style={{ margin: 0 }}>1박 2일 참석하시면 두 날짜를 모두 눌러 주세요.</p>
+          <div className="pick">
+            {days.map((iso) => {
+              const on = sel.includes(iso);
+              return (
+                <button key={iso} className="opt rowopt" type="button" aria-pressed={on}
+                  onClick={() => setSel(on ? sel.filter((x) => x !== iso) : [...sel, iso])}>
+                  <span className="name grow">{fmtDateDow(iso)}</span>
+                  <span className="tick" />
+                </button>
+              );
+            })}
+          </div>
+          <button className="btn" type="button" disabled={busy || sel.length === 0} onClick={saveDays}>확인</button>
+        </Sheet>
+      )}
 
       <MemberTabs on="events" />
     </main>

@@ -16,7 +16,8 @@ const when = (at: string) => fmtDateTime(at); // "2026/12/11 14:00"
 
 // 회원이 보는 일정 정보: 일정, 내 조편성(배포된 것), 내 카풀(배포된 것)
 // placeholder: 조편성·카풀이 아직 배포되지 않았을 때 "조 편성 후 알려 드려요" 카드를 보여 준다.
-export function MineInfo({ eventId, placeholder = false }: { eventId: string; placeholder?: boolean }) {
+// noSchedule: 일정 칸은 빼고 그린다(일정 화면은 일정을 "펼쳐서 보기" 칸으로 따로 보여 준다).
+export function MineInfo({ eventId, placeholder = false, noSchedule = false }: { eventId: string; placeholder?: boolean; noSchedule?: boolean }) {
   const [d, setD] = useState<Data | null>(null);
   useEffect(() => {
     let stop = false;
@@ -39,7 +40,7 @@ export function MineInfo({ eventId, placeholder = false }: { eventId: string; pl
       {placeholder && nothingYet && (
         <div className="card"><b style={{ font: `700 ${fs(17)} var(--display)` }}>내 조와 카풀</b><div className="small">조 편성 후 알려 드려요.</div></div>
       )}
-      {d.schedule.length > 0 && (
+      {!noSchedule && d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>일정</b>
           {/* 날짜 제목 아래 시간순 */}

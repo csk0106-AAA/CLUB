@@ -231,8 +231,8 @@ export default function SettingsPage() {
               : club && <span>{club}</span>}
           </div>
           <div className="icons">
-            {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요) */}
-            {me && me.perms.length > 0 && (
+            {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요). 소모임 직책자도 소모임관리·활동 템플릿으로 들어가요(비밀번호 없이). */}
+            {me && (me.perms.length > 0 || me.clubs.some((c) => c.role)) && (
               <Link href="/admin" aria-label={issues > 0 ? `관리자 화면, 처리할 일 ${issues}개` : "관리자 화면"} title="관리자 화면" style={headIcon}>
                 <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
                 {issues > 0 && <span className={tabsCss.badge} aria-hidden="true">{issues > 99 ? "99+" : issues}</span>}

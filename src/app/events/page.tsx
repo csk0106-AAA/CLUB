@@ -84,9 +84,9 @@ export default function EventsPage() {
   const canManage = canCreate || perms.includes("fees");
   const [creating, setCreating] = useState(false);
 
-  // 참석 여부를 아직 안 알린 일정(또는 신청할 수 없는 다른 소모임 일정)는 개요(③)부터, 알린 일정은 홈(⑥)으로 간다.
+  // 일정은 모두 일정 화면(/events/[id] 한 페이지: 개요 정보 + 참석 신청)으로 간다.
   // 초안은 회원 화면이 없으므로 관리 화면으로 간다.
-  const hrefOf = (e: Ev) => (e.draft ? `/admin/events/${e.id}` : e.myAnswer === "" ? `/events/${e.id}/overview` : `/events/${e.id}`);
+  const hrefOf = (e: Ev) => (e.draft ? `/admin/events/${e.id}` : `/events/${e.id}`);
   function open(e: Ev) {
     router.push(hrefOf(e));
   }

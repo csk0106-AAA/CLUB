@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { adminOrOfficer, bad } from "@/lib/api";
 import { ask, isAiEnabled } from "@/lib/ai";
 import { templateInput } from "@/lib/activities";
 import { DEFAULT_TEMPLATES } from "@/lib/template-schema";
@@ -57,7 +57,7 @@ function parseOut(text: string): { reply: string; config: unknown } | null {
 }
 
 export async function POST(req: Request) {
-  const g = await guard("activities");
+  const g = await adminOrOfficer("activities");
   if ("err" in g) return g.err;
   if (!isAiEnabled()) return bad("AI가 아직 연결되지 않았어요. 기존 템플릿을 복제해서 직접 맞춰 주세요.", 503);
   const parsed = body.safeParse(await req.json().catch(() => null));

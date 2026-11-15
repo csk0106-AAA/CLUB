@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isAiEnabled } from "@/lib/ai";
 import { AI_POINTS, pointGuides, pointKey } from "@/lib/ai-guides";
-import { bad, guard } from "@/lib/api";
+import { adminOrOfficer, bad, guard } from "@/lib/api";
 import { DEFAULT_GUIDELINES, DEFAULT_QUESTIONS, getSetting, setSetting } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ const body = z.object({
 
 // 인터뷰 필수 질문과 AI 지침. 모든 AI 호출의 지침에 포함된다.
 export async function GET() {
-  const g = await guard(["activities", "events"]);
+  const g = await adminOrOfficer(["activities", "events"]);
   if ("err" in g) return g.err;
   return NextResponse.json({
     questions: await getSetting("interviewQuestions", DEFAULT_QUESTIONS),

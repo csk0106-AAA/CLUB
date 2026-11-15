@@ -11,8 +11,9 @@ import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
 import { DateField } from "@/components/DateField";
 import { ObserversCard } from "@/app/events/[id]/ObserversCard";
+import { EventPreview, eventInfoLines } from "@/components/EventInfoCard";
 import { EventAudience } from "./EventAudience";
-import { api, fmtDate, fmtDateDow, fmtDays, fmtRange, TYPE_TONE, won } from "@/lib/client";
+import { api, fmtDate, fmtDateDow, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
 import type { FeeRule } from "@/lib/fee";
 import { fs } from "@/lib/fs";
@@ -48,27 +49,8 @@ const TABS = [
 // 회의·미팅은 회비·활동·비용·조편성·카풀·숙박이 필요 없다. 회의록 탭은 회의 일정에만.
 const LIGHT_TABS = ["over", "minutes", "apply", "sched", "prep"];
 const tabsFor = (type: string) => TABS.filter((t) => (t.key === "minutes" ? type === "회의" : !isLight(type) || LIGHT_TABS.includes(t.key)));
-// 회비 줄이 "모두 전체" 한 줄뿐이면 모든 회원이 같은 금액(그 금액), 아니면 null
-const oneFee = (rules?: FeeRule[]): string | null =>
-  rules && rules.length === 1 && !rules[0].days && !rules[0].kind && !rules[0].position && Number(rules[0].amount) > 0 ? rules[0].amount : null;
-// 일정 정보 줄(한 줄에 하나씩, 아이콘 포함). "회원에게 보이는 모습"과 대화방 안내 문구가 같이 쓴다.
-// 회비가 "전체·전체·전체" 한 줄뿐(모두 같은 금액)일 때만 금액과 계좌를 보여 주고,
-// 여러 줄이면 회원마다 금액이 다르므로 "앱 접속 후 내 회비 확인"만 쓴다(계좌는 앱의 회비 안내에서).
-type InfoLine = { icon: string; label: string; value: string; multiline?: boolean };
-function infoLines(ev: Ev, rules: FeeRule[], actNames: string[]): InfoLine[] {
-  const out: InfoLine[] = [];
-  if (ev.club) out.push({ icon: "👥", label: "소모임", value: ev.club });
-  out.push({ icon: "📅", label: "일시", value: fmtRange(ev.startsAt, ev.endsAt) });
-  if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
-  if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
-  const one = oneFee(rules);
-  if (one) out.push({ icon: "💰", label: "참가비", value: won(one) });
-  else if (rules.length) out.push({ icon: "💰", label: "참가비", value: "앱 접속 후 내 회비 확인" });
-  if (rules.length && ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: fmtDate(ev.feeDeadline) });
-  if (one && ev.account) out.push({ icon: "🏦", label: "계좌", value: `${ev.account}${ev.accountHolder ? ` (예금주 ${ev.accountHolder})` : ""}` });
-  if (ev.booking?.trim()) out.push({ icon: "📢", label: "안내", value: ev.booking.trim(), multiline: true });
-  return out;
-}
+// 일정 정보 줄과 "회원에게 보이는 모습" 카드는 회원 화면(일정 개요·일정 홈)과 같은 코드(EventInfoCard)를 쓴다.
+// 회비가 "전체·전체·전체" 한 줄뿐(모두 같은 금액)일 때만 금액과 계좌를 보여 주고, 여러 줄이면 "앱 접속 후 내 회비 확인"(회원은 본인 회비만 봐요).
 
 const dayText = (days: string) => (days ? fmtDays(days) : "");
 // 소모임 일정 참석 현황의 이름 옆 표시: 회장(소모임 직책) / 참관자
@@ -90,6 +72,7 @@ function Detail({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
   const [actNames, setActNames] = useState<string[]>([]);
+  const [schedule, setSchedule] = useState<{ at: string; title: string }[]>([]); // 세부 일정(미리보기용)
   const [opts, setOpts] = useState<Opts>({ kinds: [], positions: [], clubs: [], dues: { account: "", holder: "" } });
   const [prefilled, setPrefilled] = useState("");
 
@@ -100,10 +83,12 @@ function Detail({ id }: { id: string }) {
   }, []);
 
   const load = useCallback(async () => {
-    const [r, a] = await Promise.all([
+    const [r, a, sc] = await Promise.all([
       api<{ event: Ev; rows: Row[]; options: Opts }>(`/api/admin/events/${id}`),
       api<{ activities: { config: { name: string } }[] }>(`/api/admin/events/${id}/activities`),
+      api<{ items: { at?: string; title?: string }[] }>(`/api/admin/events/${id}/items/schedule`),
     ]);
+    if (sc.ok) setSchedule(sc.data.items.map((i) => ({ at: String(i.at ?? ""), title: String(i.title ?? "") })));
     if (r.ok) {
       // 예전 "기본 회비"가 남아 있으면 모두 "전체"인 회비 줄로 옮겨 보여 준다(저장하면 그대로 바뀐다).
       const e = r.data.event;
@@ -212,7 +197,7 @@ function Detail({ id }: { id: string }) {
   // 계좌는 모든 회원 회비가 같을 때만 넣는다(infoLines 참고).
   async function copyAnnounce() {
     if (!ev) return;
-    const body = infoLines(ev, rules, actNames).flatMap((x) =>
+    const body = eventInfoLines(infoEv, { kind: "rules", rules }, actNames).flatMap((x) =>
       x.multiline ? [`${x.icon} ${x.label}`,...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
     );
     const lines = [
@@ -251,6 +236,8 @@ function Detail({ id }: { id: string }) {
   const noAns = rows.filter((r) => r.answer === "");
   const paid = attend.filter((r) => r.paid);
   const rules = ev.feeRules ?? [];
+  // 회원 화면과 같은 정보 카드용(소모임 일정이면 회장 등 직책자도 함께)
+  const infoEv = { ...ev, clubLeaders: curClub?.leaders };
   const setRules = (next: FeeRule[]) => setEv({ ...ev, feeRules: next });
   // 참석일 선택지: 일정 기간(최대 7일)
   const dayCount = (() => {
@@ -270,9 +257,14 @@ function Detail({ id }: { id: string }) {
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
           <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "초안"}</span>
-          <Link href={ev.published === "true" ? `/events/${id}/overview` : "/events"} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
-            {ev.published === "true" ? "회원 화면에서 보기 ›" : "‹ 일정 목록"}
+          <Link href="/admin/events" style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
+            ‹ 일정 목록
           </Link>
+          {ev.published === "true" && (
+            <Link href={`/events/${id}`} style={{ fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
+              회원 화면에서 보기 ›
+            </Link>
+          )}
         </div>
         <h1 className="title" style={{ overflowWrap: "anywhere" }}>{ev.name}</h1>
       </div>
@@ -397,23 +389,7 @@ function Detail({ id }: { id: string }) {
               {actNames.length ? actNames.map((n) => <span key={n} className="pill blue" style={{ fontSize: fs(15) }}>{n}</span>) : <span className="small">아직 넣은 활동이 없어요.</span>}
             </div>
           </div>}
-          <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 6 }}>
-            <span className="pill gray" style={{ alignSelf: "flex-start" }}>회원에게 보이는 모습</span>
-            <b style={{ font: `700 ${fs(19)} var(--display)` }}>{ev.name}</b>
-            {/* 한 줄에 정보 하나씩(대화방 안내 문구와 같은 순서·아이콘) */}
-            {infoLines(ev, rules, actNames).map((x) =>
-              x.multiline ? (
-                <div key={x.label} className="small">
-                  <div><span aria-hidden="true">{x.icon}</span> {x.label}</div>
-                  <div style={{ whiteSpace: "pre-wrap", paddingLeft: 26 }}>{x.value}</div>
-                </div>
-              ) : (
-                <div key={x.label} className="small">
-                  <span aria-hidden="true">{x.icon}</span> {x.label}: {x.value}
-                </div>
-              ),
-            )}
-          </div>
+          <EventPreview ev={infoEv} rules={rules} actNames={actNames} schedule={schedule} />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="submit" disabled={busy} style={{ width: "auto", minWidth: 160 }}>임시 저장</button>
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }} onClick={() => save(true)}>
@@ -541,5 +517,5 @@ function Detail({ id }: { id: string }) {
 
 export default function EventDetailAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  return <AdminGate need={["events", "fees"]}><Detail id={id} /></AdminGate>;
+  return <AdminGate mode="events" need={["events", "fees"]}><Detail id={id} /></AdminGate>;
 }

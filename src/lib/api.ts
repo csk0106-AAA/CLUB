@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { can, getSession, type Session } from "./auth";
+import { memberClubs } from "./lists";
 import { getStore } from "./store";
 
 type Guard = { s: Session } | { err: NextResponse };
@@ -17,6 +18,23 @@ export async function guard(perm?: string | string[]): Promise<Guard> {
     }
   }
   return { s };
+}
+
+// 관리자(perm, 2차 비밀번호 통과) 또는 소모임 직책자(관리자 비밀번호 없이) 통과.
+//  adminOk: 관리자 권한으로 통과했는지(모든 소모임·삭제 등), officerOf: 내가 직책을 맡은 소모임 이름들(지금 DB 기준)
+export type OfficerGuard = { s: Session; adminOk: boolean; officerOf: string[] } | { err: NextResponse };
+export async function adminOrOfficer(perm: string | string[]): Promise<OfficerGuard> {
+  const s = await getSession();
+  if (!s) return { err: NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 }) };
+  if (s.host) return { err: hostOnly() };
+  const list = Array.isArray(perm) ? perm : [perm];
+  const adminOk = list.some((p) => can(s, p));
+  const me = (await (await getStore()).list("Members")).find((m) => m.id === s.mid);
+  const officerOf = me ? memberClubs(me).filter((c) => c.role).map((c) => c.name) : [];
+  if (!adminOk && officerOf.length === 0) {
+    return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
+  }
+  return { s, adminOk, officerOf };
 }
 
 // 진행자 접속번호로 들어온 세션이 다른 화면을 부르면: 화면(client.ts)이 hostOnly 를 보고 /host 로 보낸다.

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { readConfig } from "@/lib/activities";
 import { aiSettingsInput, cleanAiSettings } from "@/lib/ai-guides";
-import { bad, guard } from "@/lib/api";
+import { adminOrOfficer, bad } from "@/lib/api";
 import { getStore } from "@/lib/store";
 import { SAVE_MODES, saveTemplate } from "@/lib/template-versions";
 
@@ -13,7 +13,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const body = aiSettingsInput.extend({ mode: z.enum(SAVE_MODES).default("version"), name: z.string().max(100).optional() });
 
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await adminOrOfficer("activities");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

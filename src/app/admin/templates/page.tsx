@@ -35,6 +35,7 @@ const summary = (c: TemplateConfig) =>
 
 function Templates() {
   const [list, setList] = useState<T[] | null>(null);
+  const [canDelete, setCanDelete] = useState(false); // 지우기는 관리자(활동 권한)만 — 소모임 직책자는 만들고 고치기만
   // 편집 창. base 가 있으면 그 버전을 바탕으로 새 버전을 만들고, 없으면 새 템플릿(v1)을 만든다.
   const [edit, setEditRaw] = useState<{ base: T | null; next: number; value: EditableConfig; orig: string } | null>(null);
   const [editErr, setEditErr] = useState("");
@@ -53,9 +54,11 @@ function Templates() {
   const verFam = fams.find((f) => f.id === verFor) ?? null;
 
   const load = useCallback(async () => {
-    const r = await api<{ templates: T[] }>("/api/admin/templates");
-    if (r.ok) setList(r.data.templates);
-    else setMsg({ tone: "bad", text: r.error });
+    const r = await api<{ templates: T[]; canDelete: boolean }>("/api/admin/templates");
+    if (r.ok) {
+      setList(r.data.templates);
+      setCanDelete(r.data.canDelete);
+    } else setMsg({ tone: "bad", text: r.error });
   }, []);
   useEffect(() => {
     load();
@@ -139,7 +142,7 @@ function Templates() {
           <button className="mini" type="button" onClick={() => { setMsg(null); setVerFor(null); setGuideFor(t); }}>
             AI 지침{hasAi(t.config) ? " ✓" : ""}
           </button>
-          {t.deletable && <button className="mini danger" type="button" onClick={() => remove(t)}>삭제</button>}
+          {canDelete && t.deletable && <button className="mini danger" type="button" onClick={() => remove(t)}>삭제</button>}
         </div>
       </div>
     );

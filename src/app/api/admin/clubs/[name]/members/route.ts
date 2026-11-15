@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { adminOrOfficer, bad } from "@/lib/api";
 import { clubParam } from "@/lib/clubs";
 import { getLists, memberClubs } from "@/lib/lists";
 import { checkPermChange, getPermGroups, isAllNow } from "@/lib/perms";
@@ -18,11 +18,12 @@ const body = z.object({
 });
 
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await guard("members");
+  const g = await adminOrOfficer("members");
   if ("err" in g) return g.err;
   const name = clubParam((await ctx.params).name);
   const lists = await getLists();
   if (!lists.clubs.includes(name)) return bad("소모임을 찾을 수 없어요.", 404);
+  if (!g.adminOk && !g.officerOf.includes(name)) return bad("내가 직책을 맡은 소모임만 관리할 수 있어요.", 403);
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
   const seats = new Map(parsed.data.seats.map((x) => [x.memberId, x.role]));
@@ -33,6 +34,18 @@ export async function PUT(req: Request, ctx: Ctx) {
   const members = await s.list("Members");
   const ids = new Set(members.map((m) => m.id));
   if ([...seats.keys()].some((id) => !ids.has(id))) return bad("명단에 없는 회원이 있어요. 새로고침 후 다시 해 주세요.");
+
+  // 소모임 직책자(관리자 아님)는 일반 회원을 더하거나 빼기만: 직책을 주거나 바꾸거나, 직책자를 빼는 것은 관리자만.
+  if (!g.adminOk) {
+    const roleNow = new Map(members.flatMap((m) => {
+      const seat = memberClubs(m).find((c) => c.name === name);
+      return seat ? [[m.id, seat.role] as const] : [];
+    }));
+    const roleChanged =
+      [...seats].some(([id, role]) => (roleNow.get(id) ?? "") !== role) ||
+      [...roleNow].some(([id, role]) => role && !seats.has(id));
+    if (roleChanged) return bad("소모임 직책을 정하거나 바꾸는 것은 관리자만 할 수 있어요. 일반 회원을 더하거나 빼는 것만 할 수 있어요.", 403);
+  }
 
   const patches = new Map<string, string>();
   for (const m of members) {

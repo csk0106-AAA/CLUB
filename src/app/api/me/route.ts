@@ -29,6 +29,8 @@ async function view(s: Sess, me: Member) {
     title: me.title ?? "",
     phone: me.phone ?? "",
     clubs: memberClubs(me),
+    // 내가 직책(회장·총무 등)을 맡은 소모임: 관리자 화면의 소모임관리·활동 템플릿에 들어갈 수 있다(관리자 비밀번호 없이)
+    clubOfficerOf: memberClubs(me).filter((c) => c.role).map((c) => c.name),
     // 내가 회장(대표)인 소모임: 설정 › 내 소모임에서 소모임 회비 화면으로 가는 버튼
     headClubs: await headClubsOf(me),
     clubOptions: clubs,

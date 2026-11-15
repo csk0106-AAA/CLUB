@@ -8,13 +8,25 @@ import { IconBack, IconExport } from "./Icons";
 import { MemberTabs } from "./MemberTabs";
 import { PasswordField } from "./PasswordField";
 
-type Me = { name: string; perms: string[]; admin: boolean; consent: boolean };
+type Me = { name: string; perms: string[]; admin: boolean; consent: boolean; clubOfficerOf?: string[] };
+
+export type AdminMode = "members" | "events" | "clubs" | "templates";
+const MODES: { key: AdminMode; href: string; label: string }[] = [
+  { key: "members", href: "/admin/members", label: "회원관리" },
+  { key: "events", href: "/admin/events", label: "일정관리" },
+  { key: "clubs", href: "/admin/clubs", label: "소모임관리" },
+  { key: "templates", href: "/admin/templates", label: "활동 템플릿" },
+];
+// 소모임 직책자(관리자 권한 없음)가 관리자 비밀번호 없이 들어올 수 있는 화면
+const OFFICER_MODES: AdminMode[] = ["clubs", "templates"];
 
 // 관리자 화면 공통 틀: 로그인 확인 → 관리자 2차 비밀번호 → 권한 확인 → 위쪽 메뉴.
-// mode: 회원관리 / 소모임관리 / 활동 템플릿 중 어느 쪽 화면인지(일정 관리 화면은 mode 없이 — 일정 페이지에서 들어온다).
+// mode: 회원관리 / 일정관리 / 소모임관리 / 활동 템플릿 중 어느 쪽 화면인지.
 // need: 필요한 권한(하나라도 있으면 통과).
+// 접근: 관리자(권한이 하나라도 있음)는 네 메뉴 모두(각 화면은 필요한 권한을 다시 확인),
+//       소모임 직책자는 소모임관리·활동 템플릿만(관리자 비밀번호 없이 — 서버도 직책자로 확인한다).
 export function AdminGate(props: {
-  mode?: "members" | "clubs" | "templates";
+  mode?: AdminMode;
   need?: string[];
   active?: string;
   children: React.ReactNode;
@@ -57,17 +69,38 @@ export function AdminGate(props: {
     return <main className="app admin with-tabs">{error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>}<MemberTabs on="admin" /></main>;
   }
 
-  if (me.perms.length === 0) {
+  const need = props.need ?? [];
+  const isAdmin = me.perms.length > 0;
+  const officerOf = me.clubOfficerOf ?? [];
+  const officer = officerOf.length > 0;
+  const hasNeed = need.length === 0 || me.perms.includes("all") || need.some((p) => me.perms.includes(p));
+  // 소모임 직책자로 들어가는 화면: 소모임관리·활동 템플릿이고, 관리자 권한으로는 이 화면 권한이 없을 때(비밀번호 없이)
+  const asOfficer = officer && !!props.mode && OFFICER_MODES.includes(props.mode) && !(isAdmin && hasNeed);
+  const modes = isAdmin ? MODES : MODES.filter((m) => OFFICER_MODES.includes(m.key));
+
+  if (!isAdmin && !asOfficer) {
     return (
       <main className="app admin with-tabs">
-        <div className="msg bad" role="alert">관리자 권한이 없는 계정이에요.</div>
-        <button className="btn white" type="button" onClick={() => router.push("/board")}>회원 화면으로</button>
+        {officer ? (
+          <>
+            <div className="msg bad" role="alert">소모임 직책자는 소모임관리와 활동 템플릿만 쓸 수 있어요.</div>
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              <Link className="btn" href="/admin/clubs" style={{ width: "auto", minWidth: 160, textDecoration: "none" }}>소모임관리로</Link>
+              <Link className="btn white" href="/admin/templates" style={{ width: "auto", minWidth: 160, textDecoration: "none" }}>활동 템플릿으로</Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="msg bad" role="alert">관리자 권한이 없는 계정이에요.</div>
+            <button className="btn white" type="button" onClick={() => router.push("/board")}>회원 화면으로</button>
+          </>
+        )}
         <MemberTabs on="settings" />
       </main>
     );
   }
 
-  if (!me.admin) {
+  if (!me.admin && !asOfficer) {
     return (
       <main className="app with-tabs">
         <h1 className="title">관리자 확인</h1>
@@ -87,8 +120,7 @@ export function AdminGate(props: {
     );
   }
 
-  const need = props.need ?? [];
-  const allowed = need.length === 0 || me.perms.includes("all") || need.some((p) => me.perms.includes(p));
+  const allowed = asOfficer || hasNeed;
 
   const sub =
     props.mode === "members"
@@ -97,7 +129,9 @@ export function AdminGate(props: {
         ? [{ href: "/admin/templates", label: "활동 템플릿" }, { href: "/admin/dev-requests", label: "개발 요청" }]
         : props.mode === "clubs"
           ? [{ href: "/admin/clubs", label: "소모임 목록" }]
-          : [];
+          : props.mode === "events"
+            ? [{ href: "/admin/events", label: "일정 목록" }]
+            : [];
 
   return (
     <main className="app admin with-tabs">
@@ -109,14 +143,16 @@ export function AdminGate(props: {
           </button>
           <h1>관리자</h1>
           <span className="me">{me.name}</span>
-          <Link className="exp" href="/admin/export" aria-current={props.active === "/admin/export" ? "page" : undefined}>
-            <IconExport size={14} /> 내보내기
-          </Link>
+          {isAdmin && (
+            <Link className="exp" href="/admin/export" aria-current={props.active === "/admin/export" ? "page" : undefined}>
+              <IconExport size={14} /> 내보내기
+            </Link>
+          )}
         </div>
         <nav className="modes" aria-label="관리자 구분">
-          <Link href="/admin/members" className={props.mode === "members" ? "on" : ""} aria-current={props.mode === "members" ? "true" : undefined}>회원관리</Link>
-          <Link href="/admin/clubs" className={props.mode === "clubs" ? "on" : ""} aria-current={props.mode === "clubs" ? "true" : undefined}>소모임관리</Link>
-          <Link href="/admin/templates" className={props.mode === "templates" ? "on" : ""} aria-current={props.mode === "templates" ? "true" : undefined}>활동 템플릿</Link>
+          {modes.map((m) => (
+            <Link key={m.key} href={m.href} className={props.mode === m.key ? "on" : ""} aria-current={props.mode === m.key ? "true" : undefined}>{m.label}</Link>
+          ))}
         </nav>
       </header>
       {sub.length > 0 && (
@@ -124,7 +160,8 @@ export function AdminGate(props: {
           {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""} aria-current={props.active === s.href ? "page" : undefined}>{s.label}</Link>)}
         </nav>
       )}
-      {allowed ? props.children : <div className="msg bad" role="alert">이 화면을 볼 권한이 없어요.</div>}
+      {asOfficer && <p className="small" style={{ margin: 0 }}>소모임 직책자로 들어왔어요 ({officerOf.join(", ")}).</p>}
+      {allowed ? props.children : <div className="msg bad" role="alert">이 화면을 볼 권한이 없어요. 필요한 권한은 “모든 권한” 관리자에게 요청해 주세요.</div>}
       <MemberTabs on="admin" />
     </main>
   );
