@@ -11,7 +11,7 @@ import { Avatar, type AvatarView } from "@/components/Avatars";
 import { MemberTabs } from "@/components/MemberTabs";
 import tabsCss from "@/components/MemberTabs.module.css";
 import { OrgView } from "@/components/OrgView";
-import { headIcon, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "@/components/HeadIcon";
+import { headIcon, headLabel, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "@/components/HeadIcon";
 import { Popup } from "@/components/Popup";
 import { PostEditor } from "@/components/board/PostEditor";
 import { fileUrl, type BoardMe, type PostSummary } from "@/components/board/types";
@@ -98,13 +98,16 @@ export default function BoardPage() {
             <button type="button" onClick={() => setAlertsOpen(true)} aria-haspopup="dialog" title="알림"
               aria-label={bell > 0 ? `알림, 새 소식 ${bell}개` : "알림"} style={headIcon}>
               <IconBell size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+              <span style={headLabel} aria-hidden="true">알림</span>
               {bell > 0 && <span className={tabsCss.badge} aria-hidden="true">{bell > 99 ? "99+" : bell}</span>}
             </button>
             <button type="button" onClick={() => setOrgOpen(true)} aria-haspopup="dialog" aria-label="조직도" title="조직도" style={headIcon}>
               <IconOrg size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+              <span style={headLabel} aria-hidden="true">조직도</span>
             </button>
             <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={headIcon}>
               <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+              <span style={headLabel} aria-hidden="true">로그아웃</span>
             </button>
           </div>
         </div>
