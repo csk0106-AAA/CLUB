@@ -6,6 +6,7 @@ import { ConsentSheet } from "@/components/ConsentSheet";
 import { EventCalendar } from "@/components/EventCalendar";
 import { EventCreate } from "@/components/EventCreate";
 import { IconPin } from "@/components/Icons";
+import { MainHeader } from "@/components/MainHeader";
 import { MemberTabs } from "@/components/MemberTabs";
 import { api, fmtDate, fmtWhen, TYPE_TONE } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -143,9 +144,11 @@ export default function EventsPage() {
 
   return (
     <main className="app with-tabs">
-      {/* 윗줄(목업 C): 제목 + 리스트|캘린더 보기 전환 (+ 일정 만들기) */}
-      <header className="topbar pagebar">
-        <h1 className="title">예정된 일정</h1>
+      {/* 윗줄: 홈·프로필 북과 같은 공통 머리(프로필 + 이름 + 알림·조직도·로그아웃) */}
+      <MainHeader />
+      {/* 제목 줄: 제목 + 리스트|캘린더 보기 전환 (+ 일정 만들기) */}
+      <div className="row" style={{ marginTop: 4, flexWrap: "wrap", gap: 8 }}>
+        <h1 className="title grow" style={{ whiteSpace: "nowrap" }}>예정된 일정</h1>
         <div className="seg" role="group" aria-label="보기 방식" style={{ flex: "none" }}>
           <button type="button" aria-pressed={view === "list"} onClick={() => view !== "list" && toggleView()} style={{ minHeight: 36, padding: "0 12px", fontSize: fs(13) }}>
             리스트
@@ -159,7 +162,7 @@ export default function EventsPage() {
             + 일정 만들기
           </button>
         )}
-      </header>
+      </div>
 
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}

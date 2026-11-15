@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, type AvatarView } from "@/components/Avatars";
+import { MainHeader } from "@/components/MainHeader";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Sheet } from "@/components/Sheet";
 import { api, fmtDateTime } from "@/lib/client";
@@ -56,9 +57,11 @@ export default function ProfilesPage() {
 
   return (
     <main className="app with-tabs">
-      <header className="topbar pagebar">
-        <h1 className="title">회원 프로필 북</h1>
-      </header>
+      {/* 윗줄: 홈·일정과 같은 공통 머리(프로필 + 이름 + 알림·조직도·로그아웃) */}
+      <MainHeader />
+      <div className="row" style={{ marginTop: 4 }}>
+        <h1 className="title grow">회원 프로필 북</h1>
+      </div>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!d && !error && !locked && <p className="small">불러오는 중이에요…</p>}
       {locked && !popup && (
