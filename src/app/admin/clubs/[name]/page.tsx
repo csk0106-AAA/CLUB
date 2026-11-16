@@ -10,6 +10,7 @@ import { EventCreate } from "@/components/EventCreate";
 import { useRouter } from "next/navigation";
 import { api, fmtWhen } from "@/lib/client";
 import { removeClub, renameClub } from "@/lib/club-list-client";
+import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
 
 type Info = { intro: string; cycle: string; place: string; bank: string; account: string; holder: string; feeAmount: string; feeText: string; policy: string };
@@ -227,13 +228,13 @@ function ClubEvents({ club }: { club: string }) {
     <>
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <p className="small grow" style={{ margin: 0, fontSize: fs(12) }}>
-          {club} 일정만 여기서 만들고 관리해요(관리자 › 일정관리에는 보이지 않아요). 모든 회원이 볼 수 있고, {club} 회원과 참관자만 참석 신청해요.
+          {clubLabel(club)} 일정만 여기서 만들고 관리해요(관리자 › 일정관리에는 보이지 않아요). 모든 회원이 볼 수 있고, {clubLabel(club)} 회원과 참관자만 참석 신청해요.
         </p>
         {canCreate && <button type="button" className="btn" style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14) }} aria-haspopup="dialog" onClick={() => setCreating(true)}>+ 소모임 일정 만들기</button>}
       </div>
       {error && <div className="msg info" role="status">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}
-      {events && events.length === 0 && <div className="msg info">아직 {club} 일정이 없어요.{canCreate ? " “+ 소모임 일정 만들기”로 시작해 보세요." : ""}</div>}
+      {events && events.length === 0 && <div className="msg info">아직 {clubLabel(club)} 일정이 없어요.{canCreate ? " “+ 소모임 일정 만들기”로 시작해 보세요." : ""}</div>}
       {upcoming.length > 0 && (
         <section aria-label="예정된 소모임 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <b style={{ font: `700 ${fs(15)} var(--display)` }}>예정 {upcoming.length}개</b>

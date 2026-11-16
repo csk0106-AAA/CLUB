@@ -1,3 +1,4 @@
+import { clubLabel } from "@/lib/club-label";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
@@ -68,7 +69,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   for (const mid of next) {
     const m = members.find((x) => x.id === mid);
     if (!m) return bad("명단에 없는 회원이 있어요. 새로고침 후 다시 해 주세요.");
-    if (inClub(m, club)) return bad(`${m.name} 님은 이미 ${club} 회원이라 참관자로 넣지 않아도 돼요.`);
+    if (inClub(m, club)) return bad(`${m.name} 님은 이미 ${clubLabel(club)} 회원이라 참관자로 넣지 않아도 돼요.`);
   }
   const before = readObservers(ev.observers);
   const changed = before.length !== next.length || before.some((x) => !next.includes(x));

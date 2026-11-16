@@ -16,6 +16,7 @@ import { EventAudience } from "./EventAudience";
 import { api, fmtDate, fmtDateDow, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
 import type { FeeRule } from "@/lib/fee";
+import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
 
 type Ev = {
@@ -408,7 +409,7 @@ function Detail({ id }: { id: string }) {
           <span className="small">전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
           {ev.club && (
             <>
-              <span className="small">소모임 일정이라 참석 신청 명단에는 {ev.club} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
+              <span className="small">소모임 일정이라 참석 신청 명단에는 {clubLabel(ev.club)} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
               <ObserversCard key={ev.club} eventId={id} admin onChange={load} />
             </>
           )}

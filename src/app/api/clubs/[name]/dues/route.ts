@@ -3,6 +3,7 @@ import { bad } from "@/lib/api";
 import { zodMessage } from "@/lib/board";
 import { duesInput, duesSummary, duplicateRule, writeClubDues } from "@/lib/dues";
 import { GENERAL_POSITION } from "@/lib/fee";
+import { clubLabel } from "@/lib/club-label";
 import { getLists } from "@/lib/lists";
 import { clubAdmin, clubMemberIds, headRole, postsOf } from "@/lib/published";
 import { clubDuesGuard, currentClubDues, type Ctx } from "./_guard";
@@ -27,7 +28,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     memberIds,
     headRole: role,
     admin: clubAdmin(g.me.perms),
-    template: { body: `${g.club} 회비를 안내해 드려요. 아래 ‘내 회비’를 확인하고 기한까지 보내 주세요. 입금자명은 본인 이름으로 부탁드려요.` },
+    template: { body: `${clubLabel(g.club)} 회비를 안내해 드려요. 아래 ‘내 회비’를 확인하고 기한까지 보내 주세요. 입금자명은 본인 이름으로 부탁드려요.` },
   });
 }
 

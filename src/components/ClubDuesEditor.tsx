@@ -5,6 +5,7 @@ import { DuesForm, DuesPreview, duesProblem, type DuesValue } from "@/components
 import { PublishBox, type PubPost } from "@/components/PublishBox";
 import type { Audience } from "@/lib/audience";
 import { api } from "@/lib/client";
+import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
 
 type Data = {
@@ -59,14 +60,14 @@ export function ClubDuesEditor({ club }: { club: string }) {
       setNote({ tone: "bad", text: r.error });
       return false;
     }
-    setNote({ tone: "info", text: `${data?.club} 회비를 저장했어요. 소모임 회원에게 알리려면 아래 “게시글 업로드”로 올려 주세요.` });
+    setNote({ tone: "info", text: `${clubLabel(data?.club ?? "")} 회비를 저장했어요. 소모임 회원에게 알리려면 아래 “게시글 업로드”로 올려 주세요.` });
     await load();
     return true;
   }
 
   return (
     <div id="club-dues" style={{ display: "flex", flexDirection: "column", gap: 14, scrollMarginTop: 16 }}>
-      <b style={{ font: `700 ${fs(16)} var(--display)` }}>{data.club} 회비</b>
+      <b style={{ font: `700 ${fs(16)} var(--display)` }}>{clubLabel(data.club)} 회비</b>
       <span className="small" style={{ fontSize: fs(12), marginTop: -8 }}>관리자와 소모임 {data.headRole || "회장"}이 정할 수 있어요. 여기 입금계좌가 소모임 일정을 만들 때 일정 입금계좌로 먼저 들어가요.</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -75,7 +76,7 @@ export function ClubDuesEditor({ club }: { club: string }) {
         <button className="btn" type="submit" disabled={busy || !dirty} style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14), alignSelf: "flex-end" }}>{busy ? "저장 중…" : dirty ? "회비 저장" : "저장됨"}</button>
       </form>
       <PublishBox
-        what={`${data.club} 회비 글`}
+        what={`${clubLabel(data.club)} 회비 글`}
         endpoint={`${base}/publish`}
         posts={data.posts}
         linked={data.linked}

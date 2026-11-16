@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { eventVisible } from "@/lib/audience";
 import { alreadyIn, handlersOf, pendingAttend, pendingDup } from "@/lib/club-requests";
+import { clubLabel } from "@/lib/club-label";
 import { getLists } from "@/lib/lists";
 import { pushTo } from "@/lib/push";
 import { getPermGroups } from "@/lib/perms";
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
   if (!club || !(await getLists()).clubs.includes(club)) return bad("소모임을 찾을 수 없어요.", 404);
   if (attend ? alreadyIn("observe", me, club, ev) : alreadyIn(kind, me, club, ev)) {
     if (attend) return bad("이미 이 일정에 참석 신청할 수 있어요. 화면을 새로 고쳐 주세요.", 409);
-    return bad(kind === "join" ? `이미 ${club} 회원이에요.` : "이미 이 일정의 참관자예요.", 409);
+    return bad(kind === "join" ? `이미 ${clubLabel(club)} 회원이에요.` : "이미 이 일정의 참관자예요.", 409);
   }
   if (attend) {
     // 참석 요청은 일정마다 하나만(참관이든 가입이든)

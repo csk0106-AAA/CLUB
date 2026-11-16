@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Popup } from "./Popup";
 import { refreshUnread } from "./MemberTabs";
 import { api, fmtDate } from "@/lib/client";
+import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
 
 type Item = {
@@ -51,7 +52,7 @@ export function ClubRequestsAdmin({ club: only }: { club?: string }) {
     setNote({
       tone: "info",
       text: decision === "approve"
-        ? `${it.memberName} 님의 ${it.kindLabel}을 승인했어요.${it.kind === "join" ? ` 이제 ${it.club} 회원이에요.` : ""}${it.attend ? " 그 일정 참석 신청까지 됐어요." : ""}`
+        ? `${it.memberName} 님의 ${it.kindLabel}을 승인했어요.${it.kind === "join" ? ` 이제 ${clubLabel(it.club)} 회원이에요.` : ""}${it.attend ? " 그 일정 참석 신청까지 됐어요." : ""}`
         : `${it.memberName} 님의 신청을 반려했어요. 사유는 신청한 회원에게 보여요.`,
     });
     setDecline(null);

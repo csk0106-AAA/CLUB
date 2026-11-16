@@ -6,6 +6,7 @@ import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
 import { agendaTone } from "./FormFields";
 import { fileUrl, type PostDetail } from "./types";
 import { ClubJoinBox } from "../ClubJoinBox";
+import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
 
 const col = { display: "flex", flexDirection: "column", gap: 10 } as const;
@@ -110,7 +111,7 @@ export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap;
     <>
       {outsider ? <ClubJoinBox club={data.club!} initial={clubJoin ?? null} /> : (
         <div className="card center">
-          <span className="small">{data.club ? `${data.club} ` : ""}내 {label}{who ? ` (${who})` : ""}</span>
+          <span className="small">{data.club ? `${clubLabel(data.club)} ` : ""}내 {label}{who ? ` (${who})` : ""}</span>
           <div className="title num" style={{ fontSize: fs(36) }}>{has ? won(myFee.amount) : "없어요"}</div>
         </div>
       )}

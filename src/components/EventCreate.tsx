@@ -7,6 +7,7 @@ import { DateField } from "@/components/DateField";
 import { PasswordField } from "@/components/PasswordField";
 import { Popup } from "@/components/Popup";
 import type { Audience } from "@/lib/audience";
+import { clubLabel } from "@/lib/club-label";
 import { api } from "@/lib/client";
 import { EVENT_TYPES, isLight } from "@/lib/event-types";
 
@@ -92,7 +93,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs }: { ope
           )}
         </div>
         {type === "소모임" ? (
-          <span className="hint">모든 회원이 볼 수 있지만, 참석 신청은 {club || "고른 소모임"} 회원과 참관자만 할 수 있어요. 소모임 회원이 아니면 “{club} 신청하러 가기”가 보여요. 입금계좌는 {club} 회비관리의 계좌로 먼저 채워져요.</span>
+          <span className="hint">모든 회원이 볼 수 있지만, 참석 신청은 {club ? clubLabel(club) : "고른 소모임"} 회원과 참관자만 할 수 있어요. 소모임 회원이 아니면 “{club ? clubLabel(club) : "○○ 모임"} 신청하러 가기”가 보여요. 입금계좌는 {club ? clubLabel(club) : "그 소모임"} 회비관리의 계좌로 먼저 채워져요.</span>
         ) : (
           <AudiencePicker value={audience} onChange={setAudience} legend="누구에게 보일까요?" />
         )}
