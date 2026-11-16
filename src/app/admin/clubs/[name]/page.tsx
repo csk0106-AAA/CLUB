@@ -16,9 +16,10 @@ type Seat = M & { role: string };
 type Data = { name: string; info: Info; roster: Seat[]; members: M[]; clubRoles: string[]; canEditRoles: boolean };
 type Note = { tone: "bad" | "info"; text: string } | null;
 
-type Tab = "overview" | "dues" | "events" | "requests";
+type Tab = "overview" | "members" | "dues" | "events" | "requests";
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "소모임개요" },
+  { key: "members", label: "회원관리" },
   { key: "dues", label: "회비관리" },
   { key: "events", label: "소모임일정관리" },
   { key: "requests", label: "신청내역" },
@@ -26,8 +27,9 @@ const TABS: { key: Tab; label: string }[] = [
 const isTab = (v: string | undefined): v is Tab => TABS.some((t) => t.key === v);
 const head = { font: `700 ${fs(17)} var(--display)` } as const;
 
-/* ───── 1. 소모임개요: 소개·모임 주기·주요 장소·운영 정책 + 소모임 회원·직책 ───── */
-function Overview({ data, onSaved }: { data: Data; onSaved: () => Promise<void> }) {
+/* ───── 1. 소모임개요(part="info"): 소개·모임 주기·주요 장소·운영 정책
+         2. 회원관리(part="members"): 소모임 회원 더하기·빼기, 소모임 직책 ───── */
+function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<void>; part: "info" | "members" }) {
   const name = data.name;
   const [roster, setRoster] = useState<Seat[]>(data.roster);
   const [info, setInfo] = useState<Info>(data.info);
@@ -70,7 +72,7 @@ function Overview({ data, onSaved }: { data: Data; onSaved: () => Promise<void> 
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      <form className="card" aria-label="소모임 개요" onSubmit={saveInfo} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {part === "info" && <form className="card" aria-label="소모임 개요" onSubmit={saveInfo} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={head}>소모임 개요</b>
         <div>
           <label className="l" htmlFor="c-intro">소개</label>
@@ -87,9 +89,9 @@ function Overview({ data, onSaved }: { data: Data; onSaved: () => Promise<void> 
         </div>
         <span className="small">입금계좌는 “회비관리” 탭에서 정해요.</span>
         <button className="btn" type="submit" disabled={busy || !infoDirty} style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14), alignSelf: "flex-end" }}>{busy ? "저장 중…" : infoDirty ? "개요 저장" : "저장됨"}</button>
-      </form>
+      </form>}
 
-      <section className="card" aria-label="소모임 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {part === "members" && <section className="card" aria-label="소모임 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="row" style={{ gap: 8 }}>
           <b className="grow" style={head}>소모임 회원</b>
           <span className="pill gray">{data.roster.length}명</span>
@@ -125,7 +127,7 @@ function Overview({ data, onSaved }: { data: Data; onSaved: () => Promise<void> 
             {busy ? "저장 중…" : "회원 저장"}
           </button>
         </div>
-      </section>
+      </section>}
     </>
   );
 }
@@ -244,7 +246,7 @@ function Club({ name, initialTab }: { name: string; initialTab: Tab }) {
         ))}
       </div>
       <div role="tabpanel" id={`cp-${tab}`} aria-labelledby={`ct-${tab}`} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {tab === "overview" && (data ? <Overview data={data} onSaved={load} /> : error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>)}
+        {(tab === "overview" || tab === "members") && (data ? <Overview data={data} onSaved={load} part={tab === "overview" ? "info" : "members"} /> : error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>)}
         {tab === "dues" && <section className="card" aria-label="소모임 회비" style={{ display: "flex", flexDirection: "column", gap: 12 }}><ClubDuesEditor club={name} /></section>}
         {tab === "events" && <ClubEvents club={name} />}
         {tab === "requests" && <ClubRequestsAdmin club={name} />}
