@@ -57,6 +57,8 @@ export async function POST(req: Request) {
   const { type, name, startsAt = "", endsAt = "", place = "" } = parsed.data;
   if (startsAt && endsAt && endsAt < startsAt) return bad("끝나는 일시가 시작 일시보다 빨라요.");
   const club = type === "소모임" ? parsed.data.club ?? "" : "";
+  // 소모임 일정은 소모임이 꼭 있어야 한다(없으면 그 소모임의 일정관리에 안 보이고, 누구나 참석 신청할 수 있게 된다)
+  if (type === "소모임" && !club) return bad("어느 소모임 일정인지 골라 주세요.");
   if (club && !(await getLists()).clubs.includes(club)) return bad("소모임을 목록에서 골라 주세요.");
   const s = await getStore();
   let audience = "";
