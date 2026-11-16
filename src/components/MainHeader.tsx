@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertsPanel } from "./AlertsPanel";
 import { Avatar, type AvatarView } from "./Avatars";
 import { headIcon, headLabel, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "./HeadIcon";
-import { IconBell, IconLogout, IconOrg } from "./Icons";
+import { IconBell, IconLogout, IconOrg, IconShield } from "./Icons";
 import { Mascot } from "./Mascot";
 import tabsCss from "./MemberTabs.module.css";
 import { OrgView } from "./OrgView";
@@ -13,9 +14,10 @@ import { Popup } from "./Popup";
 import { api } from "@/lib/client";
 import { disablePush } from "@/lib/push-client";
 
-type Me = { name: string; avatar: AvatarView };
+type Me = { name: string; avatar: AvatarView; perms: string[]; clubs: { name: string; role: string }[] };
 
-// 홈·일정·프로필 북 공통 윗줄: 프로필(왼쪽) + 모임 이름·회원 이름 + 알림·조직도·로그아웃(오른쪽)
+// 홈·일정·프로필 북·설정 공통 윗줄: 프로필(왼쪽) + 모임 이름·회원 이름 + 관리자·알림·조직도·로그아웃(오른쪽)
+//  - 관리자: 관리자 권한이 있거나 소모임 직책자일 때만(처리할 일 숫자 배지). 관리자 비밀번호를 한 번 더 확인한다.
 //  - 알림: 새 글·소모임 신청 알림 창(숫자 배지), 조직도: 조직도 창
 //  - openAlerts: 처음부터 알림 창을 열 때(홈 /board?alerts=1)
 //  - onAlertsClosed: 알림 창을 닫은 뒤 화면 목록을 다시 불러올 때
@@ -26,9 +28,14 @@ export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?
   const [bell, setBell] = useState(0);
   const [alertsOpen, setAlertsOpen] = useState(openAlerts);
   const [orgOpen, setOrgOpen] = useState(false);
+  const [issues, setIssues] = useState(0);
 
   useEffect(() => {
-    api<Me>("/api/me").then((r) => r.ok && setWho(r.data));
+    api<Me>("/api/me").then((r) => {
+      if (!r.ok) return;
+      setWho(r.data);
+      if (r.data.perms.length > 0) api<{ count: number }>("/api/admin/issues").then((x) => x.ok && setIssues(x.data.count));
+    });
     api<{ displayName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.displayName));
   }, []);
   useEffect(() => setAlertsOpen(openAlerts), [openAlerts]);
@@ -60,6 +67,13 @@ export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?
             {who && <b>{who.name}</b>}
           </div>
           <div className="icons">
+            {who && (who.perms.length > 0 || who.clubs.some((c) => c.role)) && (
+              <Link href="/admin" aria-label={issues > 0 ? `관리자 화면, 처리할 일 ${issues}개` : "관리자 화면"} title="관리자 화면" style={headIcon}>
+                <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
+                <span style={headLabel} aria-hidden="true">관리자</span>
+                {issues > 0 && <span className={tabsCss.badge} aria-hidden="true">{issues > 99 ? "99+" : issues}</span>}
+              </Link>
+            )}
             <button type="button" onClick={() => setAlertsOpen(true)} aria-haspopup="dialog" title="알림"
               aria-label={bell > 0 ? `알림, 새 소식 ${bell}개` : "알림"} style={headIcon}>
               <IconBell size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />

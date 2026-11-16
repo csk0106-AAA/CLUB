@@ -3,14 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconLogout, IconShield } from "@/components/Icons";
-import { headIcon, headLabel, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "@/components/HeadIcon";
-import { Mascot } from "@/components/Mascot";
-import { Avatar, type AvatarView } from "@/components/Avatars";
+import { type AvatarView } from "@/components/Avatars";
+import { MainHeader } from "@/components/MainHeader";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { ApplyBox } from "@/components/ApplyBox";
 import { MemberTabs } from "@/components/MemberTabs";
-import tabsCss from "@/components/MemberTabs.module.css";
 import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS, SCALE_NARROW_MAX } from "@/components/ThemeBoot";
 import { api } from "@/lib/client";
 import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
@@ -60,7 +57,6 @@ function Switch({ id, label, sub, on, disabled, onChange }: { id: string; label:
 export default function SettingsPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
-  const [club, setClub] = useState("");
   const [error, setError] = useState("");
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -72,8 +68,6 @@ export default function SettingsPage() {
   const [joinMsg, setJoinMsg] = useState("");
   // 내가 보낸 소모임 가입 신청 중 아직 처리되지 않은 것(소모임 이름)
   const [pendingJoins, setPendingJoins] = useState<string[]>([]);
-  // 관리자가 처리할 일 수(관리자 아이콘의 빨간 숫자)
-  const [issues, setIssues] = useState(0);
   const loadPending = () =>
     api<{ mine: { kind: string; club: string; status: string }[] }>("/api/alerts").then((r) => {
       if (r.ok) setPendingJoins(r.data.mine.filter((x) => x.kind === "join" && x.status === "pending").map((x) => x.club));
@@ -116,11 +110,9 @@ export default function SettingsPage() {
         setMe(r.data);
         setForm({ company: r.data.company, title: r.data.title, phone: r.data.phone });
         applyTheme(r.data.prefs.theme);
-        if (r.data.perms.length > 0) api<{ count: number }>("/api/admin/issues").then((x) => x.ok && setIssues(x.data.count));
       } else if (r.status === 401) router.replace("/");
       else setError(r.error);
     });
-    api<{ displayName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.displayName));
   }, [router]);
 
   async function patch(body: Record<string, unknown>, okText?: string): Promise<Me | null> {
@@ -205,13 +197,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function logout() {
-    // 로그아웃한 기기로 다른 사람 알림이 가지 않게 이 기기 구독을 푼다.
-    await disablePush();
-    await api("/api/auth/logout", { method: "POST", body: {} });
-    router.push("/");
-  }
-
   const clubNames = me ? [...me.clubOptions, ...me.clubs.map((c) => c.name).filter((n) => !me.clubOptions.includes(n))] : [];
   // 아직 가입하지 않은 소모임(+ 소모임 추가에서 고를 수 있는 것)
   const joinable = me ? me.clubOptions.filter((n) => !me.clubs.some((c) => c.name === n)) : [];
@@ -221,34 +206,8 @@ export default function SettingsPage() {
 
   return (
     <main className="app with-tabs">
-      {/* 홈 화면과 같은 윗줄: 캐릭터(왼쪽) + 관리자(권한이 있을 때만)·로그아웃 아이콘(오른쪽). 다음 줄: 이름 */}
-      <header className="topbar">
-        <div className="row">
-          {me ? <Avatar member={me} size={48} /> : <Mascot size={48} />}
-          <div className="who">
-            {me && <b>{me.name}</b>}
-            {me && (me.title || me.clubs.length > 0)
-              ? <span>{[me.title, ...me.clubs.map((c) => (c.role ? `${c.name}(${c.role})` : c.name))].filter(Boolean).join(" · ")}</span>
-              : club && <span>{club}</span>}
-          </div>
-          <div className="icons">
-            {/* 관리자 화면 입구(관리자 비밀번호를 한 번 더 확인해요). 소모임 직책자도 소모임관리·활동 템플릿으로 들어가요(관리자 비밀번호 확인). */}
-            {me && (me.perms.length > 0 || me.clubs.some((c) => c.role)) && (
-              <Link href="/admin" aria-label={issues > 0 ? `관리자 화면, 처리할 일 ${issues}개` : "관리자 화면"} title="관리자 화면" style={headIcon}>
-                <IconShield size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-                <span style={headLabel} aria-hidden="true">관리자</span>
-                {issues > 0 && <span className={tabsCss.badge} aria-hidden="true">{issues > 99 ? "99+" : issues}</span>}
-              </Link>
-            )}
-            {me && (
-              <button type="button" onClick={logout} aria-label="로그아웃" title="로그아웃" style={headIcon}>
-                <IconLogout size={HEAD_ICON_SIZE} max={HEAD_ICON_MAX} />
-                <span style={headLabel} aria-hidden="true">로그아웃</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* 홈·일정·프로필 북과 같은 윗줄(관리자·알림·조직도·로그아웃). 프로필 사진을 바꾸면 다시 그린다. */}
+      <MainHeader key={JSON.stringify(me?.avatar ?? null)} />
       <h1 className="title">설정</h1>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!me && !error && <p className="small">불러오는 중이에요…</p>}
