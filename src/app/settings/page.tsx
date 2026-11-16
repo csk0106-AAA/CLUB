@@ -13,6 +13,7 @@ import { api } from "@/lib/client";
 import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
 import { disablePush, enablePush, pushSupported } from "@/lib/push-client";
 import { fs } from "@/lib/fs";
+import { typePhone } from "@/lib/phone";
 
 type Me = {
   name: string; perms: string[]; admin: boolean; consent: boolean; gender: string;
@@ -255,7 +256,7 @@ export default function SettingsPage() {
                 <input
                   id="f-ph" className="field" inputMode="tel" autoComplete="tel" placeholder="010-1234-5678" maxLength={20}
                   aria-describedby="f-ph-d" aria-invalid={phoneChanged && !phoneOk}
-                  value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  value={form.phone} onChange={(e) => setForm({ ...form, phone: typePhone(e.target.value) })}
                 />
                 <span id="f-ph-d" className="small" style={{ display: "block", marginTop: 4 }}>
                   {phoneChanged && !phoneOk

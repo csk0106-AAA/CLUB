@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
-import { OrgChart, OrgClubs, type OrgClub, type OrgItem } from "@/components/OrgChart";
+import { OrgClubs, type OrgClub, type OrgItem } from "@/components/OrgChart";
 import { Popup } from "@/components/Popup";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -87,12 +87,10 @@ function OrgAdmin() {
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      {org.items.length > 0 && <OrgChart items={org.items} emptyText="(미정)" />}
-
       <section className="lcard" aria-labelledby="org-h1">
         <header className="lcard-h">
           <h2 id="org-h1">모임 직책 체계</h2>
-          <p>직책 이름과 순서는 <Link href="/admin/kinds">회원 구분 › 직책</Link>에서 바꿔요. 사무국은 “사무국장”, “홍보국장”처럼 넣으면 사무국 아래에 그려져요. 직책마다 회원을 여러 명 고를 수 있어요.</p>
+          <p>직책 이름과 순서는 <Link href="/admin/kinds">회원 구분 › 직책</Link>에서 바꿔요. 직책마다 회원을 여러 명 고를 수 있어요.</p>
         </header>
         {org.items.length === 0 && <div className="lcard-b"><p className="small" style={{ margin: 0 }}>회원 구분 › 직책에 직책을 먼저 넣어 주세요.</p></div>}
         {org.items.map((i) => (

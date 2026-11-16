@@ -10,6 +10,7 @@ import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
 import { parseMembers } from "@/lib/member-import";
 import { ageGroupOf } from "@/lib/age-group";
+import { typePhone } from "@/lib/phone";
 import { fs } from "@/lib/fs";
 
 type M = {
@@ -342,7 +343,7 @@ function Members() {
           <div><label className="l" htmlFor="f-co">회사명</label><input id="f-co" className="field" value={form.company} onChange={(e) => set("company", e.target.value)} /></div>
           <div><label className="l" htmlFor="f-ti">직위</label><input id="f-ti" className="field" value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
           <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
-          <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
+          <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" placeholder="010-0000-0000" value={form.phone} onChange={(e) => set("phone", typePhone(e.target.value))} /></div>
           <div>
             <label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label>
             {ageGroupOf(form.birth) ? (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Popup } from "./Popup";
 import { fs } from "@/lib/fs";
+import { typePhone } from "@/lib/phone";
 
 type Step = "ask" | "form" | "done";
 type Type = "member" | "observe";
@@ -94,7 +95,7 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
           </div>
           <div>
             <label className="l" htmlFor="su-phone">전화번호</label>
-            <input id="su-phone" className="field" inputMode="tel" autoComplete="tel" placeholder="010-0000-0000" maxLength={20} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input id="su-phone" className="field" inputMode="tel" autoComplete="tel" placeholder="010-0000-0000" maxLength={20} value={phone} onChange={(e) => setPhone(typePhone(e.target.value))} />
             <span className="hint" style={{ fontSize: fs(12) }}>전화번호 뒷자리 4자리가 초대코드(로그인 번호)가 돼요.</span>
           </div>
           {!edu && (

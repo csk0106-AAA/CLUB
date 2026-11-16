@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
-import { OrgChart, OrgClubs, type OrgClub, type OrgItem } from "./OrgChart";
+import { OrgClubs, OrgList, type OrgClub, type OrgItem } from "./OrgChart";
 
 type Data = { items: OrgItem[]; clubs: OrgClub[] };
 
@@ -24,7 +24,7 @@ export function OrgView({ onUnauthorized }: { onUnauthorized?: () => void }) {
     <>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!data && !error && <p className="small">불러오는 중이에요…</p>}
-      {data && (data.items.length ? <OrgChart items={data.items} emptyText="(미정)" /> : <div className="msg info">아직 등록된 직책이 없어요.</div>)}
+      {data && (data.items.length ? <OrgList items={data.items} emptyText="(미정)" /> : <div className="msg info">아직 등록된 직책이 없어요.</div>)}
       {data && (
         <section className="otsec" aria-labelledby="org-clubs">
           <h2 id="org-clubs">소모임</h2>

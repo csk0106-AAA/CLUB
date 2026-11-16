@@ -7,3 +7,23 @@ export function formatPhone(input: string): string | null {
 }
 
 export const phoneDigits = (p?: string) => (p ?? "").replace(/\D/g, "");
+
+// 입력하는 동안 하이픈 넣기: 숫자만 쳐도 "010-0000-0000"(02 지역번호는 "02-000-0000"/"02-0000-0000")
+export function typePhone(input: string): string {
+  const d = input.replace(/\D/g, "").slice(0, 11);
+  if (d.startsWith("02")) {
+    const n = d.slice(0, 10);
+    if (n.length <= 2) return n;
+    if (n.length <= 5) return `02-${n.slice(2)}`;
+    if (n.length <= 9) return `02-${n.slice(2, 5)}-${n.slice(5)}`;
+    return `02-${n.slice(2, 6)}-${n.slice(6)}`;
+  }
+  if (d.length <= 3) return d;
+  if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  // 010 이 아닌 10자리(011-123-4567 등)는 3-3-4
+  if (d.length === 10 && !d.startsWith("010")) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+}
+
+// 저장할 때: 형식에 맞으면 하이픈 넣은 모양으로, 아니면 적은 그대로
+export const tidyPhone = (p: string): string => formatPhone(p) ?? p.trim();
