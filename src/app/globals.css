@@ -599,6 +599,23 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .otb > li:first-child::before, .otb > li:last-child::after { border-top: 0; }
 .otb .otn { min-width: 64px; max-width: 92px; padding: 6px 6px; }
 .otb > li { padding-left: 2px; padding-right: 2px; }
+/* 회원 고르기 칸(MemberSearch): 입력 + ▾ + 아래로 뜨는 후보 목록 */
+.msearch { position: relative; }
+.msearch > .field { padding-right: 46px; }
+.msearch-t {
+  position: absolute; right: 1px; top: 1px; bottom: 1px; width: 44px; border: 0; border-left: 1px solid var(--line2);
+  background: transparent; color: var(--sub); font-size: calc(14px * var(--fs, 1)); cursor: pointer; border-radius: 0 8px 8px 0;
+}
+.msearch-t:disabled { color: var(--dis); cursor: not-allowed; }
+.msearch-l {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; list-style: none; margin: 0; padding: 4px 0;
+  max-height: 260px; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.msearch-l li { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px; cursor: pointer; font-size: calc(14px * var(--fs, 1)); }
+.msearch-l li span { color: var(--sub); font-size: calc(12px * var(--fs, 1)); }
+.msearch-l li[aria-selected="true"] { background: var(--violet-bg); }
+.msearch-l li.none { cursor: default; color: var(--sub); }
 /* 관리자 조직도: 직책 한 줄(직책 · 회원 · 회원 선택) */
 .otrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line2); }
 .otrow .mini { flex: none; }
