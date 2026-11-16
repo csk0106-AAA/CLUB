@@ -9,6 +9,7 @@ import { isLight } from "@/lib/event-types";
 import { EVENT_TYPES } from "@/lib/schemas";
 import { fixLegacyTypes } from "@/lib/event-migrate";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,10 @@ export async function GET() {
   if ("err" in g) return g.err;
   const s = await getStore();
   const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
-  // 참석 신청 진행 막대의 분모: 회원대기를 뺀 회원 수(일정 상세의 신청 명단과 같은 기준)
+  // 참석 신청 진행 막대의 분모: 대기회원·참관회원을 뺀 회원 수(일정 상세의 신청 명단과 같은 기준)
   // 소모임 일정은 그 소모임 회원 + 참관자만 센다.
   await fixLegacyTypes(events);
-  const active = members.filter((m) => m.kind !== "회원대기");
+  const active = members.filter((m) => !isGuest(m.kind));
   const list = events.map((e) => {
     const target = e.club ? active.filter((m) => inClubOrObserver(e, m)) : active;
     const ids = new Set(target.map((m) => m.id));

@@ -44,7 +44,7 @@ export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: str
   const targets = memberIds.filter((mid) => {
     if (mid === exceptId) return false;
     const m = members.find((x) => x.id === mid);
-    if (!m || m.kind === "회원대기") return false;
+    if (!m) return false;
     const p = readPrefs(m.prefs);
     return p.notifyOn && (kind === "alerts" || p.notify[kind]) && !inQuiet(p) && subs.some((x) => x.memberId === mid);
   });

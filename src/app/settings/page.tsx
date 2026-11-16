@@ -8,6 +8,7 @@ import { headIcon, headLabel, HEAD_ICON_MAX, HEAD_ICON_SIZE } from "@/components
 import { Mascot } from "@/components/Mascot";
 import { Avatar, type AvatarView } from "@/components/Avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
+import { ApplyBox } from "@/components/ApplyBox";
 import { MemberTabs } from "@/components/MemberTabs";
 import tabsCss from "@/components/MemberTabs.module.css";
 import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS, SCALE_NARROW_MAX } from "@/components/ThemeBoot";
@@ -256,6 +257,9 @@ export default function SettingsPage() {
           <div aria-live="polite" role="status">
             {note && <div className={`msg ${note.tone === "bad" ? "bad" : "ok"}`}>{note.text}</div>}
           </div>
+
+          {/* 회원 신청(대기회원·참관회원, 신청 대기·반려일 때만 보임) */}
+          <ApplyBox />
 
           {/* 1. 내 정보 */}
           <section className="sect" aria-labelledby="s-me">

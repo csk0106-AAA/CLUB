@@ -24,6 +24,7 @@ type Detail = {
     canApply?: boolean; // false: 내가 속하지 않은 소모임 일정(읽기만)
     attendReq?: AttendReq; // 소모임 관리자에게 보낸 내 참석 요청(참관/가입 + 참석)
     clubJoin?: JoinReq; // 소모임 회원이 아닐 때 그 소모임 가입 신청(최근 것)
+    guest?: boolean; // 대기회원·참관회원: 참석하려면 참관 신청(관리자 승인)
   };
   activities: { id: string; name: string }[];
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
@@ -232,9 +233,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
       {answer === "불참" && e.canApply !== false && <div className="msg info">참석 안함으로 알렸어요. 마음이 바뀌면 언제든 바꿀 수 있어요.</div>}
 
-      {e.canApply === false && e.club ? (
+      {e.canApply === false && (e.club || e.guest) ? (
         <>
-          <ClubRequestCard eventId={id} club={e.club} leaders={e.clubLeaders ?? []} req={e.attendReq ?? null} join={e.clubJoin ?? null} onChange={load} />
+          <ClubRequestCard eventId={id} club={e.club ?? ""} guest={e.guest} leaders={e.clubLeaders ?? []} req={e.attendReq ?? null} join={e.clubJoin ?? null} onChange={load} />
           <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
         </>
       ) : !e.startsAt && answer === "" ? (

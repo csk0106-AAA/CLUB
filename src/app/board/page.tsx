@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ApplyNotice } from "@/components/ApplyNotice";
 import { ConsentSheet } from "@/components/ConsentSheet";
 import { FreshChip } from "@/components/FreshChip";
 import { IconClip, IconMegaphone, IconPin } from "@/components/Icons";
@@ -161,6 +162,7 @@ export default function BoardPage() {
         />
       </Popup>
       {who && <ConsentSheet consent={who.consent} onAgreed={() => setWho({ ...who, consent: true })} />}
+      {who && <ApplyNotice ready={who.consent} />}
       <MemberTabs on="board" />
     </main>
   );

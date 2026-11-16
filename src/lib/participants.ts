@@ -1,4 +1,5 @@
 import { inAudience, inClubOrObserver, readAudience } from "./audience";
+import { isGuest } from "./member-kind";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
@@ -31,7 +32,7 @@ function eventRestricted(ev: Row): boolean {
 
 // 일정 대상에 포함되는지(공개 여부는 따로 본다): 소모임 일정은 소모임 회원 + 참관자, 그 밖에는 공개 대상
 function inEvent(ev: Row, member: Row): boolean {
-  const v = { id: member.id ?? "", clubs: member.clubs };
+  const v = { id: member.id ?? "", clubs: member.clubs, kind: member.kind };
   if ((ev.club ?? "").trim()) return inClubOrObserver(ev, v);
   return inAudience(readAudience(ev.audience), v.id);
 }
@@ -79,7 +80,7 @@ export async function onsiteGate(cfg: TemplateConfig, act: Row): Promise<string 
 export async function participantPool(cfg: TemplateConfig, act: Row, ev: Row): Promise<{ members: Row[]; kind: "selected" | "attending" | "all" }> {
   const s = await getStore();
   // 소모임 일정·공개 대상이 정해진 일정은 그 대상 회원 안에서만 고른다.
-  const members = (await s.list("Members")).filter((m) => m.kind !== "회원대기" && (!eventRestricted(ev) || inEvent(ev, m)));
+  const members = (await s.list("Members")).filter((m) => (isGuest(m.kind) ? inEvent(ev, m) : !eventRestricted(ev) || inEvent(ev, m)));
   if (isLimited(cfg)) {
     const set = await rosterSet(act);
     return { members: members.filter((m) => set.has(m.id)), kind: "selected" };

@@ -33,7 +33,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const club = (event.club ?? "").trim();
   const observers = readObservers(event.observers);
   const rows = members
-    .filter((m) => m.kind !== "회원대기" && inClubOrObserver(event, m))
+    .filter((m) => inClubOrObserver(event, m))
     .map((m) => {
       const seat = club ? memberClubs(m).find((c) => c.name === club) : undefined;
       const a = applies.find((x) => x.eventId === id && x.memberId === m.id);

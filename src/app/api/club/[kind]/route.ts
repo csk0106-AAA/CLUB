@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
+import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 import { clubLeaders, readAllClubInfo } from "@/lib/clubs";
 import { getLists } from "@/lib/lists";
@@ -14,9 +15,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }
   const s = await getStore();
   if (kind === "org") {
     // 회원 구분과 연동: 모임 직책(목록 순서, 일반회원 제외)마다 그 직책인 회원,
-    // 소모임(목록 순서)마다 소모임 직책자와 소모임관리의 모임 주기. 회원대기는 넣지 않는다.
+    // 소모임(목록 순서)마다 소모임 직책자와 소모임관리의 모임 주기. 대기회원·참관회원은 넣지 않는다.
     const [all, lists, info] = await Promise.all([s.list("Members"), getLists(), readAllClubInfo()]);
-    const members = all.filter((m) => m.kind !== "회원대기");
+    const members = all.filter((m) => !isGuest(m.kind));
     return NextResponse.json({
       items: lists.positions.filter((p) => p !== "일반회원").map((p) => ({
         id: p, dept: p, role: "", names: members.filter((m) => m.position === p).map((m) => m.name),

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { autoAssign, carpoolState, cars, saveCarpoolState } from "@/lib/carpool";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 const body = z.object({ action: z.enum(["publish", "unpublish", "auto"]) });
 
@@ -21,7 +22,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   if (parsed.data.action === "auto") {
     const [members, applies] = await Promise.all([s.list("Members"), s.list("EventApplies")]);
-    const att = members.filter((m) => m.kind !== "회원대기" && applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
+    const att = members.filter((m) => applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
     const added = await autoAssign(id, att);
     if (added > 0) await saveCarpoolState(id, { published: false, publishedAt: "" });
     return NextResponse.json({ ok: true, added });

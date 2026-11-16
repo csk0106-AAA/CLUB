@@ -1,6 +1,7 @@
 import { readObservers } from "./audience";
 import { clubLeaders } from "./clubs";
 import { memberClubs } from "./lists";
+import { isGuest } from "./member-kind";
 import { effectivePerms, getPermGroups, type PermGroups } from "./perms";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
@@ -17,11 +18,13 @@ export type ReqStatus = "pending" | "approved" | "declined";
 export const KIND_LABEL: Record<ReqKind, string> = { join: "소모임 가입 신청", observe: "일정 1회 참관 신청" };
 
 // 이 소모임 신청을 처리할 회원 id 목록
+// club 이 비어 있으면(대기회원·참관회원의 일반 일정 참관 신청) 일정 관리 권한(events)·모든 권한 관리자가 처리한다.
 // groups: 직책·소모임 직책 그룹 권한(Settings permGroups). 회장 그룹으로 받은 "모든 권한"도 처리자로 본다.
 export function handlersOf(members: Row[], club: string, groups: PermGroups = {}): string[] {
+  if (!club) return members.filter((m) => !isGuest(m.kind) && effectivePerms(m, groups).some((p) => p === "all" || p === "events")).map((m) => m.id);
   const leaders = clubLeaders(members, club).map((l) => l.id).filter(Boolean);
   if (leaders.length) return leaders;
-  return members.filter((m) => m.kind !== "회원대기" && effectivePerms(m, groups).includes("all")).map((m) => m.id);
+  return members.filter((m) => !isGuest(m.kind) && effectivePerms(m, groups).includes("all")).map((m) => m.id);
 }
 
 // 처리(승인·반려)할 수 있는지: 그 소모임 직책자(없으면 전체 관리자) + "모든 권한" 관리자는 언제나
@@ -57,6 +60,7 @@ const inClub = (m: Row | undefined, club: string) => !!m && memberClubs(m).some(
 
 // 이미 승인된 것과 같은 상태인지(가입돼 있거나 참관자로 들어가 있으면 다시 신청할 필요가 없다)
 export function alreadyIn(kind: ReqKind, me: Row | undefined, club: string, ev?: Row): boolean {
+  if (me && isGuest(me.kind)) return kind === "observe" && !!ev && readObservers(ev.observers).includes(me.id);
   if (inClub(me, club)) return true;
   if (kind === "observe" && ev && me) return readObservers(ev.observers).includes(me.id);
   return false;

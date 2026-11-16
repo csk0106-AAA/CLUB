@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { isWhoAmI, liveView, readConfig, type LiveView } from "./activities";
 import { parseJson } from "./api";
 import { canJoin, joinSet, onsiteGate } from "./participants";
+import { isGuest } from "./member-kind";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
@@ -257,7 +258,7 @@ export async function computeScores(aid: string): Promise<{ A: Score[]; B: Score
   }
   const list = (m: Map<string, number>): Score[] =>
     members
-      .filter((x) => x.kind !== "회원대기")
+      .filter((x) => !isGuest(x.kind))
       .map((x) => ({ memberId: x.id, name: x.name, score: m.get(x.id) ?? 0 }))
       .sort((p, q) => q.score - p.score || p.name.localeCompare(q.name, "ko"));
   return { A: list(a), B: list(b), played: answered.length };

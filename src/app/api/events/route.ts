@@ -49,7 +49,7 @@ export async function GET() {
       const outside = !draft && !eventVisible(e, me ?? session.mid);
       const a = mine.find((x) => x.eventId === e.id);
       const attending = a?.answer === "참석";
-      const canApply = inClubOrObserver(e, { id: session.mid, clubs: me?.clubs });
+      const canApply = inClubOrObserver(e, { id: session.mid, clubs: me?.clubs, kind: me?.kind });
       const end = (e.endsAt || e.startsAt || "").slice(0, 10);
       const past = !!end && end < today;
       const myAnswer = canApply ? a?.answer ?? "" : "";

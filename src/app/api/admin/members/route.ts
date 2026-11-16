@@ -3,6 +3,7 @@ import { bad, guard } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
 import { readGenderEdit } from "@/lib/gender-edit";
 import { memberClubs } from "@/lib/lists";
+import { appMark } from "@/lib/member-apps";
 import { fieldValues, readFields, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
 import { checkPermChange, effectivePerms, getPermGroups, groupKeysOf, isAllNow, isPermsCustom } from "@/lib/perms";
@@ -18,6 +19,7 @@ export async function GET() {
   if ("err" in g) return g.err;
   const s = await getStore();
   const groups = await getPermGroups();
+  const apps = await s.list("MemberApps");
   const members = (await s.list("Members")).map(({ extra: _extra, prefs: _prefs, ...m }) => (void _prefs, {
     ...m,
     avatar: avatarView(m),
@@ -28,6 +30,8 @@ export async function GET() {
     permsCustom: isPermsCustom({ extra: _extra }),
     fields: readFields({ extra: _extra }),
     genderEdit: readGenderEdit(_extra), // 회원이 직접 성별을 바꾼 기록(관리자가 확인하면 사라짐)
+    edu: m.edu === "true", // 교육 이수
+    app: appMark(apps, m.id), // 회원 신청 "승인 전" / "반려"(사유)
   }));
   return NextResponse.json({ members });
 }
@@ -39,13 +43,13 @@ export async function POST(req: Request) {
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("이름을 입력해 주세요.");
-  const { fields, perms, clubs, ...d } = parsed.data;
+  const { fields, perms, clubs, edu, ...d } = parsed.data;
 
   const s = await getStore();
   const all = await s.list("Members");
   // 같은 이름이 있으면 뒤에 알파벳을 붙여 저장하고(김하늘 → 김하늘B) 화면에 알린다
   const name = uniqueName(d.name, all.map((m) => m.name ?? ""));
-  const row = { ...d, name, perms: (perms ?? []).join("|"), clubs: clubsJson(clubs ?? []), extra: fields ? withFields("", fields) : "" };
+  const row = { ...d, memo: d.memo ?? "", edu: edu ? "true" : "", name, perms: (perms ?? []).join("|"), clubs: clubsJson(clubs ?? []), extra: fields ? withFields("", fields) : "" };
   // 새 회원의 직책·소모임 직책 때문에 권한이 생기면 "모든 권한" 관리자만 추가할 수 있다.
   const groups = await getPermGroups();
   const err = checkPermChange(all, groups, [...all, { ...row, id: "__new__" }], groups, await isAllNow(g.s.mid));

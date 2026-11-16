@@ -16,7 +16,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const parsed = memberBody.extend({ fields: fieldValues }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
-  const { fields, perms, clubs, ...d } = parsed.data;
+  const { fields, perms, clubs, edu, ...d } = parsed.data;
 
   const s = await getStore();
   const all = await s.list("Members");
@@ -27,7 +27,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const asked = d.name.trim();
   const name = asked === (cur.name ?? "").trim() ? asked : uniqueName(asked, all.filter((m) => m.id !== id).map((m) => m.name ?? ""));
   // perms·clubs 를 보내지 않으면 지금 값을 그대로 둔다.
-  const patch: Record<string, string> = { ...d, name };
+  const { memo, ...rest } = d;
+  const patch: Record<string, string> = { ...rest, name };
+  if (memo !== undefined) patch.memo = memo;
+  if (edu !== undefined) patch.edu = edu ? "true" : "";
   if (perms) patch.perms = perms.join("|");
   if (clubs) patch.clubs = clubsJson(clubs);
   // fields 를 보내지 않으면 추가 항목 값은 그대로 둔다.

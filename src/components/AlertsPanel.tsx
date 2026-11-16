@@ -28,7 +28,7 @@ const STATUS: Record<string, { text: string; tone: string }> = {
 };
 const sectionTitle = { font: `700 ${fs(16)} var(--display)`, margin: 0 } as const;
 const what = (r: { kindLabel: string; club: string; eventName: string }) =>
-  `${r.club} ${r.kindLabel}${r.eventName ? ` · ${r.eventName}` : ""}`;
+  `${r.club ? `${r.club} ` : ""}${r.kindLabel}${r.eventName ? ` · ${r.eventName}` : ""}`;
 
 // 홈 화면 종 아이콘을 누르면 뜨는 알림 목록.
 // 열면(불러온 뒤) 새 글, 내 글에 달린 댓글, 내 신청 결과를 "봤음"으로 표시한다. 처리할 신청은 승인·거절해야 숫자에서 빠진다.
@@ -83,11 +83,11 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
 
       {d.toHandle.length > 0 && (
         <section aria-labelledby="al-h1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h3 id="al-h1" style={sectionTitle}>처리할 소모임 신청 {d.toHandle.length}건</h3>
+          <h3 id="al-h1" style={sectionTitle}>처리할 참관·소모임 신청 {d.toHandle.length}건</h3>
           {d.toHandle.map((h) => (
             <div key={h.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <b>{h.memberName} 님 · {h.kindLabel}</b>
-              <span className="small">{h.club}{h.eventName ? ` · ${h.eventName}` : ""} · {fmtDate(h.createdAt)}</span>
+              <span className="small">{[h.club, h.eventName, fmtDate(h.createdAt)].filter(Boolean).join(" · ")}</span>
               {h.message && <span className="small" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>“{h.message}”</span>}
               <div className="row" style={{ gap: 8 }}>
                 <button className="btn" type="button" disabled={!!busy} style={{ minHeight: 46 }} onClick={() => decide(h, "approve")}

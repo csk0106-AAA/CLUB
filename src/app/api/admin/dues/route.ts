@@ -5,6 +5,7 @@ import { duesAmount, duesInput, duesSummary, duplicateRule, readDues } from "@/l
 import { GENERAL_POSITION } from "@/lib/fee";
 import { getLists } from "@/lib/lists";
 import { postsOf } from "@/lib/published";
+import { isGuest } from "@/lib/member-kind";
 import { getStore, setSetting } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export async function GET() {
   if ("err" in g) return g.err;
   const [dues, lists, members, pub] = await Promise.all([readDues(), getLists(), (await getStore()).list("Members"), postsOf({ kind: "dues" })]);
   const positions = [...new Set([...lists.positions.filter((p) => p !== GENERAL_POSITION), GENERAL_POSITION])];
-  const active = members.filter((m) => m.kind !== "회원대기");
+  const active = members.filter((m) => !isGuest(m.kind));
   const dist = new Map<string, number>();
   for (const m of active) {
     const a = duesAmount(dues, m);

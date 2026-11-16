@@ -19,6 +19,9 @@ export const memberBody = z.object({
   birth: z.string().max(20).default(""),
   phone: z.string().max(30).default(""),
   ageGroup: z.string().max(20).default(""),
+  // 교육 이수 여부·관리자 메모. 보내지 않으면 지금 값을 그대로 둔다.
+  edu: z.boolean().optional(),
+  memo: z.string().trim().max(500).optional(),
   // 보내지 않으면 지금 값을 그대로 둔다(권한은 권한설정 화면에서 바꾼다).
   perms: z.array(z.enum(ADMIN_PERMS)).optional(),
   clubs: clubSeats.optional(),

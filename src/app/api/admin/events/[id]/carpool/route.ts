@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
 import { applyInput, carInput, carpoolState, cars, conflict, freeFor, inputPeople, newCar, saveCarpoolState, suggestName, timeIssue, toRow } from "@/lib/carpool";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -13,7 +14,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const s = await getStore();
   const [members, applies, all, state] = await Promise.all([s.list("Members"), s.list("EventApplies"), cars(id), carpoolState(id)]);
-  const live = members.filter((m) => m.kind !== "회원대기");
+  const live = members.filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")));
   const att = live.filter((m) => applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
   const free = freeFor(all, att);
   return NextResponse.json({

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { loginCode } from "@/lib/login-code";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 type Ctx = { params: Promise<{ id: string; aid: string }> };
 
@@ -29,7 +30,7 @@ export async function PUT(req: Request, ctx: Ctx) {
     return NextResponse.json({ hostId: "", hostCode: "" });
   }
   const member = (await s.list("Members")).find((m) => m.id === hostId);
-  if (!member || member.kind === "회원대기") return bad("진행자로 고를 수 없는 회원이에요.");
+  if (!member || isGuest(member.kind)) return bad("진행자로 고를 수 없는 회원이에요.");
   if (!/^\d{4,8}$/.test(hostCode)) return bad("진행자 접속번호는 숫자 4~8자리로 정해 주세요.");
   // 평소 로그인 번호와 같으면 어느 쪽으로 들어온 건지 구분할 수 없다.
   if (hostCode === (await loginCode(member))) {

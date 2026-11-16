@@ -1,4 +1,5 @@
 import { eventJoinable, inAudience, readAudience } from "./audience";
+import { isGuest } from "./member-kind";
 import { readPrefs } from "./prefs";
 import { countIn } from "./club-requests";
 import { getPermGroups } from "./perms";
@@ -169,8 +170,8 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
     const seen = await getSeen(mid);
     const ev = events.filter((e) => eventFresh(e, me, seen, stamps, first)).length;
     const po = countedPosts(posts, me, seen).length;
-    // 프로필 북 목록에 나오는 회원(회원대기 제외)의 소개만 센다(목록의 NEW·UP 표시와 같게)
-    const listed = new Set(members.filter((m) => m.kind !== "회원대기").map((m) => m.id));
+    // 프로필 북 목록에 나오는 회원(대기회원·참관회원 제외)의 소개만 센다(목록의 NEW·UP 표시와 같게)
+    const listed = new Set(members.filter((m) => !isGuest(m.kind)).map((m) => m.id));
     const pr = profiles.filter((p) => listed.has(p.memberId) && profileFresh(p, mid, seen)).length;
     const co = commentAlertsIn(posts, comments, mid, await getSetting<string>(commentSeenKey(mid), "")).length;
     out.set(mid, {

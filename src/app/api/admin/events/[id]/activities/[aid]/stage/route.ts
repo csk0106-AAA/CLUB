@@ -4,6 +4,7 @@ import { liveView } from "@/lib/activities";
 import { currentRound, eligibleTargets, liveRow, loadStage, missingSteps, rounds, type RoundState } from "@/lib/rounds";
 import { joinSet } from "@/lib/participants";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
   const tl = tls.find((t) => t.memberId === target && t.eventActivityId === aid);
   const lie = tl?.lieIndex ? Number(tl.lieIndex) : 0;
   const rv = votes.filter((v) => v.roundId === cur.id);
-  const eligible = members.filter((m) => m.kind !== "회원대기" && m.id !== target && (!join || join.has(m.id)));
+  const eligible = members.filter((m) => !isGuest(m.kind) && m.id !== target && (!join || join.has(m.id)));
 
   // 사전 추측 결과: 누가 누구를 몇 표로 골랐는지(추측 결과 단계부터)
   let guessResults: { name: string; count: number }[] = [];

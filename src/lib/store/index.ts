@@ -96,8 +96,8 @@ async function seedBase(s: Store): Promise<void> {
     { value: "정회원", definition: "교육이수 + 모임 활동" },
     { value: "준회원", definition: "교육이수자 외 추천 등 합류 신청자 중 과반 찬성으로 자격을 얻은 분" },
     { value: "명예회원", definition: "교육과정 주관사 등" },
-    { value: "회원대기", definition: "활동을 원치 않는 분 또는 합류 신청 후 대기 상태" },
-    { value: "행사참관", definition: "1회 모임 활동 참석" },
+    { value: "대기회원", definition: "활동을 원치 않는 교육 이수자 또는 회원 신청 후 승인 전인 분" },
+    { value: "참관회원", definition: "교육 비이수자 중 일정 참관 승인을 받은 분" },
   ]);
 
   for (const t of DEFAULT_TEMPLATES) {

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { eventJoinable, eventVisible } from "@/lib/audience";
+import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 
 const body = z.object({
@@ -25,6 +26,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const ev = (await s.list("Events")).find((x) => x.id === id && eventVisible(x, me ?? g.s.mid));
   if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   // 다른 소모임 일정은 읽기만 된다: 소모임 회원·참관자만 신청할 수 있다.
+  // 대기회원·참관회원은 참관 신청이 승인된 일정만 참석 신청할 수 있다.
+  if (!eventJoinable(ev, me ?? g.s.mid) && isGuest(me?.kind)) return bad("참관 신청이 승인된 일정만 참석 신청할 수 있어요. 먼저 참관을 신청해 주세요.", 403);
   if (!eventJoinable(ev, me ?? g.s.mid)) return bad(`${clubLabel(ev.club)} 회원만 참석 신청할 수 있어요. 소모임 가입이나 참관을 먼저 신청해 주세요.`, 403);
 
   if (days && days.length > 0) {

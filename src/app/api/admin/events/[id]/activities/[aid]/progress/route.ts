@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
   const [members, profiles, interviews, guesses] = await Promise.all([
     s.list("Members"), s.list("Profiles"), s.list("Interviews"), s.list("Guesses"),
   ]);
-  const ids = members.filter((m) => m.kind !== "회원대기").map((m) => m.id);
+  const ids = members.filter((m) => !isGuest(m.kind)).map((m) => m.id);
   const approved = ids.filter((m) => profiles.find((p) => p.memberId === m)?.introStatus === "approved");
   const writing = ids.filter(
     (m) => !approved.includes(m) && (interviews.some((i) => i.memberId === m && i.eventActivityId === aid) || profiles.some((p) => p.memberId === m && p.alias)),

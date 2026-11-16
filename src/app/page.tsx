@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { resetTabsCache } from "@/components/MemberTabs";
 import { PasswordField } from "@/components/PasswordField";
+import { SignupSheet } from "@/components/SignupSheet";
 import { fs } from "@/lib/fs";
 
-type Club = { clubName: string; displayName: string; members: { id: string; name: string }[] };
+type Club = { clubName: string; displayName: string; members: { id: string; name: string }[]; requirement?: string };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,16 +18,26 @@ export default function LoginPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [signup, setSignup] = useState(false);
 
-  useEffect(() => {
+  // pick: 이 이름을 골라 둔다(회원 신청을 마친 뒤)
+  function loadClub(pick?: string) {
     fetch("/api/public/club")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d: Club) => {
         setClub(d);
-        setMemberId(d.members[0]?.id ?? "");
+        setMemberId(d.members.find((m) => m.name === pick)?.id ?? d.members[0]?.id ?? "");
       })
       .catch(() => setLoadError(true));
+  }
+  useEffect(() => {
+    loadClub();
   }, []);
+  function afterSignup(name: string) {
+    setCode("");
+    setError("");
+    loadClub(name);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +55,8 @@ export default function LoginPage() {
         return;
       }
       resetTabsCache();
+      // 로그인 직후 한 번: 회원 신청 상태 안내(대기회원·참관회원·반려·정보 입력, components/ApplyNotice.tsx)
+      try { sessionStorage.setItem("applyNotice", "1"); } catch { /* 저장 못 해도 로그인은 된다 */ }
       // 진행자 접속번호로 들어오면 활동 진행 화면만 쓴다.
       // 바로가기 링크(?next=/events/…)로 왔으면 그 화면으로. 같은 사이트 안의 경로만 허용한다.
       const next = new URLSearchParams(window.location.search).get("next") ?? "";
@@ -74,7 +87,7 @@ export default function LoginPage() {
       {!club && !loadError && <p className="small center">불러오는 중이에요…</p>}
 
       {club && club.members.length === 0 && (
-        <div className="msg info">아직 등록된 회원이 없어요. 관리자에게 문의해 주세요.</div>
+        <div className="msg info">아직 등록된 회원이 없어요. 아래에서 신청하거나 관리자에게 문의해 주세요.</div>
       )}
 
       {club && club.members.length > 0 && (
@@ -100,6 +113,13 @@ export default function LoginPage() {
           </div>
         </form>
       )}
+      {club && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", marginTop: 4 }}>
+          <span className="small">명단에 내 이름이 없나요?</span>
+          <button className="btn white" type="button" style={{ width: "auto", minWidth: 220 }} aria-haspopup="dialog" onClick={() => setSignup(true)}>회원 또는 참관 신청</button>
+        </div>
+      )}
+      {club && <SignupSheet open={signup} onClose={() => setSignup(false)} requirement={club.requirement ?? ""} onDone={afterSignup} />}
     </main>
   );
 }

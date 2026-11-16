@@ -3,6 +3,7 @@ import { z } from "zod";
 import { guessStatus } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 import { NOT_ATTENDEE, joinSet } from "@/lib/participants";
 import { guessClosed, loadWho } from "@/lib/who";
 
@@ -54,7 +55,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   // 후보: 회원 명단. 졸업여행(워크숍) 참석자에게는 라벨과 날짜를 붙인다.
   const isTrip = w.ev.type === "워크숍";
   const candidates = members
-    .filter((m) => m.kind !== "회원대기" && m.id !== g.s.mid && (!join || join.has(m.id)))
+    .filter((m) => !isGuest(m.kind) && m.id !== g.s.mid && (!join || join.has(m.id)))
     .map((m) => {
       const a = applies.find((x) => x.eventId === w.ev.id && x.memberId === m.id && x.answer === "참석");
       return { id: m.id, name: m.name, trip: isTrip && a ? `졸업여행 참석자 · ${tripText(a.days)}`.replace(/ · $/, "") : "" };
@@ -84,7 +85,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const target = (await s.list("Profiles")).find((p) => p.id === parsed.data.profileId && p.introStatus === "approved" && (!join || join.has(p.memberId)));
   if (!target) return bad("소개글을 찾을 수 없어요.", 404);
   if (target.memberId === g.s.mid) return bad("내 글에는 추측할 수 없어요.");
-  const chosen = (await s.list("Members")).find((m) => m.id === parsed.data.chosenMemberId && m.kind !== "회원대기");
+  const chosen = (await s.list("Members")).find((m) => m.id === parsed.data.chosenMemberId && !isGuest(m.kind));
   if (!chosen || (join && !join.has(chosen.id))) return bad("명단에 없는 회원이에요.");
   if (chosen.id === g.s.mid) return bad("나 자신은 고를 수 없어요.");
 

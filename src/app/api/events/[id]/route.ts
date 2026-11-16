@@ -6,6 +6,7 @@ import { clubLeaders } from "@/lib/clubs";
 import { isAttend, joinView, latestJoin } from "@/lib/club-requests";
 import { memberClubs } from "@/lib/lists";
 import { fixLegacyTypes } from "@/lib/event-migrate";
+import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 소모임 일정: 소모임 이름, 회장(직책자) 이름, 내가 그 소모임 직책자인지(참관자 추가 카드)
   const club = (e.club ?? "").trim();
   // 내가 속하지 않은 소모임 일정이면 읽기만 된다(참석 신청 대신 "소모임 관리자에게 요청하기")
-  const canApply = inClubOrObserver(e, { id: g.s.mid, clubs: me?.clubs });
+  const canApply = inClubOrObserver(e, { id: g.s.mid, clubs: me?.clubs, kind: me?.kind });
   // 이 일정에 보낸 내 참석 요청(참관/가입 + 참석) 중 가장 최근 것. 소모임 밖 회원에게만 보여 준다.
   const myReq = requests
     .filter((r) => r.memberId === g.s.mid && r.eventId === id && isAttend(r))
@@ -69,11 +70,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       canObserve: !!club && leaders.some((l) => l.id === g.s.mid),
       canApply,
       // 내 참석 요청: status pending(관리자 확인 중) | approved | declined
-      attendReq: club && myReq
+      // 대기회원·참관회원: 참석 대신 참관 신청(일정 관리자 승인). 소모임 일정이 아니어도 이 칸을 쓴다.
+      guest: isGuest(me?.kind),
+      attendReq: (club || isGuest(me?.kind)) && myReq
         ? { id: myReq.id, kind: myReq.kind, status: myReq.status, message: myReq.message, createdAt: myReq.createdAt, handledAt: myReq.handledAt, reason: myReq.reason ?? "" }
         : null,
       // 소모임 회원이 아니면: 이 소모임 가입 신청 중 가장 최근 것(설정·게시글에서 보낸 것 포함). 없으면 null
-      clubJoin: club && !(me && memberClubs(me).some((c) => c.name === club)) ? joinView(latestJoin(requests, g.s.mid, club)) : null,
+      clubJoin: club && !isGuest(me?.kind) && !(me && memberClubs(me).some((c) => c.name === club)) ? joinView(latestJoin(requests, g.s.mid, club)) : null,
     },
     activities,
     apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "" } : null,

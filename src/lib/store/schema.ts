@@ -10,6 +10,9 @@ export const TABS = {
     "clubs", "prefs",
     // avatar: 프로필 사진 JSON {type:"character", key} | {type:"photo", fileId} (lib/avatar.ts). 비어 있으면 기본.
     "avatar",
+    // edu: 교육 이수 여부("true"면 이수). 회원 신청 승인 때 정회원(이수) / 준회원(비이수)을 가른다(lib/member-apps.ts).
+    // memo: 관리자 메모(예: 명예회원 등록 사유). 관리자에게만 보인다.
+    "edu", "memo",
   ],
   Org: ["id", "dept", "role", "memberId", "clubName", "frequency", "leaderId"],
   // history: 조문 변경 기록 [{at, by, what}] JSON (최근 30개)
@@ -115,6 +118,14 @@ export const TABS = {
   ],
   // 개발 요청: 템플릿 편집기의 "AI에게 요청"에서 지금 기능으로는 안 되는 것(새 코드가 필요한 것)을 개발자에게 남긴다.
   // templateId/eventId: 요청한 곳(비어 있을 수 있음), requestedBy: 요청한 관리자 이름, status: 접수 | 진행 중 | 완료 | 보류
+  // 회원 신청(관리자 › 회원관리 › 회원신청관리에서 승인·반려). lib/member-apps.ts
+  //  type: member(회원 요청) | observe(참관 요청), source: signup(로그인 화면) | settings(설정의 정회원 신청)
+  //  edu: "yes" | "no"(정회원 필수 조건 질문 답), recommenders: 추천인(비이수자), status: pending | approved | rejected
+  //  reason: 반려 사유, fromKind/toKind: 승인할 때 바뀐 회원구분 기록, resultSeen: 신청자가 결과 알림을 봤으면 "true"
+  MemberApps: [
+    "id", "memberId", "name", "phone", "type", "edu", "recommenders", "message", "source", "status", "reason",
+    "createdAt", "handledBy", "handledAt", "fromKind", "toKind", "resultSeen",
+  ],
   DevRequests: ["id", "templateId", "eventId", "title", "detail", "why", "requestedBy", "status", "createdAt", "updatedAt"],
 } as const;
 

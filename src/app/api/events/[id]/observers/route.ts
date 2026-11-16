@@ -37,9 +37,9 @@ function view(ev: Row, members: Row[]) {
   return {
     club,
     observers: ids.map((id) => ({ id, name: name(id) })),
-    // 참관자로 고를 수 있는 회원: 소모임 밖 회원(회원대기 제외)
+    // 참관자로 고를 수 있는 회원: 소모임 밖 회원(대기회원·참관회원도 고를 수 있다)
     candidates: members
-      .filter((m) => m.kind !== "회원대기" && !inClub(m, club))
+      .filter((m) => !inClub(m, club))
       .map((m) => ({ id: m.id, name: m.name, kind: m.kind, position: m.position }))
       .sort((a, b) => a.name.localeCompare(b.name, "ko")),
   };

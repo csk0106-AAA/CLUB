@@ -1,4 +1,5 @@
 import { parseJson } from "./api";
+import { isGuest } from "./member-kind";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
@@ -18,7 +19,7 @@ export const gTeams = (g: Row): GTeam[] => parseJson<GTeam[]>(g.teams, []);
 export async function groupPool(ev: Row): Promise<{ members: Row[]; kind: "attending" | "all" }> {
   const s = await getStore();
   const [members, applies] = await Promise.all([s.list("Members"), s.list("EventApplies")]);
-  const live = members.filter((m) => m.kind !== "회원대기");
+  const live = members.filter((m) => !isGuest(m.kind));
   const att = new Set(applies.filter((a) => a.eventId === ev.id && a.answer === "참석").map((a) => a.memberId));
   const attending = live.filter((m) => att.has(m.id));
   return attending.length > 0 ? { members: attending, kind: "attending" } : { members: live, kind: "all" };

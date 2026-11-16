@@ -19,19 +19,36 @@ type M = {
   fields: Record<string, string>; // 관리자가 만든 추가 항목(열)의 값
   genderEdit?: { from: string; to: string; at: string } | null; // 회원이 직접 바꾼 성별 기록
   avatar?: AvatarView; // 프로필 사진·캐릭터(없으면 이름 첫 글자)
+  edu?: boolean; // 교육 이수
+  memo?: string; // 관리자 메모(명예회원 등록 사유 등)
+  app?: AppMark; // 회원 신청 "승인 전" / "반려"
 };
+type AppMark = { id: string; status: "pending" | "rejected"; type: string; reason: string; at: string } | null;
 type Seat = { name: string; role: string };
 type Lists = { memberKinds: { value: string; definition: string }[]; positions: string[]; clubs: string[]; clubRoles: string[] };
 type Form = {
   name: string; kind: string; position: string; gender: string; company: string; title: string;
   birth: string; phone: string; ageGroup: string; clubs: Seat[]; fields: Record<string, string>;
+  edu: boolean; memo: string;
 };
 
 const EMPTY: Form = {
   name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", clubs: [], fields: {},
+  edu: false, memo: "",
 };
 const OFF = " (목록에 없음)";
 const clubsText = (c: Seat[]) => c.map((x) => (x.role ? `${x.name}(${x.role})` : x.name)).join(", ");
+
+// 회원 신청 라벨: "승인 전"(회원신청관리로) / "반려"(누르면 사유)
+function AppLabel({ app }: { app: NonNullable<AppMark> }) {
+  if (app.status === "pending") {
+    return <Link href="/admin/member-apps" className="pill warn" style={{ textDecoration: "none", whiteSpace: "nowrap" }} title={`${fmtDate(app.at)} ${app.type === "observe" ? "참관" : "회원"} 요청 · 회원신청관리에서 확인`}>승인 전</Link>;
+  }
+  return (
+    <button type="button" className="pill bad" style={{ border: 0, cursor: "pointer", whiteSpace: "nowrap" }} aria-label="반려 사유 보기"
+      onClick={() => window.alert(`반려 사유 (${fmtDate(app.at)})\n\n${app.reason || "(적힌 사유가 없어요)"}`)}>반려</button>
+  );
+}
 
 // 목록에서 고르는 칸. 지금 값이 목록에 없으면 "(목록에 없음)" 으로 함께 보여 준다.
 function ListSelect({ id, value, options, onChange, label }: { id?: string; value: string; options: string[]; onChange: (v: string) => void; label?: string }) {
@@ -152,6 +169,7 @@ function Members() {
     const f: Form = {
       name: m.name, kind: m.kind ?? "", position: m.position ?? "", gender: m.gender ?? "", company: m.company ?? "", title: m.title ?? "",
       birth: m.birth ?? "", phone: m.phone ?? "", ageGroup: m.ageGroup ?? "", clubs: m.clubs ?? [], fields: m.fields ?? {},
+      edu: !!m.edu, memo: m.memo ?? "",
     };
     setEditId(m.id);
     setForm(f);
@@ -216,6 +234,11 @@ function Members() {
   return (
     <>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      {list && list.some((m) => m.app?.status === "pending") && (
+        <div className="msg info" role="status">
+          승인 전 회원 신청이 {list.filter((m) => m.app?.status === "pending").length}건 있어요. <Link href="/admin/member-apps">회원신청관리</Link>에서 확인해 주세요.
+        </div>
+      )}
       {list && list.some((m) => m.genderEdit) && (
         <div className="msg info" role="status">
           회원이 직접 성별을 바꾼 회원이 {list.filter((m) => m.genderEdit).length}명 있어요({list.filter((m) => m.genderEdit).map((m) => m.name).join(", ")}). 명단의 “회원 수정” 표시를 보고 “확인”을 눌러 주세요.
@@ -318,9 +341,22 @@ function Members() {
           <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
           <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
           <div><label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label><input id="f-age" className="field" placeholder="50대" value={form.ageGroup} onChange={(e) => set("ageGroup", e.target.value)} /></div>
+          <div>
+            <span className="l" id="f-edu-l">교육 이수</span>
+            <label className="row" style={{ gap: 8, minHeight: 46, cursor: "pointer" }}>
+              <input type="checkbox" aria-labelledby="f-edu-l" checked={form.edu} onChange={(e) => set("edu", e.target.checked)} style={{ width: 20, height: 20 }} />
+              <span>{form.edu ? "YES · 교육 이수자" : "NO · 비이수자"}</span>
+            </label>
+          </div>
           {custom.map((c, i) => (
             <div key={c}><label className="l" htmlFor={`f-x${i}`}>{c}</label><input id={`f-x${i}`} className="field" maxLength={200} value={form.fields[c] ?? ""} onChange={(e) => set("fields", { ...form.fields, [c]: e.target.value })} /></div>
           ))}
+        </div>
+        <div>
+          <label className="l" htmlFor="f-memo">메모 (관리자만 보여요{form.kind === "명예회원" ? " · 명예회원 등록 사유" : ""})</label>
+          <textarea id="f-memo" className="field" rows={2} maxLength={500} style={{ padding: 12, lineHeight: 1.5, resize: "vertical" }}
+            placeholder={form.kind === "명예회원" ? "예) 교육과정 주관사 대표로 명예회원 등록" : "관리자 메모"} value={form.memo} onChange={(e) => set("memo", e.target.value)} />
+          {form.kind === "명예회원" && !form.memo.trim() && <span className="small">명예회원은 관리자 등록으로만 정해져요. 등록 사유를 메모로 남겨 주세요.</span>}
         </div>
         <div>
           <span className="l">소모임</span>
@@ -373,7 +409,10 @@ function Members() {
                   </span>
                 )}
               </span>
-              <span className="chip line">{m.kind || "미지정"}</span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+                <span className="chip line">{m.kind || "미지정"}</span>
+                {m.app && <AppLabel app={m.app} />}
+              </span>
               <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" onClick={() => startEdit(m)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
               </button>
@@ -385,14 +424,15 @@ function Members() {
       {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
       {shown.length > 0 && (
         <div className="tblw only-wide">
-          <table className="tbl" style={{ minWidth: 1000 + custom.length * 110 }}>
-            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>권한</th><th></th></tr></thead>
+          <table className="tbl" style={{ minWidth: 1200 + custom.length * 110 }}>
+            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
             <tbody>
               {shown.map((m) => (
                 <tr key={m.id}>
                   <td className="num">{m.no}</td>
                   <td><b>{m.name}</b></td>
-                  <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}</td>
+                  <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}{m.app && <> {m.app && <AppLabel app={m.app} />}</>}</td>
+                  <td className="center">{m.edu ? "YES" : ""}</td>
                   <td>{m.position}{m.position && !lists.positions.includes(m.position) && <span className="small">{OFF}</span>}</td>
                   <td>{clubsText(m.clubs ?? [])}</td>
                   <td>
@@ -408,6 +448,7 @@ function Members() {
                   </td>
                   <td>{m.company}</td><td>{m.title}</td><td className="num">{fmtDate(m.birth)}</td><td className="num">{m.phone}</td>
                   {custom.map((c) => <td key={c}>{m.fields[c] ?? ""}</td>)}
+                  <td style={{ maxWidth: 220, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }} className="small">{m.memo}</td>
                   <td>{(m.effective ?? []).map((p) => <span key={p} className={`pill ${p === "all" ? "ok" : "blue"}`} style={{ marginRight: 4 }}>{PERM_LABELS[p] ?? p}</span>)}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini" type="button" onClick={() => startEdit(m)}>수정</button>{" "}

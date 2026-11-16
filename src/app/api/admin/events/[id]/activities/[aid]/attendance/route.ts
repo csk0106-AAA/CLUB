@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { attendanceState, rosterSet, saveAttendanceState } from "@/lib/participants";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; aid: string }> };
@@ -29,7 +30,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     by: state.by,
     selectedCount: selected.size,
     members: members
-      .filter((m) => m.kind !== "회원대기")
+      .filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")))
       .map((m) => {
         const ap = applies.find((a) => a.eventId === id && a.memberId === m.id);
         return { id: m.id, name: m.name, answer: ap?.answer ?? "", days: ap?.days ?? "", selected: selected.has(m.id) };
@@ -51,10 +52,10 @@ export async function PUT(req: Request, ctx: Ctx) {
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청을 확인해 주세요.");
 
-  const members = (await c.s.list("Members")).filter((m) => m.kind !== "회원대기");
+  const applies = await c.s.list("EventApplies");
+  const members = (await c.s.list("Members")).filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")));
   let ids: string[];
   if ("preset" in parsed.data) {
-    const applies = await c.s.list("EventApplies");
     ids = members.filter((m) => applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
   } else {
     ids = [...new Set(parsed.data.selected)];

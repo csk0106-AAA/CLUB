@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ApplyNotice } from "@/components/ApplyNotice";
 import { ConsentSheet } from "@/components/ConsentSheet";
 import { EventCalendar } from "@/components/EventCalendar";
 import { EventCreate } from "@/components/EventCreate";
@@ -203,6 +204,7 @@ export default function EventsPage() {
       {me && canCreate && creating && <EventCreate open={creating} onClose={() => setCreating(false)} clubs={me.clubOptions ?? []} unlocked={me.admin} />}
 
       {me && <ConsentSheet consent={me.consent} onAgreed={() => setMe({ ...me, consent: true })} />}
+      {me && <ApplyNotice ready={me.consent} />}
 
       <MemberTabs on="events" />
     </main>

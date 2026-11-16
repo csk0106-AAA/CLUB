@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   const rows: Record<string, string>[] = [];
   const skipped: string[] = [];
   const renamed: { from: string; to: string }[] = [];
-  for (const { fields, ...r } of parsed.data.rows) {
+  for (const { fields, edu, memo, ...r } of parsed.data.rows) {
     const asked = r.name.trim();
     const phone = digits(r.phone);
     if (known.some((k) => k.name === asked && (!phone || !k.phone || k.phone === phone))) {
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     taken.add(name);
     known.push({ name: asked, phone });
     no += 1;
-    rows.push({ ...r, name, no: String(no), perms: "", clubs: "", extra: fields && Object.keys(fields).length ? withFields("", fields) : "" });
+    rows.push({ ...r, name, edu: edu ? "true" : "", memo: memo ?? "", no: String(no), perms: "", clubs: "", extra: fields && Object.keys(fields).length ? withFields("", fields) : "" });
   }
   // 직책 그룹 권한 때문에 새 회원에게 권한이 생기면 "모든 권한" 관리자만 넣을 수 있다.
   const groups = await getPermGroups();

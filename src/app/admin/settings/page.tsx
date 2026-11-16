@@ -10,7 +10,7 @@ import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 // 회원구분·직책·소모임 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
-type S = { clubName: string; clubShortName: string; clubNameDisplay: "full" | "short"; inviteCode: string };
+type S = { clubName: string; clubShortName: string; clubNameDisplay: "full" | "short"; inviteCode: string; requirement: string };
 
 function Settings() {
   const [s, setS] = useState<S | null>(null);
@@ -76,6 +76,18 @@ function Settings() {
             <b style={{ font: `700 ${fs(18)}/1.3 var(--display)` }}>{(s.clubNameDisplay === "short" && s.clubShortName.trim() ? s.clubShortName : s.clubName) || "모임 이름"}</b>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>정회원 필수 조건</b>
+        <div>
+          <label className="l" htmlFor="s-req">필수 조건</label>
+          <input id="s-req" className="field" maxLength={80} placeholder="예) 조선일보 AI 초격차 전략포럼 제6기 수료" value={s.requirement} onChange={(e) => setS({ ...s, requirement: e.target.value })} />
+        </div>
+        <span className="small">
+          로그인 화면의 “회원 또는 참관 신청”에서 “{s.requirement.trim() || "필수 조건"}” 하셨나요?라고 물어요. “네”면 교육 이수자(회원 요청 승인 시 정회원), “아니요”면 추천인을 받아요(승인 시 준회원).
+          신청은 <Link href="/admin/member-apps">회원관리 › 회원신청관리</Link>에서 승인해요.
+        </span>
       </div>
 
       <span className="small">회원구분·직책·소모임 목록은 <Link href="/admin/kinds">회원 구분</Link> 메뉴에서 정해요.</span>

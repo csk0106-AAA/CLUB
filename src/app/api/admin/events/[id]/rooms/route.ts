@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { nightsOf, roomState, rooms, saveRoomState, suggestRoomName, validDate } from "@/lib/rooms";
 import { getStore } from "@/lib/store";
+import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -16,7 +17,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const [events, members, applies, all, state] = await Promise.all([s.list("Events"), s.list("Members"), s.list("EventApplies"), rooms(id), roomState(id)]);
   const ev = events.find((e) => e.id === id);
   if (!ev) return bad("일정을 찾을 수 없어요.", 404);
-  const live = members.filter((m) => m.kind !== "회원대기");
+  const live = members.filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")));
   const att = live.filter((m) => applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
   const dates = [...new Set([...nightsOf(ev.startsAt, ev.endsAt), ...all.map((r) => r.date)])].sort();
   const free = Object.fromEntries(dates.map((d) => [d, att.filter((p) => !all.some((r) => r.date === d && r.guests.includes(p)))]));

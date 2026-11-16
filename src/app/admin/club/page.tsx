@@ -7,6 +7,7 @@ import { OrgChart, OrgClubs, type OrgClub, type OrgItem } from "@/components/Org
 import { Popup } from "@/components/Popup";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
+import { isGuest } from "@/lib/member-kind";
 
 // 관리자 › 회원관리 › 조직도. 회원 구분과 연동된다:
 //  - 모임 직책 체계 = 회원 구분 › 직책 목록(순서 그대로, 일반회원 제외). 직책마다 맡을 회원을 여러 명 고른다(회원 명단의 직책 값).
@@ -74,7 +75,7 @@ function OrgAdmin() {
     const [o, m] = await Promise.all([api<Org>("/api/club/org"), api<{ members: Member[] }>("/api/admin/members")]);
     if (o.ok) setOrg(o.data);
     else setNote({ tone: "bad", text: o.error });
-    if (m.ok) setMembers(m.data.members.filter((x) => x.kind !== "회원대기").map((x) => ({ id: x.id, name: x.name, kind: x.kind ?? "", position: x.position ?? "" })));
+    if (m.ok) setMembers(m.data.members.filter((x) => !isGuest(x.kind)).map((x) => ({ id: x.id, name: x.name, kind: x.kind ?? "", position: x.position ?? "" })));
   }, []);
   useEffect(() => {
     load();

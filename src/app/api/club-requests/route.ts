@@ -7,6 +7,7 @@ import { clubLabel } from "@/lib/club-label";
 import { getLists } from "@/lib/lists";
 import { pushTo } from "@/lib/push";
 import { getPermGroups } from "@/lib/perms";
+import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -33,20 +34,23 @@ export async function POST(req: Request) {
   const s = await getStore();
   const [members, events, rows] = await Promise.all([s.list("Members"), s.list("Events"), s.list("ClubRequests")]);
   const me = members.find((m) => m.id === g.s.mid);
-  if (!me || me.kind === "회원대기") return bad("회원대기 상태에서는 신청할 수 없어요.", 403);
+  if (!me) return bad("회원 정보를 찾을 수 없어요.", 404);
+  // 대기회원·참관회원은 일정 참관 신청만 할 수 있다(어느 일정이든. 일반 일정은 일정 관리자가 승인).
+  const guest = isGuest(me.kind);
+  if (guest && kind === "join") return bad("정회원·준회원이 되면 소모임에 가입할 수 있어요. 일정은 참관 신청으로 함께해 주세요.", 403);
 
   let club = parsed.data.club ?? "";
   let eventId = "";
   const ev = parsed.data.eventId ? events.find((e) => e.id === parsed.data.eventId) : undefined;
   if (parsed.data.eventId) {
-    if (!ev || !eventVisible(ev, me) || !(ev.club ?? "").trim()) return bad("소모임 일정을 찾을 수 없어요.", 404);
-    club = ev.club.trim();
+    if (!ev || !eventVisible(ev, me) || (!guest && !(ev.club ?? "").trim())) return bad("소모임 일정을 찾을 수 없어요.", 404);
+    club = (ev.club ?? "").trim();
     eventId = ev.id;
   }
   if ((kind === "observe" || attend) && !eventId) return bad("참석할 일정을 골라 주세요.");
-  if (!club || !(await getLists()).clubs.includes(club)) return bad("소모임을 찾을 수 없어요.", 404);
+  if (club ? !(await getLists()).clubs.includes(club) : !(guest && eventId)) return bad("소모임을 찾을 수 없어요.", 404);
   if (attend ? alreadyIn("observe", me, club, ev) : alreadyIn(kind, me, club, ev)) {
-    if (attend) return bad("이미 이 일정에 참석 신청할 수 있어요. 화면을 새로 고쳐 주세요.", 409);
+    if (attend || guest) return bad("이미 이 일정에 참석 신청할 수 있어요. 화면을 새로 고쳐 주세요.", 409);
     return bad(kind === "join" ? `이미 ${clubLabel(club)} 회원이에요.` : "이미 이 일정의 참관자예요.", 409);
   }
   if (attend) {
