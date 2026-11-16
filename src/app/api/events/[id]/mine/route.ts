@@ -52,7 +52,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   return NextResponse.json({
     rooms: { published: roomSt.published, mine: myRooms },
-    schedule: sched.filter((r) => r.eventId === id).sort((a, b) => a.at.localeCompare(b.at)).map((r) => ({ at: r.at, title: r.title })),
+    schedule: sched.filter((r) => r.eventId === id).sort((a, b) => a.at.localeCompare(b.at)).map((r) => ({ at: r.at, title: r.title, place: r.place ?? "", memo: r.memo ?? "" })),
     groups: myGroups,
     carpool: { published: state.published, mine: myCars },
   });

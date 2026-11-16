@@ -567,6 +567,24 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .tl li { display: flex; gap: 14px; border-left: 2px solid var(--line); padding: 4px 0 4px 12px; }
 .tl b { min-width: 110px; flex: none; font-variant-numeric: tabular-nums; }
+/* 세부일정: 한 줄(시간 · 늘어나는 내용 · 위치·메모 아이콘 · 저장/삭제). 휴대폰에서는 저장/삭제가 아래 줄로 */
+.schedrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; gap: 8px; }
+.schedrow .grow-text { width: 100%; min-height: 44px; padding: 10px 12px; line-height: 1.5; resize: none; overflow: hidden; }
+.schedrow .sics { margin-left: 0; }
+@media (max-width: 560px) {
+  .schedrow { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .schedrow .sics { flex-direction: column; }
+  .schedrow .schedacts { grid-column: 2 / 4; justify-self: end; }
+}
+.sics { display: inline-flex; gap: 2px; flex: none; margin-left: auto; align-self: flex-start; }
+.sic { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--dis); cursor: pointer; }
+.sic.on { color: var(--violet); background: var(--violet-bg); }
+.sic:hover { border-color: var(--line); }
+.sic:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.tl li.tlrow { align-items: flex-start; gap: 6px; }
+.tl li .tlb { flex: 1; min-width: 0; display: flex; gap: 14px; }
+@media (max-width: 420px) { .tl li.tlrow { flex-direction: row; } .tl li .tlb { flex-direction: column; gap: 0; } }
+.tl .sics { margin-top: -8px; margin-bottom: -8px; }
 @media (max-width: 420px) { .tl li { flex-direction: column; gap: 0; } .tl b { min-width: 0; } }
 /* 회원 화면 조직도(components/OrgChart OrgList): 직책 한 줄씩(직책 · 맡은 회원) */
 .orglist { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--line2); }

@@ -9,7 +9,7 @@ import { LiveActivities } from "@/components/LiveActivities";
 import { EventMinutes } from "@/components/EventMinutes";
 import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
-import { ScheduleView } from "@/components/ScheduleBoard";
+import { ScheduleView, type SchedItem } from "@/components/ScheduleBoard";
 import { Sheet } from "@/components/Sheet";
 import { ClubRequestCard, type AttendReq, type JoinReq } from "./ClubRequestCard";
 import { ObserversCard } from "./ObserversCard";
@@ -68,7 +68,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const { id } = use(params);
   const router = useRouter();
   const [d, setD] = useState<Detail | null>(null);
-  const [schedule, setSchedule] = useState<{ at: string; title: string }[]>([]);
+  const [schedule, setSchedule] = useState<SchedItem[]>([]);
   const [error, setError] = useState("");
   const [manage, setManage] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,7 +83,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setManage(canManageOf(m.data.livePerms));
     const [r, mine] = await Promise.all([
       api<Detail>(`/api/events/${id}`),
-      api<{ schedule: { at: string; title: string }[] }>(`/api/events/${id}/mine`),
+      api<{ schedule: SchedItem[] }>(`/api/events/${id}/mine`),
     ]);
     if (!r.ok) return setError(r.error);
     setD(r.data);

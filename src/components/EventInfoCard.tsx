@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { ScheduleView } from "./ScheduleBoard";
+import { ScheduleView, type SchedItem } from "./ScheduleBoard";
 import { fmtDate, fmtRange, fmtWhen, TYPE_TONE, won } from "@/lib/client";
 import type { FeeRule } from "@/lib/fee";
 import { fs } from "@/lib/fs";
@@ -134,7 +134,7 @@ export const feeSummary = (ev: InfoEvent, fee: FeeView) => feeLines(ev, fee)[0]?
 export const noticeSummary = (text: string) => text.trim().split("\n")[0].slice(0, 40);
 
 // 관리자 개요의 "회원에게 보이는 모습": 회원 일정 화면의 위쪽과 같은 조각을 펼친 채로 보여 준다.
-export function EventPreview({ ev, rules, actNames, schedule }: { ev: InfoEvent; rules: FeeRule[]; actNames: string[]; schedule: { at: string; title: string }[] }) {
+export function EventPreview({ ev, rules, actNames, schedule }: { ev: InfoEvent; rules: FeeRule[]; actNames: string[]; schedule: SchedItem[] }) {
   const fee: FeeView = { kind: "rules", rules };
   const hasFee = feeLines(ev, fee).length > 0;
   return (

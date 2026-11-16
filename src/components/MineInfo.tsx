@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ScheduleView } from "./ScheduleBoard";
+import { ScheduleView, type SchedItem } from "./ScheduleBoard";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Data = {
-  schedule: { at: string; title: string }[];
+  schedule: SchedItem[];
   groups: { title: string; team: string; members: string[] }[];
   rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[] }[] };
   carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number }[] };

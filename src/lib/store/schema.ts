@@ -38,7 +38,8 @@ export const TABS = {
   ],
   EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner"],
   EventPrep: ["id", "eventId", "item", "owner", "done"],
-  EventSchedule: ["id", "eventId", "at", "title"],
+  // place: 위치(주소·장소 이름), memo: 메모(준비물·안내). 일정마다 아이콘으로 보이고 누르면 팝업으로 본다.
+  EventSchedule: ["id", "eventId", "at", "title", "place", "memo"],
   // 템플릿 버전: 처음 만든 행이 v1(origin default/custom)이고, 고칠 때마다 새 행이 v2, v3…으로 생긴다(origin "version").
   // 새 버전의 config.derivedFrom 은 v1 id, config.sourceEvent 는 일정에서 고쳤을 때 그 일정.
   // 저장 방법(수정=이 버전 고치기 / 새 버전 / 새 활동)은 고치는 사람이 고른다(lib/template-versions.ts saveTemplate).

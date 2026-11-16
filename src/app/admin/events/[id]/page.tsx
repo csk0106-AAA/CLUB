@@ -12,6 +12,7 @@ import { RoomsPanel } from "@/components/RoomsPanel";
 import { DateField } from "@/components/DateField";
 import { ObserversCard } from "@/app/events/[id]/ObserversCard";
 import { EventPreview, eventInfoLines } from "@/components/EventInfoCard";
+import type { SchedItem } from "@/components/ScheduleBoard";
 import { EventAudience } from "./EventAudience";
 import { api, fmtDate, fmtDateDow, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
@@ -40,8 +41,8 @@ const TABS = [
   { key: "apply", label: "신청현황" },
   { key: "fee", label: "회비" },
   { key: "act", label: "활동" },
-  { key: "sched", label: "세부 일정" },
-  { key: "prep", label: "준비 목록" },
+  { key: "sched", label: "세부일정" },
+  { key: "prep", label: "준비목록" },
   { key: "cost", label: "비용" },
   { key: "group", label: "조편성" },
   { key: "car", label: "카풀" },
@@ -73,7 +74,7 @@ function Detail({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
   const [actNames, setActNames] = useState<string[]>([]);
-  const [schedule, setSchedule] = useState<{ at: string; title: string }[]>([]); // 세부 일정(미리보기용)
+  const [schedule, setSchedule] = useState<SchedItem[]>([]); // 세부 일정(미리보기용)
   const [opts, setOpts] = useState<Opts>({ kinds: [], positions: [], clubs: [], dues: { account: "", holder: "" } });
   const [prefilled, setPrefilled] = useState("");
 
@@ -87,9 +88,9 @@ function Detail({ id }: { id: string }) {
     const [r, a, sc] = await Promise.all([
       api<{ event: Ev; rows: Row[]; options: Opts }>(`/api/admin/events/${id}`),
       api<{ activities: { config: { name: string } }[] }>(`/api/admin/events/${id}/activities`),
-      api<{ items: { at?: string; title?: string }[] }>(`/api/admin/events/${id}/items/schedule`),
+      api<{ items: SchedItem[] }>(`/api/admin/events/${id}/items/schedule`),
     ]);
-    if (sc.ok) setSchedule(sc.data.items.map((i) => ({ at: String(i.at ?? ""), title: String(i.title ?? "") })));
+    if (sc.ok) setSchedule(sc.data.items.map((i) => ({ at: String(i.at ?? ""), title: String(i.title ?? ""), place: i.place ?? "", memo: i.memo ?? "" })));
     if (r.ok) {
       // 예전 "기본 회비"가 남아 있으면 모두 "전체"인 회비 줄로 옮겨 보여 준다(저장하면 그대로 바뀐다).
       const e = r.data.event;

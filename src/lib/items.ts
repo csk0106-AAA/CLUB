@@ -21,10 +21,10 @@ export const ITEMS: Record<ItemKind, Def> = {
     tab: "EventSchedule",
     perm: ["events"],
     schema: z
-      .object({ at: str(40).min(1), title: str(100).min(1) })
-      .transform((v) => ({ at: v.at, title: v.title })),
+      .object({ at: str(40).min(1), title: str(300).min(1), place: str(200).default(""), memo: str(1000).default("") })
+      .transform((v) => ({ at: v.at, title: v.title, place: v.place, memo: v.memo })),
     sort: (a, b) => a.at.localeCompare(b.at),
-    view: (r) => ({ id: r.id, at: r.at, title: r.title }),
+    view: (r) => ({ id: r.id, at: r.at, title: r.title, place: r.place ?? "", memo: r.memo ?? "" }),
   },
   prep: {
     tab: "EventPrep",
