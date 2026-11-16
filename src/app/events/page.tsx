@@ -31,6 +31,7 @@ type Ev = {
   canApply: boolean;
   needsAnswer: boolean;
   draft?: boolean; // 공개 전 초안(일정 관리 권한이 있는 회원에게만 온다)
+  outside?: boolean; // 공개 대상 밖의 일정(일정 관리 권한이 있는 회원에게만 온다)
   fresh?: Fresh | null; // 마지막으로 본 뒤 새로 공개(NEW) / 바뀜(UP)
 };
 type Me = { name: string; consent: boolean; admin: boolean; livePerms?: string[]; clubOptions?: string[] };
@@ -91,8 +92,10 @@ export default function EventsPage() {
   const [creating, setCreating] = useState(false);
 
   // 일정은 모두 일정 화면(/events/[id] 한 페이지: 개요 정보 + 참석 신청)으로 간다.
-  // 초안은 회원 화면이 없으므로 관리 화면으로 간다.
-  const hrefOf = (e: Ev) => (e.draft ? `/admin/events/${e.id}` : `/events/${e.id}`);
+  // 초안·공개 대상 밖의 일정은 내 회원 화면이 없으므로 관리 화면으로 간다.
+  // 관리 화면 주소: 소모임 일정은 ?club= 을 붙여 위쪽 메뉴가 소모임관리로, 돌아가기는 그 소모임의 일정 목록으로.
+  const manageHref = (e: Ev) => `/admin/events/${e.id}${e.club ? `?club=${encodeURIComponent(e.club)}` : ""}`;
+  const hrefOf = (e: Ev) => (e.draft || e.outside ? manageHref(e) : `/events/${e.id}`);
   function open(e: Ev) {
     router.push(hrefOf(e));
   }
@@ -120,6 +123,7 @@ export default function EventsPage() {
             {e.pinned && !e.past && <span className="chip red"><IconPin size={12} />고정</span>}
             <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
             {e.draft && <span className="chip gray">초안 · 회원에게 안 보임</span>}
+            {e.outside && <span className="chip line">공개 대상 아님 · 관리자만 보임</span>}
             <FreshChip fresh={e.fresh} />
             {status}
           </span>
@@ -139,9 +143,9 @@ export default function EventsPage() {
             </span>
           </span>
         </button>
-        {canManage && !e.draft && (
+        {canManage && !e.draft && !e.outside && (
           <div className="foot">
-            <a href={`/admin/events/${e.id}`} onClick={(ev) => { ev.preventDefault(); router.push(`/admin/events/${e.id}`); }} aria-label={`${e.name} 일정 관리`}>일정 관리 ›</a>
+            <a href={manageHref(e)} onClick={(ev) => { ev.preventDefault(); router.push(manageHref(e)); }} aria-label={`${e.name} 일정 관리`}>일정 관리 ›</a>
           </div>
         )}
       </div>

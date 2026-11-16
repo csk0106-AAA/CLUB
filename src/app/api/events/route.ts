@@ -41,9 +41,12 @@ export async function GET() {
   const freshness = await eventFreshness(session.mid);
 
   const list = events
-    .filter((e) => eventVisible(e, me ?? session.mid) || (manager && e.published !== "true"))
+    // 일정 관리 권한이 있으면 모든 일정(초안, 공개 대상 밖의 일정 포함 — 관리자 › 일정관리·소모임관리에서 만든 것 모두)
+    .filter((e) => manager || eventVisible(e, me ?? session.mid))
     .map((e) => {
       const draft = e.published !== "true";
+      // 공개됐지만 나는 공개 대상이 아닌 일정(관리자에게만 보임): 회원 화면이 없으니 관리 화면으로 간다
+      const outside = !draft && !eventVisible(e, me ?? session.mid);
       const a = mine.find((x) => x.eventId === e.id);
       const attending = a?.answer === "참석";
       const canApply = inClubOrObserver(e, { id: session.mid, clubs: me?.clubs });
@@ -69,8 +72,9 @@ export async function GET() {
         canApply, // false: 내가 속하지 않은 소모임 일정(읽기만)
         myAnswer,
         // 참석 여부를 아직 안 알림(날짜가 정해지고 지나지 않은, 신청할 수 있는 일정만)
-        needsAnswer: !draft && canApply && myAnswer === "" && !!e.startsAt && !past,
+        needsAnswer: !draft && !outside && canApply && myAnswer === "" && !!e.startsAt && !past,
         draft, // 공개 전 초안(관리자에게만 보임)
+        outside, // 공개 대상 밖(관리자에게만 보임)
         fresh: draft ? null : freshness.get(e.id) ?? null, // "new" | "updated" | null
         // 참석 신청하고 회비를 내지 않았으면 회비 알림
         feeDue: attending && hasFee && a?.paid !== "true",
