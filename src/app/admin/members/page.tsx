@@ -9,6 +9,7 @@ import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
 import { parseMembers } from "@/lib/member-import";
+import { ageGroupOf } from "@/lib/age-group";
 import { fs } from "@/lib/fs";
 
 type M = {
@@ -342,7 +343,15 @@ function Members() {
           <div><label className="l" htmlFor="f-ti">직위</label><input id="f-ti" className="field" value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
           <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
           <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
-          <div><label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label><input id="f-age" className="field" placeholder="50대" value={form.ageGroup} onChange={(e) => set("ageGroup", e.target.value)} /></div>
+          <div>
+            <label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label>
+            {ageGroupOf(form.birth) ? (
+              <input id="f-age" className="field" readOnly value={ageGroupOf(form.birth)} aria-describedby="f-age-d" style={{ background: "var(--soft)" }} />
+            ) : (
+              <input id="f-age" className="field" placeholder="50대" value={form.ageGroup} aria-describedby="f-age-d" onChange={(e) => set("ageGroup", e.target.value)} />
+            )}
+            <span id="f-age-d" className="small" style={{ display: "block", marginTop: 4 }}>{ageGroupOf(form.birth) ? "생년월일로 자동 계산돼요." : "생년월일을 넣으면 자동으로 채워져요."}</span>
+          </div>
           <div>
             {/* 교육 이수: 로그인 화면 회원 신청처럼 정회원 필수 조건(모임개요)을 "○○ 하셨나요?"로 묻는다 */}
             <span className="l" id="f-edu-l">“{requirement || "교육과정 수료"}” 하셨나요?</span>

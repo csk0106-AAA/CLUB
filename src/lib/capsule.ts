@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { activityKind, activityMode, liveView, readConfig } from "./activities";
+import { memberAgeGroup } from "./age-group";
 import { parseJson } from "./api";
 import { liveRow } from "./rounds";
 import { getSetting, getStore, setSetting } from "./store";
@@ -103,7 +104,7 @@ export function makeTeams(members: Row[], count: number, mode: TeamMode): Row[][
   if (mode === "manual") return Array.from({ length: count }, () => []);
   const mixAge = mode === "mix";
   const list = shuffle(members);
-  if (mixAge) list.sort((a, b) => ageOf(a.ageGroup) - ageOf(b.ageGroup));
+  if (mixAge) list.sort((a, b) => ageOf(memberAgeGroup(a)) - ageOf(memberAgeGroup(b)));
   const out: Row[][] = Array.from({ length: count }, () => []);
   list.forEach((m, i) => {
     const row = Math.floor(i / count);

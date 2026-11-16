@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guard, hostGuard } from "@/lib/api";
 import { capsuleRows, loadTeamActivity, makeTeams, saveTeamsState, teams, teamsState } from "@/lib/capsule";
 import { isLimited, participantPool, rosterSet } from "@/lib/participants";
+import { memberAgeGroup } from "@/lib/age-group";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 
@@ -12,7 +13,7 @@ type Ctx = { params: Promise<{ id: string; aid: string }> };
 // 팀 구성에 쓸 사람: 관리자 선택 회원 활동이면 선택한 회원, 전체 회원 활동이면 일정 참석 신청자(없으면 전체 회원).
 const pool = participantPool;
 
-const view = (m: Row) => ({ id: m.id, name: m.name, ageGroup: m.ageGroup });
+const view = (m: Row) => ({ id: m.id, name: m.name, ageGroup: memberAgeGroup(m) });
 
 // 이미 작성된 타임캡슐이 있으면 팀을 바꿀 수 없다(팀 약속이 팀에 묶여 있다).
 async function locked(aid: string): Promise<boolean> {

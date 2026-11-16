@@ -3,13 +3,14 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { makeTeams } from "@/lib/capsule";
 import { gTeams, groupPool, loadGrouping } from "@/lib/groups";
+import { memberAgeGroup } from "@/lib/age-group";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; gid: string }> };
 
-const view = (m: Row) => ({ id: m.id, name: m.name, ageGroup: m.ageGroup });
+const view = (m: Row) => ({ id: m.id, name: m.name, ageGroup: memberAgeGroup(m) });
 
 // 조편성 보드 데이터. 타임캡슐 팀 구성과 같은 모양이라 같은 화면(TeamBoard)을 쓴다.
 export async function GET(_req: Request, ctx: Ctx) {

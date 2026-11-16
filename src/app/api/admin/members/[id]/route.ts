@@ -4,6 +4,7 @@ import { removeMemberPhotos } from "@/lib/avatar";
 import { withGenderEdit } from "@/lib/gender-edit";
 import { fieldValues, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
+import { ageGroupOf } from "@/lib/age-group";
 import { checkPermChange, effectivePerms, getPermGroups, isAllNow } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import { clubsJson, memberBody } from "@/lib/schemas";
@@ -29,6 +30,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   // perms·clubs 를 보내지 않으면 지금 값을 그대로 둔다.
   const { memo, ...rest } = d;
   const patch: Record<string, string> = { ...rest, name };
+  // 연령대는 생년월일이 있으면 자동(생년월일이 없을 때만 적은 값)
+  patch.ageGroup = ageGroupOf(rest.birth) || rest.ageGroup;
   if (memo !== undefined) patch.memo = memo;
   if (edu !== undefined) patch.edu = edu ? "true" : "";
   if (perms) patch.perms = perms.join("|");
