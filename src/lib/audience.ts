@@ -65,7 +65,8 @@ export function eventVisible(e: Ev, who: Viewer | string): boolean {
   const v: Viewer = typeof who === "string" ? { id: who } : who;
   const club = (e.club ?? "").trim();
   if (club) return inClubOrObserver(e, v) || (typeof who !== "string" && !!v.id);
-  return inAudience(readAudience(e.audience), v.id ?? "");
+  // 참관이 승인된 회원(참관자)은 공개 대상에 없어도 그 일정을 본다
+  return inAudience(readAudience(e.audience), v.id ?? "") || readObservers(e.observers).includes(v.id ?? "");
 }
 
 // 이 일정에 참석 신청·회비 알림·활동 참여를 할 수 있는지: 보이고 + (소모임 일정이면) 소모임 회원 또는 참관자

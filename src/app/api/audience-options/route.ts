@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { can, getSession } from "@/lib/auth";
 import { getLists, memberClubs } from "@/lib/lists";
 import { getStore } from "@/lib/store";
-import { isGuest } from "@/lib/member-kind";
 import { clubAdmin } from "@/lib/published";
 import { forbid, getMe } from "../board/_lib/server";
 
@@ -20,7 +19,8 @@ export async function GET() {
   const clubNames = [...new Set([...lists.clubs, ...members.flatMap((x) => memberClubs(x).map((c) => c.name))])];
   return NextResponse.json({
     // 회원구분별로 묶어 보여 주려고 회원구분과 그 순서(회원 구분 화면의 순서)를 함께 준다
-    members: sortedMembers.filter((x) => !isGuest(x.kind)).map((x) => ({ id: x.id, name: x.name, kind: x.kind || "" })),
+    // 대기회원·참관회원도 고를 수 있다(회원구분별 묶음으로 따로 보인다)
+    members: sortedMembers.map((x) => ({ id: x.id, name: x.name, kind: x.kind || "" })),
     kinds: lists.memberKinds.map((k) => k.value),
     events: [...events]
       .sort((a, b) => (b.startsAt ?? "").localeCompare(a.startsAt ?? ""))
