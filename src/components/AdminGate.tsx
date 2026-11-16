@@ -131,7 +131,7 @@ export function AdminGate(props: {
       : props.mode === "group"
         ? [{ href: "/admin/settings", label: "모임개요" }, { href: "/admin/dues", label: "회비관리" }, { href: "/admin/rules", label: "회칙" }]
       : props.mode === "templates"
-        ? [{ href: "/admin/templates", label: "활동 템플릿" }, { href: "/admin/dev-requests", label: "개발 요청" }]
+        ? [] // 개발 요청은 각 템플릿 편집의 "AI에게 요청"에서 보낸다(위쪽 하위 메뉴 없음)
         : props.mode === "clubs"
           ? [{ href: "/admin/clubs", label: "소모임 목록" }] // 신청내역은 각 소모임 화면의 "신청내역" 탭에서
           : props.mode === "events"
