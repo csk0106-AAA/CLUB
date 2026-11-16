@@ -591,6 +591,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .tl li .tlb { flex: 1; min-width: 0; display: flex; gap: 14px; }
 @media (max-width: 420px) { .tl li.tlrow { flex-direction: row; } .tl li .tlb { flex-direction: column; gap: 0; } }
 .tl .sics { margin-top: -8px; margin-bottom: -8px; }
+/* 회원 화면: 배경 없는 아이콘, 내용 글 끝에 이어서(누르기 쉽게 칸은 32px) */
+.sic.plain { width: 32px; height: 28px; margin: -4px -4px -4px 0; vertical-align: middle; background: transparent; border: 0; }
+.sic.plain.on { background: transparent; color: var(--violet); }
+.sic.plain:hover { background: var(--soft); }
 @media (max-width: 420px) { .tl li { flex-direction: column; gap: 0; } .tl b { min-width: 0; } }
 /* 회원 화면 조직도(components/OrgChart OrgList): 직책 한 줄씩(직책 · 맡은 회원) */
 .orglist { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--line2); }

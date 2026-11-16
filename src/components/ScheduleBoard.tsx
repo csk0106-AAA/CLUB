@@ -54,9 +54,10 @@ function PinIcon() {
 function MemoIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6" /><path d="M8 13h8M8 17h5" /></svg>;
 }
-function IconBtn({ field, on, label, onClick }: { field: Field; on: boolean; label: string; onClick: () => void }) {
+// plain: 회원 화면용(배경 없이 아이콘만, 내용 글 끝에 붙는다)
+function IconBtn({ field, on, label, onClick, plain }: { field: Field; on: boolean; label: string; onClick: () => void; plain?: boolean }) {
   return (
-    <button type="button" className={`sic${on ? " on" : ""}`} aria-haspopup="dialog" aria-label={label} title={label} onClick={onClick}>
+    <button type="button" className={`sic${on ? " on" : ""}${plain ? " plain" : ""}`} aria-haspopup="dialog" aria-label={label} title={label} onClick={onClick}>
       {field === "place" ? <PinIcon /> : <MemoIcon />}
     </button>
   );
@@ -106,14 +107,13 @@ export function ScheduleView({ items, dayPlaces = {} }: { items: SchedItem[]; da
               <li key={i} className="tlrow">
                 <span className="tlb">
                   <b className="num">{timeOf(s.at) || "시간 미정"}</b>
-                  <span style={{ whiteSpace: "pre-wrap" }}>{s.title || "(내용 없음)"}</span>
-                </span>
-                {(s.place || s.memo) && (
-                  <span className="sics">
-                    {s.place && <IconBtn field="place" on label={`${timeOf(s.at)} 위치 보기`} onClick={() => setShow({ field: "place", head: `${when(s)} · ${s.title}`, text: s.place! })} />}
-                    {s.memo && <IconBtn field="memo" on label={`${timeOf(s.at)} 메모 보기`} onClick={() => setShow({ field: "memo", head: `${when(s)} · ${s.title}`, text: s.memo! })} />}
+                  <span style={{ whiteSpace: "pre-wrap" }}>
+                    {s.title || "(내용 없음)"}
+                    {/* 위치·메모 아이콘: 배경 없이 내용 글 맨 끝에 붙인다 */}
+                    {s.place && <IconBtn plain field="place" on label={`${timeOf(s.at)} 위치 보기`} onClick={() => setShow({ field: "place", head: `${when(s)} · ${s.title}`, text: s.place! })} />}
+                    {s.memo && <IconBtn plain field="memo" on label={`${timeOf(s.at)} 메모 보기`} onClick={() => setShow({ field: "memo", head: `${when(s)} · ${s.title}`, text: s.memo! })} />}
                   </span>
-                )}
+                </span>
               </li>
             ))}
           </ol>
