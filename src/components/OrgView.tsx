@@ -26,13 +26,13 @@ export function OrgView({ onUnauthorized }: { onUnauthorized?: () => void }) {
       {!data && !error && <p className="small">불러오는 중이에요…</p>}
       {/* 두 묶음(모임 직책 / 소모임)을 제목과 간격으로 나눈다 */}
       {data && (
-        <section className="otsec" aria-labelledby="org-pos">
+        <section className="otsec otcard" aria-labelledby="org-pos">
           <h2 id="org-pos">모임 직책</h2>
           {data.items.length ? <OrgList items={data.items} emptyText="(미정)" /> : <div className="msg info">아직 등록된 직책이 없어요.</div>}
         </section>
       )}
       {data && (
-        <section className="otsec otsec-clubs" aria-labelledby="org-clubs">
+        <section className="otsec otcard otsec-clubs" aria-labelledby="org-clubs">
           <h2 id="org-clubs">소모임 <span className="small">{data.clubs.length}개</span></h2>
           <OrgClubs clubs={data.clubs} />
         </section>
