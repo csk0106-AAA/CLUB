@@ -53,6 +53,18 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
     load(true);
   }, [load]);
 
+  // 내가 보낸 신청 중 아직 처리되지 않은 것을 취소한다(신청이 지워진다)
+  async function cancelMine(m: Mine) {
+    if (!window.confirm(`${what(m)}을 취소할까요?`)) return;
+    setBusy(m.id);
+    setNote("");
+    const r = await api(`/api/club-requests/${m.id}`, { method: "DELETE" });
+    setBusy("");
+    if (!r.ok) return setError(r.error);
+    setNote("신청을 취소했어요.");
+    await load(false);
+  }
+
   async function decide(h: Handle, decision: "approve" | "decline") {
     // 반려는 사유를 적는다(비워도 됨, 취소를 누르면 반려하지 않음). 사유는 신청한 회원에게 보인다.
     let reason = "";
@@ -141,6 +153,9 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
                 </span>
                 {m.unseen && <span className="pill blue">새 결과</span>}
                 <span className={`pill ${STATUS[m.status]?.tone ?? "gray"}`}>{STATUS[m.status]?.text ?? m.status}</span>
+                {m.status === "pending" && (
+                  <button className="mini" type="button" disabled={!!busy} onClick={() => cancelMine(m)} aria-label={`${what(m)} 취소`}>신청 취소</button>
+                )}
               </li>
             ))}
           </ul>

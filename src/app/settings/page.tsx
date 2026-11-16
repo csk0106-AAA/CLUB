@@ -67,12 +67,21 @@ export default function SettingsPage() {
   const [addingClub, setAddingClub] = useState(false);
   const [clubPick, setClubPick] = useState("");
   const [joinMsg, setJoinMsg] = useState("");
-  // 내가 보낸 소모임 가입 신청 중 아직 처리되지 않은 것(소모임 이름)
-  const [pendingJoins, setPendingJoins] = useState<string[]>([]);
+  // 내가 보낸 소모임 가입 신청 중 아직 처리되지 않은 것(소모임 이름 + 신청 id: 취소할 때)
+  const [pendingReqs, setPendingReqs] = useState<{ id: string; club: string }[]>([]);
+  const pendingJoins = pendingReqs.map((x) => x.club);
   const loadPending = () =>
-    api<{ mine: { kind: string; club: string; status: string }[] }>("/api/alerts").then((r) => {
-      if (r.ok) setPendingJoins(r.data.mine.filter((x) => x.kind === "join" && x.status === "pending").map((x) => x.club));
+    api<{ mine: { id: string; kind: string; club: string; status: string }[] }>("/api/alerts").then((r) => {
+      if (r.ok) setPendingReqs(r.data.mine.filter((x) => x.kind === "join" && x.status === "pending").map((x) => ({ id: x.id, club: x.club })));
     });
+  // 승인 대기 중인 가입 신청 취소(소모임 관리자가 처리하기 전까지)
+  async function cancelJoin(req: { id: string; club: string }) {
+    if (!window.confirm(`${req.club} 가입 신청을 취소할까요?`)) return;
+    const r = await api(`/api/club-requests/${req.id}`, { method: "DELETE" });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setNote({ tone: "ok", text: `${req.club} 가입 신청을 취소했어요.` });
+    loadPending();
+  }
   useEffect(() => {
     loadPending();
   }, []);
@@ -296,10 +305,11 @@ export default function SettingsPage() {
               {/* 가입 신청 중(소모임 임원 승인 대기) */}
               {pendingJoins.length > 0 && (
                 <ul aria-label="가입 신청 중인 소모임" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {pendingJoins.map((n) => (
-                    <li key={n} className="row" style={{ border: "1px dashed var(--line)", borderRadius: 8, padding: "8px 12px" }}>
-                      <b className="grow">{n}</b>
+                  {pendingReqs.map((q) => (
+                    <li key={q.id} className="row" style={{ border: "1px dashed var(--line)", borderRadius: 8, padding: "8px 12px", gap: 8 }}>
+                      <b className="grow">{q.club}</b>
                       <span className="pill gray">승인 대기</span>
+                      <button className="mini" type="button" onClick={() => cancelJoin(q)} aria-label={`${q.club} 가입 신청 취소`}>신청 취소</button>
                     </li>
                   ))}
                 </ul>

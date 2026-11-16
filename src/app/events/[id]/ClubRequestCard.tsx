@@ -61,11 +61,13 @@ export function ClubRequestCard({ eventId, club, leaders, req, join = null, gues
     await onChange();
   }
 
+  // 보낸 신청 취소: 이 일정의 참석 요청, 또는 다른 곳(설정·게시글)에서 보낸 가입 신청
   async function cancel() {
-    if (!req || !window.confirm("보낸 신청을 취소할까요?")) return;
+    const id = pending ? req?.id : joinPending ? join?.id : "";
+    if (!id || !window.confirm(pending ? "보낸 신청을 취소할까요?" : `${cl} 가입 신청을 취소할까요?`)) return;
     setBusy(true);
     setError("");
-    const r = await api(`/api/club-requests/${req.id}`, { method: "DELETE" });
+    const r = await api(`/api/club-requests/${id}`, { method: "DELETE" });
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setNote("신청을 취소했어요.");
@@ -104,8 +106,8 @@ export function ClubRequestCard({ eventId, club, leaders, req, join = null, gues
         {note && <div className="msg info" role="status">{note}</div>}
         {error && !open && <div className="msg bad" role="alert">{error}</div>}
       </section>
-      {pending ? (
-        <button className="btn white" type="button" disabled={busy} onClick={cancel}>신청 취소</button>
+      {pending || joinPending ? (
+        <button className="btn white" type="button" disabled={busy} onClick={cancel}>{pending ? "신청 취소" : "가입 신청 취소"}</button>
       ) : !joinPending && (
         <button className="btn" type="button" disabled={busy} onClick={() => { setError(""); setNote(""); setOpen(true); }}>
           {declined ? "다시 신청하기" : guest ? "참관 신청하기" : `${cl} 신청하러 가기`}
