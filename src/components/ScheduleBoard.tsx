@@ -64,9 +64,10 @@ function IconBtn({ field, on, label, onClick, plain }: { field: Field; on: boole
 }
 
 // 날짜 제목 옆 "기본 위치" 칩: 그날 일정 대부분이 열리는 곳. 일정마다 위치를 따로 적으면 그 일정은 따로 적은 곳.
-function DayPlaceChip({ place, onClick, edit }: { place: string; onClick: () => void; edit?: boolean }) {
+// plain: 회원 화면용(테두리·배경 없이 색 글자만)
+function DayPlaceChip({ place, onClick, edit, plain }: { place: string; onClick: () => void; edit?: boolean; plain?: boolean }) {
   return (
-    <button type="button" className={`dplace${place ? " on" : ""}`} aria-haspopup="dialog" onClick={onClick}
+    <button type="button" className={`dplace${place ? " on" : ""}${plain ? " plain" : ""}`} aria-haspopup="dialog" onClick={onClick}
       aria-label={place ? `이날 기본 위치: ${place}${edit ? " (고치기)" : ""}` : "이날 기본 위치 적기"}>
       <PinIcon />
       <span>{place || "기본 위치 적기"}</span>
@@ -100,7 +101,7 @@ export function ScheduleView({ items, dayPlaces = {} }: { items: SchedItem[]; da
         <div key={day || "none"}>
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             <b style={{ fontSize: fs(15) }}>{day ? fmtDateDow(day) : "날짜 미정"}</b>
-            {day && dayPlaces[day] && <DayPlaceChip place={dayPlaces[day]} onClick={() => setShow({ field: "place", head: `${fmtDateDow(day)} 기본 위치`, text: dayPlaces[day] })} />}
+            {day && dayPlaces[day] && <DayPlaceChip plain place={dayPlaces[day]} onClick={() => setShow({ field: "place", head: `${fmtDateDow(day)} 기본 위치`, text: dayPlaces[day] })} />}
           </div>
           <ol className="tl" style={{ marginTop: 4 }}>
             {list.map((s, i) => (

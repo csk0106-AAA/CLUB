@@ -588,6 +588,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .dplace svg { flex: none; width: 15px; height: 15px; }
 .dplace.on { border-style: solid; border-color: transparent; background: var(--violet-bg); color: var(--violet); }
 .dplace:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.dplace.plain, .dplace.plain.on { border: 0; background: transparent; padding: 0 2px; border-radius: 6px; color: var(--violet); }
+.dplace.plain:hover { text-decoration: underline; }
 .tl li .tlb { flex: 1; min-width: 0; display: flex; gap: 14px; }
 @media (max-width: 420px) { .tl li.tlrow { flex-direction: row; } .tl li .tlb { flex-direction: column; gap: 0; } }
 .tl .sics { margin-top: -8px; margin-bottom: -8px; }
