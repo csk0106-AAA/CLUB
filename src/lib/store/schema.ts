@@ -35,6 +35,8 @@ export const TABS = {
     "dayPlaces",
     // createdBy: 일정을 만든 회원 id. 일정 만들기 권한(evMain·evClub)만 있는 회원은 자기가 만든 일정만 고칠 수 있다.
     "createdBy",
+    // editors: 편집자 회원 id 배열 JSON(만든 사람이 추가, lib/editors.ts). 편집자도 이 일정을 고칠 수 있다.
+    "editors",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
@@ -96,6 +98,8 @@ export const TABS = {
   Posts: [
     "id", "form", "title", "body", "data", "audience", "notice", "pinned", "files",
     "authorId", "createdAt", "updatedAt",
+    // editors: 편집자 회원 id 배열 JSON(작성자가 추가, lib/editors.ts). 편집자도 이 글을 고칠 수 있다.
+    "editors",
   ],
   // 첨부 파일 내용(base64). 게시글 목록을 읽을 때 같이 읽지 않도록 따로 둔다.
   PostFiles: ["id", "postId", "name", "type", "size", "data", "createdAt"],

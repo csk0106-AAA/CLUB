@@ -10,7 +10,8 @@ import { clubText } from "@/lib/club-label";
 import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published";
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
-import { audienceOf, canEdit, canSeeResults, memberNames, readFiles, type Me } from "./server";
+import { audienceOf, canEdit, canOwn, canSeeResults, memberNames, readFiles, type Me } from "./server";
+import { readEditors } from "@/lib/editors";
 import { talkCounts, talkOf } from "./talk";
 
 const t = (max: number) => z.string().trim().max(max);
@@ -219,7 +220,10 @@ export async function detail(me: Me, p: Row) {
     canEdit: canEdit(me, p),
     // 회칙·회비 글: 고칠 수 있는 사람에게만 관리 화면 주소(“수정”은 그 화면을 연다)와 삭제
     manageHref: managed && mayManage ? manageHref(managed, me.perms) : "",
-    canDelete: managed ? mayManage : canEdit(me, p),
+    canDelete: managed ? mayManage : canOwn(me, p),
+    // 편집자: 이름 목록, 바꿀 수 있는지(작성자·모든권한)
+    editors: readEditors(p.editors).map((id) => ({ id, name: names.get(id) ?? "(지운 회원)" })),
+    canManageEditors: canOwn(me, p),
     seeResults: full,
     mine,
     results,

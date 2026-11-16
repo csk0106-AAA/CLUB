@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { can, getSession, type Session } from "./auth";
+import { readEditors } from "./editors";
 import { memberClubs } from "./lists";
+import { creatableTypes } from "./perm-keys";
 import { getStore } from "./store";
 
 type Guard = { s: Session } | { err: NextResponse };
@@ -36,8 +38,11 @@ export async function guardEv(ctx: { params: Promise<{ id: string }> }, perm: st
     const ev = (await (await getStore()).list("Events")).find((e) => e.id === id);
     // 소모임관리 권한: 소모임 일정은 모두 관리한다
     if (ev && clubs && (ev.club ?? "").trim()) return { s };
-    if (ev && ev.createdBy === s.mid && (can(s, "evMain") || can(s, "evClub"))) return { s };
-    return { err: NextResponse.json({ error: "내가 만든 일정만 고칠 수 있어요." }, { status: 403 }) };
+    // 내가 만들었거나 만든 사람이 편집자로 추가한 일정 — 그 일정 종류를 만들 권한이 지금도 있어야 한다
+    const types = s.admin ? creatableTypes(s.perms) : [];
+    const mine = !!ev && (ev.createdBy === s.mid || readEditors(ev.editors).includes(s.mid));
+    if (ev && mine && (!types || types.includes(ev.type))) return { s };
+    return { err: NextResponse.json({ error: "내가 만든 일정이나 편집자로 추가된 일정만 고칠 수 있어요." }, { status: 403 }) };
   }
   return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
 }

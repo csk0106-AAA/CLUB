@@ -7,6 +7,7 @@ import { IconMegaphone, IconPin } from "@/components/Icons";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Attachments, FeeView, MinutesView, PollBox, QuizBox, RulesView, SurveyBox } from "@/components/board/PostView";
 import { PostTalk } from "@/components/board/PostTalk";
+import { EditorsBox } from "@/components/EditorsBox";
 import type { PostDetail } from "@/components/board/types";
 import { FORM_LABEL, type FeeSnap, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDateTime } from "@/lib/client";
@@ -77,6 +78,11 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
               {editHref && <Link href={editHref} className="btn white" style={btn}>수정</Link>}
               {d.canDelete && <button className="btn red" type="button" style={btn} onClick={remove}>게시글 삭제</button>}
             </div>
+          )}
+          {/* 편집자: 작성자(또는 모든권한)가 게시글_글쓰기 권한이 있는 회원 중에서 추가 */}
+          {d.canManageEditors && <EditorsBox endpoint={`/api/board/${p.id}/editors`} what="글" need="게시글_글쓰기 권한" />}
+          {!d.canManageEditors && (d.editors ?? []).length > 0 && (
+            <span className="small">편집자: {(d.editors ?? []).map((e) => e.name).join(", ")}</span>
           )}
           {d.manageHref && (
             <span className="small">

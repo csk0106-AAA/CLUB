@@ -62,6 +62,8 @@ export type PostDetail = {
   // 회칙·회비 글: 고칠 수 있는 사람에게만 관리 화면 주소(없으면 "")
   manageHref: string;
   canDelete: boolean;
+  editors?: { id: string; name: string }[]; // 편집자(작성자가 추가)
+  canManageEditors?: boolean; // 편집자를 바꿀 수 있는지(작성자·모든권한)
   seeResults: boolean;
   mine: unknown;
   results: unknown;

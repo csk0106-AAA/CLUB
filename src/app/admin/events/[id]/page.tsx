@@ -14,6 +14,7 @@ import { ObserversCard } from "@/app/events/[id]/ObserversCard";
 import { EventPreview, eventInfoLines } from "@/components/EventInfoCard";
 import type { SchedItem } from "@/components/ScheduleBoard";
 import { readDayPlaces } from "@/lib/day-places";
+import { EditorsBox } from "@/components/EditorsBox";
 import { EventAudience } from "./EventAudience";
 import { api, fmtDate, fmtDateDow, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
@@ -328,6 +329,8 @@ function Detail({ id }: { id: string }) {
             <span className="hint">{ev.booking.length}/2000자 · 회원 화면에도 줄바꿈 그대로 보여요.</span>
           </div>
 
+          {/* 편집자: 만든 사람(또는 일정관리)이 이 일정 종류를 만들 권한이 있는 회원 중에서 추가 */}
+          <EditorsBox endpoint={`/api/admin/events/${id}/editors`} what="일정" need={`${ev.type} 일정을 만들 권한`} />
           <EventPreview ev={infoEv} rules={rules} actNames={actNames} schedule={schedule} dayPlaces={readDayPlaces(ev.dayPlaces)} />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="submit" disabled={busy} style={{ width: "auto", minWidth: 160 }}>임시 저장</button>

@@ -4,6 +4,7 @@ import { memberFee, payable } from "@/lib/fee";
 import { eventVisible, inClubOrObserver } from "@/lib/audience";
 import { fixLegacyTypes, migrateMinutesPosts } from "@/lib/event-migrate";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
+import { readEditors } from "@/lib/editors";
 import { getStore } from "@/lib/store";
 import { eventFreshness } from "@/lib/unread";
 
@@ -37,13 +38,15 @@ export async function GET() {
   const today = todayKst();
   const perms = me ? effectivePerms(me, await getPermGroups()) : [];
   const manager = ["all", "events"].some((p) => perms.includes(p));
+  // 내가 만들었거나 만든 사람이 편집자로 추가한 일정
+  const ownEv = (e: { createdBy?: string; editors?: string }) => e.createdBy === session.mid || readEditors(e.editors).includes(session.mid);
   // NEW / UP 표시(하단 일정 탭 숫자와 같은 기준). 화면이 목록을 받은 뒤 "봤음"으로 표시한다.
   const freshness = await eventFreshness(session.mid);
 
   const list = events
     // 일정 관리 권한이 있으면 모든 일정(초안, 공개 대상 밖의 일정 포함 — 관리자 › 일정관리·소모임관리에서 만든 것 모두)
     // 일정 만들기 권한자는 내가 만든 일정(초안 포함)도 본다. 다른 사람이 만든 일정은 나에게 공개된 것만.
-    .filter((e) => manager || eventVisible(e, me ?? session.mid) || e.createdBy === session.mid)
+    .filter((e) => manager || eventVisible(e, me ?? session.mid) || ownEv(e))
     .map((e) => {
       const draft = e.published !== "true";
       // 공개됐지만 나는 공개 대상이 아닌 일정(관리자에게만 보임): 회원 화면이 없으니 관리 화면으로 간다
@@ -74,7 +77,7 @@ export async function GET() {
         myAnswer,
         // 참석 여부를 아직 안 알림(날짜가 정해지고 지나지 않은, 신청할 수 있는 일정만)
         needsAnswer: !draft && !outside && canApply && myAnswer === "" && !!e.startsAt && !past,
-        mine: e.createdBy === session.mid, // 내가 만든 일정(일정 만들기 권한자는 이 일정만 관리 화면으로 고친다)
+        mine: ownEv(e), // 내가 만들었거나 편집자인 일정(일정 만들기 권한자는 이 일정만 관리 화면으로 고친다)
         draft, // 공개 전 초안(관리자에게만 보임)
         outside, // 공개 대상 밖(관리자에게만 보임)
         fresh: draft ? null : freshness.get(e.id) ?? null, // "new" | "updated" | null

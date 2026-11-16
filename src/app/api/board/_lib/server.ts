@@ -4,6 +4,7 @@ import { guard, parseJson } from "@/lib/api";
 import { ALL, inAudience, readAudience, type Audience } from "@/lib/audience";
 import type { Session } from "@/lib/auth";
 import { DEFAULT_TEMPLATES, isForm, type FileMeta, type Form, type Template } from "@/lib/board";
+import { readEditors } from "@/lib/editors";
 import { effectivePerms, getPermGroups, isClubOfficer } from "@/lib/perms";
 import { managedOf } from "@/lib/published";
 import { getSetting, getStore, setSetting } from "@/lib/store";
@@ -37,12 +38,18 @@ export async function getMe(): Promise<{ me: Me } | { err: NextResponse }> {
 export const forbid = (msg = "이 작업을 할 권한이 없어요.") => NextResponse.json({ error: msg }, { status: 403 });
 
 export const audienceOf = (p: Row): Audience => readAudience(p.audience);
-export const canSee = (me: Me, p: Row) => inAudience(audienceOf(p), me.row.id, p.authorId);
-// 게시판에서 고치기·지우기: 작성자나 관리자(all/board).
+// 편집자(작성자가 추가한 회원)인지: 지금도 글쓰기 권한이 있어야 한다(권한이 없어지면 편집자여도 못 고친다)
+export const isEditorOf = (me: Me, p: Row) => me.canWrite && readEditors(p.editors).includes(me.row.id);
+// 보기: 공개 대상 + 작성자 + 편집자
+export const canSee = (me: Me, p: Row) => inAudience(audienceOf(p), me.row.id, p.authorId) || isEditorOf(me, p);
+// 게시판에서 고치기: 작성자, 작성자가 추가한 편집자, 모든권한.
+// 게시글_글쓰기 권한자도 다른 사람이 쓴 글은 편집자로 추가되어야 고칠 수 있다.
 // 회칙·회비·소모임 회비 글은 게시판에서 고치지 않는다(관리 화면에서 다시 올린다 — lib/published.ts 의 canManage).
-export const canEdit = (me: Me, p: Row) => !managedOf(p) && (me.manage || p.authorId === me.row.id);
+export const canEdit = (me: Me, p: Row) => !managedOf(p) && (me.isAll || p.authorId === me.row.id || isEditorOf(me, p));
+// 지우기·편집자 바꾸기: 작성자와 모든권한만
+export const canOwn = (me: Me, p: Row) => !managedOf(p) && (me.isAll || p.authorId === me.row.id);
 // 응답 전체(결과)를 볼 수 있는 사람
-export const canSeeResults = (me: Me, p: Row) => me.manage || p.authorId === me.row.id;
+export const canSeeResults = (me: Me, p: Row) => me.isAll || p.authorId === me.row.id || isEditorOf(me, p);
 
 export const readFiles = (p: Row): FileMeta[] => parseJson<FileMeta[]>(p.files, []).filter((f) => f && f.id);
 
