@@ -138,6 +138,8 @@ a { color: var(--violet-t); }
   display: flex; flex-direction: column; gap: 8px;
 }
 .topbar .row { gap: 10px; }
+/* 홈·일정·프로필 북·설정 공통 윗줄(MainHeader): 아래로 내려도 위에 붙어 있다 */
+.topbar.mainbar { position: sticky; top: 0; z-index: 30; }
 .topbar .who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar .who b { font: 700 calc(16px * var(--fs, 1))/1.35 var(--body); overflow-wrap: anywhere; }
 .topbar .who span { font-size: calc(12px * var(--fs, 1)); color: var(--sub); }

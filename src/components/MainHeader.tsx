@@ -21,14 +21,26 @@ type Me = { name: string; avatar: AvatarView; perms: string[]; clubs: { name: st
 //  - 알림: 새 글·소모임 신청 알림 창(숫자 배지), 조직도: 조직도 창
 //  - openAlerts: 처음부터 알림 창을 열 때(홈 /board?alerts=1)
 //  - onAlertsClosed: 알림 창을 닫은 뒤 화면 목록을 다시 불러올 때
+// 화면을 옮겨 다녀도 윗줄이 깜빡이지 않게 마지막 값을 기억해 두고 먼저 보여 준다(뒤에서 새로 받아 바꾼다).
+// 로그아웃하면 지운다.
+const memo: { who: Me | null; club: string; bell: number; issues: number } = { who: null, club: "", bell: 0, issues: 0 };
+
+// 로그인할 때 앞 사람의 값이 잠깐 보이지 않게 비운다(로그인 화면에서 부른다)
+export function resetHeaderCache() {
+  Object.assign(memo, { who: null, club: "", bell: 0, issues: 0 });
+}
+
 export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?: boolean; onAlertsClosed?: () => void }) {
   const router = useRouter();
-  const [who, setWho] = useState<Me | null>(null);
-  const [club, setClub] = useState("");
-  const [bell, setBell] = useState(0);
+  const [who, setWho] = useState<Me | null>(memo.who);
+  const [club, setClub] = useState(memo.club);
+  const [bell, setBell] = useState(memo.bell);
   const [alertsOpen, setAlertsOpen] = useState(openAlerts);
   const [orgOpen, setOrgOpen] = useState(false);
-  const [issues, setIssues] = useState(0);
+  const [issues, setIssues] = useState(memo.issues);
+  useEffect(() => {
+    Object.assign(memo, { who, club, bell, issues });
+  }, [who, club, bell, issues]);
 
   useEffect(() => {
     api<Me>("/api/me").then((r) => {
@@ -54,12 +66,13 @@ export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?
     // 로그아웃한 기기로 다른 사람 알림이 가지 않게 이 기기 구독을 푼다.
     await disablePush();
     await api("/api/auth/logout", { method: "POST", body: {} });
+    Object.assign(memo, { who: null, club: "", bell: 0, issues: 0 });
     router.replace("/");
   }
 
   return (
     <>
-      <header className="topbar">
+      <header className="topbar mainbar">
         <div className="row">
           {who ? <Avatar member={who} size={40} /> : <Mascot size={40} />}
           <div className="who">

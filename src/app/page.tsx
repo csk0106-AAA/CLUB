@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { resetHeaderCache } from "@/components/MainHeader";
 import { Mascot } from "@/components/Mascot";
 import { resetTabsCache } from "@/components/MemberTabs";
 import { PasswordField } from "@/components/PasswordField";
@@ -55,6 +56,7 @@ export default function LoginPage() {
         return;
       }
       resetTabsCache();
+      resetHeaderCache();
       // 로그인 직후 한 번: 회원 신청 상태 안내(대기회원·참관회원·반려·정보 입력, components/ApplyNotice.tsx)
       try { sessionStorage.setItem("applyNotice", "1"); } catch { /* 저장 못 해도 로그인은 된다 */ }
       // 진행자 접속번호로 들어오면 활동 진행 화면만 쓴다.
