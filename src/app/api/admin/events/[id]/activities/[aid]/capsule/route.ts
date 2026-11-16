@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { capsuleCfg, capsuleRows, isOpened, loadCapsule, saveCapsuleCfg, teams } from "@/lib/capsule";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string; aid: string }> };
 
 // 타임캡슐 설정과 작성 현황(인원 수만). 열림 일시 전에는 관리자도 내용을 볼 수 없다. 이 API에는 내용이 없다.
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await loadCapsule(aid, id);
@@ -30,7 +30,7 @@ const body = z.object({
 
 // 열림 일시 등록/변경(변경 기록을 남긴다)과 본인 확인 허용 여부
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await loadCapsule(aid, id);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { ITEMS, isKind } from "@/lib/items";
 import { getStore } from "@/lib/store";
 
@@ -11,7 +11,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { id, kind } = await ctx.params;
   if (!isKind(kind)) return bad("없는 목록이에요.", 404);
   const def = ITEMS[kind];
-  const g = await guard([...def.perm, "all"]);
+  const g = await guardEv(ctx, [...def.perm, "all"]);
   if ("err" in g) return g.err;
   const s = await getStore();
   if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
@@ -23,7 +23,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const { id, kind } = await ctx.params;
   if (!isKind(kind)) return bad("없는 목록이에요.", 404);
   const def = ITEMS[kind];
-  const g = await guard(def.perm);
+  const g = await guardEv(ctx, def.perm);
   if ("err" in g) return g.err;
   const parsed = def.schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");

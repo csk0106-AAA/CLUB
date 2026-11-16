@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // 작성 현황(인원 수만). 승인 전 초안과 인터뷰 내용은 관리자에게도 보이지 않는다.
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
-  const g = await guard(["activities", "events"]);
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const s = await getStore();

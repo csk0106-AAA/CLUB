@@ -97,5 +97,5 @@ function DevRequests() {
 }
 
 export default function DevRequestsPage() {
-  return <AdminGate mode="templates" need={["activities", "events"]} active="/admin/dev-requests"><DevRequests /></AdminGate>;
+  return <AdminGate mode="templates" need={["templates", "events"]} active="/admin/dev-requests"><DevRequests /></AdminGate>;
 }

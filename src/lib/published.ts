@@ -40,11 +40,11 @@ const has = (perms: string[], ...k: string[]) => perms.includes("all") || k.some
 export function manageHref(m: Managed, perms: string[]): string {
   if (m.kind === "dues") return "/admin/dues";
   if (m.kind === "rules") return "/admin/rules";
-  return has(perms, "members") ? `/admin/clubs/${encodeURIComponent(m.club)}#club-dues` : `/clubs/${encodeURIComponent(m.club)}/dues`;
+  return has(perms, "clubs") ? `/admin/clubs/${encodeURIComponent(m.club)}#club-dues` : `/clubs/${encodeURIComponent(m.club)}/dues`;
 }
-export const canDues = (perms: string[]) => has(perms, "fees");
-export const canRules = (perms: string[]) => perms.includes("all");
-export const clubAdmin = (perms: string[]) => has(perms, "members", "fees");
+export const canDues = (perms: string[]) => has(perms, "group");
+export const canRules = (perms: string[]) => has(perms, "group");
+export const clubAdmin = (perms: string[]) => has(perms, "clubs");
 
 // 소모임 회장(대표): 그 소모임에서 직책이 소모임 직책 목록의 첫 번째(지금 "대표")인 회원
 export async function headRole(): Promise<string> {

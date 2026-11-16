@@ -28,7 +28,7 @@ function counts(members: Row[]) {
 
 // 회원 구분 화면: 회원구분 / 직책 / 소모임 / 소모임 직책 목록과 목록 값별 회원 수
 export async function GET() {
-  const g = await guard("members");
+  const g = await guard(["members", "clubs", "group", "events"]);
   if ("err" in g) return g.err;
   const s = await getStore();
   return NextResponse.json({ ...(await getLists()), counts: counts(await s.list("Members")) });
@@ -46,7 +46,7 @@ const body = z.object({
 });
 
 export async function PUT(req: Request) {
-  const g = await guard("members");
+  const g = await guard(["members", "clubs", "group", "events"]);
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 이름은 30자까지예요.");

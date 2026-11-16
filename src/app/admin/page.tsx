@@ -8,14 +8,17 @@ import { api } from "@/lib/client";
 
 type Me = { perms: string[]; clubOfficerOf?: string[] };
 
-// 관리자 화면에서 처음 열 메뉴: 회원관리 → 일정관리 → 활동 템플릿 → 소모임관리 중 쓸 수 있는 첫 화면.
+// 관리자 화면에서 처음 열 메뉴: 모임설정 → 회원관리 → 일정관리 → 소모임관리 → 활동템플릿 중 쓸 수 있는 첫 화면.
 function firstMode(me: Me): string {
   const p = me.perms;
   const has = (...k: string[]) => p.includes("all") || k.some((x) => p.includes(x));
+  if (has("group")) return "/admin/settings";
   if (has("members")) return "/admin/members";
-  if (has("events", "fees")) return "/admin/events";
-  if (has("activities")) return "/admin/templates";
-  if ((me.clubOfficerOf ?? []).length) return "/admin/clubs";
+  if (has("events")) return "/admin/events";
+  if (has("clubs") || (me.clubOfficerOf ?? []).length) return "/admin/clubs";
+  if (has("templates")) return "/admin/templates";
+  // 일정 만들기 권한만 있으면 회원 일정 화면에서 만든다
+  if (has("evMain", "evClub")) return "/events";
   return "/admin/members";
 }
 

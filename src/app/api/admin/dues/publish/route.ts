@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // 저장된 모임 회비 설정을 게시판 글로 올린다(새 글 또는 고른 회비 글 고치기).
 // 권한: 관리자 2차 비밀번호 + 지금 DB 기준 회비(fees) 또는 모든 권한.
 export async function POST(req: Request) {
-  const g = await guard("fees");
+  const g = await guard("group");
   if ("err" in g) return g.err;
   const m = await getMe();
   if ("err" in m) return m.err;

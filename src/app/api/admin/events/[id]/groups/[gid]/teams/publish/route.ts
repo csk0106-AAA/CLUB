@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { gTeams, groupPool, loadGrouping } from "@/lib/groups";
 import { getStore } from "@/lib/store";
 
@@ -8,7 +8,7 @@ const body = z.object({ action: z.enum(["publish", "unpublish"]) });
 
 // "확인": 조편성을 회원에게 배포한다. 배포 전에는 회원 화면에 보이지 않는다.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; gid: string }> }) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id, gid } = await ctx.params;
   const c = await loadGrouping(id, gid);

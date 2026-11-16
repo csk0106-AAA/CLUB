@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { getStore } from "@/lib/store";
 
 const body = z.object({
@@ -25,7 +25,7 @@ function eventDays(startsAt: string, endsAt: string): string[] {
 
 // 관리자가 회원의 참석 신청(참석 여부·참석 날짜·메모)을 대신 고친다(전화로 들은 답 등).
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const g = await guard("events");
+  const g = await guardEv(ctx, "events");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

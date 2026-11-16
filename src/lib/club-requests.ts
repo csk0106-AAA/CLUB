@@ -39,7 +39,7 @@ export function viewableClubs(members: Row[], mid: string, groups: PermGroups = 
   const me = members.find((m) => m.id === mid);
   if (!me) return [];
   const perms = effectivePerms(me, groups);
-  if (perms.includes("all") || perms.includes("members")) return null;
+  if (perms.includes("all") || perms.includes("clubs")) return null;
   return memberClubs(me).filter((c) => c.role).map((c) => c.name);
 }
 

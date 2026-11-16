@@ -17,7 +17,7 @@ const body = z.object({
 
 // 인터뷰 필수 질문과 AI 지침. 모든 AI 호출의 지침에 포함된다.
 export async function GET() {
-  const g = await adminOrOfficer(["activities", "events"]);
+  const g = await adminOrOfficer(["templates", "events"]);
   if ("err" in g) return g.err;
   return NextResponse.json({
     questions: await getSetting("interviewQuestions", DEFAULT_QUESTIONS),
@@ -30,7 +30,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const g = await guard("activities");
+  const g = await guard("templates");
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("질문은 1개 이상, 지침은 비어 있으면 안 돼요.");

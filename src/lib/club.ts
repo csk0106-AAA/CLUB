@@ -65,7 +65,7 @@ export const CLUB: Record<ClubKind, Def> = {
   },
   rules: {
     tab: "Rules",
-    perm: ["minutes"],
+    perm: ["group"],
     schema: z
       .object({ chapter: s(60).min(1), article: s(60).default(""), body: s(4000).default(""), version: s(20).default("v1"), confirmed: z.boolean().default(false) })
       .transform((v) => ({ chapter: v.chapter, article: v.article, body: v.body, version: v.version, confirmed: String(v.confirmed) })),
@@ -75,7 +75,7 @@ export const CLUB: Record<ClubKind, Def> = {
   },
   minutes: {
     tab: "Minutes",
-    perm: ["minutes"],
+    perm: ["group"],
     schema: z
       .object({
         heldAt: s(30).min(1),

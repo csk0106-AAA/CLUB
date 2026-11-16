@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { applyInput, carInput, cars, conflict, inputPeople, saveCarpoolState, suggestName, timeIssue, toCar, toRow } from "@/lib/carpool";
 import { getStore } from "@/lib/store";
 
@@ -7,7 +7,7 @@ type Ctx = { params: Promise<{ id: string; cid: string }> };
 
 // 차량 수정(차량 정보, 갈 때·올 때 운행 여부, 구간별 일정과 탑승자). 같은 구간에 두 대에 들어가는 사람이 없도록 검사한다.
 export async function PATCH(req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id, cid } = await ctx.params;
   const parsed = carInput.safeParse(await req.json().catch(() => null));
@@ -31,7 +31,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id, cid } = await ctx.params;
   const s = await getStore();

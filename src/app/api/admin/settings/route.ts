@@ -17,7 +17,7 @@ const body = z.object({
 
 // 모임 이름(정식·줄인 이름, 회원 화면에 보일 이름), 초대코드. (회원구분·직책·소모임 목록은 /api/admin/lists 에서 다룬다)
 export async function GET() {
-  const g = await guard("members");
+  const g = await guard("group");
   if ("err" in g) return g.err;
   const n = await getClubNames();
   return NextResponse.json({
@@ -30,7 +30,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const g = await guard("members");
+  const g = await guard("group");
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 초대코드는 4자 이상이에요.");

@@ -58,7 +58,7 @@ function eventDays(startsAt: string, endsAt: string): string[] {
   return out;
 }
 // 일정·회비 관리 권한(지금 DB 기준)이 있으면 "일정 관리" 버튼
-const canManageOf = (p?: string[]) => !!p && ["all", "events", "fees"].some((x) => p.includes(x));
+const canManageOf = (p?: string[]) => !!p && ["all", "events"].some((x) => p.includes(x));
 
 // 일정 화면(한 페이지): 일정을 누르면 모두 여기로 온다(참석 여부를 알렸든 안 알렸든).
 //  위: D-day · 회비 알림 · 일정 카드(유형·이름·일시·장소)

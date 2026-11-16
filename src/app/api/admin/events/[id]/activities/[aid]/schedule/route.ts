@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { getStore } from "@/lib/store";
 
 const dt = z.string().regex(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})?$/);
@@ -9,7 +9,7 @@ const body = z.object({ startsAt: dt, endsAt: dt });
 // 이 활동이 진행되는 날짜와 시간(한국 시간). 회원에게 알려 주는 안내용 정보이며,
 // 참여 대상(출석 체크)이나 정보 노출과는 연결하지 않는다.
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

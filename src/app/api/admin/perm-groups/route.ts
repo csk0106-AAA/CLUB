@@ -7,7 +7,7 @@ import { getStore, setSetting } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-// 그룹별 권한: { "pos:회장": ["all"], "club:회장": ["board"], … }
+// 그룹별 권한: { "pos:회장": ["all"], "club:회장": ["write"], … }
 //  GET → { groups, positions, clubRoles, canEdit }
 export async function GET() {
   const g = await guard("members");
@@ -20,11 +20,11 @@ const body = z.object({
   groups: z.record(z.string().regex(/^(pos|club):.{1,40}$/), z.array(z.enum(ADMIN_PERMS)).max(ADMIN_PERMS.length)),
 });
 
-// PUT { groups } — 보낸 내용으로 통째로 바꾼다. 모든 권한 관리자만, 바꾼 뒤에도 모든 권한 회원이 한 명 이상 있어야 한다.
+// PUT { groups } — 보낸 내용으로 통째로 바꾼다. 모든권한 관리자만, 바꾼 뒤에도 모든 권한 회원이 한 명 이상 있어야 한다.
 export async function PUT(req: Request) {
   const g = await guard("members");
   if ("err" in g) return g.err;
-  if (!(await isAllNow(g.s.mid))) return bad("그룹 권한은 “모든 권한” 관리자만 바꿀 수 있어요.", 403);
+  if (!(await isAllNow(g.s.mid))) return bad("그룹 권한은 “모든권한” 관리자만 바꿀 수 있어요.", 403);
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("권한 내용을 확인해 주세요.");
 

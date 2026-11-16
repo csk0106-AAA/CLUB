@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // 회의록 안건 상태의 화면 이름. 비어 있는 값은 기본 이름(내부 값)을 쓴다.
 export async function GET() {
-  const g = await guard(["members", "minutes"]);
+  const g = await guard(["members", "group", "events"]);
   if ("err" in g) return g.err;
   const saved = await getSetting<AgendaLabels>(AGENDA_LABELS_KEY, {});
   return NextResponse.json({ statuses: AGENDA_STATUS, labels: saved });
@@ -17,7 +17,7 @@ export async function GET() {
 const body = z.object({ labels: z.record(z.string().trim().max(20)) });
 
 export async function PUT(req: Request) {
-  const g = await guard("minutes");
+  const g = await guard(["group", "events"]);
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("상태 이름은 20자까지 적을 수 있어요.");

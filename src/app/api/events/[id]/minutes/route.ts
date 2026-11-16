@@ -23,7 +23,7 @@ async function load(id: string) {
   const me = members.find((m) => m.id === g.s.mid);
   if (!me) return { err: bad("회원 정보를 찾을 수 없어요.", 401) };
   const perms = effectivePerms(me, await getPermGroups());
-  const canEdit = ["all", "events", "minutes"].some((p) => perms.includes(p));
+  const canEdit = ["all", "events"].some((p) => perms.includes(p));
   const e = events.find((x) => x.id === id && (canEdit || eventVisible(x, me)));
   if (!e) return { err: bad("일정을 찾을 수 없어요.", 404) };
   return { e, canEdit };

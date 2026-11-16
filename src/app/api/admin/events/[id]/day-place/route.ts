@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { readDayPlaces } from "@/lib/day-places";
 import { getStore } from "@/lib/store";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const body = z.object({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), place: z.string().trim().max(200) });
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const g = await guard("events");
+  const g = await guardEv(ctx, "events");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

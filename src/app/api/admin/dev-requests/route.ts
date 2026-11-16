@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // 개발 요청 목록(최근 것부터). canEdit: 상태를 바꿀 수 있는지(전체 관리자만)
 // 관리자(활동·일정 권한) 또는 소모임 직책자가 보고 남길 수 있다.
 export async function GET() {
-  const g = await adminOrOfficer(["activities", "events"]);
+  const g = await adminOrOfficer(["templates", "events"]);
   if ("err" in g) return g.err;
   const s = await getStore();
   const [rows, tpls, events] = await Promise.all([s.list("DevRequests"), s.list("ActivityTemplates"), s.list("Events")]);
@@ -30,7 +30,7 @@ export async function GET() {
 
 // 개발 요청 남기기(활동 템플릿 권한)
 export async function POST(req: Request) {
-  const g = await adminOrOfficer("activities");
+  const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;
   const parsed = devRequestInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청 제목과 내용을 적어 주세요.");

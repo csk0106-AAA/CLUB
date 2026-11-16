@@ -54,7 +54,7 @@ type Out = { canDo?: unknown; summary?: unknown; config?: unknown; devRequest?: 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
 export async function POST(req: Request) {
-  const g = await adminOrOfficer("activities");
+  const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;
   if (!isAiEnabled()) return NextResponse.json({ error: "AI가 아직 연결되지 않았어요. 아래에서 개발 요청을 직접 남길 수 있어요.", aiOff: true }, { status: 503 });
   const parsed = body.safeParse(await req.json().catch(() => null));

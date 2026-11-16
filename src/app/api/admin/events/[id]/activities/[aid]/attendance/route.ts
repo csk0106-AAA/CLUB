@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { attendanceState, rosterSet, saveAttendanceState } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -16,7 +16,7 @@ async function load(id: string, aid: string) {
 
 // 출석 체크: 이 활동에 참여할 사람(관리자가 선택). 일정 참석 신청 여부는 참고용으로만 보여 준다.
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await load(id, aid);
@@ -44,7 +44,7 @@ const body = z.union([
 ]);
 
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await load(id, aid);
@@ -72,7 +72,7 @@ const confirmBody = z.object({ confirmed: z.boolean() });
 
 // 출석 체크 완료/해제. 완료해야 진행자가 현장 진행(소개 열기, 고민 뽑기, 작성 열기)을 시작할 수 있다.
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await load(id, aid);

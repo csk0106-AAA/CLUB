@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { roomState, rooms, saveRoomState, validDate } from "@/lib/rooms";
 import { getStore } from "@/lib/store";
 
@@ -12,7 +12,7 @@ const body = z.object({
 
 // publish: 확인(회원에게 배포) / unpublish: 배포 취소 / copy: 한 날짜의 방 구성(방 이름·정원·투숙자)을 다른 날짜로 복사
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

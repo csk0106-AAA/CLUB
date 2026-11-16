@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { liveView, preStatus, readConfig } from "@/lib/activities";
 import { attendanceState, rosterSet } from "@/lib/participants";
 import { getStore } from "@/lib/store";
@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // 일정에 들어간 활동 + 현재 사전 작성 상태 + 현장 진행 상태
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["activities", "events"]);
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const s = await getStore();
@@ -48,7 +48,7 @@ const addBody = z.object({ templateId: z.string().min(1) });
 
 // 템플릿에서 활동을 골라 일정에 넣는다. 설정은 그 시점 것을 복사해 일정별로 따로 수정할 수 있다.
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = addBody.safeParse(await req.json().catch(() => null));

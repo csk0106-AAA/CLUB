@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { autoAssign, carpoolState, cars, saveCarpoolState } from "@/lib/carpool";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -9,7 +9,7 @@ const body = z.object({ action: z.enum(["publish", "unpublish", "auto"]) });
 
 // publish: 확인(회원에게 배포) / unpublish: 배포 취소 / auto: 빈 좌석 자동 배정
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

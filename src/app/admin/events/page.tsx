@@ -93,7 +93,7 @@ function EventsAdmin() {
       </div>
       <p className="small" style={{ margin: 0 }}>
         만든 일정이 모두 보여요{drafts ? ` (초안 ${drafts}개는 아직 회원에게 안 보여요)` : ""}. 일정을 누르면 관리 화면에서 개요·참석 신청·회비·활동 등을 다뤄요. 소모임 일정은 소모임관리에서 만들고 관리해요.
-        {!canCreate && " 새 일정은 일정 권한이 있는 관리자가 만들어요."}
+        {!canCreate && " 새 일정은 일정관리 권한이 있는 관리자가 만들어요."}
       </p>
       {msg && <div className="msg bad" role="alert">{msg}</div>}
       {!events && !msg && <p className="small">불러오는 중이에요…</p>}
@@ -132,5 +132,5 @@ function EventsAdmin() {
 }
 
 export default function EventsAdminPage() {
-  return <AdminGate mode="events" need={["events", "fees"]} active="/admin/events"><EventsAdmin /></AdminGate>;
+  return <AdminGate mode="events" need={["events"]} active="/admin/events"><EventsAdmin /></AdminGate>;
 }

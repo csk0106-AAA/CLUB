@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard, hostGuard } from "@/lib/api";
+import { bad, hostGuard, guardEv } from "@/lib/api";
 import { capsuleRows, loadTeamActivity, makeTeams, saveTeamsState, teams, teamsState } from "@/lib/capsule";
 import { isLimited, participantPool, rosterSet } from "@/lib/participants";
 import { memberAgeGroup } from "@/lib/age-group";
@@ -57,7 +57,7 @@ async function replaceTeams(aid: string, list: { name: string; memberIds: string
 
 // 팀 만들기: 관리자 배정(빈 팀), 연령대 섞기, 랜덤 배정. 결과는 초안이고, 확인을 눌러야 배포된다.
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await loadTeamActivity(aid, id);
@@ -80,7 +80,7 @@ const manual = z.object({
 
 // 드래그로 옮긴 결과 저장(초안). 빈 팀도 그대로 둔다. 이름이 같은 팀은 만들 수 없다.
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await loadTeamActivity(aid, id);

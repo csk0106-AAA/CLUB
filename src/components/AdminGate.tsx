@@ -16,7 +16,7 @@ const MODES: { key: AdminMode; href: string; label: string }[] = [
   { key: "members", href: "/admin/members", label: "회원관리" },
   { key: "events", href: "/admin/events", label: "일정관리" },
   { key: "clubs", href: "/admin/clubs", label: "소모임관리" },
-  { key: "templates", href: "/admin/templates", label: "활동 템플릿" },
+  { key: "templates", href: "/admin/templates", label: "활동템플릿" },
 ];
 // 소모임 직책자(관리자 권한 없음)가 관리자 비밀번호 없이 들어올 수 있는 화면
 const OFFICER_MODES: AdminMode[] = ["clubs", "templates"];
@@ -167,18 +167,11 @@ export function AdminGate(props: {
         </nav>
       )}
       {asOfficer && <p className="small" style={{ margin: 0 }}>소모임 직책자로 들어왔어요 ({officerOf.join(", ")}).</p>}
-      {allowed ? props.children : <div className="msg bad" role="alert">이 화면을 볼 권한이 없어요. 필요한 권한은 “모든 권한” 관리자에게 요청해 주세요.</div>}
+      {allowed ? props.children : <div className="msg bad" role="alert">이 화면을 볼 권한이 없어요. 필요한 권한은 “모든권한” 관리자에게 요청해 주세요.</div>}
       <MemberTabs on="admin" />
     </main>
   );
 }
 
-export const PERM_LABELS: Record<string, string> = {
-  all: "모든 권한",
-  members: "회원정보",
-  events: "일정",
-  fees: "회비·비용",
-  activities: "활동·조편성",
-  minutes: "회의록·회칙",
-  board: "게시글",
-};
+// 권한 이름(lib/perm-keys.ts)
+export { PERM_LABELS } from "@/lib/perm-keys";

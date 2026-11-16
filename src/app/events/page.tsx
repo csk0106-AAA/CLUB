@@ -12,6 +12,7 @@ import { FreshChip, type Fresh } from "@/components/FreshChip";
 import { MemberTabs, markSeenAfterList } from "@/components/MemberTabs";
 import { api, fmtDate, fmtWhen, TYPE_TONE } from "@/lib/client";
 import { fs } from "@/lib/fs";
+import { creatableTypes } from "@/lib/perm-keys";
 
 type Ev = {
   id: string;
@@ -31,7 +32,8 @@ type Ev = {
   group: number; // 0 고정 / 1 참석 예정·미응답·내 소모임 / 2 불참·다른 소모임 / 3 지난 일정
   canApply: boolean;
   needsAnswer: boolean;
-  draft?: boolean; // 공개 전 초안(일정 관리 권한이 있는 회원에게만 온다)
+  draft?: boolean; // 공개 전 초안(일정 관리 권한이 있는 회원 또는 만든 사람에게만 온다)
+  mine?: boolean; // 내가 만든 일정
   outside?: boolean; // 공개 대상 밖의 일정(일정 관리 권한이 있는 회원에게만 온다)
   fresh?: Fresh | null; // 마지막으로 본 뒤 새로 공개(NEW) / 바뀜(UP)
 };
@@ -88,8 +90,11 @@ export default function EventsPage() {
   const locked = me ? !me.consent : true;
   // 일정 만들기: 일정 권한(all/events), 일정 관리 화면: 일정·회비 권한(all/events/fees) — 지금 DB 기준 권한
   const perms = me?.livePerms ?? [];
-  const canCreate = perms.includes("all") || perms.includes("events");
-  const canManage = canCreate || perms.includes("fees");
+  // 일정관리(모든 일정) 또는 일정 만들기 권한(evMain·evClub: 정해진 종류만, 내가 만든 일정만 관리)
+  const canManageAll = perms.includes("all") || perms.includes("events");
+  const canCreate = canManageAll || perms.includes("evMain") || perms.includes("evClub");
+  const createTypes = creatableTypes(perms);
+  const canManageOf = (e: Ev) => canManageAll || !!e.mine;
   const [creating, setCreating] = useState(false);
 
   // 일정은 모두 일정 화면(/events/[id] 한 페이지: 개요 정보 + 참석 신청)으로 간다.
@@ -144,7 +149,7 @@ export default function EventsPage() {
             </span>
           </span>
         </button>
-        {canManage && !e.draft && !e.outside && (
+        {canManageOf(e) && !e.draft && !e.outside && (
           <div className="foot">
             <a href={manageHref(e)} onClick={(ev) => { ev.preventDefault(); router.push(manageHref(e)); }} aria-label={`${e.name} 일정 관리`}>일정 관리 ›</a>
           </div>
@@ -201,7 +206,7 @@ export default function EventsPage() {
         </section>
       )}
 
-      {me && canCreate && creating && <EventCreate open={creating} onClose={() => setCreating(false)} clubs={me.clubOptions ?? []} unlocked={me.admin} />}
+      {me && canCreate && creating && <EventCreate open={creating} onClose={() => setCreating(false)} clubs={me.clubOptions ?? []} unlocked={me.admin} allowed={createTypes} />}
 
       {me && <ConsentSheet consent={me.consent} onAgreed={() => setMe({ ...me, consent: true })} />}
       {me && <ApplyNotice ready={me.consent} />}

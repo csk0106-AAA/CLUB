@@ -243,5 +243,5 @@ function Templates() {
 
 
 export default function TemplatesPage() {
-  return <AdminGate mode="templates" need={["activities", "events"]} active="/admin/templates"><Templates /></AdminGate>;
+  return <AdminGate mode="templates" need={["templates", "events"]} active="/admin/templates"><Templates /></AdminGate>;
 }

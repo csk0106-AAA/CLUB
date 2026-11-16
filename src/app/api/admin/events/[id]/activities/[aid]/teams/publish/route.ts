@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { capsuleRows, loadTeamActivity, saveTeamsState, teams } from "@/lib/capsule";
 import { participantPool } from "@/lib/participants";
 
@@ -8,7 +8,7 @@ const body = z.object({ action: z.enum(["publish", "unpublish"]) });
 
 // "확인": 팀 구성을 회원에게 배포한다. 배포 전에는 회원 화면에 팀이 보이지 않고 팀 약속도 쓸 수 없다.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const c = await loadTeamActivity(aid, id);

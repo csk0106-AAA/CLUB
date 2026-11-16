@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { readConfig, templateInput } from "@/lib/activities";
 import { getStore } from "@/lib/store";
 import { editable, eventSource, SAVE_MODES, saveTemplate } from "@/lib/template-versions";
@@ -15,7 +15,7 @@ type Ctx = { params: Promise<{ id: string; aid: string }> };
 const body = z.object({ config: z.unknown(), mode: z.enum(SAVE_MODES).default("version"), name: z.string().max(100).optional() });
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const raw = await req.json().catch(() => null);
@@ -60,7 +60,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const s = await getStore();

@@ -8,7 +8,7 @@ import { ageGroupOf, memberAgeGroup } from "@/lib/age-group";
 import { tidyPhone } from "@/lib/phone";
 import { fieldValues, readFields, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
-import { checkPermChange, effectivePerms, getPermGroups, groupKeysOf, isAllNow, isPermsCustom } from "@/lib/perms";
+import { checkPermChange, effectivePerms, getPermGroups, groupKeysOf, isAllNow, isPermsCustom, ownPerms } from "@/lib/perms";
 import { clubsJson, memberBody } from "@/lib/schemas";
 import { getStore } from "@/lib/store";
 
@@ -25,7 +25,7 @@ export async function GET() {
   const members = (await s.list("Members")).map(({ extra: _extra, prefs: _prefs, ...m }) => (void _prefs, {
     ...m,
     avatar: avatarView(m),
-    perms: m.perms ? m.perms.split("|").filter(Boolean) : [],
+    perms: ownPerms(m), // 개인 권한(예전 권한 이름은 지금 이름으로)
     clubs: memberClubs(m),
     effective: effectivePerms({ ...m, extra: _extra }, groups),
     groups: groupKeysOf(m),

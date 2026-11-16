@@ -82,7 +82,7 @@ function Detail({ id }: { id: string }) {
 
   useEffect(() => {
     api<{ perms: string[] }>("/api/me").then((r) => {
-      if (r.ok) setCanEditActs(r.data.perms.includes("all") || r.data.perms.includes("activities"));
+      if (r.ok) setCanEditActs(r.data.perms.includes("all") || r.data.perms.includes("templates") || r.data.perms.includes("events"));
     });
   }, []);
 
@@ -530,5 +530,5 @@ function Detail({ id }: { id: string }) {
 export default function EventDetailAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ club?: string }> }) {
   const { id } = use(params);
   const { club } = use(searchParams);
-  return <AdminGate mode={club ? "clubs" : "events"} active={club ? "/admin/clubs" : undefined} need={["events", "fees"]}><Detail id={id} /></AdminGate>;
+  return <AdminGate mode={club ? "clubs" : "events"} active={club ? "/admin/clubs" : undefined} need={["events", "evMain", "evClub", "clubs"]}><Detail id={id} /></AdminGate>;
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { roomConflict, rooms, saveRoomState, suggestRoomName, toRoom, validDate } from "@/lib/rooms";
 import { getStore } from "@/lib/store";
 
@@ -16,7 +16,7 @@ const body = z.object({
 
 // 방 수정(날짜, 이름, 정원, 메모, 투숙자). 같은 날짜에 두 방에 들어가는 사람이 없도록 검사한다.
 export async function PATCH(req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id, rid } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));
@@ -40,7 +40,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id, rid } = await ctx.params;
   const s = await getStore();

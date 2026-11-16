@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { ITEMS, isKind } from "@/lib/items";
 import { getStore } from "@/lib/store";
 
@@ -9,7 +9,7 @@ async function find(ctx: Ctx) {
   const { id, kind, rid } = await ctx.params;
   if (!isKind(kind)) return { err: bad("없는 목록이에요.", 404) };
   const def = ITEMS[kind];
-  const g = await guard(def.perm);
+  const g = await guardEv(ctx, def.perm);
   if ("err" in g) return { err: g.err };
   const s = await getStore();
   const row = (await s.list(def.tab)).find((r) => r.id === rid && r.eventId === id);

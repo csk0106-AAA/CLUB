@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
+import { PERM_DESC, PERM_KEYS } from "@/lib/perm-keys";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -14,15 +15,9 @@ type M = {
 type G = { groups: Record<string, string[]>; positions: string[]; clubRoles: string[]; canEdit: boolean };
 type Note = { tone: "bad" | "info"; text: string } | null;
 
-const PART = ["members", "events", "fees", "activities", "minutes", "board"];
-const PART_TEXT: Record<string, string> = {
-  members: "회원 명단, 모임 설정, 회원 구분, 조직도",
-  events: "일정 개요, 참석 신청, 일정, 카풀·방배정",
-  fees: "회비 입금 확인, 비용과 예산",
-  activities: "활동 진행, 조편성, 팀 구성",
-  minutes: "회의록, 회칙",
-  board: "게시글 쓰기, 게시글 양식",
-};
+// 권한 범위(모든권한 제외): lib/perm-keys.ts 순서
+const PART = PERM_KEYS.filter((p) => p !== "all");
+const PART_TEXT = PERM_DESC;
 const COLORS = ["var(--chip)", "var(--red-bg)", "var(--soft)", "var(--line)"]; // 이름 첫 글자 칸 바탕(토큰)
 const colorOf = (s: string) => COLORS[[...s].reduce((n, c) => n + c.charCodeAt(0), 0) % COLORS.length];
 const groupLabel = (k: string) => (k.startsWith("pos:") ? `직책 · ${k.slice(4)}` : `소모임 직책 · ${k.slice(5)}`);
@@ -85,9 +80,9 @@ function GroupMatrix({ g, members, onSaved }: { g: G; members: M[]; onSaved: (t:
       <span className="small">직책과 소모임 직책마다 권한을 정해요. 그 직책인 회원은 이 권한을 모두 받아요. 소모임 직책자는 그룹 권한이 없어도 게시글 작성은 할 수 있어요.</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <div className="tblw">
-        <table className="tbl" style={{ minWidth: 760 }}>
+        <table className="tbl" style={{ minWidth: 1000 }}>
           <thead>
-            <tr><th>그룹</th><th>회원</th>{["all", ...PART].map((p) => <th key={p} style={{ textAlign: "center" }}>{PERM_LABELS[p]}</th>)}</tr>
+            <tr><th>그룹</th><th>회원</th>{["all", ...PART].map((p) => <th key={p} style={{ textAlign: "center", minWidth: 72, maxWidth: 120, whiteSpace: "normal", wordBreak: "keep-all", lineHeight: 1.3 }}>{PERM_LABELS[p]}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((k) => {
@@ -173,7 +168,7 @@ function Admins() {
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      {!meAll && <div className="msg info">권한을 바꾸는 일은 “모든 권한” 관리자만 할 수 있어요. 지금은 볼 수만 있어요.</div>}
+      {!meAll && <div className="msg info">권한을 바꾸는 일은 “모든권한” 관리자만 할 수 있어요. 지금은 볼 수만 있어요.</div>}
       <div className="msg info">바뀐 권한은 해당 회원이 다시 로그인하면 적용돼요.</div>
 
       <GroupMatrix g={g} members={list} onSaved={(t) => { setNote({ tone: "info", text: t }); load(); }} />
@@ -181,7 +176,7 @@ function Admins() {
       <div className="adm-two">
         <section style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }} aria-label="권한 종류">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>권한 종류</b>
-          <div className="card"><b>모든 권한</b><div className="small">회원관리, 소모임관리, 활동 템플릿, 일정 만들기·관리 전부와 권한 바꾸기</div></div>
+          <div className="card"><b>모든권한</b><div className="small">모임설정, 회원관리, 일정관리, 소모임관리, 활동템플릿, 게시글 전부와 권한 바꾸기</div></div>
           <div className="card">
             <b>부분 권한 (여러 개 선택)</b>
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
@@ -190,7 +185,7 @@ function Admins() {
           </div>
           <span className="small">
             최종 권한 = 속한 그룹(직책·소모임 직책)의 권한 + 개인 권한이에요. “개인 권한 확인·수정”으로 저장하면 그 회원은 그룹 권한 대신 개인 권한만 써요.
-            권한이 있는 회원은 일반 회원과 같은 방법으로 로그인한 뒤 관리자 비밀번호를 한 번 더 입력해요. 모든 권한 회원은 한 명 이상 있어야 해요.
+            권한이 있는 회원은 일반 회원과 같은 방법으로 로그인한 뒤 관리자 비밀번호를 한 번 더 입력해요. 모든권한 회원은 한 명 이상 있어야 해요.
           </span>
         </section>
 

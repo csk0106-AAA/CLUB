@@ -46,5 +46,5 @@ function Rules() {
 }
 
 export default function RulesPage() {
-  return <AdminGate mode="group" need={["all"]} active="/admin/rules"><Rules /></AdminGate>;
+  return <AdminGate mode="group" need={["group"]} active="/admin/rules"><Rules /></AdminGate>;
 }

@@ -16,7 +16,7 @@ const body = z.object({ config: z.unknown(), mode: z.enum(SAVE_MODES).default("v
 
 // 저장은 관리자(활동 권한) 또는 소모임 직책자. 지우기(DELETE)는 관리자만.
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await adminOrOfficer("activities");
+  const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const raw = await req.json().catch(() => null);
@@ -38,7 +38,7 @@ export async function PUT(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guard("templates");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const s = await getStore();

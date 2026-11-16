@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { applyInput, carInput, carpoolState, cars, conflict, freeFor, inputPeople, newCar, saveCarpoolState, suggestName, timeIssue, toRow } from "@/lib/carpool";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // 카풀 배정: 차량마다 갈 때·올 때 운행 여부와 구간별 일정·탑승자. 배포 전에는 회원에게 보이지 않는다.
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const s = await getStore();
@@ -27,7 +27,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = carInput.safeParse(await req.json().catch(() => null));

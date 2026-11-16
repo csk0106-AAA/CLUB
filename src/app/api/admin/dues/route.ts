@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // 모임 회비(연회비·월회비) 설정, 선택지(직책·회원구분), 금액별 회원 수, 올린 회비 글 목록. 권한: 회비(fees) 또는 모든 권한.
 export async function GET() {
-  const g = await guard("fees");
+  const g = await guard("group");
   if ("err" in g) return g.err;
   const [dues, lists, members, pub] = await Promise.all([readDues(), getLists(), (await getStore()).list("Members"), postsOf({ kind: "dues" })]);
   const positions = [...new Set([...lists.positions.filter((p) => p !== GENERAL_POSITION), GENERAL_POSITION])];
@@ -34,7 +34,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const g = await guard("fees");
+  const g = await guard("group");
   if ("err" in g) return g.err;
   const parsed = duesInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad(zodMessage(parsed.error, "입력값을 확인해 주세요. 금액은 숫자만 넣어 주세요."));

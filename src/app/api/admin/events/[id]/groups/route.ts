@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { gTeams } from "@/lib/groups";
 import { getStore } from "@/lib/store";
 
@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // 조편성 목록(활동 개수에 따라 여러 개를 만들 수 있다)
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const rows = (await (await getStore()).list("Groupings")).filter((x) => x.eventId === id);
@@ -24,7 +24,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 const body = z.object({ title: z.string().trim().min(1).max(60) });
 
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

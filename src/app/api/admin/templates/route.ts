@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 //  uses: 이 버전을 쓰는 일정 활동 수, useEvents: 그 일정 id들, deletable/deleteWhy: 지울 수 있는지
 // 관리자(활동·일정 권한) 또는 소모임 직책자가 볼 수 있다. canDelete: 지우기는 관리자(활동 권한)만.
 export async function GET() {
-  const g = await adminOrOfficer(["activities", "events"]);
+  const g = await adminOrOfficer(["templates", "events"]);
   if ("err" in g) return g.err;
   const s = await getStore();
   const [rows, acts] = await Promise.all([s.list("ActivityTemplates"), s.list("EventActivities")]);
@@ -33,12 +33,12 @@ export async function GET() {
       config,
     }];
   });
-  return NextResponse.json({ templates, canDelete: can(g.s, "activities") });
+  return NextResponse.json({ templates, canDelete: can(g.s, "templates") });
 }
 
 // 새 템플릿(v1). 복제도 버전이 아니라 새 템플릿으로 만든다. (관리자 또는 소모임 직책자)
 export async function POST(req: Request) {
-  const g = await adminOrOfficer("activities");
+  const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;
   const parsed = templateInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("템플릿 설정을 확인해 주세요. 이름과 현장 단계가 필요해요.");

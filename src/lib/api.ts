@@ -20,6 +20,28 @@ export async function guard(perm?: string | string[]): Promise<Guard> {
   return { s };
 }
 
+// 일정 하나를 다루는 관리 API(/api/admin/events/[id]/…) 용.
+//  perm(기본 일정관리) 권한이 있으면 통과. 없으면 "일정 만들기" 권한(evMain·evClub)이 있고
+//  그 일정을 내가 만든 경우(Events.createdBy)에만 통과한다(다른 사람이 만든 일정은 고칠 수 없다).
+//  소모임관리 권한(clubs)은 소모임 일정이면 통과한다.
+export async function guardEv(ctx: { params: Promise<{ id: string }> }, perm: string | string[] = "events"): Promise<Guard> {
+  const s = await getSession();
+  if (!s) return { err: NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 }) };
+  if (s.host) return { err: hostOnly() };
+  const list = Array.isArray(perm) ? perm : [perm];
+  if (list.some((p) => can(s, p))) return { s };
+  const clubs = can(s, "clubs");
+  if (clubs || can(s, "evMain") || can(s, "evClub")) {
+    const { id } = await ctx.params;
+    const ev = (await (await getStore()).list("Events")).find((e) => e.id === id);
+    // 소모임관리 권한: 소모임 일정은 모두 관리한다
+    if (ev && clubs && (ev.club ?? "").trim()) return { s };
+    if (ev && ev.createdBy === s.mid && (can(s, "evMain") || can(s, "evClub"))) return { s };
+    return { err: NextResponse.json({ error: "내가 만든 일정만 고칠 수 있어요." }, { status: 403 }) };
+  }
+  return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
+}
+
 // 관리자(perm, 2차 비밀번호 통과) 또는 소모임 직책자(관리자 비밀번호 없이) 통과.
 //  adminOk: 관리자 권한으로 통과했는지(모든 소모임·삭제 등), officerOf: 내가 직책을 맡은 소모임 이름들(지금 DB 기준)
 export type OfficerGuard = { s: Session; adminOk: boolean; officerOf: string[] } | { err: NextResponse };
@@ -45,7 +67,7 @@ function hostOnly(): NextResponse {
 }
 
 // 활동 진행(진행자 화면) API 용: 관리자 권한이 있거나, 이 활동의 진행자 접속번호로 로그인한 경우 통과.
-export async function hostGuard(aid: string, perm: string | string[] = ["activities", "events"]): Promise<Guard> {
+export async function hostGuard(aid: string, perm: string | string[] = ["templates", "events"]): Promise<Guard> {
   const s = await getSession();
   if (!s) return { err: NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 }) };
   if (s.host) {
@@ -71,6 +93,6 @@ export function parseJson<T>(text: string | undefined, fallback: T): T {
   }
 }
 
-// board: 게시글 작성과 게시글 양식 템플릿 수정 (조직도·회칙 게시글은 "all" 만)
-export const ADMIN_PERMS = ["all", "members", "events", "fees", "activities", "minutes", "board"] as const;
+// 관리자 권한 범위(lib/perm-keys.ts)
+export { PERM_KEYS as ADMIN_PERMS } from "./perm-keys";
 export const MAX_ADMINS = 5;

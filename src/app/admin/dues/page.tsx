@@ -88,5 +88,5 @@ function DuesEditor() {
 }
 
 export default function DuesPage() {
-  return <AdminGate mode="group" need={["fees"]} active="/admin/dues"><AdminIssues /><DuesEditor /></AdminGate>;
+  return <AdminGate mode="group" need={["group"]} active="/admin/dues"><AdminIssues /><DuesEditor /></AdminGate>;
 }

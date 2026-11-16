@@ -33,6 +33,8 @@ export const TABS = {
     "minutes",
     // dayPlaces: 세부일정 날짜별 기본 위치 JSON { "YYYY-MM-DD": "장소" } (lib/day-places.ts)
     "dayPlaces",
+    // createdBy: 일정을 만든 회원 id. 일정 만들기 권한(evMain·evClub)만 있는 회원은 자기가 만든 일정만 고칠 수 있다.
+    "createdBy",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [

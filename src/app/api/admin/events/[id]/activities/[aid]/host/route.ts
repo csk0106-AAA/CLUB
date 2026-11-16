@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { loginCode } from "@/lib/login-code";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -14,7 +14,7 @@ const body = z.object({
 });
 
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await guard("activities");
+  const g = await guardEv(ctx, ["templates", "events"]);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
+import { creatableTypes } from "@/lib/perm-keys";
 import { audienceInput, inClubOrObserver } from "@/lib/audience";
 import { readClubInfo } from "@/lib/clubs";
 import { clubPayAccount, duesAccount, readDues } from "@/lib/dues";
@@ -13,11 +14,14 @@ import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 
+// 일정 목록(관리자). 일정관리 권한은 모든 일정, 소모임관리 권한만 있으면 소모임 일정만.
 export async function GET() {
-  const g = await guard(["events", "fees"]);
+  const g = await guard(["events", "clubs"]);
   if ("err" in g) return g.err;
+  const onlyClubs = !g.s.perms.includes("all") && !g.s.perms.includes("events");
   const s = await getStore();
-  const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
+  const [allEvents, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
+  const events = onlyClubs ? allEvents.filter((e) => (e.club ?? "").trim()) : allEvents;
   // 참석 신청 진행 막대의 분모: 대기회원·참관회원을 뺀 회원 수(일정 상세의 신청 명단과 같은 기준)
   // 소모임 일정은 그 소모임 회원 + 참관자만 센다.
   await fixLegacyTypes(events);
@@ -50,12 +54,15 @@ const body = z.object({
   audience: audienceInput.optional(), // 공개 대상(소모임이 아닌 일정, 비우면 전체 회원)
 });
 
+// 일정 만들기: 일정관리(모든 종류) 또는 일정 만들기 권한(evMain: 정기모임·워크숍·회의·미팅 / evClub: 소모임·회의·미팅)
 export async function POST(req: Request) {
-  const g = await guard("events");
+  const g = await guard(["events", "evMain", "evClub", "clubs"]);
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("일정 유형과 이름을 입력해 주세요. 일시는 달력에서 골라 주세요.");
   const { type, name, startsAt = "", endsAt = "", place = "" } = parsed.data;
+  const allowed = creatableTypes(g.s.perms);
+  if (allowed && !allowed.includes(type)) return bad(`${type} 일정을 만들 권한이 없어요. 만들 수 있는 일정: ${allowed.join(", ")}`, 403);
   if (startsAt && endsAt && endsAt < startsAt) return bad("끝나는 일시가 시작 일시보다 빨라요.");
   const club = type === "소모임" ? parsed.data.club ?? "" : "";
   // 소모임 일정은 소모임이 꼭 있어야 한다(없으면 그 소모임의 일정관리에 안 보이고, 누구나 참석 신청할 수 있게 된다)
@@ -86,6 +93,8 @@ export async function POST(req: Request) {
   const ev = await s.insert("Events", {
     type, name, club, account, accountHolder, startsAt, endsAt, place, audience,
     status: "초안", published: "false", pinned: String(parsed.data.pinned === true),
+    // 만든 사람: 일정 만들기 권한자는 자기가 만든 일정만 고칠 수 있다(lib/api.ts guardEv)
+    createdBy: g.s.mid,
   });
   return NextResponse.json({ event: ev });
 }

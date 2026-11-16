@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { loadGrouping } from "@/lib/groups";
 import { getStore } from "@/lib/store";
 
@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string; gid: string }> };
 const body = z.object({ title: z.string().trim().min(1).max(60) });
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id, gid } = await ctx.params;
   const c = await loadGrouping(id, gid);
@@ -21,7 +21,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id, gid } = await ctx.params;
   const c = await loadGrouping(id, gid);

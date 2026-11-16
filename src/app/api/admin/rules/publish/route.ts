@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // 회칙 글 목록(올릴 때 고를 기존 글)과 지금 연결된 글. 권한: 모든 권한(관리자 2차 비밀번호).
 export async function GET() {
-  const g = await guard("all");
+  const g = await guard("group");
   if ("err" in g) return g.err;
   const pub = await postsOf({ kind: "rules" });
   return NextResponse.json({ ...pub, template: { title: DEFAULT_TEMPLATES.rules.title, body: DEFAULT_TEMPLATES.rules.body } });
@@ -16,7 +16,7 @@ export async function GET() {
 
 // 지금 "확정"된 회칙 조문을 게시판 글로 올린다(새 글 또는 고른 회칙 글 고치기).
 export async function POST(req: Request) {
-  const g = await guard("all");
+  const g = await guard("group");
   if ("err" in g) return g.err;
   const m = await getMe();
   if ("err" in m) return m.err;

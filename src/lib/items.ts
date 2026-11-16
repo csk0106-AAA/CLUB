@@ -37,7 +37,7 @@ export const ITEMS: Record<ItemKind, Def> = {
   },
   costs: {
     tab: "EventCosts",
-    perm: ["fees"],
+    perm: ["events"],
     schema: z
       .object({ item: str(100).min(1), budget: money.default(0), spent: money.default(0), status: str(20).default("예정"), owner: str(40).default("") })
       .transform((v) => ({ item: v.item, budget: String(v.budget), spent: String(v.spent), status: v.status, owner: v.owner })),

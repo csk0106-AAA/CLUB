@@ -11,7 +11,7 @@ export async function GET() {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 });
   if (!s.host) {
-    const admin = can(s, "activities") || can(s, "events");
+    const admin = can(s, "templates") || can(s, "events");
     return NextResponse.json({ mode: admin ? "admin" : "member", name: s.name, items: [] });
   }
 

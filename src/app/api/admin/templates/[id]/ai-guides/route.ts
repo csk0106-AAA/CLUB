@@ -13,7 +13,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const body = aiSettingsInput.extend({ mode: z.enum(SAVE_MODES).default("version"), name: z.string().max(100).optional() });
 
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await adminOrOfficer("activities");
+  const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

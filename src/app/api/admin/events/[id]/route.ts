@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
 import { audienceInput, inClubOrObserver, readObservers } from "@/lib/audience";
 import { clubLeaders, readAllClubInfo } from "@/lib/clubs";
@@ -16,7 +16,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // 일정 상세: 개요, 회원별 신청·회비 현황(미응답 회원 포함)
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["events", "fees"]);
+  const g = await guardEv(ctx, "events");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const s = await getStore();
@@ -101,7 +101,7 @@ const patch = z.object({
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const g = await guard(["events", "fees"]);
+  const g = await guardEv(ctx, "events");
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = patch.safeParse(await req.json().catch(() => null));

@@ -192,11 +192,11 @@ function ClubEvents({ club }: { club: string }) {
   useEffect(() => {
     api<{ perms: string[]; admin: boolean }>("/api/me").then((r) => {
       if (!r.ok) return;
-      setCanCreate(r.data.perms.includes("all") || r.data.perms.includes("events"));
+      setCanCreate(["all", "events", "clubs", "evClub"].some((p) => r.data.perms.includes(p)));
       setUnlocked(r.data.admin);
     });
     api<{ events: Ev[] }>("/api/admin/events").then((r) => {
-      if (!r.ok) return setError(r.status === 403 ? "소모임 일정은 일정 권한이 있는 관리자가 만들고 관리해요." : r.error);
+      if (!r.ok) return setError(r.status === 403 ? "소모임 일정은 소모임관리·일정관리 권한이 있는 관리자가 만들고 관리해요." : r.error);
       setEvents(r.data.events.filter((e) => e.club === club));
     });
   }, [club]);
@@ -309,5 +309,5 @@ export default function ClubAdminPage({ params, searchParams }: { params: Promis
   } catch {
     /* 그대로 */
   }
-  return <AdminGate mode="clubs" need={["members"]} active="/admin/clubs" hideSub><Club name={decoded} initialTab={isTab(tab) ? tab : "overview"} /></AdminGate>;
+  return <AdminGate mode="clubs" need={["clubs"]} active="/admin/clubs" hideSub><Club name={decoded} initialTab={isTab(tab) ? tab : "overview"} /></AdminGate>;
 }

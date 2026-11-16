@@ -17,10 +17,11 @@ const ALL: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
 // fixedClub 을 주면(소모임관리 › 소모임 › 소모임일정관리) 그 소모임 일정만 만든다.
 // clubs 를 주면(회원 "일정" 화면) 유형에 "소모임"도 있고 소모임을 고른다. 관리자 › 일정관리는 clubs 없이 써서 소모임 일정을 만들지 않는다.
 // 관리자 비밀번호를 아직 확인하지 않았으면(서버가 403) 창 안에서 비밀번호를 받고 다시 만든다.
-export function EventCreate({ open, onClose, unlocked, fixedClub, clubs }: { open: boolean; onClose: () => void; clubs?: string[]; unlocked: boolean; fixedClub?: string }) {
+// allowed: 만들 수 있는 일정 종류(일정 만들기 권한 evMain·evClub). 주지 않으면 모든 종류.
+export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed }: { open: boolean; onClose: () => void; clubs?: string[]; unlocked: boolean; fixedClub?: string; allowed?: string[] | null }) {
   const router = useRouter();
-  const [type, setType] = useState<string>(fixedClub ? "소모임" : "정기모임");
-  const types = clubs ? [...EVENT_TYPES] : EVENT_TYPES.filter((t) => t !== "소모임");
+  const types = (clubs ? [...EVENT_TYPES] : EVENT_TYPES.filter((t) => t !== "소모임")).filter((t) => !allowed || allowed.includes(t));
+  const [type, setType] = useState<string>(fixedClub ? "소모임" : types[0] ?? "정기모임");
   const [name, setName] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");

@@ -29,7 +29,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const [rows, members, events] = await Promise.all([s.list("ClubRequests"), s.list("Members"), s.list("Events")]);
   const r = rows.find((x) => x.id === id);
   if (!r) return bad("신청을 찾을 수 없어요.", 404);
-  if (!canHandle(members, r.club, g.s.mid, await getPermGroups())) return bad("이 소모임의 직책자(또는 모든 권한 관리자)만 신청을 처리할 수 있어요.", 403);
+  if (!canHandle(members, r.club, g.s.mid, await getPermGroups())) return bad("이 소모임의 직책자(또는 모든권한 관리자)만 신청을 처리할 수 있어요.", 403);
   if (r.status !== "pending") return bad("이미 처리된 신청이에요.", 409);
 
   const approve = parsed.data.decision === "approve";

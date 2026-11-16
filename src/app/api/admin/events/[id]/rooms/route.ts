@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { nightsOf, roomState, rooms, saveRoomState, suggestRoomName, validDate } from "@/lib/rooms";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 // 숙박 방배정(날짜별). 배포 전에는 회원에게 보이지 않는다.
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const s = await getStore();
@@ -40,7 +40,7 @@ const body = z.object({
 });
 
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard(["events"]);
+  const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));

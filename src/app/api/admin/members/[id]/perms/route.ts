@@ -18,7 +18,7 @@ const body = z.union([
 export async function PUT(req: Request, ctx: Ctx) {
   const g = await guard("members");
   if ("err" in g) return g.err;
-  if (!(await isAllNow(g.s.mid))) return bad("권한은 “모든 권한” 관리자만 바꿀 수 있어요.", 403);
+  if (!(await isAllNow(g.s.mid))) return bad("권한은 “모든권한” 관리자만 바꿀 수 있어요.", 403);
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("권한을 확인해 주세요.");

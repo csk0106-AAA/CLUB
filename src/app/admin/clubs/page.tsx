@@ -96,5 +96,5 @@ function Clubs() {
 }
 
 export default function ClubsAdminPage() {
-  return <AdminGate mode="clubs" need={["members"]} active="/admin/clubs"><Clubs /></AdminGate>;
+  return <AdminGate mode="clubs" need={["clubs"]} active="/admin/clubs"><Clubs /></AdminGate>;
 }

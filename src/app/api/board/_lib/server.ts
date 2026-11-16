@@ -30,7 +30,7 @@ export async function getMe(): Promise<{ me: Me } | { err: NextResponse }> {
   if (!row) return { err: NextResponse.json({ error: "회원 정보를 찾을 수 없어요." }, { status: 401 }) };
   const perms = effectivePerms(row, await getPermGroups());
   const isAll = perms.includes("all");
-  const manage = isAll || perms.includes("board");
+  const manage = isAll || perms.includes("write");
   return { me: { s: g.s, row, perms, isAll, manage, canWrite: manage || isClubOfficer(row), tplAdmin: manage && g.s.admin } };
 }
 

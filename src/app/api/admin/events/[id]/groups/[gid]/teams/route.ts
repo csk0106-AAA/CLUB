@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, guardEv } from "@/lib/api";
 import { makeTeams } from "@/lib/capsule";
 import { gTeams, groupPool, loadGrouping } from "@/lib/groups";
 import { memberAgeGroup } from "@/lib/age-group";
@@ -14,7 +14,7 @@ const view = (m: Row) => ({ id: m.id, name: m.name, ageGroup: memberAgeGroup(m) 
 
 // 조편성 보드 데이터. 타임캡슐 팀 구성과 같은 모양이라 같은 화면(TeamBoard)을 쓴다.
 export async function GET(_req: Request, ctx: Ctx) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id, gid } = await ctx.params;
   const c = await loadGrouping(id, gid);
@@ -46,7 +46,7 @@ const gen = z.object({
 });
 
 export async function POST(req: Request, ctx: Ctx) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id, gid } = await ctx.params;
   const c = await loadGrouping(id, gid);
@@ -64,7 +64,7 @@ export async function POST(req: Request, ctx: Ctx) {
 const manual = z.object({ teams: z.array(z.object({ name: z.string().trim().min(1).max(20), memberIds: z.array(z.string()).max(60) })).max(40) });
 
 export async function PUT(req: Request, ctx: Ctx) {
-  const g = await guard(["events", "activities"]);
+  const g = await guardEv(ctx, ["events", "templates"]);
   if ("err" in g) return g.err;
   const { id, gid } = await ctx.params;
   const c = await loadGrouping(id, gid);

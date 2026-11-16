@@ -57,7 +57,7 @@ function parseOut(text: string): { reply: string; config: unknown } | null {
 }
 
 export async function POST(req: Request) {
-  const g = await adminOrOfficer("activities");
+  const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;
   if (!isAiEnabled()) return bad("AI가 아직 연결되지 않았어요. 기존 템플릿을 복제해서 직접 맞춰 주세요.", 503);
   const parsed = body.safeParse(await req.json().catch(() => null));
