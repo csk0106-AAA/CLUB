@@ -2,7 +2,7 @@ import { eventJoinable, inAudience, readAudience } from "./audience";
 import { isGuest } from "./member-kind";
 import { readPrefs } from "./prefs";
 import { countIn } from "./club-requests";
-import { getPermGroups } from "./perms";
+import { effectivePerms, getPermGroups } from "./perms";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 
@@ -162,6 +162,8 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
     getSetting<Stamps>("eventStamps", {}), getSetting<Stamps>("eventFirstPublished", {}), s.list("ClubRequests"), getPermGroups(),
     s.list("PostComments"),
   ]);
+  // 승인 전 회원 신청(회원정보·모든 권한 관리자의 종 숫자에 더한다. 알림 창에서 누르면 회원신청관리로)
+  const apps = mids.some((mid) => isAppHandler(members.find((m) => m.id === mid), groups)) ? (await s.list("MemberApps")).filter((a) => a.status === "pending").length : 0;
   const out = new Map<string, Counts>();
   for (const mid of mids) {
     const me = members.find((m) => m.id === mid);
@@ -178,11 +180,16 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
       events: prefs.notify.events ? ev : 0,
       posts: po,
       profiles: prefs.notify.profiles ? pr : 0,
-      // 소모임 신청(처리할 것 + 안 본 결과) + 내 글에 새로 달린 댓글
-      alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)) + co,
+      // 소모임·참관 신청(처리할 것 + 안 본 결과) + 내 글에 새로 달린 댓글 + (관리자) 승인 전 회원 신청
+      alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)) + co + (isAppHandler(me, groups) ? apps : 0),
     });
   }
   return out;
+}
+
+// 회원 신청을 처리하는 관리자인지(회원정보 또는 모든 권한)
+export function isAppHandler(me: Row | undefined, groups: Awaited<ReturnType<typeof getPermGroups>>): boolean {
+  return !!me && !isGuest(me.kind) && effectivePerms(me, groups).some((p) => p === "all" || p === "members");
 }
 
 export async function countsOf(mid: string): Promise<Counts> {

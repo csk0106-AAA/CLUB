@@ -5,7 +5,7 @@ import { handlersOf, isAttend, reqLabel } from "@/lib/club-requests";
 import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
-import { commentAlertsOf, countsOf, markCommentsSeen, markSeen, newPostsOf } from "@/lib/unread";
+import { commentAlertsOf, countsOf, isAppHandler, markCommentsSeen, markSeen, newPostsOf } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +44,12 @@ export async function GET() {
       status: r.status, createdAt: r.createdAt, handledAt: r.handledAt, handledByName: r.handledBy ? name(r.handledBy) : "", reason: r.reason ?? "",
       unseen: r.status !== "pending" && r.resultSeen !== "true",
     }));
+  // 승인 전 회원 신청 수(회원정보·모든 권한 관리자에게만)
+  const memberApps = isAppHandler(members.find((m) => m.id === mid), groups)
+    ? (await s.list("MemberApps")).filter((a) => a.status === "pending").length
+    : 0;
   return NextResponse.json({
+    memberApps,
     // 종 아이콘 숫자에 센 글 전부(홈 목록의 "새 글"/"수정됨" 표시와 같은 글)
     posts: posts.map((p) => ({ id: p.id, title: p.title, at: p.updatedAt || p.createdAt, fresh: p.fresh })),
     toHandle,

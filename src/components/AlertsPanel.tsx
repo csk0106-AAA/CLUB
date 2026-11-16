@@ -19,6 +19,7 @@ type CommentAlert = { id: string; postId: string; title: string; name: string; a
 export type AlertsData = {
   posts: { id: string; title: string; at: string; fresh: "new" | "updated" }[]; toHandle: Handle[]; mine: Mine[];
   comments: CommentAlert[]; count: number;
+  memberApps?: number; // 승인 전 회원 신청(관리자에게만)
 };
 
 const STATUS: Record<string, { text: string; tone: string }> = {
@@ -73,13 +74,21 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
 
   if (!d) return error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>;
   const comments = d.comments ?? [];
-  const empty = d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
+  const apps = d.memberApps ?? 0;
+  const empty = apps === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {note && <div className="msg info" role="status">{note}</div>}
       {empty && <div className="msg info">새 알림이 없어요.</div>}
+
+      {apps > 0 && (
+        <Link href="/admin/member-apps" className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+          <span className="ic" aria-hidden="true">!</span>
+          <span className="grow"><b>승인 전 회원 신청 {apps}건</b><span className="t">회원관리 › 회원신청관리에서 확인하기 ›</span></span>
+        </Link>
+      )}
 
       {d.toHandle.length > 0 && (
         <section aria-labelledby="al-h1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
