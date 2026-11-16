@@ -3,7 +3,7 @@ import { bad, guard, parseJson } from "@/lib/api";
 import { memberFee, payable } from "@/lib/fee";
 import { eventVisible, inClubOrObserver, readObservers } from "@/lib/audience";
 import { clubLeaders } from "@/lib/clubs";
-import { isAttend } from "@/lib/club-requests";
+import { isAttend, joinView, latestJoin } from "@/lib/club-requests";
 import { memberClubs } from "@/lib/lists";
 import { fixLegacyTypes } from "@/lib/event-migrate";
 import { getStore } from "@/lib/store";
@@ -70,8 +70,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       canApply,
       // 내 참석 요청: status pending(관리자 확인 중) | approved | declined
       attendReq: club && myReq
-        ? { id: myReq.id, kind: myReq.kind, status: myReq.status, message: myReq.message, createdAt: myReq.createdAt, handledAt: myReq.handledAt }
+        ? { id: myReq.id, kind: myReq.kind, status: myReq.status, message: myReq.message, createdAt: myReq.createdAt, handledAt: myReq.handledAt, reason: myReq.reason ?? "" }
         : null,
+      // 소모임 회원이 아니면: 이 소모임 가입 신청 중 가장 최근 것(설정·게시글에서 보낸 것 포함). 없으면 null
+      clubJoin: club && !(me && memberClubs(me).some((c) => c.name === club)) ? joinView(latestJoin(requests, g.s.mid, club)) : null,
     },
     activities,
     apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "" } : null,

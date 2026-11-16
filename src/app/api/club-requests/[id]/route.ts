@@ -10,7 +10,8 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-const body = z.object({ decision: z.enum(["approve", "decline"]) });
+// reason: 반려 사유(반려할 때만, 신청한 회원에게 보인다)
+const body = z.object({ decision: z.enum(["approve", "decline"]), reason: z.string().trim().max(300).default("") });
 
 // 소모임 직책자(직책자가 없으면 전체 관리자)가 가입·참관 신청을 승인하거나 거절한다.
 //  승인 join    → 신청한 회원의 Members.clubs 에 그 소모임(직책 없음)을 더한다.
@@ -22,13 +23,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return bad("승인 또는 거절을 골라 주세요.");
+  if (!parsed.success) return bad("승인 또는 반려를 골라 주세요. 반려 사유는 300자까지 쓸 수 있어요.");
 
   const s = await getStore();
   const [rows, members, events] = await Promise.all([s.list("ClubRequests"), s.list("Members"), s.list("Events")]);
   const r = rows.find((x) => x.id === id);
   if (!r) return bad("신청을 찾을 수 없어요.", 404);
-  if (!canHandle(members, r.club, g.s.mid, await getPermGroups())) return bad("이 소모임의 직책자만 신청을 처리할 수 있어요.", 403);
+  if (!canHandle(members, r.club, g.s.mid, await getPermGroups())) return bad("이 소모임의 직책자(또는 모든 권한 관리자)만 신청을 처리할 수 있어요.", 403);
   if (r.status !== "pending") return bad("이미 처리된 신청이에요.", 409);
 
   const approve = parsed.data.decision === "approve";
@@ -60,6 +61,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     handledBy: g.s.mid,
     handledAt: new Date().toISOString(),
     resultSeen: "",
+    reason: approve ? "" : parsed.data.reason,
   });
   try {
     await pushTo([r.memberId], "alerts");

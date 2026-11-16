@@ -5,6 +5,7 @@ import { fmtSize, isClosed, type FeeSnap, type FileMeta, type MinutesData, type 
 import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
 import { agendaTone } from "./FormFields";
 import { fileUrl, type PostDetail } from "./types";
+import { ClubJoinBox } from "../ClubJoinBox";
 import { fs } from "@/lib/fs";
 
 const col = { display: "flex", flexDirection: "column", gap: 10 } as const;
@@ -89,7 +90,7 @@ function dueLabel(d: FeeSnap): string {
   return d.deadline ? `${fmtDate(d.deadline)}까지` : "";
 }
 
-export function FeeView({ data, myFee, full }: { data: FeeSnap; myFee: NonNullable<PostDetail["myFee"]>; full: boolean }) {
+export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap; myFee: NonNullable<PostDetail["myFee"]>; full: boolean; clubJoin?: PostDetail["clubJoin"] }) {
   // 회비관리에서 올린 글(v:2)은 period(연회비/월회비)·입금 기간·메모를 함께 담고 있다. 예전 글은 연회비 + 납부기한.
   const label = data.club ? "회비" : data.period === "monthly" ? "월회비" : "연회비";
   const [copied, setCopied] = useState(false);
@@ -103,12 +104,16 @@ export function FeeView({ data, myFee, full }: { data: FeeSnap; myFee: NonNullab
       setTimeout(() => setCopied(false), 1800);
     } catch { /* 길게 눌러 복사 */ }
   }
+  // 소모임 회원이 아니면 금액·계좌 대신 "○○ 회원이 아닙니다." + 신청하러 가기(안내 메모와 관리자 금액표는 그대로)
+  const outsider = !!myFee.notMember && !!data.club;
   return (
     <>
-      <div className="card center">
-        <span className="small">{data.club ? `${data.club} ` : ""}내 {label}{who ? ` (${who})` : ""}</span>
-        <div className="title num" style={{ fontSize: fs(36) }}>{has ? won(myFee.amount) : "없어요"}</div>
-      </div>
+      {outsider ? <ClubJoinBox club={data.club!} initial={clubJoin ?? null} /> : (
+        <div className="card center">
+          <span className="small">{data.club ? `${data.club} ` : ""}내 {label}{who ? ` (${who})` : ""}</span>
+          <div className="title num" style={{ fontSize: fs(36) }}>{has ? won(myFee.amount) : "없어요"}</div>
+        </div>
+      )}
       {has && (
         <div className="card">
           <span className="small">입금 계좌</span>

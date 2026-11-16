@@ -64,7 +64,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           {p.body && <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7, overflowWrap: "anywhere" }}>{p.body}</p>}
 
           {p.form === "rules" && d.rules && <RulesView rules={d.rules} />}
-          {p.form === "fee" && d.myFee && <FeeView data={p.data as unknown as FeeSnap} myFee={d.myFee} full={d.seeResults} />}
+          {p.form === "fee" && d.myFee && <FeeView data={p.data as unknown as FeeSnap} myFee={d.myFee} full={d.seeResults} clubJoin={d.clubJoin ?? null} />}
           {p.form === "minutes" && <MinutesView data={p.data as unknown as MinutesData} labels={d.agendaLabels ?? {}} />}
           {p.form === "poll" && <PollBox key={JSON.stringify(d.mine)} id={p.id} data={p.data as unknown as PollData} mine={d.mine as Any} results={d.results as Any} onDone={load} />}
           {p.form === "survey" && <SurveyBox key={JSON.stringify(d.mine)} id={p.id} data={p.data as unknown as SurveyData} mine={d.mine as Any} results={d.results as Any} onDone={load} />}

@@ -13,7 +13,7 @@ type Handle = {
 };
 type Mine = {
   id: string; kind: string; kindLabel: string; club: string; eventId: string; eventName: string;
-  status: string; createdAt: string; handledAt: string; handledByName: string; unseen: boolean;
+  status: string; createdAt: string; handledAt: string; handledByName: string; unseen: boolean; reason?: string;
 };
 type CommentAlert = { id: string; postId: string; title: string; name: string; at: string };
 export type AlertsData = {
@@ -24,7 +24,7 @@ export type AlertsData = {
 const STATUS: Record<string, { text: string; tone: string }> = {
   pending: { text: "확인 기다리는 중", tone: "warn" },
   approved: { text: "승인됨", tone: "ok" },
-  declined: { text: "거절됨", tone: "bad" },
+  declined: { text: "반려됨", tone: "bad" },
 };
 const sectionTitle = { font: `700 ${fs(16)} var(--display)`, margin: 0 } as const;
 const what = (r: { kindLabel: string; club: string; eventName: string }) =>
@@ -53,15 +53,21 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   }, [load]);
 
   async function decide(h: Handle, decision: "approve" | "decline") {
-    if (decision === "decline" && !window.confirm(`${h.memberName} 님의 ${h.kindLabel}을 거절할까요?`)) return;
+    // 반려는 사유를 적는다(비워도 됨, 취소를 누르면 반려하지 않음). 사유는 신청한 회원에게 보인다.
+    let reason = "";
+    if (decision === "decline") {
+      const v = window.prompt(`${h.memberName} 님의 ${h.kindLabel}을 반려할까요? 반려 사유를 적어 주세요(선택).`, "");
+      if (v === null) return;
+      reason = v.trim().slice(0, 300);
+    }
     setBusy(h.id);
     setNote("");
-    const r = await api(`/api/club-requests/${h.id}`, { method: "PATCH", body: { decision } });
+    const r = await api(`/api/club-requests/${h.id}`, { method: "PATCH", body: { decision, reason } });
     setBusy("");
     if (!r.ok) return setError(r.error);
     setNote(decision === "approve"
       ? `${h.memberName} 님의 ${h.kindLabel}을 승인했어요.${h.kind === "join" ? ` 이제 ${h.club} 회원이에요.` : ""}${h.attend ? " 이 일정에 참석 신청까지 됐어요." : h.kind === "join" ? "" : " 이제 이 일정에 참석 신청할 수 있어요."}`
-      : `${h.memberName} 님의 신청을 거절했어요.`);
+      : `${h.memberName} 님의 신청을 반려했어요.`);
     await load(true);
   }
 
@@ -87,7 +93,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
                 <button className="btn" type="button" disabled={!!busy} style={{ minHeight: 46 }} onClick={() => decide(h, "approve")}
                   aria-label={`${h.memberName} 님 ${h.kindLabel} 승인`}>승인</button>
                 <button className="btn white" type="button" disabled={!!busy} style={{ minHeight: 46 }} onClick={() => decide(h, "decline")}
-                  aria-label={`${h.memberName} 님 ${h.kindLabel} 거절`}>거절</button>
+                  aria-label={`${h.memberName} 님 ${h.kindLabel} 반려`}>반려</button>
               </div>
             </div>
           ))}
@@ -122,6 +128,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
                   <span className="small">
                     {fmtDate(m.createdAt)} 신청{m.handledAt ? ` · ${fmtDate(m.handledAt)} ${m.handledByName ? `${m.handledByName} 님이 ` : ""}처리` : ""}
                   </span>
+                  {m.status === "declined" && m.reason && <span className="small" style={{ display: "block", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>반려 사유: {m.reason}</span>}
                 </span>
                 {m.unseen && <span className="pill blue">새 결과</span>}
                 <span className={`pill ${STATUS[m.status]?.tone ?? "gray"}`}>{STATUS[m.status]?.text ?? m.status}</span>

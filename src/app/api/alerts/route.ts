@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { canHandle, isAttend, reqLabel } from "@/lib/club-requests";
+import { handlersOf, isAttend, reqLabel } from "@/lib/club-requests";
 import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -28,7 +28,8 @@ export async function GET() {
   const recent = (a: Row, b: Row) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
 
   const toHandle = rows
-    .filter((r) => r.status === "pending" && r.memberId !== mid && canHandle(members, r.club, mid, groups))
+    // 종 알림은 숫자와 같게 그 소모임 처리자(직책자, 없으면 전체 관리자)에게만. 다른 관리자는 소모임관리 › 신청내역에서 본다.
+    .filter((r) => r.status === "pending" && r.memberId !== mid && handlersOf(members, r.club, groups).includes(mid))
     .sort(recent)
     .map((r) => ({
       id: r.id, kind: r.kind, kindLabel: reqLabel(r), attend: isAttend(r), club: r.club, eventId: r.eventId, eventName: evName(r.eventId),
@@ -40,7 +41,7 @@ export async function GET() {
     .slice(0, 20)
     .map((r) => ({
       id: r.id, kind: r.kind, kindLabel: reqLabel(r), attend: isAttend(r), club: r.club, eventId: r.eventId, eventName: evName(r.eventId),
-      status: r.status, createdAt: r.createdAt, handledAt: r.handledAt, handledByName: r.handledBy ? name(r.handledBy) : "",
+      status: r.status, createdAt: r.createdAt, handledAt: r.handledAt, handledByName: r.handledBy ? name(r.handledBy) : "", reason: r.reason ?? "",
       unseen: r.status !== "pending" && r.resultSeen !== "true",
     }));
   return NextResponse.json({

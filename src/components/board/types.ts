@@ -54,6 +54,8 @@ export type PostFull = {
   updatedAt: string;
 };
 
+export type ClubJoinState = { id: string; status: string; reason: string; message: string; createdAt: string; handledAt: string } | null;
+
 export type PostDetail = {
   post: PostFull;
   canEdit: boolean;
@@ -64,7 +66,10 @@ export type PostDetail = {
   mine: unknown;
   results: unknown;
   rules?: { id: string; chapter: string; article: string; body: string; version: string }[];
-  myFee?: { amount: string; kind: string; position: string };
+  // notMember: 소모임 회비 글인데 그 소모임 회원이 아님(금액 대신 "○○ 회원이 아닙니다" + 가입 신청)
+  myFee?: { amount: string; kind: string; position: string; notMember?: boolean };
+  // 소모임 회원이 아닐 때 그 소모임 가입 신청 상태(최근 것, 없으면 null)
+  clubJoin?: ClubJoinState;
   agendaLabels?: Record<string, string>;
   // 반응·댓글(회칙·회비 글은 null)
   talk: PostTalk | null;

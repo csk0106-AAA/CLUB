@@ -110,6 +110,8 @@ export const TABS = {
   //   승인되면 그 일정의 EventApplies 를 참석으로 넣는다(lib/club-requests.ts attendApprove).
   ClubRequests: [
     "id", "kind", "club", "eventId", "memberId", "message", "status", "createdAt", "handledBy", "handledAt", "resultSeen", "attend",
+    // reason: 반려 사유(반려할 때 처리자가 적는다. 신청한 회원에게 보인다)
+    "reason",
   ],
   // 개발 요청: 템플릿 편집기의 "AI에게 요청"에서 지금 기능으로는 안 되는 것(새 코드가 필요한 것)을 개발자에게 남긴다.
   // templateId/eventId: 요청한 곳(비어 있을 수 있음), requestedBy: 요청한 관리자 이름, status: 접수 | 진행 중 | 완료 | 보류

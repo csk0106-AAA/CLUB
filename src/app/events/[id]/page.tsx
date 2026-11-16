@@ -11,7 +11,7 @@ import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
 import { ScheduleView } from "@/components/ScheduleBoard";
 import { Sheet } from "@/components/Sheet";
-import { ClubRequestCard, type AttendReq } from "./ClubRequestCard";
+import { ClubRequestCard, type AttendReq, type JoinReq } from "./ClubRequestCard";
 import { ObserversCard } from "./ObserversCard";
 import { api, fmtDateDow, fmtDays, fmtDaySpan, won } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -23,6 +23,7 @@ type Detail = {
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
     canApply?: boolean; // false: 내가 속하지 않은 소모임 일정(읽기만)
     attendReq?: AttendReq; // 소모임 관리자에게 보낸 내 참석 요청(참관/가입 + 참석)
+    clubJoin?: JoinReq; // 소모임 회원이 아닐 때 그 소모임 가입 신청(최근 것)
   };
   activities: { id: string; name: string }[];
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
@@ -233,7 +234,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {e.canApply === false && e.club ? (
         <>
-          <ClubRequestCard eventId={id} club={e.club} leaders={e.clubLeaders ?? []} req={e.attendReq ?? null} onChange={load} />
+          <ClubRequestCard eventId={id} club={e.club} leaders={e.clubLeaders ?? []} req={e.attendReq ?? null} join={e.clubJoin ?? null} onChange={load} />
           <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
         </>
       ) : !e.startsAt && answer === "" ? (

@@ -132,7 +132,7 @@ export function AdminGate(props: {
       : props.mode === "templates"
         ? [{ href: "/admin/templates", label: "활동 템플릿" }, { href: "/admin/dev-requests", label: "개발 요청" }]
         : props.mode === "clubs"
-          ? [{ href: "/admin/clubs", label: "소모임 목록" }]
+          ? [{ href: "/admin/clubs", label: "소모임 목록" }, { href: "/admin/club-requests", label: "신청내역" }]
           : props.mode === "events"
             ? [{ href: "/admin/events", label: "일정 목록" }]
             : [];

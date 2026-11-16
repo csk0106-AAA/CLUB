@@ -24,8 +24,33 @@ export function handlersOf(members: Row[], club: string, groups: PermGroups = {}
   return members.filter((m) => m.kind !== "회원대기" && effectivePerms(m, groups).includes("all")).map((m) => m.id);
 }
 
+// 처리(승인·반려)할 수 있는지: 그 소모임 직책자(없으면 전체 관리자) + "모든 권한" 관리자는 언제나
 export function canHandle(members: Row[], club: string, mid: string, groups: PermGroups = {}): boolean {
-  return handlersOf(members, club, groups).includes(mid);
+  if (handlersOf(members, club, groups).includes(mid)) return true;
+  const me = members.find((m) => m.id === mid);
+  return !!me && effectivePerms(me, groups).includes("all");
+}
+
+// 소모임관리 › 신청내역에서 볼 수 있는 소모임: 관리자(모든 권한·회원정보)는 전체(null), 소모임 직책자는 자기 소모임만
+export function viewableClubs(members: Row[], mid: string, groups: PermGroups = {}): string[] | null {
+  const me = members.find((m) => m.id === mid);
+  if (!me) return [];
+  const perms = effectivePerms(me, groups);
+  if (perms.includes("all") || perms.includes("members")) return null;
+  return memberClubs(me).filter((c) => c.role).map((c) => c.name);
+}
+
+// 회원 화면에 보낼 가입 신청 상태(소모임 회원이 아닐 때: "○○ 회원이 아닙니다" 칸)
+export type JoinView = { id: string; status: string; reason: string; message: string; createdAt: string; handledAt: string } | null;
+export function joinView(r: Row | undefined): JoinView {
+  return r ? { id: r.id, status: r.status, reason: r.reason ?? "", message: r.message ?? "", createdAt: r.createdAt ?? "", handledAt: r.handledAt ?? "" } : null;
+}
+
+// 이 회원의 이 소모임 가입 신청 중 가장 최근 것(일정에서 보낸 가입+참석 요청 포함)
+export function latestJoin(rows: Row[], memberId: string, club: string): Row | undefined {
+  return rows
+    .filter((r) => r.memberId === memberId && r.club === club && r.kind === "join")
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))[0];
 }
 
 const inClub = (m: Row | undefined, club: string) => !!m && memberClubs(m).some((c) => c.name === club);

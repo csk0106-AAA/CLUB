@@ -5,6 +5,7 @@ import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, talkable, z
 import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { memberClubs } from "@/lib/lists";
+import { joinView, latestJoin } from "@/lib/club-requests";
 import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published";
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -146,7 +147,10 @@ export async function detail(me: Me, p: Row) {
     const club = typeof data.club === "string" ? data.club : "";
     const position = club ? memberClubs(me.row).find((c) => c.name === club)?.role ?? "" : me.row.position;
     const amount = duesAmount({ amount: String(data.defaultAmount ?? ""), rules }, { kind: me.row.kind, position });
-    extra.myFee = { amount, kind: me.row.kind ?? "", position: position ?? "" };
+    // 소모임 회원이 아니면 금액 대신 "○○ 회원이 아닙니다" + 가입 신청 칸(최근 가입 신청 상태)
+    const notMember = !!club && !memberClubs(me.row).some((c) => c.name === club);
+    extra.myFee = { amount: notMember ? "" : amount, kind: me.row.kind ?? "", position: position ?? "", ...(notMember ? { notMember: true } : {}) };
+    if (notMember) extra.clubJoin = joinView(latestJoin(await (await getStore()).list("ClubRequests"), me.row.id, club));
     // 다른 회원의 금액 표는 작성자·관리자에게만
     if (!full) data.rules = [];
   }
