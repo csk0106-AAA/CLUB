@@ -6,6 +6,7 @@ import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { memberClubs } from "@/lib/lists";
 import { joinView, latestJoin } from "@/lib/club-requests";
+import { clubText } from "@/lib/club-label";
 import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published";
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -73,7 +74,8 @@ export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" |
       id: p.id,
       form: p.form,
       title: p.title,
-      excerpt: (p.body ?? "").replace(/\s+/g, " ").slice(0, 90),
+      // 소모임 회비 글은 문장 속 소모임 이름을 "○○ 모임"으로(예전에 올린 글도)
+      excerpt: (typeof data.club === "string" ? clubText(p.body ?? "", data.club) : p.body ?? "").replace(/\s+/g, " ").slice(0, 90),
       notice: p.notice === "true",
       pinned: p.pinned === "true",
       authorName: names.get(p.authorId) ?? "",
@@ -209,7 +211,8 @@ export async function detail(me: Me, p: Row) {
   const aud = audienceOf(p);
   return {
     post: {
-      id: p.id, form, title: p.title, body: p.body, data, audience: aud, audienceText: audienceLabel(aud, { events: evs }),
+      // 소모임 회비 글: 문장 속 소모임 이름을 "○○ 모임"으로(예전에 올린 글도. 다시 올리면 고친 문장으로 저장된다)
+      id: p.id, form, title: p.title, body: typeof data.club === "string" ? clubText(p.body ?? "", data.club) : p.body, data, audience: aud, audienceText: audienceLabel(aud, { events: evs }),
       notice: p.notice === "true", pinned: p.pinned === "true", files: readFiles(p),
       authorId: p.authorId, authorName: names.get(p.authorId) ?? "", createdAt: p.createdAt, updatedAt: p.updatedAt,
     },

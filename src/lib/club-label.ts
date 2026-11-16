@@ -6,6 +6,16 @@ export function clubLabel(name: string): string {
   return /(모임|회|클럽|동호회|club)$/i.test(n) ? n : `${n} 모임`;
 }
 
+// 예전에 올린 소모임 글 본문 고치기: "독서 회비를 안내해 드려요" → "독서 모임 회비를 안내해 드려요".
+// 문장 속 소모임 이름(뒤에 회비·회원·에·신청·일정·활동이 오는 경우)만 바꾸고, 제목 표시 "[독서]"·"독서 소모임"·"독서 모임"은 그대로 둔다.
+export function clubText(text: string, club: string): string {
+  const n = club.trim();
+  const label = clubLabel(n);
+  if (!text || !n || label === n) return text;
+  const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`(?<![\\[\\w가-힣])${esc}(?=\\s*(회비|회원|에|신청|일정|활동))`, "g"), label);
+}
+
 // 받침에 맞는 조사: 을/를, 이/가, 은/는, 과/와, 으로/로
 export function josa(word: string, pair: "을를" | "이가" | "은는" | "과와" | "으로로"): string {
   const c = word.trim().charCodeAt(word.trim().length - 1);
