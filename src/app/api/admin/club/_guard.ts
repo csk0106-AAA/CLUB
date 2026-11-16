@@ -3,7 +3,7 @@ import { guard } from "@/lib/api";
 import { CLUB, type ClubKind } from "@/lib/club";
 import { forbid, getMe } from "@/app/api/board/_lib/server";
 
-// 회칙 조문은 관리자 › 회원관리 › 회칙에서 고친다: 지금 DB 기준 "전체 관리자(all)"만.
+// 회칙 조문은 관리자 › 모임설정 › 회칙에서 고친다: 지금 DB 기준 "전체 관리자(all)"만.
 // 조직도·회의록은 예전처럼 관리자 권한 + 2차 비밀번호.
 export async function clubGuard(kind: ClubKind): Promise<{ name: string } | { err: NextResponse }> {
   if (kind === "rules") {

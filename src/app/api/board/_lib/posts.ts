@@ -34,7 +34,7 @@ export async function parsePost(raw: unknown, me: Me, fixedForm?: string): Promi
   if (!fixedForm && !isWriteForm(form)) {
     return {
       ok: false,
-      error: form === "rules" ? "회칙은 관리자 › 회원관리 › 회칙에서 올려 주세요." : form === "fee" ? "회비 글은 관리자 › 회비관리(소모임은 소모임 회비)에서 올려 주세요." : "이 양식은 글쓰기에서 쓸 수 없어요.",
+      error: form === "rules" ? "회칙은 관리자 › 모임설정 › 회칙에서 올려 주세요." : form === "fee" ? "회비 글은 관리자 › 모임설정 › 회비관리(소모임은 소모임 회비)에서 올려 주세요." : "이 양식은 글쓰기에서 쓸 수 없어요.",
     };
   }
   const d = DATA_SCHEMA[form].safeParse(p.data.data ?? {});

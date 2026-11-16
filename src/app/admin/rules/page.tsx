@@ -11,7 +11,7 @@ const ALL: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
 
 type Data = { posts: PubPost[]; linked: string; template: { title: string; body: string } };
 
-// 관리자 › 회원관리 › 회칙: 회칙 조문을 고치고(“확정”한 조문만), 게시판 회칙 글로 올린다. 모든 권한 관리자만.
+// 관리자 › 모임설정 › 회칙: 회칙 조문을 고치고(“확정”한 조문만), 게시판 회칙 글로 올린다. 모든 권한 관리자만.
 function Rules() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
@@ -46,5 +46,5 @@ function Rules() {
 }
 
 export default function RulesPage() {
-  return <AdminGate mode="members" need={["all"]} active="/admin/rules"><Rules /></AdminGate>;
+  return <AdminGate mode="group" need={["all"]} active="/admin/rules"><Rules /></AdminGate>;
 }

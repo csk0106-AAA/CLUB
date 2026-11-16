@@ -124,7 +124,7 @@ export function FeeView({ data, myFee, full }: { data: FeeSnap; myFee: NonNullab
         </div>
       )}
       {data.note && <div className="card"><span className="small">안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.note}</div></div>}
-      {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 회원관리 › 회비관리에서 바꿀 수 있어요.</span>}
+      {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 모임설정 › 회비관리에서 바꿀 수 있어요.</span>}
       {full && (
         <details className="card">
           <summary style={{ fontWeight: 700, cursor: "pointer" }}>전체 금액표 (담당 관리자만 보여요)</summary>

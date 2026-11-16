@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (!p || !canSee(m.me, p)) return notFound();
   const managed = managedOf(p);
   if (managed) {
-    const where = managed.kind === "rules" ? "관리자 › 회원관리 › 회칙" : managed.kind === "dues" ? "관리자 › 회비관리" : `${managed.club} 소모임 회비 관리`;
+    const where = managed.kind === "rules" ? "관리자 › 모임설정 › 회칙" : managed.kind === "dues" ? "관리자 › 모임설정 › 회비관리" : `${managed.club} 소모임 회비 관리`;
     return forbid(`이 글은 ${where} 화면에서 고쳐서 다시 올려 주세요.`);
   }
   if (!canEdit(m.me, p)) return forbid("작성자나 관리자만 수정할 수 있어요.");

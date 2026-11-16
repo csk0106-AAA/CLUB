@@ -5,7 +5,7 @@ import { api, fmtDateTime } from "@/lib/client";
 import { Popup } from "../Popup";
 import { fs } from "@/lib/fs";
 
-// 회칙 조문 편집(관리자 › 회원관리 › 회칙 화면). 조문마다 "저장"을 누르면 바로 반영되고 변경 기록이 남는다.
+// 회칙 조문 편집(관리자 › 모임설정 › 회칙 화면). 조문마다 "저장"을 누르면 바로 반영되고 변경 기록이 남는다.
 // "확정"으로 표시한 조문만 회원의 회칙 글에 보인다. 전체 관리자만 쓸 수 있다(/api/admin/club/rules).
 type Note = { tone: "bad" | "info"; text: string } | null;
 type RuleLog = { at: string; by: string; what: string; before?: string };

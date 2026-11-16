@@ -19,7 +19,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 
 const yearOf = (d: DuesValue) => (d.periodEnd || d.periodStart).slice(0, 4) || String(new Date().getFullYear());
 
-// 관리자 › 회원관리 › 회비관리: 모임 회비(연회비·월회비)를 정하고, 게시판 글로 올린다.
+// 관리자 › 모임설정 › 회비관리: 모임 회비(연회비·월회비)를 정하고, 게시판 글로 올린다.
 function DuesEditor() {
   const [data, setData] = useState<Data | null>(null);
   const [d, setD] = useState<DuesValue | null>(null);
@@ -88,5 +88,5 @@ function DuesEditor() {
 }
 
 export default function DuesPage() {
-  return <AdminGate mode="members" need={["fees"]} active="/admin/dues"><AdminIssues /><DuesEditor /></AdminGate>;
+  return <AdminGate mode="group" need={["fees"]} active="/admin/dues"><AdminIssues /><DuesEditor /></AdminGate>;
 }
