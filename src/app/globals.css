@@ -497,6 +497,11 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .subnav.one { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; }
 .subnav.menu { flex-wrap: wrap; gap: 6px; }
 .subnav.menu a { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border-radius: 16px; font-size: calc(13px * min(var(--fs, 1), 1.2)); }
+/* 휴대폰: 관리자 하위 메뉴를 한 줄에 똑같은 폭으로 나눠 담는다(회원관리 5개 등) */
+@media (max-width: 560px) {
+  .subnav.menu { flex-wrap: nowrap; gap: 4px; }
+  .subnav.menu a { flex: 1 1 0; min-width: 0; justify-content: center; padding: 0 4px; font-size: calc(13px * min(var(--fs, 1), 1.1)); }
+}
 .subnav.one::-webkit-scrollbar { display: none; }
 .subnav.one a { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border-radius: 16px; font-size: calc(13px * min(var(--fs, 1), 1.2)); }
 .tabsx { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; position: relative; }
