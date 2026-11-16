@@ -631,8 +631,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .otrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line2); }
 .otrow .mini { flex: none; }
 /* 소모임 목록(조직도 아래) */
-.otsec { display: flex; flex-direction: column; gap: 6px; }
-.otsec h2 { margin: 0; font: 700 calc(15px * var(--fs, 1))/1.4 var(--display); }
+.otsec { display: flex; flex-direction: column; gap: 8px; }
+/* 묶음 제목: 왼쪽 색 막대 + 굵은 글씨 */
+.otsec h2 { margin: 0; display: flex; align-items: baseline; gap: 6px; padding-left: 10px; border-left: 3px solid var(--violet); font: 700 calc(15px * var(--fs, 1))/1.4 var(--display); }
+.otsec h2 .small { font-weight: 500; }
+/* 소모임 묶음: 위 직책 목록과 넉넉히 띄우고, 연한 바탕 카드로 따로 보이게 */
+.otsec-clubs { margin-top: 20px; padding: 12px 14px 4px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+.otsec-clubs .otclubs { border-top: 1px solid var(--line2); }
+.otsec-clubs .otclubs li:last-child { border-bottom: 0; }
 .otclubs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .lcard-b > .otclubs { border-top: 0; margin: -10px 0; }
 .lcard-b > .otclubs li:last-child { border-bottom: 0; }
