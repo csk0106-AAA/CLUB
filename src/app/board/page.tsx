@@ -118,8 +118,9 @@ export default function BoardPage() {
             <li key={p.id}>
               <Link href={`/board/${p.id}`} className="post">
                 <span className="meta">
-                  <b>{p.authorName || "운영진"}</b><span>· {fmtDate(p.updatedAt || p.createdAt)}</span>
+                  {/* 공지는 상단 고정 글처럼 맨 앞에 */}
                   {p.notice && <span className="chip red"><IconMegaphone size={12} />공지</span>}
+                  <b>{p.authorName || "운영진"}</b><span>· {fmtDate(p.updatedAt || p.createdAt)}</span>
                   {freshChip(p)}
                   <span style={{ marginLeft: "auto", display: "inline-flex", gap: 4 }}>
                     {RESPONSE_FORMS.includes(p.form) && responseChip(p)}
