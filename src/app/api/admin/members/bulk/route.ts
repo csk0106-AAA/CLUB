@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { fieldValues, withFields } from "@/lib/member-fields";
+import { uniqueName } from "@/lib/member-name";
 import { checkPermChange, getPermGroups, isAllNow } from "@/lib/perms";
 import { memberBody } from "@/lib/schemas";
 import { getStore } from "@/lib/store";
 
-// 붙여넣은 명단을 한 번에 추가한다. 관리자 권한·소모임은 여기서 줄 수 없고, 이미 있는 이름은 건너뛴다(기존 회원은 건드리지 않는다).
+// 붙여넣은 명단을 한 번에 추가한다. 관리자 권한·소모임은 여기서 줄 수 없고, 이미 있는 회원은 건너뛴다(기존 회원은 건드리지 않는다).
+// 같은 이름이지만 연락처가 다른 동명이인은 이름 뒤에 알파벳을 붙여 넣는다(renamed 로 알려 준다).
 const body = z.object({ rows: z.array(memberBody.omit({ perms: true, clubs: true }).extend({ fields: fieldValues })).min(1).max(300) });
 
 export async function POST(req: Request) {
@@ -17,18 +19,27 @@ export async function POST(req: Request) {
 
   const s = await getStore();
   const all = await s.list("Members");
-  const names = new Set(all.map((m) => m.name.trim()));
+  // 이미 있는 회원(이름 + 연락처 숫자가 같거나, 이름이 같고 어느 한쪽 연락처가 비어 있음)은 같은 사람으로 보고 건너뛴다.
+  // 이름만 같고 연락처가 다르면 동명이인: 이름 뒤에 알파벳을 붙여 넣는다(김하늘 → 김하늘B).
+  const digits = (p?: string) => (p ?? "").replace(/\D/g, "");
+  const known = all.map((m) => ({ name: (m.name ?? "").trim(), phone: digits(m.phone) }));
+  const taken = new Set(known.map((k) => k.name));
   let no = all.reduce((n, m) => Math.max(n, Number(m.no) || 0), 0);
 
   const rows: Record<string, string>[] = [];
   const skipped: string[] = [];
+  const renamed: { from: string; to: string }[] = [];
   for (const { fields, ...r } of parsed.data.rows) {
-    const name = r.name.trim();
-    if (names.has(name)) {
-      skipped.push(name);
+    const asked = r.name.trim();
+    const phone = digits(r.phone);
+    if (known.some((k) => k.name === asked && (!phone || !k.phone || k.phone === phone))) {
+      skipped.push(asked);
       continue;
     }
-    names.add(name);
+    const name = uniqueName(asked, taken);
+    if (name !== asked) renamed.push({ from: asked, to: name });
+    taken.add(name);
+    known.push({ name: asked, phone });
     no += 1;
     rows.push({ ...r, name, no: String(no), perms: "", clubs: "", extra: fields && Object.keys(fields).length ? withFields("", fields) : "" });
   }
@@ -37,5 +48,5 @@ export async function POST(req: Request) {
   const err = checkPermChange(all, groups, [...all, ...rows.map((r, i) => ({ ...r, id: `__new${i}` }))], groups, await isAllNow(g.s.mid));
   if (err) return bad(`${err[0]} (권한이 있는 직책의 회원이 들어 있어요)`, err[1]);
   for (const r of rows) await s.insert("Members", r);
-  return NextResponse.json({ added: rows.length, skipped });
+  return NextResponse.json({ added: rows.length, skipped, renamed });
 }

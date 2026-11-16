@@ -3,6 +3,7 @@ import { bad, guard } from "@/lib/api";
 import { removeMemberPhotos } from "@/lib/avatar";
 import { withGenderEdit } from "@/lib/gender-edit";
 import { fieldValues, withFields } from "@/lib/member-fields";
+import { uniqueName } from "@/lib/member-name";
 import { checkPermChange, effectivePerms, getPermGroups, isAllNow } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import { clubsJson, memberBody } from "@/lib/schemas";
@@ -22,8 +23,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const cur = all.find((m) => m.id === id);
   if (!cur) return bad("회원을 찾을 수 없어요.", 404);
 
+  // 이름을 바꿨는데 다른 회원과 같으면 뒤에 알파벳을 붙인다(김하늘 → 김하늘B). 이름이 그대로면 손대지 않는다.
+  const asked = d.name.trim();
+  const name = asked === (cur.name ?? "").trim() ? asked : uniqueName(asked, all.filter((m) => m.id !== id).map((m) => m.name ?? ""));
   // perms·clubs 를 보내지 않으면 지금 값을 그대로 둔다.
-  const patch: Record<string, string> = { ...d };
+  const patch: Record<string, string> = { ...d, name };
   if (perms) patch.perms = perms.join("|");
   if (clubs) patch.clubs = clubsJson(clubs);
   // fields 를 보내지 않으면 추가 항목 값은 그대로 둔다.
@@ -38,7 +42,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (err) return bad(err[0], err[1]);
 
   const row = await s.update("Members", id, patch);
-  return NextResponse.json({ member: row });
+  return NextResponse.json({ member: row, ...(name !== asked ? { renamed: { from: asked, to: name } } : {}) });
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {

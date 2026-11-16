@@ -116,11 +116,13 @@ function Members() {
     setBusy(true);
     setMsg(null);
     const rows = preview.rows.map((r) => ({ ...r, fields: importCustom.get(r.name) ?? {} }));
-    const r = await api<{ added: number; skipped: string[] }>("/api/admin/members/bulk", { body: { rows } });
+    const r = await api<{ added: number; skipped: string[]; renamed?: { from: string; to: string }[] }>("/api/admin/members/bulk", { body: { rows } });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     const sk = r.data.skipped;
-    setMsg({ tone: "info", text: `${r.data.added}명을 추가했어요.${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
+    const rn = r.data.renamed ?? [];
+    if (rn.length) window.alert(`같은 이름의 회원이 있어서(연락처가 달라 다른 사람으로 봤어요) 이름 뒤에 알파벳을 붙였어요.\n${rn.slice(0, 10).map((x) => `${x.from} → ${x.to}`).join("\n")}${rn.length > 10 ? `\n외 ${rn.length - 10}명` : ""}`);
+    setMsg({ tone: "info", text: `${r.data.added}명을 추가했어요.${rn.length ? ` 동명이인 ${rn.length}명은 이름 뒤에 알파벳을 붙였어요.` : ""}${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
     setImportText("");
     setImportOpen(false);
     load();
@@ -175,12 +177,16 @@ function Members() {
     e.preventDefault();
     setBusy(true);
     setFormErr("");
+    type Res = { renamed?: { from: string; to: string } };
     const r = editId
-      ? await api(`/api/admin/members/${editId}`, { method: "PATCH", body: { ...form, clubs: undefined } })
-      : await api("/api/admin/members", { body: { ...form, clubs: [] } });
+      ? await api<Res>(`/api/admin/members/${editId}`, { method: "PATCH", body: { ...form, clubs: undefined } })
+      : await api<Res>("/api/admin/members", { body: { ...form, clubs: [] } });
     setBusy(false);
     if (!r.ok) return setFormErr(r.error);
-    setMsg({ tone: "info", text: editId ? "저장했어요." : "회원을 추가했어요." });
+    // 동명이인: 서버가 이름 뒤에 알파벳을 붙였으면 알림으로 알려 준다(회원 명단에서 다시 고칠 수 있다)
+    const rn = r.data.renamed;
+    if (rn) window.alert(`“${rn.from}” 이름의 회원이 이미 있어서 “${rn.to}”(으)로 저장했어요.\n로그인 화면에서 서로 구분되도록 이름 뒤에 알파벳을 붙였어요. 필요하면 회원 명단에서 이름을 다시 고칠 수 있어요.`);
+    setMsg({ tone: "info", text: rn ? `같은 이름이 있어서 “${rn.to}”(으)로 ${editId ? "저장" : "추가"}했어요.` : editId ? "저장했어요." : "회원을 추가했어요." });
     reset();
     load();
   }

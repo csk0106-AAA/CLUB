@@ -4,6 +4,7 @@ import { avatarView } from "@/lib/avatar";
 import { readGenderEdit } from "@/lib/gender-edit";
 import { memberClubs } from "@/lib/lists";
 import { fieldValues, readFields, withFields } from "@/lib/member-fields";
+import { uniqueName } from "@/lib/member-name";
 import { checkPermChange, effectivePerms, getPermGroups, groupKeysOf, isAllNow, isPermsCustom } from "@/lib/perms";
 import { clubsJson, memberBody } from "@/lib/schemas";
 import { getStore } from "@/lib/store";
@@ -42,12 +43,14 @@ export async function POST(req: Request) {
 
   const s = await getStore();
   const all = await s.list("Members");
-  const row = { ...d, perms: (perms ?? []).join("|"), clubs: clubsJson(clubs ?? []), extra: fields ? withFields("", fields) : "" };
+  // 같은 이름이 있으면 뒤에 알파벳을 붙여 저장하고(김하늘 → 김하늘B) 화면에 알린다
+  const name = uniqueName(d.name, all.map((m) => m.name ?? ""));
+  const row = { ...d, name, perms: (perms ?? []).join("|"), clubs: clubsJson(clubs ?? []), extra: fields ? withFields("", fields) : "" };
   // 새 회원의 직책·소모임 직책 때문에 권한이 생기면 "모든 권한" 관리자만 추가할 수 있다.
   const groups = await getPermGroups();
   const err = checkPermChange(all, groups, [...all, { ...row, id: "__new__" }], groups, await isAllNow(g.s.mid));
   if (err) return bad(err[0], err[1]);
   const no = String(all.reduce((n, m) => Math.max(n, Number(m.no) || 0), 0) + 1);
   const saved = await s.insert("Members", { ...row, no });
-  return NextResponse.json({ member: saved });
+  return NextResponse.json({ member: saved, ...(name !== d.name.trim() ? { renamed: { from: d.name.trim(), to: name } } : {}) });
 }
