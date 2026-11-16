@@ -575,7 +575,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 /* 소모임 화면 탭 5개: 넓으면 한 줄, 휴대폰은 3칸씩 두 줄 */
 .tabsx.ctabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; }
 .tabsx.ctabs button { justify-content: center; min-height: 38px; padding: 0 4px; white-space: nowrap; }
-@media (max-width: 560px) { .tabsx.ctabs { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tabsx.ctabs button { font-size: calc(12.5px * min(var(--fs, 1), 1.15)); } }
+/* 휴대폰: 5개를 한 줄에(글자 길이만큼 폭을 나눠 가진다) */
+@media (max-width: 560px) {
+  .tabsx.ctabs { display: flex; gap: 4px; }
+  .tabsx.ctabs button { flex: 1 1 auto; padding: 0 6px; font-size: calc(13px * min(var(--fs, 1), 1.1)); }
+}
 /* 회원 고르기 칸(MemberSearch): 입력 + ▾ + 아래로 뜨는 후보 목록 */
 .msearch { position: relative; }
 .msearch > .field { padding-right: 46px; }

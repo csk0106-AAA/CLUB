@@ -22,9 +22,9 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 type Tab = "overview" | "members" | "dues" | "events" | "requests";
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "소모임개요" },
-  { key: "members", label: "회원관리" },
-  { key: "dues", label: "회비관리" },
-  { key: "events", label: "소모임일정관리" },
+  { key: "members", label: "회원" },
+  { key: "dues", label: "회비" },
+  { key: "events", label: "일정관리" },
   { key: "requests", label: "신청내역" },
 ];
 const isTab = (v: string | undefined): v is Tab => TABS.some((t) => t.key === v);
