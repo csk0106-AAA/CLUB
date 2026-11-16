@@ -7,7 +7,9 @@ import { MemberSearch } from "@/app/events/[id]/MemberSearch";
 import { ClubDuesEditor } from "@/components/ClubDuesEditor";
 import { ClubRequestsAdmin } from "@/components/ClubRequestsAdmin";
 import { EventCreate } from "@/components/EventCreate";
+import { useRouter } from "next/navigation";
 import { api, fmtWhen } from "@/lib/client";
+import { removeClub, renameClub } from "@/lib/club-list-client";
 import { fs } from "@/lib/fs";
 
 type Info = { intro: string; cycle: string; place: string; bank: string; account: string; holder: string; feeAmount: string; feeText: string; policy: string };
@@ -90,6 +92,7 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
         <span className="small">입금계좌는 “회비관리” 탭에서 정해요.</span>
         <button className="btn" type="submit" disabled={busy || !infoDirty} style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14), alignSelf: "flex-end" }}>{busy ? "저장 중…" : infoDirty ? "개요 저장" : "저장됨"}</button>
       </form>}
+      {part === "info" && data.canEditRoles && <NameBox name={name} count={data.roster.length} />}
 
       {part === "members" && <section className="card" aria-label="소모임 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="row" style={{ gap: 8 }}>
@@ -129,6 +132,47 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
         </div>
       </section>}
     </>
+  );
+}
+
+/* 소모임 이름 바꾸기 · 삭제(관리자만). 회원 명단·기본 정보·회비·일정·신청내역에 함께 반영된다. */
+function NameBox({ name, count }: { name: string; count: number }) {
+  const router = useRouter();
+  const [to, setTo] = useState(name);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const next = to.trim();
+
+  async function rename() {
+    if (!next || next === name) return;
+    setBusy(true);
+    setErr("");
+    const r = await renameClub(name, next);
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    router.replace(`/admin/clubs/${encodeURIComponent(next)}`);
+  }
+  async function remove() {
+    if (!window.confirm(`“${name}” 소모임을 삭제할까요?${count ? `\n회원 ${count}명에게서 이 소모임이 빠져요.` : ""}\n소모임 개요와 회비 설정도 지워져요. 이미 만든 소모임 일정은 남아요.`)) return;
+    setBusy(true);
+    setErr("");
+    const r = await removeClub(name);
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    router.replace("/admin/clubs");
+  }
+
+  return (
+    <section className="card" aria-labelledby="club-name-h" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <b id="club-name-h" style={head}>소모임 이름 · 삭제</b>
+      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+        <input aria-label="소모임 이름" className="field grow" style={{ minWidth: 160, width: "auto" }} maxLength={30} value={to} onChange={(e) => setTo(e.target.value)} />
+        <button className="btn white" type="button" disabled={busy || !next || next === name} style={{ width: "auto", minWidth: 110, minHeight: 44, fontSize: fs(14) }} onClick={rename}>이름 바꾸기</button>
+      </div>
+      <span className="small">이름을 바꾸면 회원 명단·회비·일정·신청내역에도 새 이름으로 반영돼요.</span>
+      {err && <div className="msg bad" role="alert">{err}</div>}
+      <button className="mini danger" type="button" disabled={busy} style={{ alignSelf: "flex-start" }} onClick={remove}>이 소모임 삭제</button>
+    </section>
   );
 }
 

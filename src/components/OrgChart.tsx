@@ -75,7 +75,7 @@ export function OrgChart({ items, emptyText }: { items: OrgItem[]; emptyText: st
   );
 }
 
-// 소모임: 회원 구분 › 소모임 목록 + 소모임 직책자(소모임관리) + 모임 주기(소모임관리)
+// 소모임: 소모임관리의 소모임 목록 + 소모임 직책자(소모임관리) + 모임 주기(소모임관리)
 export type OrgClub = { name: string; cycle: string; leaders: { name: string; role: string }[] };
 
 export function OrgClubs({ clubs, href }: { clubs: OrgClub[]; href?: (name: string) => string }) {

@@ -150,12 +150,11 @@ function Kinds() {
 
   return (
     <>
-      <p className="small" style={{ margin: 0 }}>여기서 정한 목록은 회원 명단에서 고를 수 있어요. 목록마다 따로 저장해요.</p>
+      <p className="small" style={{ margin: 0 }}>여기서 정한 목록은 회원 명단에서 고를 수 있어요. 목록마다 따로 저장해요. 소모임을 더하거나 이름을 바꾸는 것은 소모임관리에서 해요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <div className="adm-two">
         <ListEditor list="memberKinds" data={data} onSaved={saved} />
         <ListEditor list="positions" data={data} onSaved={saved} />
-        <ListEditor list="clubs" data={data} onSaved={saved} />
         <ListEditor list="clubRoles" data={data} onSaved={saved} />
       </div>
     </>

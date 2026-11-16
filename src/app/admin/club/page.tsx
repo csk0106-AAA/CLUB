@@ -10,7 +10,7 @@ import { fs } from "@/lib/fs";
 
 // 관리자 › 회원관리 › 조직도. 회원 구분과 연동된다:
 //  - 모임 직책 체계 = 회원 구분 › 직책 목록(순서 그대로, 일반회원 제외). 직책마다 맡을 회원을 여러 명 고른다(회원 명단의 직책 값).
-//  - 소모임 = 회원 구분 › 소모임 목록 + 소모임관리의 소모임 직책자·모임 주기.
+//  - 소모임 = 소모임관리의 소모임 목록 + 소모임 직책자·모임 주기.
 // 회원은 홈의 "조직도"에서 같은 그림을 본다.
 type Note = { tone: "bad" | "info"; text: string } | null;
 type Member = { id: string; name: string; kind: string; position: string };

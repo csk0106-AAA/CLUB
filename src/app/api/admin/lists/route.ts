@@ -113,12 +113,38 @@ export async function PUT(req: Request) {
       next[renames.get(k) ?? k] = v;
     }
     if (JSON.stringify(next) !== JSON.stringify(info ?? {})) await setSetting("clubInfo", next);
+    // 소모임 회비(Settings "clubDues")도 같은 방식으로
+    const cd = await getSetting<Record<string, unknown>>("clubDues", {});
+    const nextCd: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(cd ?? {})) {
+      if (deleted.includes(k)) continue;
+      nextCd[renames.get(k) ?? k] = v;
+    }
+    if (JSON.stringify(nextCd) !== JSON.stringify(cd ?? {})) await setSetting("clubDues", nextCd);
     if (renames.size) {
       for (const e of await s.list("Events")) {
         const to = e.club ? renames.get(e.club) : undefined;
         if (to) await s.update("Events", e.id, { club: to });
       }
+      // 신청내역도 새 이름으로(처리 내역이 그 소모임 화면에 그대로 남게)
+      for (const r of await s.list("ClubRequests")) {
+        const to = r.club ? renames.get(r.club) : undefined;
+        if (to) await s.update("ClubRequests", r.id, { club: to });
+      }
     }
+  }
+  // 소모임 직책 이름이 바뀌면 소모임 회비의 직책 조건 줄도 따라 바꾼다.
+  if (list === "clubRoles" && renames.size) {
+    const cd = await getSetting<Record<string, { rules?: { position: string }[] }>>("clubDues", {});
+    let changed = false;
+    const next: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(cd ?? {})) {
+      if (v && Array.isArray(v.rules) && v.rules.some((r) => renames.has(r.position))) {
+        next[k] = { ...v, rules: v.rules.map((r) => ({ ...r, position: renames.get(r.position) ?? r.position })) };
+        changed = true;
+      } else next[k] = v;
+    }
+    if (changed) await setSetting("clubDues", next);
   }
   // 직책 이름이 바뀌면 모임회비(Settings "dues")의 직책별 회비 줄도 따라 바꾼다.
   if (list === "positions" && renames.size) {
