@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { getStore } from "./store";
 
 const COOKIE = "session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30일
@@ -37,15 +38,28 @@ export async function createSession(s: Session): Promise<void> {
   });
 }
 
+// 회원 명단의 지금 이름(못 찾거나 읽지 못하면 토큰의 이름)
+async function currentName(mid: string, fallback: string): Promise<string> {
+  try {
+    const m = (await (await getStore()).list("Members")).find((x) => x.id === mid);
+    return m?.name || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function getSession(): Promise<Session | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
+    const mid = String(payload.mid);
     return {
-      mid: String(payload.mid),
-      name: String(payload.name),
+      mid,
+      // 이름은 로그인할 때 토큰에 넣은 값이 아니라 지금 회원 명단의 이름(관리자가 회원 명단에서 이름을 바꾸면 바로 반영).
+      // 회원은 id 로 찾으므로 이름을 바꿔도 로그인·권한·기록은 그대로다.
+      name: await currentName(mid, String(payload.name)),
       perms: Array.isArray(payload.perms) ? (payload.perms as string[]) : [],
       admin: payload.admin === true,
       ...(Array.isArray(payload.host) ? { host: (payload.host as unknown[]).map(String) } : {}),
