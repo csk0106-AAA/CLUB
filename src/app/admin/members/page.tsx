@@ -119,6 +119,7 @@ function Members() {
   const [colsOpen, setColsOpen] = useState(false);
   const [colsDraft, setColsDraft] = useState<string[]>([]);
   const [newCol, setNewCol] = useState("");
+  const [requirement, setRequirement] = useState(""); // 정회원 필수 조건(모임개요)
   const importCustom = useMemo(() => customFromImport(importText, custom), [importText, custom]);
 
   async function saveCols(next: string[]) {
@@ -151,6 +152,7 @@ function Members() {
       api<Lists>("/api/admin/lists"),
       api<{ fields: string[] }>("/api/admin/members/fields"),
     ]);
+    api<{ requirement: string }>("/api/public/club").then((c) => c.ok && setRequirement(c.data.requirement ?? ""));
     if (f.ok) {
       setCustom(f.data.fields);
       setColsDraft(f.data.fields);
@@ -342,11 +344,12 @@ function Members() {
           <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
           <div><label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label><input id="f-age" className="field" placeholder="50대" value={form.ageGroup} onChange={(e) => set("ageGroup", e.target.value)} /></div>
           <div>
-            <span className="l" id="f-edu-l">교육 이수</span>
-            <label className="row" style={{ gap: 8, minHeight: 46, cursor: "pointer" }}>
-              <input type="checkbox" aria-labelledby="f-edu-l" checked={form.edu} onChange={(e) => set("edu", e.target.checked)} style={{ width: 20, height: 20 }} />
-              <span>{form.edu ? "YES · 교육 이수자" : "NO · 비이수자"}</span>
-            </label>
+            {/* 교육 이수: 로그인 화면 회원 신청처럼 정회원 필수 조건(모임개요)을 "○○ 하셨나요?"로 묻는다 */}
+            <span className="l" id="f-edu-l">“{requirement || "교육과정 수료"}” 하셨나요?</span>
+            <div className="seg" role="group" aria-labelledby="f-edu-l" style={{ width: 160 }}>
+              <button type="button" aria-pressed={form.edu} onClick={() => set("edu", true)} style={{ minHeight: 46 }}>YES</button>
+              <button type="button" aria-pressed={!form.edu} onClick={() => set("edu", false)} style={{ minHeight: 46 }}>NO</button>
+            </div>
           </div>
           {custom.map((c, i) => (
             <div key={c}><label className="l" htmlFor={`f-x${i}`}>{c}</label><input id={`f-x${i}`} className="field" maxLength={200} value={form.fields[c] ?? ""} onChange={(e) => set("fields", { ...form.fields, [c]: e.target.value })} /></div>
@@ -432,7 +435,7 @@ function Members() {
                   <td className="num">{m.no}</td>
                   <td><b>{m.name}</b></td>
                   <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}{m.app && <> {m.app && <AppLabel app={m.app} />}</>}</td>
-                  <td className="center">{m.edu ? "YES" : ""}</td>
+                  <td className="center">{m.edu ? "YES" : "NO"}</td>
                   <td>{m.position}{m.position && !lists.positions.includes(m.position) && <span className="small">{OFF}</span>}</td>
                   <td>{clubsText(m.clubs ?? [])}</td>
                   <td>
