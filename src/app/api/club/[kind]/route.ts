@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
+import { clubLeaders, readAllClubInfo } from "@/lib/clubs";
+import { getLists } from "@/lib/lists";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +13,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }
   const { kind } = await ctx.params;
   const s = await getStore();
   if (kind === "org") {
-    const [org, members] = await Promise.all([s.list("Org"), s.list("Members")]);
-    const nm = (id: string) => members.find((m) => m.id === id)?.name ?? "";
+    // 회원 구분과 연동: 모임 직책(목록 순서, 일반회원 제외)마다 그 직책인 회원,
+    // 소모임(목록 순서)마다 소모임 직책자와 소모임관리의 모임 주기. 회원대기는 넣지 않는다.
+    const [all, lists, info] = await Promise.all([s.list("Members"), getLists(), readAllClubInfo()]);
+    const members = all.filter((m) => m.kind !== "회원대기");
     return NextResponse.json({
-      items: org.map((o) => ({ id: o.id, dept: o.dept, role: o.role, name: nm(o.memberId), clubName: o.clubName, frequency: o.frequency, leader: nm(o.leaderId) })),
+      items: lists.positions.filter((p) => p !== "일반회원").map((p) => ({
+        id: p, dept: p, role: "", names: members.filter((m) => m.position === p).map((m) => m.name),
+        memberIds: members.filter((m) => m.position === p).map((m) => m.id),
+      })),
+      clubs: lists.clubs.map((name) => ({
+        name, cycle: info[name]?.cycle ?? "",
+        // 소모임 직책 목록 순서대로
+        leaders: clubLeaders(members, name)
+          .sort((a, b) => lists.clubRoles.indexOf(a.role) - lists.clubRoles.indexOf(b.role))
+          .map((l) => ({ name: l.name, role: l.role })),
+      })),
     });
   }
   if (kind === "rules") {

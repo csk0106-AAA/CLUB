@@ -1,123 +1,120 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
-import { OrgChart } from "@/components/OrgChart";
+import { OrgChart, OrgClubs, type OrgClub, type OrgItem } from "@/components/OrgChart";
 import { Popup } from "@/components/Popup";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
-// 관리자 > 조직도. 회원은 하단 "조직도" 탭(/org)에서 본다.
-// (회칙은 게시글의 회칙 글에서, 회의록은 게시글의 회의록 양식으로 옮겼다.)
+// 관리자 › 회원관리 › 조직도. 회원 구분과 연동된다:
+//  - 모임 직책 체계 = 회원 구분 › 직책 목록(순서 그대로, 일반회원 제외). 직책마다 맡을 회원을 여러 명 고른다(회원 명단의 직책 값).
+//  - 소모임 = 회원 구분 › 소모임 목록 + 소모임관리의 소모임 직책자·모임 주기.
+// 회원은 홈의 "조직도"에서 같은 그림을 본다.
 type Note = { tone: "bad" | "info"; text: string } | null;
-type Member = { id: string; name: string };
-type Org = { id: string; dept: string; role: string; memberId: string; clubName: string; frequency: string; leaderId: string };
-const BLANK = { dept: "", role: "", memberId: "", clubName: "", frequency: "", leaderId: "" };
+type Member = { id: string; name: string; kind: string; position: string };
+type Org = { items: (OrgItem & { memberIds: string[] })[]; clubs: OrgClub[] };
 
-const Msg = ({ n }: { n: Note }) => (n ? <div className={`msg ${n.tone}`} role={n.tone === "bad" ? "alert" : "status"}>{n.text}</div> : null);
-
-function OrgEditor({ members }: { members: Member[] }) {
-  const [items, setItems] = useState<Org[] | null>(null);
-  const [note, setNote] = useState<Note>(null);
-  const [add, setAdd] = useState({ ...BLANK });
-  const [open, setOpen] = useState(false);
+function Assign({ position, members, current, onClose, onSaved }: {
+  position: string; members: Member[]; current: string[]; onClose: () => void; onSaved: (text: string) => void;
+}) {
+  const [pick, setPick] = useState<string[]>(current);
+  const [q, setQ] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const dirty = JSON.stringify([...pick].sort()) !== JSON.stringify([...current].sort());
+  const shown = members.filter((m) => !q.trim() || m.name.includes(q.trim()));
+
+  async function save() {
+    setBusy(true);
+    setErr("");
+    const r = await api<{ changed: number }>("/api/admin/org", { body: { position, memberIds: pick } });
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    onSaved(`${position}: ${pick.length ? `${pick.length}명으로 정했어요.` : "비워 뒀어요."}`);
+  }
+
+  return (
+    <Popup id="org-assign" width={480} title={`${position} 회원 선택`} open onClose={onClose} dirty={dirty}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <p className="small" style={{ margin: 0 }}>여러 명을 고를 수 있어요. 다른 직책이던 회원을 고르면 이 직책으로 바뀌고(회원 한 명은 직책 하나), 빼면 일반회원이 돼요.</p>
+        {err && <div className="msg bad" role="alert">{err}</div>}
+        <input className="field" type="search" placeholder="이름 찾기" aria-label="이름 찾기" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div style={{ maxHeight: 340, overflowY: "auto", border: "1px solid var(--line)", borderRadius: 8 }}>
+          {shown.map((m) => {
+            const on = pick.includes(m.id);
+            const other = m.position && m.position !== position && m.position !== "일반회원" ? m.position : "";
+            return (
+              <label key={m.id} className="row" style={{ gap: 10, padding: "9px 12px", borderBottom: "1px solid var(--line2)", cursor: "pointer" }}>
+                <input type="checkbox" checked={on} onChange={() => setPick(on ? pick.filter((x) => x !== m.id) : [...pick, m.id])} />
+                <span className="grow" style={{ fontSize: fs(14) }}>{m.name}</span>
+                {other && <span className="small" style={{ fontSize: fs(12) }}>지금 {other}{on ? " → 바뀜" : ""}</span>}
+              </label>
+            );
+          })}
+          {shown.length === 0 && <p className="small" style={{ margin: 0, padding: 12 }}>맞는 회원이 없어요.</p>}
+        </div>
+        <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+          <span className="small grow">{pick.length}명 선택</span>
+          <button className="btn" type="button" disabled={busy || !dirty} onClick={save} style={{ width: "auto", minWidth: 120, minHeight: 44, fontSize: fs(14) }}>{busy ? "저장 중…" : "저장"}</button>
+        </div>
+      </div>
+    </Popup>
+  );
+}
+
+function OrgAdmin() {
+  const [org, setOrg] = useState<Org | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [note, setNote] = useState<Note>(null);
+  const [open, setOpen] = useState("");
 
   const load = useCallback(async () => {
-    const r = await api<{ items: Org[] }>("/api/admin/club/org");
-    if (r.ok) setItems(r.data.items);
-    else setNote({ tone: "bad", text: r.error });
+    const [o, m] = await Promise.all([api<Org>("/api/club/org"), api<{ members: Member[] }>("/api/admin/members")]);
+    if (o.ok) setOrg(o.data);
+    else setNote({ tone: "bad", text: o.error });
+    if (m.ok) setMembers(m.data.members.filter((x) => x.kind !== "회원대기").map((x) => ({ id: x.id, name: x.name, kind: x.kind ?? "", position: x.position ?? "" })));
   }, []);
   useEffect(() => {
     load();
   }, [load]);
 
-  async function create() {
-    setErr("");
-    const r = await api("/api/admin/club/org", { body: add });
-    if (!r.ok) return setErr(r.error);
-    setNote({ tone: "info", text: "추가했어요." });
-    setAdd({ ...BLANK });
-    setOpen(false);
-    load();
-  }
-  async function save(x: Org) {
-    const { id, ...rest } = x;
-    const r = await api(`/api/admin/club/org/${id}`, { method: "PATCH", body: rest });
-    setNote(r.ok ? { tone: "info", text: "저장했어요." } : { tone: "bad", text: r.error });
-    load();
-  }
-  async function remove(id: string) {
-    if (!window.confirm("지울까요?")) return;
-    const r = await api(`/api/admin/club/org/${id}`, { method: "DELETE" });
-    setNote(r.ok ? { tone: "info", text: "지웠어요." } : { tone: "bad", text: r.error });
-    load();
-  }
+  if (!org) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
+  const cur = org.items.find((i) => i.dept === open);
 
-  const upd = (id: string, patch: Partial<Org>) => setItems((l) => l && l.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-  const nameOf = (id: string) => members.find((m) => m.id === id)?.name ?? "";
-  const sel = (v: string, on: (v: string) => void, label: string, id?: string) => (
-    <select id={id} aria-label={id ? undefined : label} className="field" style={id ? undefined : { minHeight: 42 }} value={v} onChange={(e) => on(e.target.value)}>
-      <option value="">(미정)</option>{members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-    </select>
-  );
   return (
     <>
-      <Msg n={note} />
-      <span className="small">구성과 내용을 모두 고칠 수 있어요. 구분에는 회장, 부회장, 고문, 사무총장, 사무국, 소모임 같은 이름을 적고, 소모임은 소모임 이름과 리더를 함께 입력해 주세요. 회원은 하단 “조직도” 탭에서 볼 수 있어요.</span>
-      {!items && <p className="small">불러오는 중이에요…</p>}
-      {items && (
-        <OrgChart
-          emptyText="회원 선택"
-          items={items.map((o) => ({ id: o.id, dept: o.dept, role: o.role, clubName: o.clubName, name: nameOf(o.memberId), leader: nameOf(o.leaderId) }))}
-        />
+      {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
+      {org.items.length > 0 && <OrgChart items={org.items} emptyText="(미정)" />}
+
+      <section className="lcard" aria-labelledby="org-h1">
+        <header className="lcard-h">
+          <h2 id="org-h1">모임 직책 체계</h2>
+          <p>직책 이름과 순서는 <Link href="/admin/kinds">회원 구분 › 직책</Link>에서 바꿔요. 사무국은 “사무국장”, “홍보국장”처럼 넣으면 사무국 아래에 그려져요. 직책마다 회원을 여러 명 고를 수 있어요.</p>
+        </header>
+        {org.items.length === 0 && <div className="lcard-b"><p className="small" style={{ margin: 0 }}>회원 구분 › 직책에 직책을 먼저 넣어 주세요.</p></div>}
+        {org.items.map((i) => (
+          <div key={i.dept} className="otrow">
+            <b style={{ fontSize: fs(14), minWidth: 84 }}>{i.dept}</b>
+            <span className="grow" style={{ fontSize: fs(14), color: i.names.length ? "var(--ink2)" : "var(--dis)" }}>{i.names.length ? i.names.join(", ") : "미정"}</span>
+            <button className="mini" type="button" aria-haspopup="dialog" onClick={() => { setNote(null); setOpen(i.dept); }}>회원 선택</button>
+          </div>
+        ))}
+      </section>
+
+      <section className="lcard" aria-labelledby="org-h2">
+        <header className="lcard-h">
+          <h2 id="org-h2">소모임</h2>
+          <p>소모임 이름은 <Link href="/admin/kinds">회원 구분 › 소모임</Link>에서, 리더(소모임 직책)와 모임 주기는 <Link href="/admin/clubs">소모임관리</Link>에서 정해요. 소모임 직책 이름(리더·총무 등)은 회원 구분 › 소모임 직책에서 더할 수 있어요.</p>
+        </header>
+        <div className="lcard-b"><OrgClubs clubs={org.clubs} href={(n) => `/admin/clubs/${encodeURIComponent(n)}`} /></div>
+      </section>
+
+      {cur && (
+        <Assign position={cur.dept} members={members} current={cur.memberIds} onClose={() => setOpen("")}
+          onSaved={(text) => { setOpen(""); setNote({ tone: "info", text }); load(); }} />
       )}
-      <div className="tblw">
-        <table className="tbl" style={{ minWidth: 820 }}>
-          <thead><tr><th>구분</th><th>직책</th><th>회원</th><th>소모임 이름</th><th>모임 횟수</th><th>리더</th><th></th></tr></thead>
-          <tbody>
-            {items?.map((o) => (
-              <tr key={o.id}>
-                <td><input aria-label="구분" className="field" style={{ minHeight: 42 }} value={o.dept} onChange={(e) => upd(o.id, { dept: e.target.value })} /></td>
-                <td><input aria-label="직책" className="field" style={{ minHeight: 42 }} value={o.role} onChange={(e) => upd(o.id, { role: e.target.value })} /></td>
-                <td>{sel(o.memberId, (v) => upd(o.id, { memberId: v }), "회원")}</td>
-                <td><input aria-label="소모임 이름" className="field" style={{ minHeight: 42 }} value={o.clubName} onChange={(e) => upd(o.id, { clubName: e.target.value })} /></td>
-                <td><input aria-label="모임 횟수" className="field" style={{ minHeight: 42 }} value={o.frequency} onChange={(e) => upd(o.id, { frequency: e.target.value })} /></td>
-                <td>{sel(o.leaderId, (v) => upd(o.id, { leaderId: v }), "리더")}</td>
-                <td style={{ whiteSpace: "nowrap" }}><button className="mini" type="button" onClick={() => save(o)}>저장</button>{" "}<button className="mini danger" type="button" onClick={() => remove(o.id)}>삭제</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setErr(""); setOpen(true); }}>+ 항목 추가</button>
-      <Popup id="org-new" width={640} title="조직도 항목 추가" open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(add) !== JSON.stringify(BLANK)}>
-      <form onSubmit={(e) => { e.preventDefault(); create(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {err && <div className="msg bad" role="alert">{err}</div>}
-        <div className="grid2">
-          <div><label className="l" htmlFor="o-dept">구분</label><input id="o-dept" className="field" value={add.dept} onChange={(e) => setAdd({ ...add, dept: e.target.value })} /></div>
-          <div><label className="l" htmlFor="o-role">직책</label><input id="o-role" className="field" value={add.role} onChange={(e) => setAdd({ ...add, role: e.target.value })} /></div>
-          <div><label className="l" htmlFor="o-mem">회원</label>{sel(add.memberId, (v) => setAdd({ ...add, memberId: v }), "회원", "o-mem")}</div>
-          <div><label className="l" htmlFor="o-club">소모임 이름</label><input id="o-club" className="field" value={add.clubName} onChange={(e) => setAdd({ ...add, clubName: e.target.value })} /></div>
-          <div><label className="l" htmlFor="o-freq">모임 횟수</label><input id="o-freq" className="field" value={add.frequency} onChange={(e) => setAdd({ ...add, frequency: e.target.value })} /></div>
-          <div><label className="l" htmlFor="o-lead">리더</label>{sel(add.leaderId, (v) => setAdd({ ...add, leaderId: v }), "리더", "o-lead")}</div>
-        </div>
-        <button className="btn" type="submit" disabled={!add.dept.trim()} style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }}>추가</button>
-      </form>
-      </Popup>
-    </>
-  );
-}
-
-function OrgAdmin() {
-  const [members, setMembers] = useState<Member[]>([]);
-  useEffect(() => {
-    api<{ members: Member[] }>("/api/admin/members").then((r) => r.ok && setMembers(r.data.members.map((m) => ({ id: m.id, name: m.name }))));
-  }, []);
-  return (
-    <>
-      <h1 className="title" style={{ fontSize: fs(20) }}>조직도</h1>
-      <OrgEditor members={members} />
     </>
   );
 }

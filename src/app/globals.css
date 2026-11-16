@@ -561,14 +561,57 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .tl li { display: flex; gap: 14px; border-left: 2px solid var(--line); padding: 4px 0 4px 12px; }
 .tl b { min-width: 110px; flex: none; font-variant-numeric: tabular-nums; }
 @media (max-width: 420px) { .tl li { flex-direction: column; gap: 0; } .tl b { min-width: 0; } }
-/* 조직도 그림 */
-.orgc { display: flex; flex-direction: column; gap: 10px; }
-.orow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.on1, .on2 { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; background: var(--card); min-width: 0; overflow-wrap: anywhere; }
-.on1 { align-self: center; min-width: min(200px, 100%); border-top: 3px solid var(--red); text-align: center; }
-.on2.mid { align-self: center; min-width: min(240px, 100%); text-align: center; }
-.on1 span, .on2 span { font-size: calc(13px * var(--fs, 1)); color: var(--sub); }
-@media (max-width: 420px) { .orow { grid-template-columns: 1fr; } }
+/* 조직도 그림(components/OrgChart): 선으로 이은 나무. 넓으면 옆으로 밀어 본다. */
+.otwrap { overflow-x: auto; padding: 4px 0 8px; --otl: var(--dis); }
+.ot { width: max-content; min-width: 100%; display: flex; flex-direction: column; align-items: center; }
+.otstep { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.otv { width: 1px; height: 16px; background: var(--otl); flex: none; }
+.ott { display: flex; justify-content: center; }
+.otn {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card); padding: 6px 12px;
+  min-width: 84px; max-width: 170px; text-align: center; display: flex; flex-direction: column; gap: 1px; overflow-wrap: anywhere;
+}
+.otn b { font: 700 calc(12px * var(--fs, 1))/1.4 var(--body); color: var(--sub); }
+.otn span { font: 500 calc(14px * var(--fs, 1))/1.45 var(--body); color: var(--ink); }
+.otn span.e { color: var(--dis); font-size: calc(12px * var(--fs, 1)); }
+.otn.top { border: 1.5px solid var(--red); }
+.otn.top b { color: var(--red); }
+.otn.side { border-style: dashed; }
+/* 부회장(왼쪽) · 줄기 · 고문(오른쪽) */
+.ots { display: grid; grid-template-columns: 1fr 1px 1fr; width: 100%; }
+.ots .trunk { background: var(--otl); }
+.ots .l, .ots .r { display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 4px 0; }
+.ots .l { align-items: flex-end; }
+.ots .r { align-items: flex-start; }
+.ots .l .otn, .ots .r .otn { position: relative; }
+.ots .l .otn { margin-right: 16px; }
+.ots .r .otn { margin-left: 16px; }
+.ots .l .otn::after, .ots .r .otn::after { content: ""; position: absolute; top: 50%; width: 16px; border-top: 1px solid var(--otl); }
+.ots .l .otn::after { right: -17px; }
+.ots .r .otn::after { left: -17px; }
+.ots .r .otn.side::after { border-top-style: dashed; }
+/* 아래로 갈라지는 단(사무국 등) */
+.otb { list-style: none; margin: 0; padding: 0; display: flex; }
+.otb > li { position: relative; padding: 16px 3px 0; display: flex; justify-content: center; }
+.otb > li::before, .otb > li::after { content: ""; position: absolute; top: 0; width: 50%; height: 16px; border-top: 1px solid var(--otl); }
+.otb > li::before { right: 50%; }
+.otb > li::after { left: 50%; border-left: 1px solid var(--otl); }
+.otb > li:first-child::before, .otb > li:last-child::after { border-top: 0; }
+.otb .otn { min-width: 64px; max-width: 92px; padding: 6px 6px; }
+.otb > li { padding-left: 2px; padding-right: 2px; }
+/* 관리자 조직도: 직책 한 줄(직책 · 회원 · 회원 선택) */
+.otrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line2); }
+.otrow .mini { flex: none; }
+/* 소모임 목록(조직도 아래) */
+.otsec { display: flex; flex-direction: column; gap: 6px; }
+.otsec h2 { margin: 0; font: 700 calc(15px * var(--fs, 1))/1.4 var(--display); }
+.otclubs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.lcard-b > .otclubs { border-top: 0; margin: -10px 0; }
+.lcard-b > .otclubs li:last-child { border-bottom: 0; }
+.otclubs li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 10px 2px; border-bottom: 1px solid var(--line2); font-size: calc(14px * var(--fs, 1)); }
+.otclubs li a { color: inherit; }
+.otclubs li span { color: var(--ink2); }
+.otclubs li .cy { color: var(--sub); font-size: calc(12px * var(--fs, 1)); margin-left: auto; }
 /* 묶음 카드(목업 C, 설정 묶음과 같은 모양): 머리(제목·칩·설명) / 얇은 선으로 나눈 줄 / 아래 조작 줄.
    관리자 › 회원 구분(.lrow), 회비관리 입력 묶음(.lcard-b) 등. 휴대폰 폭에서는 설정 묶음처럼 화면 가장자리까지 꽉 찬다. */
 .lcard { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
