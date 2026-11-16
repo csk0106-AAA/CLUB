@@ -44,33 +44,6 @@ function ListSelect({ id, value, options, onChange, label }: { id?: string; valu
   );
 }
 
-// 소모임 고르기: 소모임마다 체크하고, 고른 소모임은 소모임 직책을 정한다(비우면 일반 회원).
-function ClubsPicker({ value, clubs, roles, onChange }: { value: Seat[]; clubs: string[]; roles: string[]; onChange: (v: Seat[]) => void }) {
-  const names = [...clubs, ...value.map((c) => c.name).filter((n) => !clubs.includes(n))];
-  if (names.length === 0) return <span className="small">소모임이 없어요. <Link href="/admin/kinds">회원 구분</Link>에서 먼저 소모임을 더해 주세요.</span>;
-  return (
-    <div className="checks" role="group" aria-label="소모임">
-      {names.map((n, i) => {
-        const seat = value.find((c) => c.name === n);
-        return (
-          <label key={n} htmlFor={`f-club-${i}`} style={{ flexWrap: "wrap" }}>
-            <input id={`f-club-${i}`} type="checkbox" checked={!!seat}
-              onChange={(e) => onChange(e.target.checked ? [...value, { name: n, role: "" }] : value.filter((c) => c.name !== n))} />
-            {n}{clubs.includes(n) ? "" : OFF}
-            {seat && (
-              <select aria-label={`${n} 소모임 직책`} value={seat.role} style={{ minHeight: 32, borderRadius: 8, border: "1px solid var(--line)", fontSize: fs(15) }}
-                onChange={(e) => onChange(value.map((c) => (c.name === n ? { ...c, role: e.target.value } : c)))}>
-                <option value="">일반 회원</option>
-                {seat.role && !roles.includes(seat.role) && <option value={seat.role}>{seat.role}{OFF}</option>}
-                {roles.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            )}
-          </label>
-        );
-      })}
-    </div>
-  );
-}
 
 // 붙여 넣은 명단의 머리글에 추가 항목 이름이 있으면, 성명별로 그 열의 값을 모은다.
 // (기본 항목은 member-import 가 읽고, 추가 항목만 여기서 따로 읽는다)
@@ -203,8 +176,8 @@ function Members() {
     setBusy(true);
     setFormErr("");
     const r = editId
-      ? await api(`/api/admin/members/${editId}`, { method: "PATCH", body: form })
-      : await api("/api/admin/members", { body: form });
+      ? await api(`/api/admin/members/${editId}`, { method: "PATCH", body: { ...form, clubs: undefined } })
+      : await api("/api/admin/members", { body: { ...form, clubs: [] } });
     setBusy(false);
     if (!r.ok) return setFormErr(r.error);
     setMsg({ tone: "info", text: editId ? "저장했어요." : "회원을 추가했어요." });
@@ -344,8 +317,11 @@ function Members() {
           ))}
         </div>
         <div>
-          <span className="l">소모임 (고른 소모임마다 소모임 직책을 정해요)</span>
-          <ClubsPicker value={form.clubs} clubs={lists.clubs} roles={lists.clubRoles} onChange={(v) => set("clubs", v)} />
+          <span className="l">소모임</span>
+          {/* 소모임 회원과 소모임 직책은 소모임관리에서만 정한다(여기서는 보기만) */}
+          <span className="small" style={{ display: "block" }}>
+            {form.clubs.length ? clubsText(form.clubs) : "들어간 소모임이 없어요."} 소모임 회원과 소모임 직책은 <Link href="/admin/clubs">소모임관리</Link>에서 정해요.
+          </span>
         </div>
         <span className="small">관리자 권한은 직책·소모임 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
         <div className="row">

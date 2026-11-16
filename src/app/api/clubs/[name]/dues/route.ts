@@ -14,7 +14,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   const g = await clubDuesGuard(ctx);
   if ("err" in g) return g.err;
   const [dues, lists, pub, memberIds, role] = await Promise.all([currentClubDues(g.club), getLists(), postsOf({ kind: "club", club: g.club }), clubMemberIds(g.club), headRole()]);
-  const positions = [...new Set([...lists.positions.filter((p) => p !== GENERAL_POSITION), GENERAL_POSITION])];
+  // 소모임 회비의 조건 "직책"은 소모임 직책(회원 구분 › 소모임 직책). 일반회원 = 이 소모임에서 직책이 없는 회원.
+  // 예전에 모임 직책으로 넣은 줄도 고를 수 있게 지금 줄의 값은 화면에서 함께 보여 준다.
+  const positions = [...new Set([...lists.clubRoles.filter((p) => p !== GENERAL_POSITION), GENERAL_POSITION])];
   return NextResponse.json({
     club: g.club,
     dues,

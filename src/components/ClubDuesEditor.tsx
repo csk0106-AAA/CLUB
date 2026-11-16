@@ -70,7 +70,7 @@ export function ClubDuesEditor({ club }: { club: string }) {
       <span className="small" style={{ fontSize: fs(12), marginTop: -8 }}>관리자와 소모임 {data.headRole || "회장"}이 정할 수 있어요. 계좌는 처음에 소모임 기본 정보의 계좌로 채워져요.</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <DuesForm value={d} onChange={setD} kinds={data.options.kinds} positions={data.options.positions} unit="회비" />
+        <DuesForm value={d} onChange={setD} kinds={data.options.kinds} positions={data.options.positions} unit="회비" posLabel="소모임 직책" />
         <DuesPreview d={d} />
         <button className="btn" type="submit" disabled={busy || !dirty} style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14), alignSelf: "flex-end" }}>{busy ? "저장 중…" : dirty ? "회비 저장" : "저장됨"}</button>
       </form>

@@ -39,7 +39,7 @@ export function FormFields({ form, data, onChange, kinds, positions, agendaLabel
    기본 금액 + 회원구분·직책 조건 줄. 빈 조건("")은 "전체", 직책 "일반회원"은 직책 없는 회원.
    회원에게 맞는 줄 중 조건이 가장 많은 줄(같으면 위쪽 줄)을 쓰고, 맞는 줄이 없으면 기본 금액을 쓴다(lib/fee.ts). */
 export type AmountRule = { kind: string; position: string; amount: string };
-export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit = "회비", hideHelp }: {
+export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit = "회비", hideHelp, posLabel = "직책" }: {
   amount: string;
   rules: AmountRule[];
   onChange: (amount: string, rules: AmountRule[]) => void;
@@ -47,6 +47,7 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
   positions: string[];
   unit?: string;
   hideHelp?: boolean; // 설명을 묶음 머리에 따로 적었을 때
+  posLabel?: string; // 직책 칸 이름(소모임 회비는 "소모임 직책")
 }) {
   const id = useId();
   const setRules = (r: AmountRule[]) => onChange(amount, r);
@@ -66,7 +67,7 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
       {rules.length > 0 && (
         // 넓은 화면은 표처럼 한 줄에 4칸, 좁으면(칸 폭 480px 미만) 줄마다 "n번째 조건 · 삭제" 아래 회원구분|직책, 그 아래 금액으로 쌓는다(옆으로 밀지 않음).
         <ul className="rules" aria-label="조건별 금액">
-          <li className="rh" aria-hidden="true"><span>회원구분</span><span>직책</span><span>금액(원)</span><span style={{ width: 46 }} /></li>
+          <li className="rh" aria-hidden="true"><span>회원구분</span><span>{posLabel}</span><span>금액(원)</span><span style={{ width: 46 }} /></li>
           {rules.map((r, i) => {
             const upd = (patch: Partial<AmountRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
             const del = () => setRules(rules.filter((_, j) => j !== i));
@@ -84,8 +85,8 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
                   </select>
                 </label>
                 <label className="cell">
-                  <span className="cl">직책</span>
-                  <select className="field" aria-label={`${i + 1}번째 줄 직책`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
+                  <span className="cl">{posLabel}</span>
+                  <select className="field" aria-label={`${i + 1}번째 줄 ${posLabel}`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
                     <option value="">전체</option>
                     {[...new Set([...positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
                   </select>

@@ -4,6 +4,7 @@ import { ALL, audienceInput, audienceLabel, type Audience } from "@/lib/audience
 import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, talkable, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
+import { memberClubs } from "@/lib/lists";
 import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published";
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -141,8 +142,11 @@ export async function detail(me: Me, p: Row) {
   }
   if (form === "fee") {
     const rules = Array.isArray(data.rules) ? (data.rules as DuesRule[]) : [];
-    const amount = duesAmount({ amount: String(data.defaultAmount ?? ""), rules }, { kind: me.row.kind, position: me.row.position });
-    extra.myFee = { amount, kind: me.row.kind ?? "", position: me.row.position ?? "" };
+    // 소모임 회비 글은 직책 조건을 그 소모임에서 맡은 소모임 직책으로 맞춘다(없으면 일반회원)
+    const club = typeof data.club === "string" ? data.club : "";
+    const position = club ? memberClubs(me.row).find((c) => c.name === club)?.role ?? "" : me.row.position;
+    const amount = duesAmount({ amount: String(data.defaultAmount ?? ""), rules }, { kind: me.row.kind, position });
+    extra.myFee = { amount, kind: me.row.kind ?? "", position: position ?? "" };
     // 다른 회원의 금액 표는 작성자·관리자에게만
     if (!full) data.rules = [];
   }

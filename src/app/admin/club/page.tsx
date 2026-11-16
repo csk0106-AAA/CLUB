@@ -106,7 +106,7 @@ function OrgAdmin() {
       <section className="lcard" aria-labelledby="org-h2">
         <header className="lcard-h">
           <h2 id="org-h2">소모임</h2>
-          <p>소모임 이름은 <Link href="/admin/kinds">회원 구분 › 소모임</Link>에서, 리더(소모임 직책)와 모임 주기는 <Link href="/admin/clubs">소모임관리</Link>에서 정해요. 소모임 직책 이름(리더·총무 등)은 회원 구분 › 소모임 직책에서 더할 수 있어요.</p>
+          <p><Link href="/admin/clubs">소모임관리</Link>에서 정한 소모임 직책자와 모임 주기를 보여 줘요. 여기서는 확인만 하고, 소모임 회원·직책자는 소모임관리에서 바꿔요. 소모임 직책 이름(리더·총무 등)은 회원 구분 › 소모임 직책에서 더할 수 있어요.</p>
         </header>
         <div className="lcard-b"><OrgClubs clubs={org.clubs} href={(n) => `/admin/clubs/${encodeURIComponent(n)}`} /></div>
       </section>
