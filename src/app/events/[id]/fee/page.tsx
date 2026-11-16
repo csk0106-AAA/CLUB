@@ -63,9 +63,9 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기"
-        right={<span className={`pill ${paid ? "ok" : noticed ? "warn" : "bad"}`}>{paid ? "입금 확인됨 ✓" : noticed ? "입금 확인 중" : "입금 확인 전"}</span>} />
-      <h1 className="title">회비를 보내 주세요</h1>
+      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title="회비 안내"
+        right={<span className={`chip ${paid ? "violet" : noticed ? "gray" : "red"}`}>{paid ? "입금 확인됨 ✓" : noticed ? "입금 확인 중" : "입금 확인 전"}</span>} />
+      <p className="lead" style={{ marginBottom: -4 }}>{e.name}</p>
 
       {!attending && <div className="msg info">참석을 신청하면 회비 안내가 열려요.</div>}
       {attending && !e.fee && (e.feePending
@@ -74,13 +74,26 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
 
       {attending && e.fee && (
         <>
-          <div className="card center"><span className="small">내 회비</span><div className="title num" style={{ fontSize: fs(40) }}>{won(e.fee)}</div></div>
-          <div className="card">
-            <span className="small">입금 계좌</span>
-            <div className="num" style={{ font: `700 ${fs(19)} var(--body)` }}>{e.account || "계좌가 정해지면 알려 드려요"}</div>
-            <div className="small">{e.accountHolder ? `예금주 ${e.accountHolder} · ` : ""}입금자명은 본인 이름으로 보내 주세요.</div>
-          </div>
-          {e.feeDeadline && <div className="card"><span className="small">입금 기한</span><div style={{ font: `700 ${fs(19)} var(--body)` }}>{fmtDate(e.feeDeadline)}까지</div></div>}
+          {/* 설정 줄 모양(목업 C): 왼쪽 이름, 오른쪽 값 */}
+          <section className="sect" aria-label="회비 정보">
+            <div className="srow">
+              <span className="k">내 회비</span>
+              <b className="num" style={{ font: `700 ${fs(20)} var(--display)`, color: "var(--ink)" }}>{won(e.fee)}</b>
+            </div>
+            <div className="srow" style={{ alignItems: "flex-start" }}>
+              <span className="k" style={{ flex: "none", paddingTop: 2 }}>입금 계좌</span>
+              <span className="v" style={{ flex: 1 }}>
+                <b className="num" style={{ display: "block", color: "var(--ink)", fontSize: fs(15) }}>{e.account || "계좌가 정해지면 알려 드려요"}</b>
+                <span style={{ fontSize: fs(12) }}>{e.accountHolder ? `예금주 ${e.accountHolder} · ` : ""}입금자명은 본인 이름으로 보내 주세요.</span>
+              </span>
+            </div>
+            {e.feeDeadline && (
+              <div className="srow">
+                <span className="k">입금 기한</span>
+                <b className="v num" style={{ color: "var(--ink)", fontSize: fs(14) }}>{fmtDate(e.feeDeadline)}까지</b>
+              </div>
+            )}
+          </section>
           {paid ? (
             <div className="fb good"><span className="ic" aria-hidden="true">✓</span><div><b>입금이 확인됐어요</b><span className="t">회비 알림이 사라졌어요. 고맙습니다!</span></div></div>
           ) : noticed ? (

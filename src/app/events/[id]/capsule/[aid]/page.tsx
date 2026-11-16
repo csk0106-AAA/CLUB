@@ -74,9 +74,8 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
-        right={<span className={`pill ${state.tone}`}>{state.text}</span>} />
-      <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: fs(20) }}>{d.activity.name}</h1></div>
+      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title={d.activity.name} done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
+        right={<span className={`chip ${state.tone === "ok" ? "violet" : "line"}`}>{state.text}</span>} />
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <div className={`fb ${d.opened ? "good" : "info"}`}>
@@ -88,7 +87,14 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
       </div>
 
       {d.team ? (
-        <div className="card"><b>{d.team.name}</b><div className="small">{d.team.members.join(", ")}</div></div>
+        <div className="card row" style={{ padding: "10px 12px", gap: 10 }}>
+          <Mascot size={32} />
+          <div className="grow" style={{ minWidth: 0 }}>
+            <b style={{ fontSize: fs(14) }}>{d.team.name}</b>
+            <div className="small" style={{ fontSize: fs(12) }}>{d.team.members.join(", ")}</div>
+          </div>
+          <span className="chip gray num">{d.team.members.length}명</span>
+        </div>
       ) : (
         <div className="msg info">아직 팀이 정해지지 않았어요. 팀이 정해지면 팀 약속을 쓸 수 있어요.</div>
       )}
@@ -97,11 +103,16 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
 
       {d.opened && d.content && (
         <>
-          <div className="card"><b>나의 1년 뒤 목표</b><p style={{ whiteSpace: "pre-wrap", margin: "6px 0 0" }}>{d.content.goal || "작성하지 않았어요."}</p></div>
-          <div className="card">
-            <b>우리 팀 약속</b>
-            {d.content.pacts.length === 0 ? <p className="small">작성하지 않았어요.</p> : <ol style={{ margin: "6px 0 0", paddingLeft: 20 }}>{d.content.pacts.map((p, i) => <li key={i}>{p}</li>)}</ol>}
-          </div>
+          <section className="lcard" aria-labelledby="c-o1">
+            <header className="lcard-h"><h2 id="c-o1">나의 1년 뒤 목표</h2></header>
+            <div className="lcard-b"><p style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: fs(14), lineHeight: 1.65 }}>{d.content.goal || "작성하지 않았어요."}</p></div>
+          </section>
+          <section className="lcard" aria-labelledby="c-o2">
+            <header className="lcard-h"><h2 id="c-o2">우리 팀 약속</h2></header>
+            <div className="lcard-b">
+              {d.content.pacts.length === 0 ? <p className="small" style={{ margin: 0 }}>작성하지 않았어요.</p> : <ol style={{ margin: 0, paddingLeft: 20, fontSize: fs(14), lineHeight: 1.65 }}>{d.content.pacts.map((p, i) => <li key={i}>{p}</li>)}</ol>}
+            </div>
+          </section>
         </>
       )}
 
@@ -110,27 +121,43 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
           {!d.canWrite && d.canJoin && (
             <div className="msg info" role="status">진행자가 “타임캡슐 작성하기”를 열면 쓸 수 있어요. 이 화면을 켜 두세요.</div>
           )}
-          {d.hasGoal && <div className="msg info" role="status">내 목표를 봉인함에 넣었어요 ✓</div>}
-          {d.hasPact && <div className="msg info" role="status">우리 팀 약속이 저장돼 있어요 ✓</div>}
-          {d.content?.goal && <div className="card"><b>내가 쓴 목표 (관리자가 확인을 허용했어요)</b><p style={{ whiteSpace: "pre-wrap", margin: "6px 0 0" }}>{d.content.goal}</p></div>}
+          {d.content?.goal && <div className="card" style={{ padding: "12px 14px" }}><b style={{ fontSize: fs(14) }}>내가 쓴 목표 <span className="chip gray">관리자가 확인을 허용했어요</span></b><p style={{ whiteSpace: "pre-wrap", margin: "6px 0 0", fontSize: fs(14) }}>{d.content.goal}</p></div>}
 
           {d.canJoin && (
             <>
-              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }} aria-disabled={!d.canWrite}>
-                <b style={{ font: `700 ${fs(17)} var(--display)` }}>나의 1년 뒤 목표</b>
-                <span className="small">나만 볼 수 있어요. 봉인하면 열림 일시 전에는 나도 다시 볼 수 없어요.{d.hasGoal ? " 다시 쓰면 이전 내용을 대신해요." : ""}</span>
-                <label className="l" htmlFor="c-goal">목표</label>
-                <textarea id="c-goal" className="field" rows={4} style={{ padding: 12 }} maxLength={1000} value={goal} disabled={!d.canWrite} onChange={(e) => setGoal(e.target.value)} />
-                <button className="btn" type="button" disabled={busy || !d.canWrite || !goal.trim()} onClick={() => save("goal")}>목표 봉인하기</button>
+              <section className="lcard" aria-labelledby="c-h1" aria-disabled={!d.canWrite}>
+                <header className="lcard-h">
+                  <h2 id="c-h1">나의 1년 뒤 목표 {d.hasGoal && <span className="chip violet">봉인됨 ✓</span>}</h2>
+                  <p>나만 볼 수 있어요. 봉인하면 열림 일시 전에는 나도 다시 볼 수 없어요.{d.hasGoal ? " 다시 쓰면 이전 내용을 대신해요." : ""}</p>
+                </header>
+                <div className="lcard-b">
+                  <div>
+                    <label className="l" htmlFor="c-goal">목표</label>
+                    <textarea id="c-goal" className="field" rows={4} style={{ padding: 10, fontSize: fs(15) }} maxLength={1000} value={goal} disabled={!d.canWrite} onChange={(e) => setGoal(e.target.value)} />
+                  </div>
+                </div>
+                <div className="lcard-f" style={{ justifyContent: "flex-end" }}>
+                  <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 44, fontSize: fs(14) }} disabled={busy || !d.canWrite || !goal.trim()} onClick={() => save("goal")}>목표 봉인하기</button>
+                </div>
               </section>
-              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }} aria-disabled={!d.canWrite}>
-                <b style={{ font: `700 ${fs(17)} var(--display)` }}>우리 팀 약속 2가지</b>
-                <span className="small">{d.team ? "팀원이 함께 정해요. 저장하면 팀 이름과 구성원이 함께 남아요." : "팀이 정해진 뒤에 쓸 수 있어요."}</span>
-                <label className="l" htmlFor="c-p1">약속 1</label>
-                <input id="c-p1" className="field" maxLength={200} value={p1} disabled={!d.team || !d.canWrite} onChange={(e) => setP1(e.target.value)} />
-                <label className="l" htmlFor="c-p2">약속 2</label>
-                <input id="c-p2" className="field" maxLength={200} value={p2} disabled={!d.team || !d.canWrite} onChange={(e) => setP2(e.target.value)} />
-                <button className="btn blue" type="button" disabled={busy || !d.canWrite || !d.team || !p1.trim() || !p2.trim()} onClick={() => save("pacts")}>팀 약속 저장하기</button>
+              <section className="lcard" aria-labelledby="c-h2" aria-disabled={!d.canWrite}>
+                <header className="lcard-h">
+                  <h2 id="c-h2">우리 팀 약속 2가지 {d.hasPact && <span className="chip violet">저장됨 ✓</span>}</h2>
+                  <p>{d.team ? "팀원이 함께 정해요. 저장하면 팀 이름과 구성원이 함께 남아요." : "팀이 정해진 뒤에 쓸 수 있어요."}</p>
+                </header>
+                <div className="lcard-b">
+                  <div>
+                    <label className="l" htmlFor="c-p1">약속 1</label>
+                    <input id="c-p1" className="field" maxLength={200} value={p1} disabled={!d.team || !d.canWrite} onChange={(e) => setP1(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="l" htmlFor="c-p2">약속 2</label>
+                    <input id="c-p2" className="field" maxLength={200} value={p2} disabled={!d.team || !d.canWrite} onChange={(e) => setP2(e.target.value)} />
+                  </div>
+                </div>
+                <div className="lcard-f" style={{ justifyContent: "flex-end" }}>
+                  <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 44, fontSize: fs(14) }} disabled={busy || !d.canWrite || !d.team || !p1.trim() || !p2.trim()} onClick={() => save("pacts")}>팀 약속 저장하기</button>
+                </div>
               </section>
             </>
           )}

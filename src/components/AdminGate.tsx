@@ -157,7 +157,8 @@ export function AdminGate(props: {
           ))}
         </nav>
       </header>
-      {sub.length > 0 && (
+      {/* 하위 메뉴가 하나뿐이면(일정 목록·소모임 목록) 위쪽 메뉴와 같은 곳이라 보여 주지 않는다 */}
+      {sub.length > 1 && (
         <nav className="subnav menu" aria-label="하위 메뉴">
           {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""} aria-current={props.active === s.href ? "page" : undefined}>{s.label}</Link>)}
         </nav>

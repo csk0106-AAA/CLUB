@@ -11,6 +11,10 @@ export function IconHome({ size = 26, max }: P) {
 export function IconBack({ size = 18, max = 1.2 }: P) {
   return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>;
 }
+// 다음(오른쪽 화살표)
+export function IconNext({ size = 18, max = 1.2 }: P) {
+  return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>;
+}
 // 내보내기(상자에서 위로 나가는 화살표)
 export function IconExport({ size = 18, max = 1.2 }: P) {
   return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3M7 8l5-5 5 5" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>;

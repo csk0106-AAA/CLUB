@@ -39,13 +39,14 @@ export function FormFields({ form, data, onChange, kinds, positions, agendaLabel
    기본 금액 + 회원구분·직책 조건 줄. 빈 조건("")은 "전체", 직책 "일반회원"은 직책 없는 회원.
    회원에게 맞는 줄 중 조건이 가장 많은 줄(같으면 위쪽 줄)을 쓰고, 맞는 줄이 없으면 기본 금액을 쓴다(lib/fee.ts). */
 export type AmountRule = { kind: string; position: string; amount: string };
-export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit = "회비" }: {
+export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit = "회비", hideHelp }: {
   amount: string;
   rules: AmountRule[];
   onChange: (amount: string, rules: AmountRule[]) => void;
   kinds: string[];
   positions: string[];
   unit?: string;
+  hideHelp?: boolean; // 설명을 묶음 머리에 따로 적었을 때
 }) {
   const id = useId();
   const setRules = (r: AmountRule[]) => onChange(amount, r);
@@ -53,48 +54,56 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
   const dup = keys.some((k, i) => keys.indexOf(k) !== i);
   return (
     <div style={col}>
-      <span className="small">회원구분·직책마다 금액이 다르면 “조건별 금액”을 더해 주세요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고(같으면 위쪽 줄), 맞는 줄이 없으면 기본 금액을 써요. 직책의 “일반회원”은 직책이 없는 회원이에요.</span>
+      {!hideHelp && <span className="small">회원구분·직책마다 금액이 다르면 “조건별 금액”을 더해 주세요. 회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고(같으면 위쪽 줄), 맞는 줄이 없으면 기본 금액을 써요. 직책의 “일반회원”은 직책이 없는 회원이에요.</span>}
+      <div>
+        <label className="l" htmlFor={`${id}-def`}>기본 금액(원)</label>
+        <input id={`${id}-def`} className="field num" style={{ maxWidth: 320 }} inputMode="numeric" placeholder="예) 300000" aria-describedby={`${id}-def-d`} value={amount} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 9), rules)} />
+        <span id={`${id}-def-d`} className="hint" style={{ fontSize: fs(12), display: "block", marginTop: 4 }}>
+          {amount ? <b className="num" style={{ color: "var(--ink2)" }}>{won(amount)} · </b> : null}조건에 맞는 줄이 없을 때 써요. 비우면 {unit} 없음.
+        </span>
+      </div>
+      <span className="l" style={{ marginBottom: -4 }}>조건별 금액</span>
       {rules.length > 0 && (
-        <div className="tblw">
-          <table className="tbl" style={{ minWidth: 440 }}>
-            <thead><tr><th>회원구분</th><th>직책</th><th>금액(원)</th><th><span className="sr-only">삭제</span></th></tr></thead>
-            <tbody>
-              {rules.map((r, i) => {
-                const upd = (patch: Partial<AmountRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-                return (
-                  <tr key={i}>
-                    <td>
-                      <select className="field" style={sel} aria-label={`${i + 1}번째 줄 회원구분`} value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
-                        <option value="">전체</option>
-                        {[...new Set([...kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <select className="field" style={sel} aria-label={`${i + 1}번째 줄 직책`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
-                        <option value="">전체</option>
-                        {[...new Set([...positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "").slice(0, 9) })} />
-                      {r.amount && <span className="hint num">{won(r.amount)}</span>}
-                    </td>
-                    <td><button className="mini danger" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        // 넓은 화면은 표처럼 한 줄에 4칸, 좁으면(칸 폭 480px 미만) 줄마다 "n번째 조건 · 삭제" 아래 회원구분|직책, 그 아래 금액으로 쌓는다(옆으로 밀지 않음).
+        <ul className="rules" aria-label="조건별 금액">
+          <li className="rh" aria-hidden="true"><span>회원구분</span><span>직책</span><span>금액(원)</span><span style={{ width: 46 }} /></li>
+          {rules.map((r, i) => {
+            const upd = (patch: Partial<AmountRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+            const del = () => setRules(rules.filter((_, j) => j !== i));
+            return (
+              <li key={i}>
+                <div className="rn">
+                  <span>{i + 1}번째 조건</span>
+                  <button className="mini danger del-narrow" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={del}>삭제</button>
+                </div>
+                <label className="cell">
+                  <span className="cl">회원구분</span>
+                  <select className="field" aria-label={`${i + 1}번째 줄 회원구분`} value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
+                    <option value="">전체</option>
+                    {[...new Set([...kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
+                  </select>
+                </label>
+                <label className="cell">
+                  <span className="cl">직책</span>
+                  <select className="field" aria-label={`${i + 1}번째 줄 직책`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
+                    <option value="">전체</option>
+                    {[...new Set([...positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
+                  </select>
+                </label>
+                <label className="cell amt">
+                  <span className="cl">금액(원)</span>
+                  <input className="field num" inputMode="numeric" placeholder="금액" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "").slice(0, 9) })} />
+                  {r.amount && <span className="hint num">{won(r.amount)}</span>}
+                </label>
+                <button className="mini danger del-wide" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={del}>삭제</button>
+              </li>
+            );
+          })}
+        </ul>
       )}
-      <button className="btn white" type="button" style={addBtn} onClick={() => setRules([...rules, { kind: "", position: "", amount: "" }])}>+ 조건별 금액 추가</button>
+      <button className="mini" type="button" style={{ alignSelf: "flex-start", minHeight: 40 }} onClick={() => setRules([...rules, { kind: "", position: "", amount: "" }])}>+ 조건별 금액 추가</button>
       {rules.some((r) => !r.amount) && <span className="small" role="alert" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
       {dup && <span className="small" role="alert" style={{ color: "var(--red-t)" }}>같은 조건의 줄이 두 번 있어요. 하나를 삭제해 주세요.</span>}
-      <div>
-        <label className="l" htmlFor={`${id}-def`}>기본 금액(원) — 조건에 맞는 줄이 없을 때, 비우면 {unit} 없음</label>
-        <input id={`${id}-def`} className="field" inputMode="numeric" placeholder="예) 300000" value={amount} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 9), rules)} />
-        {amount && <span className="hint num">{won(amount)}</span>}
-      </div>
     </div>
   );
 }

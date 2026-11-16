@@ -99,7 +99,8 @@ export function useDragSort<T>(items: T[], onReorder: (next: T[]) => void) {
 type HandleProps = ReturnType<ReturnType<typeof useDragSort>["handle"]>;
 
 // 끌기 손잡이(⠿). 손가락으로 끌 때 화면이 스크롤되지 않도록 touch-action: none.
-export function DragHandle({ ref, label, active, ...on }: HandleProps) {
+// plain: 목록 줄 안에서 쓰는 테두리 없는 손잡이(누르는 칸은 44px 그대로).
+export function DragHandle({ ref, label, active, plain, ...on }: HandleProps & { plain?: boolean }) {
   return (
     <button
       ref={ref}
@@ -109,8 +110,9 @@ export function DragHandle({ ref, label, active, ...on }: HandleProps) {
       {...on}
       style={{
         width: 44, minWidth: 44, height: 44, display: "grid", placeItems: "center", flex: "none",
-        border: "1px solid var(--line)", borderRadius: 10, background: active ? "var(--blue-bg)" : "var(--card)",
-        color: active ? "var(--blue-t)" : "var(--sub)", cursor: active ? "grabbing" : "grab", touchAction: "none", userSelect: "none",
+        border: plain ? 0 : "1px solid var(--line)", borderRadius: plain ? 8 : 10,
+        background: active ? "var(--blue-bg)" : plain ? "transparent" : "var(--card)",
+        color: active ? "var(--blue-t)" : plain ? "var(--icon)" : "var(--sub)", cursor: active ? "grabbing" : "grab", touchAction: "none", userSelect: "none",
       }}
     >
       <svg width="18" height="18" style={{ width: fs(18), height: fs(18), flex: "none" }} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">

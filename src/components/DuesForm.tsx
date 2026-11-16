@@ -50,9 +50,6 @@ export function duesProblem(d: DuesValue): string {
   return "";
 }
 
-const sect = { display: "flex", flexDirection: "column", gap: 12 } as const;
-const head = { font: `700 ${fs(17)} var(--display)` } as const;
-
 export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비" }: {
   value: DuesValue;
   onChange: (d: DuesValue) => void;
@@ -64,41 +61,55 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
   const set = <K extends keyof DuesValue>(k: K, v: DuesValue[K]) => onChange({ ...d, [k]: v });
   return (
     <>
-      <section className="card" aria-labelledby={`${id}-h1`} style={sect}>
-        <b id={`${id}-h1`} style={head}>{unit} 종류와 금액</b>
-        <div className="checks" role="radiogroup" aria-label={`${unit} 종류`}>
-          {(["annual", "monthly"] as const).map((p) => (
-            <label key={p}><input type="radio" name={`${id}-period`} checked={d.period === p} onChange={() => set("period", p)} />{PERIOD[p]}</label>
-          ))}
+      {/* 묶음 카드(목업 C): 머리(제목·설명) + 얇은 선 아래 입력칸 */}
+      <section className="lcard" aria-labelledby={`${id}-h1`}>
+        <header className="lcard-h">
+          <h2 id={`${id}-h1`}>{unit} 종류와 금액</h2>
+          <p>회원구분·직책마다 금액이 다르면 “조건별 금액”을 더해요. 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>(같으면 위쪽 줄)을 쓰고, 없으면 기본 금액을 써요. 직책 “일반회원”은 직책이 없는 회원이에요.</p>
+        </header>
+        <div className="lcard-b">
+          <div className="row" style={{ gap: 10 }}>
+            <span id={`${id}-pl`} className="grow" style={{ fontSize: fs(14) }}>종류</span>
+            <div className="seg" role="group" aria-labelledby={`${id}-pl`} style={{ width: 168, flex: "none" }}>
+              {(["annual", "monthly"] as const).map((p) => (
+                <button key={p} type="button" aria-pressed={d.period === p} onClick={() => set("period", p)} style={{ minHeight: 40, fontSize: fs(13) }}>{PERIOD[p]}</button>
+              ))}
+            </div>
+          </div>
+          <FeeRulesFields amount={d.amount} rules={d.rules} kinds={kinds} positions={positions} unit={unit} hideHelp
+            onChange={(amount, rules) => onChange({ ...d, amount, rules })} />
         </div>
-        <FeeRulesFields amount={d.amount} rules={d.rules} kinds={kinds} positions={positions} unit={unit}
-          onChange={(amount, rules) => onChange({ ...d, amount, rules })} />
       </section>
 
-      <section className="card" aria-labelledby={`${id}-h2`} style={sect}>
-        <b id={`${id}-h2`} style={head}>입금 기한</b>
+      <section className="lcard" aria-labelledby={`${id}-h2`}>
+        <header className="lcard-h">
+          <h2 id={`${id}-h2`}>입금 기한</h2>
+          {d.period === "annual" && <p>연회비를 받는 기간이에요. 끝 날짜의 해가 지나면 관리자에게 “새해 연회비를 정해 주세요” 알림이 떠요.</p>}
+        </header>
+        <div className="lcard-b">
         {d.period === "annual" ? (
-          <>
-            <span className="small">연회비를 받는 기간이에요. 끝 날짜의 해가 지나면 관리자에게 “새해 연회비를 정해 주세요” 알림이 떠요.</span>
-            <div className="grid2">
-              <div><label className="l" htmlFor={`${id}-ps`}>입금 기간 시작</label><DateField id={`${id}-ps`} mode="date" value={d.periodStart} onChange={(v) => set("periodStart", v)} /></div>
-              <div><label className="l" htmlFor={`${id}-pe`}>입금 기간 끝</label><DateField id={`${id}-pe`} mode="date" value={d.periodEnd} onChange={(v) => set("periodEnd", v)} /></div>
-            </div>
-          </>
+          <div className="grid2">
+            <div><label className="l" htmlFor={`${id}-ps`}>입금 기간 시작</label><DateField id={`${id}-ps`} mode="date" value={d.periodStart} onChange={(v) => set("periodStart", v)} /></div>
+            <div><label className="l" htmlFor={`${id}-pe`}>입금 기간 끝</label><DateField id={`${id}-pe`} mode="date" value={d.periodEnd} onChange={(v) => set("periodEnd", v)} /></div>
+          </div>
         ) : (
           <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-            <label className="l" htmlFor={`${id}-md`} style={{ margin: 0 }}>매월</label>
-            <select id={`${id}-md`} className="field" style={{ width: 110, minHeight: 46 }} value={d.monthDay} onChange={(e) => set("monthDay", e.target.value)}>
+            <label htmlFor={`${id}-md`} style={{ fontSize: fs(14) }}>매월</label>
+            <select id={`${id}-md`} className="field" style={{ width: 110, minHeight: 44 }} value={d.monthDay} onChange={(e) => set("monthDay", e.target.value)}>
               <option value="">고르기</option>
               {Array.from({ length: 31 }, (_, i) => String(i + 1)).map((n) => <option key={n} value={n}>{n}일</option>)}
             </select>
-            <span>까지</span>
+            <span style={{ fontSize: fs(14) }}>까지</span>
           </div>
         )}
+        </div>
       </section>
 
-      <section className="card" aria-labelledby={`${id}-h3`} style={sect}>
-        <b id={`${id}-h3`} style={head}>입금 계좌</b>
+      <section className="lcard" aria-labelledby={`${id}-h3`}>
+        <header className="lcard-h">
+          <h2 id={`${id}-h3`}>입금 계좌</h2>
+        </header>
+        <div className="lcard-b">
         <div className="grid2">
           <div><label className="l" htmlFor={`${id}-bank`}>은행</label><input id={`${id}-bank`} className="field" maxLength={40} placeholder="예) 국민은행" value={d.bank} onChange={(e) => set("bank", e.target.value)} /></div>
           <div><label className="l" htmlFor={`${id}-acc`}>계좌번호</label><input id={`${id}-acc`} className="field" maxLength={80} placeholder="예) 123-456-789012" value={d.account} onChange={(e) => set("account", e.target.value)} /></div>
@@ -109,22 +120,23 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
           <textarea id={`${id}-note`} className="field" rows={3} maxLength={1000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
             placeholder="예) 입금자명은 이름으로 써 주세요." value={d.note} onChange={(e) => set("note", e.target.value)} />
         </div>
+        </div>
       </section>
     </>
   );
 }
 
-// 미리보기 카드
+// 미리보기: 회원에게 보일 한 줄 요약(연한 회색 바탕, 1px 선)
 export function DuesPreview({ d, extra }: { d: DuesValue; extra?: React.ReactNode }) {
   const acct = [d.bank, d.account].filter((x) => x.trim()).join(" ");
   const due = dueLabel(d);
   return (
-    <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 6 }}>
-      <span className="pill gray" style={{ alignSelf: "flex-start" }}>미리보기</span>
-      <b>{duesSummary(d) || "아직 회비를 정하지 않았어요."}</b>
-      {due && <span className="small">입금 기한: {due}</span>}
-      {acct && <span className="small">계좌: {acct}{d.holder ? ` (예금주 ${d.holder})` : ""}</span>}
-      {d.note && <span className="small" style={{ whiteSpace: "pre-wrap" }}>{d.note}</span>}
+    <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 4, padding: "12px 14px" }}>
+      <span className="chip line" style={{ alignSelf: "flex-start" }}>미리보기</span>
+      <b style={{ fontSize: fs(14), lineHeight: 1.5 }}>{duesSummary(d) || "아직 회비를 정하지 않았어요."}</b>
+      {due && <span className="small" style={{ fontSize: fs(12) }}>입금 기한: {due}</span>}
+      {acct && <span className="small" style={{ fontSize: fs(12) }}>계좌: {acct}{d.holder ? ` (예금주 ${d.holder})` : ""}</span>}
+      {d.note && <span className="small" style={{ whiteSpace: "pre-wrap", fontSize: fs(12) }}>{d.note}</span>}
       {extra}
     </div>
   );

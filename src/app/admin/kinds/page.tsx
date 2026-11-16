@@ -89,38 +89,44 @@ function ListEditor({ list, data, onSaved }: { list: ListName; data: Data; onSav
 
   const removed = original.filter((v) => !items.some((i) => i.from === v));
 
+  const hId = `l-${list}`;
   return (
-    <section className="card" aria-label={info.title} style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-      <b style={{ font: `700 ${fs(17)} var(--display)` }}>{info.title} <span className="num small">{items.length}개</span></b>
-      <span className="small">{info.help}</span>
-      {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      {items.length > 1 && <span className="small">왼쪽 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
-      {items.map((it, idx) => {
-        const row = ds.item(idx);
-        return (
-        <div key={it.key} ref={row.ref} style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: idx ? "1px solid var(--line)" : undefined, paddingTop: idx ? 8 : 0, ...row.style }}>
-          <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-            <DragHandle {...ds.handle(idx, it.value || `${info.one} ${idx + 1}`)} />
-            <input aria-label={`${info.one} 이름`} className="field" style={{ flex: "1 1 140px", width: "auto", minHeight: 46 }} maxLength={30} value={it.value}
-              placeholder={`새 ${info.one} 이름`} onChange={(e) => set(it.key, { value: e.target.value })} />
-            <span className="pill gray" title="지금 이 값을 쓰는 회원 수">{it.from ? counts[it.from] ?? 0 : 0}명</span>
-            <button className="mini danger" type="button" onClick={() => remove(it)}>삭제</button>
-          </div>
-          {list === "memberKinds" && (
-            <input aria-label="정의" className="field" style={{ minHeight: 46 }} maxLength={300} placeholder="정의 (예: 입회비를 낸 졸업 원우)" value={it.definition ?? ""}
-              onChange={(e) => set(it.key, { definition: e.target.value })} />
-          )}
-          {it.from && it.from !== it.value.trim() && it.value.trim() && <span className="small">저장하면 “{it.from}” → “{it.value.trim()}”(으)로 바뀌어요.</span>}
-        </div>
-        );
-      })}
-      {items.length === 0 && <span className="small">아직 없어요. 아래에서 더해 주세요.</span>}
-      {removed.length > 0 && <span className="small">저장하면 빠져요: {removed.join(", ")}</span>}
-      <div className="row" style={{ flexWrap: "wrap" }}>
+    // 설정 묶음 카드(목업 C): 머리(이름·개수·설명) · 얇은 선으로 나눈 줄(⠿ · 이름 · 회원 수 · 삭제) · 아래 줄(추가 · 저장)
+    <section className="lcard bleedm" aria-labelledby={hId}>
+      <header className="lcard-h">
+        <h2 id={hId}>{info.title} <span className="chip gray num">{items.length}개</span></h2>
+        <p>{info.help}{items.length > 1 ? " 왼쪽 ⠿ 손잡이를 끌어서 순서를 바꿔요." : ""}</p>
+      </header>
+      {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"} style={{ margin: "0 14px 10px" }}>{note.text}</div>}
+      <ul className="lrows">
+        {items.map((it, idx) => {
+          const row = ds.item(idx);
+          const n = it.from ? counts[it.from] ?? 0 : 0;
+          return (
+            <li key={it.key} ref={row.ref} className="lrow" style={row.style}>
+              <div className="line">
+                <DragHandle plain {...ds.handle(idx, it.value || `${info.one} ${idx + 1}`)} />
+                <input aria-label={`${idx + 1}번째 ${info.one} 이름`} className="field" maxLength={30} value={it.value}
+                  placeholder={`새 ${info.one} 이름`} onChange={(e) => set(it.key, { value: e.target.value })} />
+                <span className={`chip ${n ? "violet" : "line"} num`} title="지금 이 값을 쓰는 회원 수" aria-label={`회원 ${n}명`}>{n}명</span>
+                <button className="mini danger" type="button" aria-label={`${it.value || `${idx + 1}번째 ${info.one}`} 삭제`} onClick={() => remove(it)}>삭제</button>
+              </div>
+              {list === "memberKinds" && (
+                <input aria-label={`${it.value || `${idx + 1}번째 ${info.one}`} 정의`} className="field sub" maxLength={300} placeholder="정의 (예: 입회비를 낸 졸업 원우)" value={it.definition ?? ""}
+                  onChange={(e) => set(it.key, { definition: e.target.value })} />
+              )}
+              {it.from && it.from !== it.value.trim() && it.value.trim() && <span className="small sub">저장하면 “{it.from}” → “{it.value.trim()}”(으)로 바뀌어요.</span>}
+            </li>
+          );
+        })}
+        {items.length === 0 && <li className="lrow empty small">아직 없어요. 아래에서 더해 주세요.</li>}
+      </ul>
+      {removed.length > 0 && <p className="small" style={{ margin: 0, padding: "8px 14px", borderTop: "1px solid var(--line2)" }}>저장하면 빠져요: {removed.join(", ")}</p>}
+      <div className="lcard-f">
         <button className="mini" type="button" onClick={() => setItems([...items, { value: "", definition: "", key: ++seq }])}>+ {info.one} 추가</button>
         <span className="grow" />
         {dirty && <button className="mini" type="button" disabled={busy} onClick={() => { setItems(toItems(data, list)); setNote(null); }}>되돌리기</button>}
-        <button className="btn" type="button" style={{ width: "auto", minWidth: 110, minHeight: 44, fontSize: fs(15) }} disabled={busy || !dirty} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
+        <button className="btn" type="button" style={{ width: "auto", minWidth: 88, minHeight: 44, fontSize: fs(14) }} disabled={busy || !dirty} onClick={save}>{busy ? "저장 중…" : "저장"}</button>
       </div>
     </section>
   );

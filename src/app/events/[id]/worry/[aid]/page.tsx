@@ -93,65 +93,65 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기"
-        right={d.canJoin ? <span className={`pill ${d.mine.length ? "ok" : "gray"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
-      <div className="row"><Mascot size={52} /><h1 className="title" style={{ fontSize: fs(20) }}>{d.activity.name}</h1></div>
-      <p className="small" style={{ margin: 0 }}>고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 일정에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 진행자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
+      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title={d.activity.name}
+        right={d.canJoin ? <span className={`chip ${d.mine.length ? "violet" : "line"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
+      <div className="say">
+        <Mascot size={32} />
+        <p className="lead">고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 일정에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 진행자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
+      </div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
       {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDate(d.pre.opensAt)} ~ ${fmtDate(d.pre.closesAt)} 예요.` : ""}</div>}
 
       {d.mine.length > 0 && (
-        <section aria-label="내 고민" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>내가 쓴 고민 {d.mine.length}개 <span className="small">(최대 {d.max}개)</span></b>
+        <section aria-labelledby="w-mine" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h2 id="w-mine" className="h3">내가 쓴 고민 {d.mine.length}개 <span className="small" style={{ fontWeight: 400, fontSize: fs(12) }}>최대 {d.max}개</span></h2>
+          {/* 한 덩어리 목록 안의 줄(목업 C): 칩 줄 · 본문 · 수정/삭제 */}
+          <ul className="rows">
           {d.mine.map((m) => (
-            <div key={m.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div className="row" style={{ flexWrap: "wrap" }}>
+            <li key={m.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 12px" }}>
+              <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
                 {open && !m.drawn ? (
                   <select className="field" aria-label="이 고민의 카테고리" value={m.category} disabled={busy}
-                    style={{ width: "auto", minHeight: 40, padding: "0 10px", fontSize: fs(15), borderRadius: 8 }}
+                    style={{ width: "auto", minHeight: 36, padding: "0 8px", fontSize: fs(13), borderRadius: 6 }}
                     onChange={(e) => setCatOf(m, e.target.value)}>
                     {d.categories.map((c) => <option key={c}>{c}</option>)}
                     {!d.categories.includes(m.category) && <option>{m.category}</option>}
                   </select>
                 ) : (
-                  <span className="pill blue">{m.category}</span>
+                  <span className="chip violet">{m.category}</span>
                 )}
                 {open && !m.drawn ? (
-                  <span className="row" role="group" aria-label="이 고민의 이름 공개 방식" style={{ gap: 6 }}>
-                    <button type="button" className="mini" aria-pressed={!m.anonymous} disabled={busy} onClick={() => setAnonOf(m, false)}
-                      style={!m.anonymous ? { borderColor: "var(--green)", background: "var(--green-bg)", color: "var(--green-t)" } : undefined}>
-                      {!m.anonymous ? "✓ " : ""}실명
-                    </button>
-                    <button type="button" className="mini" aria-pressed={m.anonymous} disabled={busy} onClick={() => setAnonOf(m, true)}
-                      style={m.anonymous ? { borderColor: "var(--blue)", background: "var(--blue-bg)", color: "var(--blue-t)" } : undefined}>
-                      {m.anonymous ? "✓ " : ""}익명
-                    </button>
-                  </span>
+                  <div className="seg" role="group" aria-label="이 고민의 이름 공개 방식" style={{ width: 120, flex: "none" }}>
+                    <button type="button" aria-pressed={!m.anonymous} disabled={busy} onClick={() => setAnonOf(m, false)} style={{ minHeight: 36, fontSize: fs(13) }}>실명</button>
+                    <button type="button" aria-pressed={m.anonymous} disabled={busy} onClick={() => setAnonOf(m, true)} style={{ minHeight: 36, fontSize: fs(13) }}>익명</button>
+                  </div>
                 ) : (
-                  <span className={`pill ${m.anonymous ? "gray" : "ok"}`}>{m.anonymous ? "익명" : "실명"}</span>
+                  <span className={`chip ${m.anonymous ? "gray" : "violet"}`}>{m.anonymous ? "익명" : "실명"}</span>
                 )}
-                {m.drawn && <span className="pill warn">이미 뽑혔어요</span>}
+                {m.drawn && <span className="chip warn">이미 뽑혔어요</span>}
               </div>
-              <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{m.body}</p>
+              <p style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: fs(14), lineHeight: 1.6 }}>{m.body}</p>
               {open && !m.drawn && (
-                <div className="row">
+                <div className="row" style={{ justifyContent: "flex-end", gap: 6 }}>
                   <button className="mini" type="button" onClick={() => { setEdit(m.id); setBody(m.body); setCat(m.category); setAnon(m.anonymous); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }}>수정</button>
                   <button className="mini danger" type="button" onClick={() => remove(m)}>삭제</button>
                 </div>
               )}
-            </div>
+            </li>
           ))}
+          </ul>
         </section>
       )}
 
       {open && (edit !== null || d.mine.length < d.max) && (
-        <form className="card" onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>{edit ? "고민 수정" : "새 고민 쓰기"}</b>
+        <form className="lcard" onSubmit={save} aria-labelledby="w-form-h">
+          <header className="lcard-h"><h2 id="w-form-h">{edit ? "고민 수정" : "새 고민 쓰기"}</h2></header>
+          <div className="lcard-b">
           <div>
             <label className="l" htmlFor="w-body">고민 또는 조언을 구하고 싶은 질문</label>
-            <textarea id="w-body" className="field" rows={5} style={{ padding: 12, lineHeight: 1.6 }} maxLength={500} value={body} onChange={(e) => setBody(e.target.value)} />
-            <span className="hint">{body.length}/500자</span>
+            <textarea id="w-body" className="field" rows={5} style={{ padding: 10, lineHeight: 1.6, fontSize: fs(15) }} maxLength={500} value={body} onChange={(e) => setBody(e.target.value)} />
+            <span className="hint num" style={{ fontSize: fs(12), display: "block", textAlign: "right" }}>{body.length}/500자</span>
           </div>
           <div>
             <label className="l" htmlFor="w-cat">카테고리</label>
@@ -161,14 +161,21 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
           </div>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="l">이 고민의 이름 공개 방식 (꼭 골라 주세요)</legend>
-            <div className="pick">
-              <button type="button" className="opt" aria-pressed={anon === false} onClick={() => setAnon(false)}><span className="name">{anon === false ? "✓ " : ""}실명으로</span><span className="small">진행자가 이름을 공개해요</span></button>
-              <button type="button" className="opt" aria-pressed={anon === true} onClick={() => setAnon(true)}><span className="name">{anon === true ? "✓ " : ""}익명으로</span><span className="small">“익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요</span></button>
+            <div className="rows">
+              <button type="button" className="opt rowopt" aria-pressed={anon === false} onClick={() => setAnon(false)} style={{ padding: "10px 12px" }}>
+                <span className="grow"><span className="name" style={{ fontSize: fs(14) }}>실명으로</span><span className="small" style={{ fontSize: fs(12) }}>진행자가 이름을 공개해요</span></span>
+                <span className="tick" aria-hidden="true" />
+              </button>
+              <button type="button" className="opt rowopt" aria-pressed={anon === true} onClick={() => setAnon(true)} style={{ padding: "10px 12px" }}>
+                <span className="grow"><span className="name" style={{ fontSize: fs(14) }}>익명으로</span><span className="small" style={{ fontSize: fs(12) }}>“익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요</span></span>
+                <span className="tick" aria-hidden="true" />
+              </button>
             </div>
           </fieldset>
-          <div className="row">
-            <button className="btn" type="submit" disabled={busy || body.trim().length < 2 || anon === null}>{edit ? "저장" : "저장하기"}</button>
-            {edit && <button className="btn white" type="button" onClick={reset}>취소</button>}
+          </div>
+          <div className="lcard-f" style={{ justifyContent: "flex-end" }}>
+            {edit && <button className="btn white" type="button" onClick={reset} style={{ width: "auto", minWidth: 80, minHeight: 44, fontSize: fs(14) }}>취소</button>}
+            <button className="btn" type="submit" disabled={busy || body.trim().length < 2 || anon === null} style={{ width: "auto", minWidth: 120, minHeight: 44, fontSize: fs(14) }}>{edit ? "저장" : "저장하기"}</button>
           </div>
         </form>
       )}

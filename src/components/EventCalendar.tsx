@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import css from "./EventCalendar.module.css";
+import { IconBack, IconNext } from "./Icons";
 import { fs } from "@/lib/fs";
 
 // 일정 달력(월간, 일~토). 구글 캘린더 월 보기와 비슷하게:
@@ -99,9 +100,12 @@ export function EventCalendar<T extends CalEvent>({ events, renderItem, hrefOf }
     <section className={css.cal} aria-label="일정 달력" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div className={css.head}>
         <h2 className={css.month} aria-live="polite">{view.y}년 {view.m + 1}월</h2>
-        <button type="button" className={css.nav} onClick={goToday}>오늘</button>
-        <button type="button" className={css.nav} onClick={() => move(-1)} aria-label="이전 달">‹</button>
-        <button type="button" className={css.nav} onClick={() => move(1)} aria-label="다음 달">›</button>
+        {/* 달 옮기기: 한 덩어리 테두리 안의 칸(보기 전환 .seg 와 같은 모양) */}
+        <div className={css.navs} role="group" aria-label="달 옮기기">
+          <button type="button" className={css.nav} onClick={() => move(-1)} aria-label="이전 달" title="이전 달"><IconBack size={16} /></button>
+          <button type="button" className={`${css.nav} ${css.navToday}`} onClick={goToday}>오늘</button>
+          <button type="button" className={css.nav} onClick={() => move(1)} aria-label="다음 달" title="다음 달"><IconNext size={16} /></button>
+        </div>
       </div>
 
       <div className={css.board}>

@@ -78,11 +78,10 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
 
   return (
     <main className="app">
-      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" done={progress?.done} total={progress?.total} />
-      <h1 className="title" style={{ fontSize: fs(20) }}>{st.activity.name}</h1>
-      <div className="subnav" role="tablist" aria-label="내가 누굴까요? 메뉴" style={{ display: "flex", gap: 6 }}>
-        <a href="#" role="tab" aria-selected={tab === "write"} className={tab === "write" ? "on" : ""} onClick={(e) => { e.preventDefault(); setTab("write"); }}>내 소개 작성</a>
-        <a href="#" role="tab" aria-selected={tab === "guess"} className={tab === "guess" ? "on" : ""} onClick={(e) => { e.preventDefault(); setTab("guess"); }}>누구일까요?</a>
+      <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title={st.activity.name} done={progress?.done} total={progress?.total} />
+      <div className="seg" role="tablist" aria-label="내가 누굴까요? 메뉴">
+        <button type="button" role="tab" aria-selected={tab === "write"} onClick={() => setTab("write")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개 작성</button>
+        <button type="button" role="tab" aria-selected={tab === "guess"} onClick={() => setTab("guess")} style={{ minHeight: 40, fontSize: fs(13) }}>누구일까요?</button>
       </div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
@@ -261,7 +260,7 @@ function Write(props: {
                 {iv.messages.map((m, i) =>
                   m.role === "ai" ? (
                     <div key={i} className="say">
-                      <Mascot size={56} />
+                      <Mascot size={32} />
                       <div className="bubble">{m.text}</div>
                     </div>
                   ) : (
@@ -272,8 +271,8 @@ function Write(props: {
               </div>
               <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <label className="l" htmlFor="ans">내 답변</label>
-                <textarea id="ans" className="field" rows={3} style={{ padding: 12, lineHeight: 1.5 }} value={answer} onChange={(e) => setAnswer(e.target.value)} />
-                <p className="hint" role="status">
+                <textarea id="ans" className="field" rows={3} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={answer} onChange={(e) => setAnswer(e.target.value)} />
+                <p className="hint" role="status" style={{ fontSize: fs(12) }}>
                   {voice.note || (voice.supported
                     ? voice.listening ? "듣고 있어요. 말씀이 끝나면 마이크를 한 번 더 눌러 주세요." : "마이크를 누르고 말씀하세요. 말한 내용이 위 입력창에 글자로 나와요. 확인하고 고친 뒤 보내 주세요."
                     : "이 기기에서는 음성 입력을 쓸 수 없어요. 키보드로 입력해 주세요.")}
@@ -309,8 +308,8 @@ function Write(props: {
       {interviewDone && hasDraft && (
         <section aria-label="미리보기와 승인" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <h2 className="title grow" style={{ fontSize: fs(20), margin: 0 }}>{hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
-            <span className={`pill ${approved ? "ok" : "warn"}`}>{approved ? "배포됨 ✓" : "초안 (나만 보여요)"}</span>
+            <h2 className="h3 grow">{hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
+            <span className={`chip ${approved ? "violet" : "gray"}`}>{approved ? "배포됨 ✓" : "초안 · 나만 보여요"}</span>
             {!approved && (
               <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "다시 만들기"}</button>
             )}
@@ -330,13 +329,13 @@ function Write(props: {
           ) : (
             <div className="card row" style={{ flexWrap: "wrap" }}>
               <span className="small">{approved ? "내 별칭" : "AI가 제안한 별칭"}</span>
-              <b style={{ font: `700 ${fs(17)} var(--display)` }}>{st.profile.alias}</b>
+              <b style={{ font: `700 ${fs(15)} var(--display)` }}>{st.profile.alias}</b>
               <span className="grow" />
               {!approved && <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>}
             </div>
           )}
           <label className="l" htmlFor="intro">소개 글 (직접 고칠 수 있어요)</label>
-          <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.6 }} value={intro} disabled={approved} onChange={(e) => setIntro(e.target.value)} />
+          <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} disabled={approved} onChange={(e) => setIntro(e.target.value)} />
 
           {!approved && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -365,28 +364,34 @@ function Write(props: {
           {inAct && (
             <>
               <div className="row" style={{ flexWrap: "wrap" }}>
-                <b className="grow" style={{ font: `700 ${fs(18)} var(--display)` }}>2진실 1거짓</b>
+                <h3 className="h3 grow">2진실 1거짓</h3>
                 {!approved && st.aiEnabled && (
                   <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글과 함께 다시 만들기"}</button>
                 )}
               </div>
-              <span className="small">
+              <span className="small" style={{ fontSize: fs(12), marginTop: -6 }}>
                 {st.aiEnabled
                   ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들고, 소개 글은 이 내용을 빼고 써요(소개 글을 읽고 정답을 알 수 없게). 다시 만들면 소개 글도 함께 바뀌어요. 직접 고칠 때는 진실 내용이 소개 글에 들어가지 않게 해 주세요."
                   : "소개 글에 쓰지 않은 내용으로 문장 3개를 적고, 거짓인 문장 하나를 골라 주세요. 너무 뻔하거나 실례가 되는 거짓은 피해 주세요."}
                 {" "}활동이 끝나면 정답과 함께 프로필 북의 내 소개에 실려요.
               </span>
               {!approved && st.aiEnabled && tlEmpty && <div className="msg info" role="status">2진실 1거짓이 비어 있어요. “소개 글과 함께 다시 만들기”를 눌러 주세요.</div>}
-              {stmts.map((t, i) => (
-                <div key={i} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, borderColor: lie === i ? "var(--red)" : undefined }}>
-                  <label className="l" htmlFor={`st-${i}`}>문장 {i + 1}</label>
-                  <input id={`st-${i}`} className="field" value={t} disabled={approved} onChange={(e) => setStmts(stmts.map((x, j) => (j === i ? e.target.value : x)))} />
-                  <label className="row" style={{ gap: 8 }}>
-                    <input type="radio" name="lie" checked={lie === i} disabled={approved} onChange={() => setLie(i)} style={{ width: 22, height: 22 }} />
-                    <span style={{ fontWeight: 700 }}>이 문장이 거짓이에요</span>
-                  </label>
-                </div>
-              ))}
+              {/* 문장 3개: 한 덩어리 목록 안의 줄. 거짓으로 고른 줄은 빨간 칩 */}
+              <ul className="rows">
+                {stmts.map((t, i) => (
+                  <li key={i} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", background: lie === i ? "var(--red-bg)" : undefined }}>
+                    <div className="row" style={{ gap: 8 }}>
+                      <label className="l grow" htmlFor={`st-${i}`} style={{ margin: 0 }}>문장 {i + 1}</label>
+                      {lie === i && <span className="chip red">거짓</span>}
+                    </div>
+                    <input id={`st-${i}`} className="field" style={{ minHeight: 44, fontSize: fs(15) }} value={t} disabled={approved} onChange={(e) => setStmts(stmts.map((x, j) => (j === i ? e.target.value : x)))} />
+                    <label className="row" style={{ gap: 8, minHeight: 32, fontSize: fs(13), cursor: approved ? "default" : "pointer" }}>
+                      <input type="radio" name="lie" checked={lie === i} disabled={approved} onChange={() => setLie(i)} style={{ width: 18, height: 18 }} />
+                      <span>이 문장이 거짓이에요</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
             </>
           )}
 
@@ -447,40 +452,51 @@ function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) =
 
   return (
     <>
-      <div className="msg info">{g.status === "open" ? `${fmtDate(g.closesAt)}까지 바꿀 수 있어요.` : "맞히기가 마감됐어요."} · {done}/{data.targets.length} 완료</div>
-      {data.targets.length === 0 && <div className="msg info">아직 배포된 소개글이 없어요. 다른 회원이 작성하면 여기에 나타나요.</div>}
-      <div className="pick">
-        {data.targets.map((t) => {
-          const chosen = data.candidates.find((c) => c.id === t.myChoice);
-          const expanded = openId === t.profileId;
-          return (
-            <div key={t.profileId} className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <button type="button" className="opt" style={{ border: 0, padding: 0, minHeight: 0 }} aria-expanded={expanded} onClick={() => setOpenId(expanded ? "" : t.profileId)}>
-                <span className="name">“{t.alias}”</span>
-                <span className="small">{chosen ? `내 선택: ${chosen.name}` : "아직 고르지 않았어요"} · {expanded ? "접기" : "읽고 고르기"}</span>
-              </button>
-              {expanded && (
-                <>
-                  <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{t.introMd}</p>
-                  <b>이 분은 누구일까요?</b>
-                  <div className="pick" role="radiogroup" aria-label={`${t.alias} 추측`}>
-                    {data.candidates.map((c, i) => (
-                      <button key={c.id} type="button" role="radio" aria-checked={t.myChoice === c.id} className="opt rowopt" aria-pressed={t.myChoice === c.id} disabled={g.status !== "open"} onClick={() => pick(t, c)}>
-                        <span className="avatar" style={{ background: AVATAR[i % AVATAR.length] }} aria-hidden="true">{c.name.slice(0, 1)}</span>
-                        <span className="grow">
-                          <span className="name">{c.name}</span>
-                          {c.trip && <span className="pill warn">{c.trip}</span>}
-                        </span>
-                        <span className="tick" aria-hidden="true" />
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
+      <div className="row" style={{ gap: 8, fontSize: fs(13), color: "var(--sub)" }}>
+        <span className="grow">{g.status === "open" ? `${fmtDate(g.closesAt)}까지 바꿀 수 있어요.` : "맞히기가 마감됐어요."}</span>
+        <span className="chip violet num">{done}/{data.targets.length} 완료</span>
       </div>
+      {data.targets.length === 0 && <div className="msg info">아직 배포된 소개글이 없어요. 다른 회원이 작성하면 여기에 나타나요.</div>}
+      {/* 소개 목록(목업 C): 한 덩어리 안의 줄. 누르면 그 줄 아래로 소개 글과 후보가 펼쳐진다 */}
+      {data.targets.length > 0 && (
+        <ul className="rows">
+          {data.targets.map((t) => {
+            const chosen = data.candidates.find((c) => c.id === t.myChoice);
+            const expanded = openId === t.profileId;
+            return (
+              <li key={t.profileId}>
+                <button type="button" className="opt rowopt" aria-expanded={expanded} onClick={() => setOpenId(expanded ? "" : t.profileId)} style={{ minHeight: 56, padding: "10px 12px" }}>
+                  <span className="grow">
+                    <span className="name" style={{ fontSize: fs(15) }}>“{t.alias}”</span>
+                    <span className="small" style={{ fontSize: fs(12) }}>{chosen ? `내 선택: ${chosen.name}` : "아직 고르지 않았어요"}</span>
+                  </span>
+                  <span className={`chip ${chosen ? "violet" : "line"}`}>{chosen ? "고름" : "미선택"}</span>
+                  <span aria-hidden="true" style={{ color: "var(--dis)", transform: expanded ? "rotate(90deg)" : undefined, display: "inline-block" }}>›</span>
+                </button>
+                {expanded && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "4px 12px 14px", borderTop: "1px solid var(--line2)" }}>
+                    <p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: fs(14) }}>{t.introMd}</p>
+                    <h3 className="h3" style={{ fontSize: fs(14) }}>이 분은 누구일까요?</h3>
+                    <div className="rows" role="radiogroup" aria-label={`${t.alias} 추측`}>
+                      {data.candidates.map((c, i) => (
+                        <button key={c.id} type="button" role="radio" aria-checked={t.myChoice === c.id} className="opt rowopt" disabled={g.status !== "open"} onClick={() => pick(t, c)}
+                          style={{ minHeight: 48, padding: "8px 12px", ...(t.myChoice === c.id ? { background: "var(--violet-bg)" } : {}) }}>
+                          <span className="avatar" style={{ background: AVATAR[i % AVATAR.length], width: 30, height: 30, borderRadius: 8, fontSize: fs(13) }} aria-hidden="true">{c.name.slice(0, 1)}</span>
+                          <span className="grow" style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                            <span style={{ fontSize: fs(14), fontWeight: t.myChoice === c.id ? 700 : 500, color: t.myChoice === c.id ? "var(--violet-t)" : undefined }}>{c.name}</span>
+                            {c.trip && <span className="chip gray">{c.trip}</span>}
+                          </span>
+                          <span className="tick" aria-hidden="true" style={t.myChoice === c.id ? { background: "var(--violet)", borderColor: "var(--violet)" } : undefined}>{t.myChoice === c.id ? "✓" : ""}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </>
   );
 }

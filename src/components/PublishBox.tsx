@@ -86,14 +86,17 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
   }
 
   return (
-    <section className="card" aria-labelledby={`${uid}-h`} style={{ display: "flex", flexDirection: "column", gap: 12, borderColor: "var(--violet-line)" }}>
-      <b id={`${uid}-h`} style={{ font: `700 ${fs(17)} var(--display)` }}>게시글 업로드</b>
-      <span className="small">저장된 내용을 게시판 글로 올려요. 올린 그때의 내용이 글에 담기고, 나중에 내용을 바꾸면 여기서 다시 올려 주세요.</span>
-      <div className="checks" role="radiogroup" aria-label="올리는 방법">
-        <label><input type="radio" name={`${uid}-mode`} checked={mode === "new"} onChange={() => setMode("new")} />새 게시글로 올리기</label>
-        <label><input type="radio" name={`${uid}-mode`} checked={mode === "update"} disabled={posts.length === 0} onChange={() => setMode("update")} />기존 게시글 수정(업데이트)</label>
+    <section className="lcard" aria-labelledby={`${uid}-h`}>
+      <header className="lcard-h">
+        <h2 id={`${uid}-h`}>게시글 업로드</h2>
+        <p>저장된 내용을 게시판 글로 올려요. 올린 그때의 내용이 글에 담기고, 나중에 내용을 바꾸면 여기서 다시 올려 주세요.</p>
+      </header>
+      <div className="lcard-b">
+      <div className="seg" role="group" aria-label="올리는 방법">
+        <button type="button" aria-pressed={mode === "new"} onClick={() => setMode("new")} style={{ minHeight: 40, fontSize: fs(13) }}>새 게시글로</button>
+        <button type="button" aria-pressed={mode === "update"} disabled={posts.length === 0} onClick={() => setMode("update")} style={{ minHeight: 40, fontSize: fs(13) }}>기존 글 업데이트</button>
       </div>
-      {posts.length === 0 && <span className="small">아직 올린 {what}이 없어요.</span>}
+      {posts.length === 0 && <span className="small" style={{ fontSize: fs(12), marginTop: -6 }}>아직 올린 {what}이 없어요.</span>}
       {mode === "update" && posts.length > 0 && (
         <div>
           <label className="l" htmlFor={`${uid}-post`}>고칠 글</label>
@@ -128,9 +131,12 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
           {doneId && <> <Link href={`/board/${doneId}`} style={{ fontWeight: 700 }}>올린 글 보기 ›</Link></>}
         </div>
       )}
-      <button className="btn" type="button" disabled={busy || loading || !title.trim()} style={{ width: "auto", minWidth: 200, alignSelf: "flex-start" }} onClick={go}>
-        {busy ? "올리는 중…" : mode === "new" ? "새 게시글로 올리기" : "게시글 업데이트"}
-      </button>
+      </div>
+      <div className="lcard-f" style={{ justifyContent: "flex-end" }}>
+        <button className="btn" type="button" disabled={busy || loading || !title.trim()} style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14) }} onClick={go}>
+          {busy ? "올리는 중…" : mode === "new" ? "새 게시글로 올리기" : "게시글 업데이트"}
+        </button>
+      </div>
     </section>
   );
 }
