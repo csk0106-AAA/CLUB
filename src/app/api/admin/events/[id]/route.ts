@@ -3,8 +3,8 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
 import { audienceInput, inClubOrObserver, readObservers } from "@/lib/audience";
-import { clubAccount, clubLeaders, readAllClubInfo } from "@/lib/clubs";
-import { duesAccount, readDues } from "@/lib/dues";
+import { clubLeaders, readAllClubInfo } from "@/lib/clubs";
+import { clubPayAccount, duesAccount, readDues } from "@/lib/dues";
 import { getLists, memberClubs } from "@/lib/lists";
 import { notifyEvent } from "@/lib/push";
 import { fixLegacyTypes } from "@/lib/event-migrate";
@@ -70,10 +70,11 @@ export async function GET(_req: Request, ctx: Ctx) {
   // 소모임 선택지와 미리 채울 계좌: 소모임별 계좌·직책자, 모임회비관리 계좌
   const [info, dues] = await Promise.all([readAllClubInfo(), readDues()]);
   const lists = await getLists();
-  const clubs = lists.clubs.map((name) => {
-    const i = info[name];
-    return { name, account: i ? clubAccount(i) : "", holder: i?.holder ?? "", leaders: clubLeaders(members, name).map((l) => ({ name: l.name, role: l.role })) };
-  });
+  // 소모임 계좌: 소모임관리 › 회비관리의 계좌(없으면 예전 기본 정보의 계좌)
+  const clubs = await Promise.all(lists.clubs.map(async (name) => {
+    const p = await clubPayAccount(name, info[name]);
+    return { name, account: p.account, holder: p.holder, leaders: clubLeaders(members, name).map((l) => ({ name: l.name, role: l.role })) };
+  }));
   return NextResponse.json({
     event: { ...event, club, observers, feeRules: readRules(event.feeRules) },
     rows,

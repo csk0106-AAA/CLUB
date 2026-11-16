@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminOrOfficer } from "@/lib/api";
-import { clubAccount, clubLeaders, clubMembers, readAllClubInfo } from "@/lib/clubs";
+import { clubLeaders, clubMembers, readAllClubInfo } from "@/lib/clubs";
+import { clubPayAccount } from "@/lib/dues";
 import { getLists } from "@/lib/lists";
 import { getStore } from "@/lib/store";
 
@@ -13,15 +14,16 @@ export async function GET() {
   if ("err" in g) return g.err;
   const [lists, info, members] = await Promise.all([getLists(), readAllClubInfo(), (await getStore()).list("Members")]);
   const names = g.adminOk ? lists.clubs : lists.clubs.filter((n) => g.officerOf.includes(n));
-  const clubs = names.map((name) => {
+  const clubs = await Promise.all(names.map(async (name) => {
     const i = info[name];
     return {
       name,
       count: clubMembers(members, name).length,
       leaders: clubLeaders(members, name).map((l) => ({ name: l.name, role: l.role })),
-      account: i ? clubAccount(i) : "",
+      // 입금계좌: 소모임 › 회비관리의 계좌(없으면 예전 기본 정보의 계좌)
+      account: (await clubPayAccount(name, i)).account,
       cycle: i?.cycle ?? "",
     };
-  });
+  }));
   return NextResponse.json({ clubs, admin: g.adminOk });
 }

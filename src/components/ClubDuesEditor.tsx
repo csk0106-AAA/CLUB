@@ -67,7 +67,7 @@ export function ClubDuesEditor({ club }: { club: string }) {
   return (
     <div id="club-dues" style={{ display: "flex", flexDirection: "column", gap: 14, scrollMarginTop: 16 }}>
       <b style={{ font: `700 ${fs(16)} var(--display)` }}>{data.club} 회비</b>
-      <span className="small" style={{ fontSize: fs(12), marginTop: -8 }}>관리자와 소모임 {data.headRole || "회장"}이 정할 수 있어요. 계좌는 처음에 소모임 기본 정보의 계좌로 채워져요.</span>
+      <span className="small" style={{ fontSize: fs(12), marginTop: -8 }}>관리자와 소모임 {data.headRole || "회장"}이 정할 수 있어요. 여기 입금계좌가 소모임 일정을 만들 때 일정 입금계좌로 먼저 들어가요.</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <DuesForm value={d} onChange={setD} kinds={data.options.kinds} positions={data.options.positions} unit="회비" posLabel="소모임 직책" />

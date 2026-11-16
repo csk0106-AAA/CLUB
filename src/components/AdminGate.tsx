@@ -30,6 +30,7 @@ export function AdminGate(props: {
   mode?: AdminMode;
   need?: string[];
   active?: string;
+  hideSub?: boolean; // 하위 메뉴를 숨긴다(소모임 화면처럼 자기 제목·돌아가기가 맨 위에 있을 때)
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -160,7 +161,7 @@ export function AdminGate(props: {
         </nav>
       </header>
       {/* 하위 메뉴가 하나뿐이면(일정 목록·소모임 목록) 위쪽 메뉴와 같은 곳이라 보여 주지 않는다 */}
-      {sub.length > 1 && (
+      {sub.length > 1 && !props.hideSub && (
         <nav className="subnav menu" aria-label="하위 메뉴">
           {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""} aria-current={props.active === s.href ? "page" : undefined}>{s.label}</Link>)}
         </nav>

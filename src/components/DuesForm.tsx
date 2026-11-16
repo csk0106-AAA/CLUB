@@ -82,6 +82,24 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
         </div>
       </section>
 
+      <section className="lcard" aria-labelledby={`${id}-h3`}>
+        <header className="lcard-h">
+          <h2 id={`${id}-h3`}>입금 계좌</h2>
+        </header>
+        <div className="lcard-b">
+        <div className="grid2">
+          <div><label className="l" htmlFor={`${id}-bank`}>은행</label><input id={`${id}-bank`} className="field" maxLength={40} placeholder="예) 국민은행" value={d.bank} onChange={(e) => set("bank", e.target.value)} /></div>
+          <div><label className="l" htmlFor={`${id}-acc`}>계좌번호</label><input id={`${id}-acc`} className="field" maxLength={80} placeholder="예) 123-456-789012" value={d.account} onChange={(e) => set("account", e.target.value)} /></div>
+          <div><label className="l" htmlFor={`${id}-holder`}>예금주</label><input id={`${id}-holder`} className="field" maxLength={60} value={d.holder} onChange={(e) => set("holder", e.target.value)} /></div>
+        </div>
+        <div>
+          <label className="l" htmlFor={`${id}-note`}>안내 메모</label>
+          <textarea id={`${id}-note`} className="field" rows={3} maxLength={1000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
+            placeholder="예) 입금자명은 이름으로 써 주세요." value={d.note} onChange={(e) => set("note", e.target.value)} />
+        </div>
+        </div>
+      </section>
+
       <section className="lcard" aria-labelledby={`${id}-h2`}>
         <header className="lcard-h">
           <h2 id={`${id}-h2`}>입금 기한</h2>
@@ -103,24 +121,6 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
             <span style={{ fontSize: fs(14) }}>까지</span>
           </div>
         )}
-        </div>
-      </section>
-
-      <section className="lcard" aria-labelledby={`${id}-h3`}>
-        <header className="lcard-h">
-          <h2 id={`${id}-h3`}>입금 계좌</h2>
-        </header>
-        <div className="lcard-b">
-        <div className="grid2">
-          <div><label className="l" htmlFor={`${id}-bank`}>은행</label><input id={`${id}-bank`} className="field" maxLength={40} placeholder="예) 국민은행" value={d.bank} onChange={(e) => set("bank", e.target.value)} /></div>
-          <div><label className="l" htmlFor={`${id}-acc`}>계좌번호</label><input id={`${id}-acc`} className="field" maxLength={80} placeholder="예) 123-456-789012" value={d.account} onChange={(e) => set("account", e.target.value)} /></div>
-          <div><label className="l" htmlFor={`${id}-holder`}>예금주</label><input id={`${id}-holder`} className="field" maxLength={60} value={d.holder} onChange={(e) => set("holder", e.target.value)} /></div>
-        </div>
-        <div>
-          <label className="l" htmlFor={`${id}-note`}>안내 메모</label>
-          <textarea id={`${id}-note`} className="field" rows={3} maxLength={1000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
-            placeholder="예) 입금자명은 이름으로 써 주세요." value={d.note} onChange={(e) => set("note", e.target.value)} />
-        </div>
         </div>
       </section>
     </>

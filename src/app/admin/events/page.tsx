@@ -23,10 +23,10 @@ const isPast = (e: Ev, today: string) => {
 };
 const TYPE_CHIP: Record<string, string> = { red: "red", violet: "violet", warn: "warn", ink: "ink", gray: "line" };
 
-// 관리자 › 일정관리: "+ 일정 만들기"와 만든 일정 전체(초안·공개). 누르면 그 일정의 관리 화면으로.
+// 관리자 › 일정관리: "+ 일정 만들기"와 만든 일정(초안·공개). 누르면 그 일정의 관리 화면으로.
+// 소모임 일정은 여기서 만들거나 보여 주지 않는다(소모임관리 › 소모임 › 소모임일정관리에서).
 function EventsAdmin() {
   const [events, setEvents] = useState<Ev[] | null>(null);
-  const [clubs, setClubs] = useState<string[]>([]);
   const [msg, setMsg] = useState("");
   const [canCreate, setCanCreate] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
@@ -40,16 +40,15 @@ function EventsAdmin() {
       setCanCreate(r.data.perms.includes("all") || r.data.perms.includes("events"));
       setUnlocked(r.data.admin);
     });
-    api<{ events: Ev[]; clubs: string[] }>("/api/admin/events").then((r) => {
+    api<{ events: Ev[] }>("/api/admin/events").then((r) => {
       if (!r.ok) return setMsg(r.error);
-      setEvents(r.data.events);
-      setClubs(r.data.clubs);
+      setEvents(r.data.events.filter((e) => !e.club));
     });
   }, []);
 
   const today = todayKst();
   const word = q.trim().toLowerCase();
-  const match = (e: Ev) => !word || [e.name, e.type, e.place, e.club ?? ""].some((x) => x.toLowerCase().includes(word));
+  const match = (e: Ev) => !word || [e.name, e.type, e.place].some((x) => x.toLowerCase().includes(word));
   const list = (events ?? []).filter(match);
   const key = (e: Ev) => e.startsAt || "9999";
   // 예정: 고정 → 가까운 날짜부터(날짜 미정은 맨 뒤) / 지난: 최근 것부터
@@ -91,7 +90,7 @@ function EventsAdmin() {
         )}
       </div>
       <p className="small" style={{ margin: 0 }}>
-        만든 일정이 모두 보여요{drafts ? ` (초안 ${drafts}개는 아직 회원에게 안 보여요)` : ""}. 일정을 누르면 관리 화면에서 개요·참석 신청·회비·활동 등을 다뤄요.
+        만든 일정이 모두 보여요{drafts ? ` (초안 ${drafts}개는 아직 회원에게 안 보여요)` : ""}. 일정을 누르면 관리 화면에서 개요·참석 신청·회비·활동 등을 다뤄요. 소모임 일정은 소모임관리에서 만들고 관리해요.
         {!canCreate && " 새 일정은 일정 권한이 있는 관리자가 만들어요."}
       </p>
       {msg && <div className="msg bad" role="alert">{msg}</div>}
@@ -100,7 +99,7 @@ function EventsAdmin() {
       {events && events.length > 0 && (
         <div>
           <label className="l" htmlFor="ev-q">일정 찾기</label>
-          <input id="ev-q" className="field" type="search" placeholder="이름, 유형, 장소, 소모임" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input id="ev-q" className="field" type="search" placeholder="이름, 유형, 장소" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       )}
       {events && events.length === 0 && <div className="msg info">아직 만든 일정이 없어요. “+ 일정 만들기”로 시작해 보세요.</div>}
@@ -125,7 +124,7 @@ function EventsAdmin() {
         </section>
       )}
 
-      {canCreate && creating && <EventCreate open={creating} onClose={() => setCreating(false)} clubs={clubs} unlocked={unlocked} />}
+      {canCreate && creating && <EventCreate open={creating} onClose={() => setCreating(false)} unlocked={unlocked} />}
     </>
   );
 }

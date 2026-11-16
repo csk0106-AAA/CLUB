@@ -260,8 +260,9 @@ function Detail({ id }: { id: string }) {
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
           <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "초안"}</span>
-          <Link href="/admin/events" style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
-            ‹ 일정 목록
+          {/* 소모임 일정은 소모임관리 › 그 소모임 › 소모임일정관리로 돌아간다 */}
+          <Link href={ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events"} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
+            {ev.club ? `‹ ${ev.club} 일정 목록` : "‹ 일정 목록"}
           </Link>
           {ev.published === "true" && (
             <Link href={`/events/${id}`} style={{ fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
@@ -521,7 +522,9 @@ function Detail({ id }: { id: string }) {
   );
 }
 
-export default function EventDetailAdminPage({ params }: { params: Promise<{ id: string }> }) {
+// 소모임관리에서 열면(?club=소모임) 위쪽 메뉴도 소모임관리로 둔다.
+export default function EventDetailAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ club?: string }> }) {
   const { id } = use(params);
-  return <AdminGate mode="events" need={["events", "fees"]}><Detail id={id} /></AdminGate>;
+  const { club } = use(searchParams);
+  return <AdminGate mode={club ? "clubs" : "events"} active={club ? "/admin/clubs" : undefined} need={["events", "fees"]}><Detail id={id} /></AdminGate>;
 }

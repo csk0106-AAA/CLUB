@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { audienceInput, inClubOrObserver } from "@/lib/audience";
-import { clubAccount, readClubInfo } from "@/lib/clubs";
-import { duesAccount, readDues } from "@/lib/dues";
+import { readClubInfo } from "@/lib/clubs";
+import { clubPayAccount, duesAccount, readDues } from "@/lib/dues";
 import { getLists } from "@/lib/lists";
 import { isLight } from "@/lib/event-types";
 import { EVENT_TYPES } from "@/lib/schemas";
@@ -71,9 +71,9 @@ export async function POST(req: Request) {
   // 회의·미팅은 회비가 없어 비워 둔다.
   let account = "", accountHolder = "";
   if (club) {
-    const i = await readClubInfo(club);
-    account = clubAccount(i);
-    accountHolder = i.holder;
+    const p = await clubPayAccount(club, await readClubInfo(club));
+    account = p.account;
+    accountHolder = p.holder;
   } else if (!isLight(type)) {
     const d = await readDues();
     account = duesAccount(d);

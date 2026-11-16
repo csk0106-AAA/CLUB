@@ -599,6 +599,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .otb > li:first-child::before, .otb > li:last-child::after { border-top: 0; }
 .otb .otn { min-width: 64px; max-width: 92px; padding: 6px 6px; }
 .otb > li { padding-left: 2px; padding-right: 2px; }
+/* 소모임 화면 탭 4개: 넓으면 한 줄, 휴대폰은 2×2 */
+.tabsx.ctabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; }
+.tabsx.ctabs button { justify-content: center; min-height: 38px; }
+@media (max-width: 520px) { .tabsx.ctabs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* 회원 고르기 칸(MemberSearch): 입력 + ▾ + 아래로 뜨는 후보 목록 */
 .msearch { position: relative; }
 .msearch > .field { padding-right: 46px; }

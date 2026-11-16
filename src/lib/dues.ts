@@ -82,6 +82,14 @@ export async function writeClubDues(club: string, d: Dues): Promise<void> {
   await setSetting("clubDues", { ...(all && typeof all === "object" ? all : {}), [club]: d });
 }
 
+// 소모임 입금계좌: 소모임관리 › 회비관리의 계좌. 아직 회비를 저장하지 않았으면 예전 소모임 기본 정보의 계좌.
+// 소모임 일정을 만들 때 일정 입금계좌로 먼저 넣는다.
+export async function clubPayAccount(club: string, info?: { bank: string; account: string; holder: string }): Promise<{ account: string; holder: string }> {
+  const d = await readClubDues(club);
+  if (d && (d.account || d.bank || d.holder)) return { account: duesAccount(d), holder: d.holder };
+  return info ? { account: duesAccount(info), holder: info.holder } : { account: "", holder: "" };
+}
+
 // 이 회원의 회비(금액 문자열, "" = 없음). 조건별 금액 → 기본 금액.
 export function duesAmount(d: { amount: string; rules: DuesRule[] }, m: { kind?: string; position?: string }): string {
   return feeFor({ fee: d.amount, feeRules: JSON.stringify(d.rules.map((r) => ({ days: "", ...r }))) }, m, null);
