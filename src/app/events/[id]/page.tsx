@@ -69,6 +69,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const router = useRouter();
   const [d, setD] = useState<Detail | null>(null);
   const [schedule, setSchedule] = useState<SchedItem[]>([]);
+  const [dayPlaces, setDayPlaces] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [manage, setManage] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,11 +84,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setManage(canManageOf(m.data.livePerms));
     const [r, mine] = await Promise.all([
       api<Detail>(`/api/events/${id}`),
-      api<{ schedule: SchedItem[] }>(`/api/events/${id}/mine`),
+      api<{ schedule: SchedItem[]; dayPlaces?: Record<string, string> }>(`/api/events/${id}/mine`),
     ]);
     if (!r.ok) return setError(r.error);
     setD(r.data);
-    if (mine.ok) setSchedule(mine.data.schedule);
+    if (mine.ok) {
+      setSchedule(mine.data.schedule);
+      setDayPlaces(mine.data.dayPlaces ?? {});
+    }
   }, [id, router]);
 
   useEffect(() => {
@@ -209,7 +213,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
       {schedule.length > 0 && (
         <Fold title="일정" summary={`세부 일정 ${schedule.length}개`}>
-          <ScheduleView items={schedule} />
+          <ScheduleView items={schedule} dayPlaces={dayPlaces} />
         </Fold>
       )}
 

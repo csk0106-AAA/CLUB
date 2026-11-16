@@ -4,6 +4,7 @@ import { DIRS, DIR_LABEL, carpoolState, cars } from "@/lib/carpool";
 import { roomState, rooms } from "@/lib/rooms";
 import { gTeams } from "@/lib/groups";
 import { eventVisible } from "@/lib/audience";
+import { readDayPlaces } from "@/lib/day-places";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   return NextResponse.json({
     rooms: { published: roomSt.published, mine: myRooms },
     schedule: sched.filter((r) => r.eventId === id).sort((a, b) => a.at.localeCompare(b.at)).map((r) => ({ at: r.at, title: r.title, place: r.place ?? "", memo: r.memo ?? "" })),
+    dayPlaces: readDayPlaces(ev.dayPlaces), // 세부일정 날짜별 기본 위치
     groups: myGroups,
     carpool: { published: state.published, mine: myCars },
   });

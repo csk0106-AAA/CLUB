@@ -7,6 +7,7 @@ import { fs } from "@/lib/fs";
 
 type Data = {
   schedule: SchedItem[];
+  dayPlaces?: Record<string, string>;
   groups: { title: string; team: string; members: string[] }[];
   rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[] }[] };
   carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number }[] };
@@ -44,7 +45,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
         <section className="card" aria-label="일정">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>일정</b>
           {/* 날짜 제목 아래 시간순 */}
-          <ScheduleView items={d.schedule} />
+          <ScheduleView items={d.schedule} dayPlaces={d.dayPlaces} />
         </section>
       )}
       {d.groups.map((g, i) => (

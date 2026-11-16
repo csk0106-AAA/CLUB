@@ -582,6 +582,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .sic:hover { border-color: var(--line); }
 .sic:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .tl li.tlrow { align-items: flex-start; gap: 6px; }
+/* 세부일정 날짜 옆 기본 위치 칩 */
+.dplace { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; max-width: 100%; padding: 0 10px; border: 1px dashed var(--line); border-radius: 16px; background: transparent; color: var(--sub); font: 500 calc(13px * var(--fs, 1)) var(--body); cursor: pointer; }
+.dplace span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dplace svg { flex: none; width: 15px; height: 15px; }
+.dplace.on { border-style: solid; border-color: transparent; background: var(--violet-bg); color: var(--violet); }
+.dplace:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .tl li .tlb { flex: 1; min-width: 0; display: flex; gap: 14px; }
 @media (max-width: 420px) { .tl li.tlrow { flex-direction: row; } .tl li .tlb { flex-direction: column; gap: 0; } }
 .tl .sics { margin-top: -8px; margin-bottom: -8px; }

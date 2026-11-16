@@ -13,6 +13,7 @@ import { DateField } from "@/components/DateField";
 import { ObserversCard } from "@/app/events/[id]/ObserversCard";
 import { EventPreview, eventInfoLines } from "@/components/EventInfoCard";
 import type { SchedItem } from "@/components/ScheduleBoard";
+import { readDayPlaces } from "@/lib/day-places";
 import { EventAudience } from "./EventAudience";
 import { api, fmtDate, fmtDateDow, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
@@ -26,6 +27,7 @@ type Ev = {
   feeRules?: FeeRule[];
   club?: string; // 소모임 일정의 소모임
   audience?: string; // 공개 대상 JSON(소모임이 아닌 일정)
+  dayPlaces?: string; // 세부일정 날짜별 기본 위치 JSON
 };
 type Row = {
   memberId: string; name: string; kind: string; position: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string;
@@ -326,7 +328,7 @@ function Detail({ id }: { id: string }) {
             <span className="hint">{ev.booking.length}/2000자 · 회원 화면에도 줄바꿈 그대로 보여요.</span>
           </div>
 
-          <EventPreview ev={infoEv} rules={rules} actNames={actNames} schedule={schedule} />
+          <EventPreview ev={infoEv} rules={rules} actNames={actNames} schedule={schedule} dayPlaces={readDayPlaces(ev.dayPlaces)} />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="submit" disabled={busy} style={{ width: "auto", minWidth: 160 }}>임시 저장</button>
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }} onClick={() => save(true)}>

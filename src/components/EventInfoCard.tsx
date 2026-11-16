@@ -134,7 +134,7 @@ export const feeSummary = (ev: InfoEvent, fee: FeeView) => feeLines(ev, fee)[0]?
 export const noticeSummary = (text: string) => text.trim().split("\n")[0].slice(0, 40);
 
 // 관리자 개요의 "회원에게 보이는 모습": 회원 일정 화면의 위쪽과 같은 조각을 펼친 채로 보여 준다.
-export function EventPreview({ ev, rules, actNames, schedule }: { ev: InfoEvent; rules: FeeRule[]; actNames: string[]; schedule: SchedItem[] }) {
+export function EventPreview({ ev, rules, actNames, schedule, dayPlaces }: { ev: InfoEvent; rules: FeeRule[]; actNames: string[]; schedule: SchedItem[]; dayPlaces?: Record<string, string> }) {
   const fee: FeeView = { kind: "rules", rules };
   const hasFee = feeLines(ev, fee).length > 0;
   return (
@@ -154,7 +154,7 @@ export function EventPreview({ ev, rules, actNames, schedule }: { ev: InfoEvent;
         </Fold>
       )}
       {ev.booking?.trim() && <Fold title="안내" defaultOpen><NoticeText text={ev.booking.trim()} /></Fold>}
-      {schedule.length > 0 && <Fold title="일정" defaultOpen><ScheduleView items={schedule} /></Fold>}
+      {schedule.length > 0 && <Fold title="일정" defaultOpen><ScheduleView items={schedule} dayPlaces={dayPlaces} /></Fold>}
       <span className="small" style={{ color: "var(--sub)" }}>회원 화면에서는 위 칸들이 접힌 채로 보이고 “펼쳐서 보기”로 열어요. 아래에 참석 신청 버튼이 있어요.</span>
     </div>
   );
