@@ -8,7 +8,8 @@ import { fs } from "@/lib/fs";
 type Data = {
   schedule: SchedItem[];
   dayPlaces?: Record<string, string>;
-  groups: { title: string; team: string; members: string[] }[];
+  groups: { title: string; team: string; members: string[]; teams?: { name: string; members: string[]; mine: boolean }[] }[];
+  groupsPending?: number;
   rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[] }[] };
   carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number }[] };
 };
@@ -35,12 +36,43 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
   }, [eventId]);
 
   if (!d) return null;
-  const nothingYet = d.groups.length === 0 && !(d.carpool.published && d.carpool.mine.length > 0);
+  const head = (t: string) => <b style={{ font: `700 ${fs(17)} var(--display)` }}>{t}</b>;
+  // 아직 배정 전인 칸: 참석 회원(placeholder)에게만 "배정 전" 안내를 보여 준다
+  const waitCard = (title: string, text: string) =>
+    placeholder ? <section className="card" aria-label={title}>{head(title)}<div className="small">{text}</div></section> : null;
   return (
     <>
-      {placeholder && nothingYet && (
-        <div className="card"><b style={{ font: `700 ${fs(17)} var(--display)` }}>내 조와 카풀</b><div className="small">조 편성 후 알려 드려요.</div></div>
-      )}
+      {d.groups.length === 0 && waitCard("조편성", (d.groupsPending ?? 0) > 0 ? "조편성을 준비하고 있어요. 확정되면 여기에 보여요." : "조 편성 전이에요. 정해지면 여기에 보여요.")}
+      {d.groups.map((g, i) => (
+        <section key={i} className="card" aria-label={`조편성 ${g.title}`} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {head(`조편성 · ${g.title}`)}
+          {g.team ? (
+            <>
+              <div className="row" style={{ flexWrap: "wrap" }}><span className="small">내 조</span><span className="pill blue">{g.team}</span></div>
+              <div className="small">{g.members.join(", ")}</div>
+            </>
+          ) : (
+            <div className="small">내가 들어간 조는 없어요.</div>
+          )}
+          {(g.teams?.length ?? 0) > 0 && (
+            <details open={!g.team}>
+              <summary className="small" style={{ cursor: "pointer" }}>전체 조 보기 ({g.teams!.length}개 조)</summary>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                {g.teams!.map((t, j) => (
+                  <div key={j} style={{ borderTop: j ? "1px solid var(--line)" : undefined, paddingTop: j ? 6 : 0 }}>
+                    <span className={`pill ${t.mine ? "blue" : "gray"}`}>{t.name}</span>{" "}
+                    <span className="small">{t.members.length}명 · {t.members.join(", ")}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </section>
+      ))}
+      {!d.carpool.published && waitCard("카풀", "카풀 배정 전이에요. 정해지면 여기에 보여요.")}
+      {d.carpool.published && d.carpool.mine.length === 0 && waitCard("카풀", "배정된 카풀이 없어요.")}
+      {!d.rooms?.published && waitCard("방 배정", "방 배정 전이에요. 정해지면 여기에 보여요.")}
+      {d.rooms?.published && d.rooms.mine.length === 0 && waitCard("방 배정", "배정된 방이 없어요.")}
       {!noSchedule && d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>일정</b>
@@ -48,16 +80,9 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
           <ScheduleView items={d.schedule} dayPlaces={d.dayPlaces} />
         </section>
       )}
-      {d.groups.map((g, i) => (
-        <section key={i} className="card" aria-label={`내 조 ${g.title}`}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>{g.title}</b>
-          <div><span className="pill blue">{g.team}</span></div>
-          <div className="small">{g.members.join(", ")}</div>
-        </section>
-      ))}
       {d.rooms?.published && d.rooms.mine.length > 0 && (
         <section className="card" aria-label="내 숙소" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>내 숙소</b>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>방 배정</b>
           {d.rooms.mine.map((r, i) => (
             <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
               <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{fmtDate(r.date)} 숙박</span><b>{r.name}</b></div>
