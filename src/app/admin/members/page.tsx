@@ -667,7 +667,7 @@ function Members() {
       {shown.length > 0 && (
         <ul className="rows bleed only-narrow" aria-label="회원 목록">
           {shown.map((m, i) => (
-            <li key={m.id} className="mrow" ref={dsNarrow.item(i).ref} style={{ ...dsNarrow.item(i).style, paddingLeft: 4 }}>
+            <li key={m.id} className="mrow" ref={dsNarrow.item(i).ref} style={{ ...dsNarrow.item(i).style, paddingLeft: 4, gap: 6 }}>
               <DragHandle plain {...dsNarrow.handle(i, m.name)} />
               <Avatar member={m} size={36} />
               <span className="who">
@@ -679,19 +679,17 @@ function Members() {
                     <button className="mini" type="button" style={{ minHeight: 32 }} onClick={() => ackGender(m)}>확인</button>
                   </span>
                 )}
+                {m.app && <span style={{ marginTop: 2 }}><AppLabel app={m.app} /></span>}
               </span>
-              <span style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
-                <span className="chip line">{m.kind || "미지정"}</span>
-                {m.app && <AppLabel app={m.app} />}
-                {/* 프로필 북 노출: 눌러서 켜고 끈다 */}
-                <label className="small" style={{ display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", whiteSpace: "nowrap", fontSize: fs(11) }}>
-                  <input type="checkbox" checked={m.bookHidden !== "true"} onChange={() => toggleBook(m)} style={{ width: 16, height: 16 }} aria-label={`${m.name} 프로필 북 노출`} />북
-                </label>
-              </span>
-              <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" onClick={() => startEdit(m)}>
+              {/* 한 줄: 회원구분 · 프로필 북 체크 · 수정 · 삭제 */}
+              <span className="chip line" style={{ flex: "none", whiteSpace: "nowrap" }}>{m.kind || "미지정"}</span>
+              <label className="small" title="프로필 북 노출" style={{ display: "inline-flex", alignItems: "center", gap: 2, cursor: "pointer", whiteSpace: "nowrap", fontSize: fs(11), flex: "none" }}>
+                <input type="checkbox" checked={m.bookHidden !== "true"} onChange={() => toggleBook(m)} style={{ width: 16, height: 16 }} aria-label={`${m.name} 프로필 북 노출`} />북
+              </label>
+              <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" style={{ width: 36, marginRight: -8 }} onClick={() => startEdit(m)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
               </button>
-              <button className="edit" type="button" aria-label={`${m.name} 삭제`} title="삭제" style={{ color: "var(--red-t)", marginLeft: -8 }} onClick={() => remove(m)}>
+              <button className="edit" type="button" aria-label={`${m.name} 삭제`} title="삭제" style={{ color: "var(--red-t)", width: 36 }} onClick={() => remove(m)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></svg>
               </button>
             </li>
