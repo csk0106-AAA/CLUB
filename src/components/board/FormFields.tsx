@@ -102,7 +102,7 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
           })}
         </ul>
       )}
-      <button className="mini" type="button" style={{ alignSelf: "flex-start", minHeight: 40 }} onClick={() => setRules([...rules, { kind: "", position: "", amount: "" }])}>+ 조건별 금액 추가</button>
+      <button className="btn" type="button" style={{ width: "auto", alignSelf: "flex-end", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setRules([...rules, { kind: "", position: "", amount: "" }])}>+ 조건별 금액 추가</button>
       {rules.some((r) => !r.amount) && <span className="small" role="alert" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
       {dup && <span className="small" role="alert" style={{ color: "var(--red-t)" }}>같은 조건의 줄이 두 번 있어요. 하나를 삭제해 주세요.</span>}
     </div>

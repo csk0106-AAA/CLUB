@@ -263,6 +263,8 @@ a { color: var(--violet-t); }
 .tbl.compact .field, .compact-form .field { min-height: 34px; font-size: calc(13px * var(--fs, 1)); padding: 0 8px; }
 .compact-form .l { font-size: calc(12px * var(--fs, 1)); margin-bottom: 4px; }
 .compact-form .df button { min-height: 34px; width: 34px; }
+.compact-form .rules .field { min-height: 34px; font-size: calc(13px * var(--fs, 1)); }
+.compact-form .rules > li { padding: 4px 6px; }
 textarea.field { padding: 10px 12px; line-height: 1.55; }
 .field::placeholder { color: var(--muted); }
 .field:disabled { background: var(--soft); opacity: 0.7; cursor: not-allowed; }

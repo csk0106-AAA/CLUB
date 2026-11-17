@@ -68,7 +68,7 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
           <h2 id={`${id}-h1`}>{unit} 종류와 금액</h2>
           <p>회원구분·{posLabel}마다 금액이 다르면 “조건별 금액”을 더해요. 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>(같으면 위쪽 줄)을 쓰고, 없으면 기본 금액을 써요. {posLabel} “일반회원”은 {posLabel === "직책" ? "직책이 없는 회원" : "이 소모임에서 직책이 없는 회원"}이에요.</p>
         </header>
-        <div className="lcard-b">
+        <div className="lcard-b compact-form">
           <div className="row" style={{ gap: 10 }}>
             <span id={`${id}-pl`} className="grow" style={{ fontSize: fs(14) }}>종류</span>
             <div className="seg" role="group" aria-labelledby={`${id}-pl`} style={{ width: 168, flex: "none" }}>
@@ -86,7 +86,7 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
         <header className="lcard-h">
           <h2 id={`${id}-h3`}>입금 계좌</h2>
         </header>
-        <div className="lcard-b">
+        <div className="lcard-b compact-form">
         <div className="grid2">
           <div><label className="l" htmlFor={`${id}-bank`}>은행</label><input id={`${id}-bank`} className="field" maxLength={40} placeholder="예) 국민은행" value={d.bank} onChange={(e) => set("bank", e.target.value)} /></div>
           <div><label className="l" htmlFor={`${id}-acc`}>계좌번호</label><input id={`${id}-acc`} className="field" maxLength={80} placeholder="예) 123-456-789012" value={d.account} onChange={(e) => set("account", e.target.value)} /></div>
@@ -105,7 +105,7 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
           <h2 id={`${id}-h2`}>입금 기한</h2>
           {d.period === "annual" && <p>연회비를 받는 기간이에요. 끝 날짜의 해가 지나면 관리자에게 “새해 연회비를 정해 주세요” 알림이 떠요.</p>}
         </header>
-        <div className="lcard-b">
+        <div className="lcard-b compact-form">
         {d.period === "annual" ? (
           <div className="grid2">
             <div><label className="l" htmlFor={`${id}-ps`}>입금 기간 시작</label><DateField id={`${id}-ps`} mode="date" value={d.periodStart} onChange={(v) => set("periodStart", v)} /></div>
@@ -114,7 +114,7 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
         ) : (
           <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
             <label htmlFor={`${id}-md`} style={{ fontSize: fs(14) }}>매월</label>
-            <select id={`${id}-md`} className="field" style={{ width: 110, minHeight: 44 }} value={d.monthDay} onChange={(e) => set("monthDay", e.target.value)}>
+            <select id={`${id}-md`} className="field" style={{ width: 110 }} value={d.monthDay} onChange={(e) => set("monthDay", e.target.value)}>
               <option value="">고르기</option>
               {Array.from({ length: 31 }, (_, i) => String(i + 1)).map((n) => <option key={n} value={n}>{n}일</option>)}
             </select>
