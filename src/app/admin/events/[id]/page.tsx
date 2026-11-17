@@ -70,6 +70,23 @@ const tags = (r: Row) => (
   </>
 );
 
+// 작은 통계 카드 하나: [이름, 값, (설명), (색)] 줄을 2칸씩(비용 탭 요약과 같은 크기)
+function MiniStats({ items }: { items: [string, string, string?, string?][] }) {
+  return (
+    <section className="card" style={{ padding: 12 }}>
+      <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 12px", fontSize: fs(13) }}>
+        {items.map(([k, v, sub, c]) => (
+          <div key={k} title={sub} style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: "0 6px", borderBottom: "1px solid var(--line)", paddingBottom: 4 }}>
+            <dt className="small" style={{ margin: 0, whiteSpace: "nowrap", fontSize: fs(12) }}>{k}</dt>
+            <dd className="num" style={{ margin: "0 0 0 auto", fontWeight: 700, whiteSpace: "nowrap", color: c }}>{v}</dd>
+            {sub && <span className="small" style={{ flexBasis: "100%", fontSize: fs(11) }}>{sub}</span>}
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 function Detail({ id }: { id: string }) {
   const [ev, setEv] = useState<Ev | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -509,7 +526,7 @@ function Detail({ id }: { id: string }) {
                   <tbody>
                     {rules.map((r, i) => {
                       const upd = (patch: Partial<FeeRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-                      const sel = { minHeight: 44, padding: "0 8px" } as const;
+                      const sel = { minHeight: 36, padding: "0 8px", fontSize: fs(13) } as const;
                       return (
                         <tr key={i}>
                           <td>
@@ -566,7 +583,7 @@ function Detail({ id }: { id: string }) {
                   <tbody>
                     {supports.map((x, i) => {
                       const upd = (patch: Partial<Support>) => setSupports(supports.map((y, j) => (j === i ? { ...y, ...patch } : y)));
-                      const sel = { minHeight: 44, padding: "0 8px" } as const;
+                      const sel = { minHeight: 36, padding: "0 8px", fontSize: fs(13) } as const;
                       return (
                         <tr key={i}>
                           <td>
@@ -593,26 +610,26 @@ function Detail({ id }: { id: string }) {
             {supports.some((x) => !x.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 지원금이 있어요. 금액을 넣거나 삭제해 주세요.</span>}
           </section>
           {/* 총 예산 */}
-          <div className="cards">
-            <div className="card"><span className="small">참석자 회비 합계</span><div className="big">{won(totalOwed)}</div><span className="small">참석 {attend.length}명</span></div>
-            <div className="card"><span className="small">지원금</span><div className="big">{won(supDues + supMember)}</div><span className="small">회비 지원 {won(supDues)} · 회원 지원 {won(supMember)}</span></div>
-            <div className="card"><span className="small">총 예산</span><div className="big" style={{ color: "var(--blue-t)" }}>{won(totalBudget)}</div><span className="small">회비 + 지원금 (저장 기준)</span></div>
-          </div>
+          <MiniStats items={[
+            ["참석자 회비 합계", `${won(totalOwed)} (${attend.length}명)`],
+            ["지원금", won(supDues + supMember), `연(월)회비 지원 ${won(supDues)} · 회원 지원 ${won(supMember)}`],
+            ["총 예산", won(totalBudget), "회비 + 지원금 (저장 기준)", "var(--blue-t)"],
+          ]} />
           {!light && (
             <div className="row" style={{ flexWrap: "wrap" }}>
               <button className="btn" type="button" disabled={busy || supports.some((x) => !x.amount)} style={{ width: "auto", minWidth: 160 }} onClick={() => save()}>회비 저장</button>
               <span className="small">회비 설정과 지원금을 저장해요. 공개 상태는 그대로예요.</span>
             </div>
           )}
-          <div className="cards">
-            <div className="card"><span className="small">입금 완료</span><div className="big" style={{ color: "var(--green-t)" }}>{paid.length}명</div><span className="small">{won(totalPaid)} / {won(totalOwed)}</span></div>
-            <div className="card"><span className="small">미입금</span><div className="big" style={{ color: "var(--red-t)" }}>{attend.length - paid.length}명</div></div>
-          </div>
+          <MiniStats items={[
+            ["입금 완료", `${paid.length}명 · ${won(totalPaid)} / ${won(totalOwed)}`, undefined, "var(--green-t)"],
+            ["미입금", `${attend.length - paid.length}명`, undefined, "var(--red-t)"],
+          ]} />
           <span className="small">“입금 확인”을 누르면 그 회원 화면의 회비 알림이 바로 사라져요. 미입금 회원에게는 알림이 계속 보여요.</span>
           {attend.length === 0 && <div className="msg info">아직 참석을 신청한 회원이 없어요.</div>}
           {attend.length > 0 && (
             <div className="tblw">
-              <table className="tbl" style={{ minWidth: 520 }}>
+              <table className="tbl" style={{ minWidth: 520, fontSize: fs(13) }}>
                 <thead><tr><th>이름</th><th>금액</th><th>입금 상태</th><th>확인일</th><th></th></tr></thead>
                 <tbody>
                   {attend.map((r) => (
