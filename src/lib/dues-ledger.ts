@@ -4,7 +4,7 @@ import { effectivePerms, getPermGroups } from "./perms";
 import { readSupports } from "./supports";
 import type { Row } from "./store/types";
 
-// 모임 회비 입금·사용 장부(관리자 › 모임설정 › 회비입금 / 회비사용).
+// 모임 회비 입금·사용 장부(관리자 › 모임설정 › 회비입금 / 회비내역).
 //  기간(period): 연회비 "2026", 월회비 "2026-11". 지금 기간은 회비설정의 입금 기간(연회비) 또는 이번 달(월회비).
 
 const kstNow = () => new Date(Date.now() + 9 * 3600_000).toISOString();

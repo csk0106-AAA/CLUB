@@ -129,7 +129,7 @@ export function AdminGate(props: {
     props.mode === "members"
       ? [{ href: "/admin/kinds", label: "회원구분" }, { href: "/admin/members", label: "회원명단" }, { href: "/admin/member-apps", label: "회원신청" }, { href: "/admin/club", label: "조직도" }, { href: "/admin/admins", label: "권한" }]
       : props.mode === "group"
-        ? [{ href: "/admin/settings", label: "모임개요" }, { href: "/admin/dues", label: "회비설정" }, { href: "/admin/dues/payments", label: "회비입금" }, { href: "/admin/dues/ledger", label: "회비사용" }, { href: "/admin/rules", label: "회칙" }]
+        ? [{ href: "/admin/settings", label: "모임개요" }, { href: "/admin/dues", label: "회비설정" }, { href: "/admin/dues/payments", label: "회비입금" }, { href: "/admin/dues/ledger", label: "회비내역" }, { href: "/admin/rules", label: "회칙" }]
       : props.mode === "templates"
         ? [] // 개발 요청은 각 템플릿 편집의 "AI에게 요청"에서 보낸다(위쪽 하위 메뉴 없음)
         : props.mode === "clubs"

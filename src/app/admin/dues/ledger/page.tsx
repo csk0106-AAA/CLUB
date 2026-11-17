@@ -17,7 +17,7 @@ type Data = {
 const today = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 const BLANK = { date: today(), kind: "out" as "in" | "out" | "event", item: "", amount: "", memo: "", eventId: "" };
 
-// 관리자 › 모임설정 › 회비사용: 연도별 모임 회비 장부. 회비 입금(회비입금에서 확인한 금액) + 기타 수입 - 지출 = 잔액.
+// 관리자 › 모임설정 › 회비내역: 연도별 모임 회비 장부. 회비 입금(회비입금에서 확인한 금액) + 기타 수입 - 지출 = 잔액.
 // 일정에서 "모임회비 지원"으로 쓴 돈은 지출로 자동으로 들어온다(일정 회비 탭에서 고친다).
 function Ledger() {
   const [year, setYear] = useState("");
