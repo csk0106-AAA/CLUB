@@ -533,7 +533,8 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 }
 .subnav.one::-webkit-scrollbar { display: none; }
 .subnav.one a { flex: 0 0 auto; min-height: 32px; padding: 0 10px; border-radius: 16px; font-size: calc(13px * min(var(--fs, 1), 1.2)); }
-.tabsx { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; position: relative; }
+/* 일정 관리 메뉴(개요·신청현황·회비…): 창이 좁으면 옆으로 숨지 않고 다음 줄로 넘어간다 */
+.tabsx { display: flex; flex-wrap: wrap; gap: 6px; position: relative; }
 .tabsx button { min-height: 32px; padding: 0 10px; font-size: calc(13px * min(var(--fs, 1), 1.2)); }
 .tabsx button { flex: none; }
 /* 보기 전환(여러 칸 중 하나): 한 덩어리 테두리 안의 칸 */
