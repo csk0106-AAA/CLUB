@@ -117,6 +117,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const [note, setNote] = useState<Note>(null);
   const [attend, setAttend] = useState(0);
   const [support, setSupport] = useState(0); // 지원금 합계(회비 탭)
+  const [income, setIncome] = useState(0); // 총회비 = 참석자 회비 합계 + 지원금
   // 비용 메모 보기·고치기 창(목록에는 메모 아이콘만)
   const [memoOf, setMemoOf] = useState<{ id: string; item: string; text: string } | null>(null);
   // 비용 목록 순서: ⠿ 손잡이를 끌어서(또는 방향키로) 바꾸고 바로 저장
@@ -144,10 +145,14 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       if (ev.ok) setShown(ev.data.event[kind === "prep" ? "showPrep" : "showCosts"] === "true");
     }
     if (kind === "costs") {
-      const e = await api<{ event: { fee: string; feeRules?: { days: string; kind: string; position: string; amount: string }[]; supports?: { amount: string }[] }; rows: { answer: string }[] }>(`/api/admin/events/${eventId}`);
+      const e = await api<{ event: { fee: string; feeRules?: { days: string; kind: string; position: string; amount: string }[]; supports?: { amount: string }[] }; rows: { answer: string; fee: string }[] }>(`/api/admin/events/${eventId}`);
       if (e.ok) {
-        setAttend(e.data.rows.filter((x) => x.answer === "참석").length);
-        setSupport((e.data.event.supports ?? []).reduce((n, x) => n + (Number(x.amount) || 0), 0));
+        const going = e.data.rows.filter((x) => x.answer === "참석");
+        setAttend(going.length);
+        const sup = (e.data.event.supports ?? []).reduce((n, x) => n + (Number(x.amount) || 0), 0);
+        setSupport(sup);
+        // 총회비 = 참석자 회비 합계 + 지원금(회비 탭의 총 예산과 같다)
+        setIncome(going.reduce((n, x) => n + (Number(x.fee) || 0), 0) + sup);
         // 현재 기본 회비 = 모두 "전체"인 회비 줄 금액(예전 fee 값이 남아 있으면 그 값)
         const all = (e.data.event.feeRules ?? []).find((x) => !x.days && !x.kind && !x.position);
         setFee(all?.amount ?? e.data.event.fee);
@@ -230,45 +235,52 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   // 1인 회비 제안: (예산 합계 - 지원금)을 참석 인원으로 나누고 천 원 단위로 올린다.
   const need = Math.max(0, totalBudget - support);
   const suggest = attend > 0 ? Math.ceil(need / attend / 1000) * 1000 : 0;
+  // 비용 목록 칸: 위 요약과 어울리게 작은 글씨
+  const cs = { minHeight: 36, fontSize: fs(13), padding: "0 8px" } as const;
 
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 일정 화면에도 보여요.</span>}
       {kind !== "schedule" && shown !== null && (
-        // 한 줄로 작게: "회원 공개 [스위치] 켜짐/꺼짐"
-        <div className="row" style={{ gap: 8, justifyContent: "flex-end", fontSize: fs(13) }}>
-          <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(13) }}>회원 공개</span>
+        // 한 줄로 작게: (비용) 왼쪽 1인 회비 제안 + 기본 회비로 정하기 · 오른쪽 "회원 공개 [스위치] 켜짐/꺼짐"
+        <div className="row" style={{ gap: 6, justifyContent: "flex-end", fontSize: fs(13), flexWrap: "nowrap" }}>
+          {kind === "costs" && (
+            <span className="row grow" style={{ gap: 4, flexWrap: "nowrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
+              <span className="small" style={{ fontSize: fs(12) }}>1인 회비 제안</span>
+              <b className="num" style={{ color: "var(--blue-t)", fontSize: fs(13) }}>{suggest ? won(suggest) : "-"}</b>
+              {canEdit && suggest > 0 && <button className="mini" type="button" style={{ minHeight: 28, padding: "0 6px", fontSize: fs(11), whiteSpace: "nowrap" }} onClick={() => applyFee(suggest)}>기본 회비로 정하기</button>}
+            </span>
+          )}
+          <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>{kind === "costs" ? "공개" : "회원 공개"}</span>
           <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} title={shown ? "회원 일정 화면에 보여요(읽기만)" : "관리자만 봐요"}
-            disabled={!canEdit} onClick={() => setVisible(!shown)} style={{ transform: "scale(0.8)", transformOrigin: "right center" }} />
-          <span className="small" style={{ fontSize: fs(12), minWidth: 28, color: shown ? "var(--blue-t)" : "var(--sub)" }}>{shown ? "켜짐" : "꺼짐"}</span>
+            aria-label={kind === "costs" ? "회원 공개" : undefined}
+            disabled={!canEdit} onClick={() => setVisible(!shown)} style={{ transform: "scale(0.75)", transformOrigin: "right center", flex: "none" }} />
+          {kind !== "costs" && <span className="small" style={{ fontSize: fs(12), minWidth: 28, color: shown ? "var(--blue-t)" : "var(--sub)" }}>{shown ? "켜짐" : "꺼짐"}</span>}
         </div>
       )}
       {kind === "prep" && <span className="small">끝낸 것은 체크해 주세요.</span>}
 
       {kind === "costs" && (
-        // 요약: 한 카드에 작게(예산·집행·잔액·1인 회비 제안)
+        // 요약: 한 카드에 작게. 1줄 예산 합계 · 집행 합계 / 2줄 총회비-예산합계 · 총회비-집행합계
+        // (총회비 = 참석자 회비 합계 + 지원금, 회비 탭의 "총 예산")
         <section className="card" aria-label="비용 요약" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>
-          {/* 늘 2줄: 예산 합계 · 집행 합계 / 잔액 · 1인 회비 제안 */}
           <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 12px", fontSize: fs(13) }}>
-            {[
-              ["예산 합계", won(totalBudget), undefined],
-              ["집행 합계", won(totalSpent), undefined],
-              ["잔액", won(totalBudget - totalSpent), totalBudget - totalSpent < 0 ? "var(--red-t)" : "var(--green-t)"],
-              ["1인 회비 제안", suggest ? won(suggest) : "-", "var(--blue-t)"],
-            ].map(([k, v, c]) => (
-              <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 8, borderBottom: "1px solid var(--line)", paddingBottom: 4 }}>
-                <dt className="small" style={{ margin: 0 }}>{k}</dt>
-                <dd className="num" style={{ margin: 0, fontWeight: 700, color: c }}>{v}</dd>
+            {([
+              ["예산 합계", totalBudget, false],
+              ["집행 합계", totalSpent, false],
+              ["총회비-예산합계", income - totalBudget, true],
+              ["총회비-집행합계", income - totalSpent, true],
+            ] as const).map(([k, v, signed]) => (
+              <div key={k} style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: "0 6px", borderBottom: "1px solid var(--line)", paddingBottom: 4 }}
+                title={signed ? `총회비 ${won(income)}(참석자 회비 + 지원금) - ${k.includes("예산") ? "예산" : "집행"} 합계` : undefined}>
+                <dt className="small" style={{ margin: 0, whiteSpace: "nowrap", fontSize: fs(12) }}>{k}</dt>
+                <dd className="num" style={{ margin: "0 0 0 auto", fontWeight: 700, whiteSpace: "nowrap", color: signed ? (v < 0 ? "var(--red-t)" : "var(--green-t)") : undefined }}>{won(v)}</dd>
               </div>
             ))}
           </dl>
-          {/* 한 줄: 왼쪽(잔액 아래) + 비용 추가 · 오른쪽 기본 회비로 정하기 */}
           {canEdit && (
-            <div className="row" style={{ gap: 8, justifyContent: "space-between" }}>
-              <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", minHeight: 36, padding: "0 14px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
-              {suggest > 0 && <button className="mini" type="button" onClick={() => applyFee(suggest)}>{won(suggest)}을 기본 회비로 정하기</button>}
-            </div>
+            <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 36, padding: "0 14px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
           )}
         </section>
       )}
@@ -306,15 +318,15 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                   )}
                   {kind === "costs" && (
                     <>
-                      <td><input aria-label="항목" className="field" style={{ minHeight: 42, minWidth: 140 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} /></td>
-                      <td><input aria-label="예산" className="field num" inputMode="numeric" style={{ minHeight: 42, width: 120 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} /></td>
-                      <td><input aria-label="집행" className="field num" inputMode="numeric" style={{ minHeight: 42, width: 120 }} value={String(d.spent)} disabled={!canEdit} onChange={(e) => set(i.id, "spent", Number(e.target.value.replace(/\D/g, "")))} /></td>
+                      <td><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} /></td>
+                      <td><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} /></td>
+                      <td><input aria-label="집행" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.spent)} disabled={!canEdit} onChange={(e) => set(i.id, "spent", Number(e.target.value.replace(/\D/g, "")))} /></td>
                       <td>
-                        <select aria-label="상태" className="field" style={{ minHeight: 42, width: 110 }} value={String(d.status)} disabled={!canEdit} onChange={(e) => set(i.id, "status", e.target.value)}>
+                        <select aria-label="상태" className="field" style={{ ...cs, width: 100 }} value={String(d.status)} disabled={!canEdit} onChange={(e) => set(i.id, "status", e.target.value)}>
                           {STATUS.map((s) => <option key={s}>{s}</option>)}
                         </select>
                       </td>
-                      <td><input aria-label="담당" className="field" style={{ minHeight: 42, width: 110 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} /></td>
+                      <td><input aria-label="담당" className="field" style={{ ...cs, width: 90 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} /></td>
                       <td className="center">
                         {/* 메모는 아이콘만: 누르면 창에서 보고 고친다(메모가 있으면 진하게) */}
                         <button type="button" className="mini" title={i.memo ? "메모 보기" : "메모 쓰기"} aria-label={`${String(i.item)} 메모${i.memo ? " 보기" : " 쓰기"}`}
