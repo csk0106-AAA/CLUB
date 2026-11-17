@@ -222,7 +222,7 @@ function Members() {
   }
 
   async function remove(m: M) {
-    if (!window.confirm(`${m.name} 님을 명단에서 지울까요?`)) return;
+    if (!window.confirm(`${m.name} 님을 명단에서 지울까요?\n지우면 되돌릴 수 없고, 이 회원은 더 이상 로그인할 수 없어요.`)) return;
     const r = await api(`/api/admin/members/${m.id}`, { method: "DELETE" });
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setMsg({ tone: "info", text: "지웠어요." });
@@ -429,11 +429,14 @@ function Members() {
               <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" onClick={() => startEdit(m)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
               </button>
+              <button className="edit" type="button" aria-label={`${m.name} 삭제`} title="삭제" style={{ color: "var(--red-t)", marginLeft: -8 }} onClick={() => remove(m)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></svg>
+              </button>
             </li>
           ))}
         </ul>
       )}
-      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>연필 아이콘으로 수정·삭제해요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
+      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>연필 아이콘으로 수정, 휴지통 아이콘으로 삭제해요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
       {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
       {shown.length > 0 && (
         <div className="tblw only-wide">
