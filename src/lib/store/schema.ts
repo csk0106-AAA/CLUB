@@ -51,7 +51,8 @@ export const TABS = {
     "checkedBy", "checkedAt",
   ],
   // memo: 비용 메모(목록에서는 메모 아이콘을 눌러 본다), order: 목록 순서(끌어서 바꾼다)
-  EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner", "memo", "order"],
+  // spentBase: 직접 적은 집행. spent = spentBase + 같은 이름으로 연동된 준비목록의 완료된 가격 합계(lib/items.ts syncPrepToCosts)
+  EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner", "memo", "order", "spentBase"],
   // category: 비용 항목 이름(같은 이름의 비용 항목에 완료된 준비물 가격 합계가 집행으로 들어간다), price: 가격
   EventPrep: ["id", "eventId", "item", "owner", "done", "category", "price"],
   // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.

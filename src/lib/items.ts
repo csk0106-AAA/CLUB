@@ -40,7 +40,8 @@ export const ITEMS: Record<ItemKind, Def> = {
     perm: ["events"],
     schema: z
       .object({ item: str(100).min(1), budget: money.default(0), spent: money.default(0), status: str(20).default("예정"), owner: str(40).default(""), memo: str(1000).default("") })
-      .transform((v) => ({ item: v.item, budget: String(v.budget), spent: String(v.spent), status: v.status, owner: v.owner, memo: v.memo })),
+      // 화면에서 적는 집행은 "직접 적은 집행"(spentBase). 준비목록 연동분은 syncPrepToCosts 가 더해 spent 에 넣는다.
+      .transform((v) => ({ item: v.item, budget: String(v.budget), spent: String(v.spent), spentBase: String(v.spent), status: v.status, owner: v.owner, memo: v.memo })),
     // 관리자가 끌어서 정한 순서(order), 순서가 없는 예전 항목은 뒤에 이름 순
     sort: (a, b) => (Number(a.order) || 1e9) - (Number(b.order) || 1e9) || a.item.localeCompare(b.item, "ko"),
     view: (r) => ({ id: r.id, item: r.item, budget: Number(r.budget) || 0, spent: Number(r.spent) || 0, status: r.status, owner: r.owner, memo: r.memo ?? "" }),
@@ -51,17 +52,24 @@ export function isKind(k: string): k is ItemKind {
   return k in ITEMS;
 }
 
-// 준비목록 → 비용 연동: 준비물의 "비용 항목"과 이름이 같은 비용 항목의 집행 = 완료된 준비물 가격 합계.
-// 연동된 준비물이 하나도 없는 비용 항목은 손대지 않는다(직접 적은 집행 금액 그대로).
+// 준비목록 → 비용 연동: 비용 항목의 집행 = 직접 적은 집행 + 같은 이름으로 연동된 준비물 중 완료된 것의 가격 합계.
+//  직접 적은 집행(spentBase)이 없는 예전 항목: 연동된 준비물이 있으면 0, 없으면 지금 집행을 직접 적은 값으로 본다.
+export function costParts(c: Row, prep: Row[]): { base: number; prepSum: number; linked: number } {
+  const linked = prep.filter((p) => p.eventId === c.eventId && (p.category ?? "").trim() && p.category.trim() === (c.item ?? "").trim());
+  const base = c.spentBase !== undefined && c.spentBase !== "" ? Number(c.spentBase) || 0 : linked.length ? 0 : Number(c.spent) || 0;
+  const prepSum = linked.filter((p) => p.done === "true").reduce((n, p) => n + (Number(p.price) || 0), 0);
+  return { base, prepSum, linked: linked.length };
+}
+
 export async function syncPrepToCosts(eventId: string): Promise<void> {
   const { getStore } = await import("./store");
   const s = await getStore();
   const [prep, costs] = await Promise.all([s.list("EventPrep"), s.list("EventCosts")]);
-  const mine = prep.filter((p) => p.eventId === eventId && (p.category ?? "").trim());
   for (const c of costs.filter((x) => x.eventId === eventId)) {
-    const linked = mine.filter((p) => p.category.trim() === (c.item ?? "").trim());
-    if (!linked.length) continue;
-    const spent = String(linked.filter((p) => p.done === "true").reduce((n, p) => n + (Number(p.price) || 0), 0));
+    const { base, prepSum, linked } = costParts(c, prep);
+    // 연동도 없고 직접 적은 값 기록도 없는 예전 항목은 그대로 둔다
+    if (!linked && (c.spentBase === undefined || c.spentBase === "")) continue;
+    const spent = String(base + prepSum);
     if (spent !== c.spent) await s.update("EventCosts", c.id, { spent });
   }
 }

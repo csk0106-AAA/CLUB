@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
-import { ITEMS, isKind, prepLinks, syncPrepToCosts } from "@/lib/items";
+import { costParts, ITEMS, isKind, syncPrepToCosts } from "@/lib/items";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +18,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
   const rows = (await s.list(def.tab)).filter((r) => r.eventId === id).sort(def.sort);
   if (kind === "costs") {
-    // 준비목록과 연동된 비용 항목: 집행은 완료된 준비물 가격 합계로 자동(linked: 연동된 준비물 수)
-    const links = prepLinks(await s.list("EventPrep"), id);
-    return NextResponse.json({ items: rows.map((r) => ({ ...def.view(r), linked: links.get((r.item ?? "").trim()) ?? 0 })) });
+    // 집행 = 직접 적은 집행(base) + 연동된 준비목록의 완료된 가격 합계(prepSum). linked: 연동된 준비물 수
+    const prep = await s.list("EventPrep");
+    return NextResponse.json({ items: rows.map((r) => ({ ...def.view(r), ...costParts(r, prep) })) });
   }
   return NextResponse.json({ items: rows.map(def.view) });
 }

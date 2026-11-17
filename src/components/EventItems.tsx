@@ -141,7 +141,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
     const r = await api<{ items: Item[] }>(base);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setItems(r.data.items);
-    setDraft(Object.fromEntries(r.data.items.map((i) => [i.id, { ...i }])));
+    // 비용의 집행 칸은 "직접 적은 집행"(base)을 고친다(준비목록 연동분은 서버가 더한다)
+    setDraft(Object.fromEntries(r.data.items.map((i) => [i.id, kind === "costs" && i.base !== undefined ? { ...i, spent: i.base } : { ...i }])));
     if (kind !== "schedule") {
       const ev = await api<{ event: Record<string, unknown> }>(`/api/admin/events/${eventId}`);
       if (ev.ok) setShown(ev.data.event[kind === "prep" ? "showPrep" : "showCosts"] === "true");
@@ -258,7 +259,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           {kind !== "costs" && <span className="small" style={{ fontSize: fs(12), minWidth: 28, color: shown ? "var(--blue-t)" : "var(--sub)" }}>{shown ? "켜짐" : "꺼짐"}</span>}
         </div>
       )}
-      {kind === "prep" && <span className="small" style={{ fontSize: fs(12) }}>끝낸 것은 체크해 주세요. “비용 항목”을 고르면 완료된 준비물 가격의 합계가 같은 이름의 비용 항목 집행으로 들어가요.</span>}
+      {kind === "prep" && <span className="small" style={{ fontSize: fs(12) }}>끝낸 것은 체크해 주세요. “비용 항목”을 고르면 완료 체크된 준비물의 가격이 같은 이름의 비용 항목 집행 금액에 더해져요.</span>}
 
       {kind === "costs" && (
         // 요약: 한 카드에 작게. 1줄 예산 합계 · 집행 합계 / 2줄 총회비-예산합계 · 총회비-집행합계
@@ -339,10 +340,14 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                       <td><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} /></td>
                       <td><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} /></td>
                       <td>
-                        {/* 준비목록과 연동된 항목은 집행이 자동(완료된 준비물 가격 합계) */}
-                        <input aria-label="집행" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.spent)} disabled={!canEdit || Number(i.linked) > 0}
-                          title={Number(i.linked) > 0 ? `준비목록 ${i.linked}개 연동: 완료된 준비물 가격 합계` : undefined} onChange={(e) => set(i.id, "spent", Number(e.target.value.replace(/\D/g, "")))} />
-                        {Number(i.linked) > 0 && <span className="small" style={{ display: "block", fontSize: fs(11) }}>준비목록 {String(i.linked)}개 연동</span>}
+                        {/* 집행 = 직접 적은 집행(이 칸) + 준비목록에서 완료된 같은 항목 가격 합계 */}
+                        <input aria-label={Number(i.linked) > 0 ? "직접 적은 집행" : "집행"} className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.spent)} disabled={!canEdit}
+                          title={Number(i.linked) > 0 ? "직접 적은 집행. 준비목록에서 완료된 가격이 여기에 더해져요" : undefined} onChange={(e) => set(i.id, "spent", Number(e.target.value.replace(/\D/g, "")))} />
+                        {Number(i.linked) > 0 && (
+                          <span className="small" style={{ display: "block", fontSize: fs(11), whiteSpace: "nowrap" }}>
+                            + 준비 {won(Number(i.prepSum) || 0)} = <b>{won(Number(i.spent) || 0)}</b>
+                          </span>
+                        )}
                       </td>
                       <td>
                         <select aria-label="상태" className="field" style={{ ...cs, width: 100 }} value={String(d.status)} disabled={!canEdit} onChange={(e) => set(i.id, "status", e.target.value)}>
