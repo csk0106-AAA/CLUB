@@ -82,6 +82,7 @@ export type BoardMeta = {
   kinds: string[];
   positions: string[];
   agendaLabels: Record<string, string>;
+  aiEnabled?: boolean;
   me: BoardMe & { id: string };
 };
 

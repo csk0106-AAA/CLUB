@@ -14,6 +14,78 @@ import { fileUrl, type BoardMeta, type PostFull } from "./types";
 import { fs } from "@/lib/fs";
 
 type Note = { tone: "bad" | "info"; text: string } | null;
+
+// "AI에게 작성 요청하기": 요청을 적으면 AI가 제목·내용 초안을 만든다. 초안은 미리 보고 "내용에 넣기"를 눌러야
+// 제목·내용 칸에 들어가고, 넣은 뒤에는 칸에서 직접 고쳐서 올린다(AI가 바로 올리지 않는다).
+function AiDraftBox({ form, title, body, onApply }: { form: Form; title: string; body: string; onApply: (title: string, body: string) => void }) {
+  const uid = useId();
+  const [open, setOpen] = useState(false);
+  const [request, setRequest] = useState("");
+  const [useCur, setUseCur] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [draft, setDraft] = useState<{ title: string; body: string } | null>(null);
+  const hasCur = !!(title.trim() || body.trim());
+
+  async function ask() {
+    setBusy(true);
+    setErr("");
+    const r = await api<{ title: string; body: string }>("/api/board/ai-draft", {
+      body: { form, request, ...(useCur && hasCur ? { title, body } : {}) },
+    });
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    setDraft(r.data);
+  }
+
+  function apply() {
+    if (!draft) return;
+    if (body.trim() && !window.confirm("지금 적힌 제목·내용이 AI 초안으로 바뀌어요. 바꿀까요?")) return;
+    onApply(draft.title, draft.body);
+    setDraft(null);
+    setOpen(false);
+    setRequest("");
+  }
+
+  if (!open) {
+    return (
+      <button className="btn white" type="button" style={{ alignSelf: "flex-start", width: "auto", minHeight: 44, fontSize: fs(15) }} onClick={() => setOpen(true)}>
+        ✨ AI에게 작성 요청하기
+      </button>
+    );
+  }
+  return (
+    <section className="card" aria-label="AI에게 작성 요청하기" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
+      <b style={{ font: `700 ${fs(16)} var(--display)` }}>✨ AI에게 작성 요청하기</b>
+      <label className="small" htmlFor={`${uid}-r`}>어떤 글을 쓸지 알려 주세요. 날짜·장소·금액처럼 꼭 들어갈 내용을 함께 적으면 더 정확해요.</label>
+      <textarea id={`${uid}-r`} className="field" rows={3} maxLength={2000} style={{ padding: 10, lineHeight: 1.5 }}
+        placeholder="예) 12월 정기모임 안내 글. 12월 10일 저녁 7시, 광화문 ○○호텔, 회비 5만 원, 참석 여부는 댓글로."
+        value={request} onChange={(e) => setRequest(e.target.value)} />
+      {hasCur && (
+        <label className="row" style={{ gap: 8, fontSize: fs(14), cursor: "pointer" }}>
+          <input type="checkbox" checked={useCur} onChange={(e) => setUseCur(e.target.checked)} style={{ width: 18, height: 18 }} />
+          <span>지금 적어 둔 제목·내용도 참고하게 하기</span>
+        </label>
+      )}
+      <div className="row" style={{ flexWrap: "wrap" }}>
+        <button className="mini" type="button" disabled={busy || !request.trim()} onClick={ask}>{busy ? "AI가 쓰는 중…" : draft ? "다시 요청하기" : "초안 만들기"}</button>
+        <button className="mini" type="button" disabled={busy} onClick={() => { setOpen(false); setDraft(null); setErr(""); }}>닫기</button>
+      </div>
+      {err && <div className="msg bad" role="alert">{err}</div>}
+      {draft && (
+        <div className="card" role="region" aria-label="AI 초안" style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--card, #fff)" }}>
+          <span className="small">AI 초안 · “내용에 넣기”를 누른 뒤 위 제목·내용 칸에서 직접 고칠 수 있어요.</span>
+          {draft.title && <b style={{ overflowWrap: "anywhere" }}>{draft.title}</b>}
+          <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, overflowWrap: "anywhere", maxHeight: 320, overflowY: "auto" }}>{draft.body}</div>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <button className="mini" type="button" style={{ fontWeight: 700 }} onClick={apply}>내용에 넣기</button>
+            <button className="mini" type="button" onClick={() => setDraft(null)}>버리기</button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 const ALL_AUD: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -179,6 +251,10 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
             <label className="l" htmlFor={`${uid}-b`}>내용</label>
             <textarea id={`${uid}-b`} className="field" rows={form === "general" ? 10 : 5} maxLength={10000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }} value={body} onChange={(e) => touch(setBody)(e.target.value)} />
           </div>
+
+          {meta.aiEnabled && (
+            <AiDraftBox form={form} title={title} body={body} onApply={(t, b) => { setDirty(true); if (t) setTitle(t); setBody(b); }} />
+          )}
 
           <FormFields form={form} data={data} onChange={touch(setData)} kinds={meta.kinds} positions={meta.positions} agendaLabels={meta.agendaLabels} />
 

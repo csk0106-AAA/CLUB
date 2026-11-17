@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAiEnabled } from "@/lib/ai";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { WRITE_FORMS } from "@/lib/board";
 import { getLists } from "@/lib/lists";
@@ -21,6 +22,8 @@ export async function GET() {
     kinds: lists.memberKinds.map((k) => k.value),
     positions: lists.positions,
     agendaLabels,
+    // 글쓰기 "AI에게 작성 요청하기" 버튼을 보일지
+    aiEnabled: isAiEnabled(),
     me: { id: me.row.id, canWrite: me.canWrite, manage: me.manage, isAll: me.isAll, tplAdmin: me.tplAdmin },
   });
 }
