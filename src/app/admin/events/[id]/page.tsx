@@ -200,23 +200,23 @@ function Detail({ id }: { id: string }) {
     load();
   }
 
-  // 신청현황의 "참석" 체크: 관리자(작성자·편집자 포함)가 바로 참석/미응답으로 바꾼다(여러 날 일정은 모든 날 참석으로)
-  async function quickAttend(r: Row, on: boolean) {
-    if (!on && !window.confirm(`${r.name} 님의 참석 체크를 풀까요?\n미응답으로 돌아가고, 참석 날짜·입금 확인이 지워져요.`)) return;
-    setBusy(true);
-    const r2 = await api(`/api/admin/events/${id}/apply`, {
-      body: { memberId: r.memberId, answer: on ? "참석" : "", memo: r.memo, ...(on && evDays.length > 1 ? { days: evDays } : {}) },
+  // 신청현황의 "참석" 체크: 누르면 그 줄이 고치기 모양으로 열린다(참석이면 참석일을 고르고 "저장").
+  // 하루 일정은 그날이 미리 골라져 있다. 체크를 풀면 미응답으로 고쳐 두고 "저장"을 누르면 반영된다.
+  function quickAttend(r: Row, on: boolean) {
+    const cur = r.days ? r.days.split(",").filter(Boolean) : [];
+    setEditRow({
+      memberId: r.memberId,
+      answer: on ? "참석" : "",
+      memo: r.memo,
+      days: on ? (cur.length ? cur : evDays.length === 1 ? evDays : []) : [],
     });
-    setBusy(false);
-    if (!r2.ok) return setMsg({ tone: "bad", text: r2.error });
-    setMsg({ tone: "info", text: on ? `${r.name} 님을 참석으로 체크했어요(관리자 체크).` : `${r.name} 님의 참석 체크를 풀었어요.` });
-    load();
+    setMsg(null);
   }
 
   async function saveRow() {
     if (!editRow) return;
     if (editRow.answer === "참석" && evDays.length > 1 && editRow.days.length === 0) {
-      return setMsg({ tone: "bad", text: "참석 날짜를 하나 이상 골라 주세요." });
+      return window.alert("참석 날짜를 하나 이상 골라 주세요.");
     }
     setBusy(true);
     const r = await api(`/api/admin/events/${id}/apply`, { body: editRow });
@@ -407,8 +407,11 @@ function Detail({ id }: { id: string }) {
               <tbody>
                 {rows.map((r) =>
                   editRow?.memberId === r.memberId ? (
-                    <tr key={r.memberId}>
-                      <td className="center"><span className="small">-</span></td>
+                    <tr key={r.memberId} style={{ background: "var(--soft)" }}>
+                      <td className="center">
+                        <input type="checkbox" checked={editRow.answer === "참석"} style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`}
+                          onChange={(e) => setEditRow({ ...editRow, answer: e.target.checked ? "참석" : "", days: e.target.checked ? (evDays.length === 1 ? evDays : editRow.days) : [] })} />
+                      </td>
                       <td><b>{r.name}</b>{tags(r)}</td>
                       <td>
                         <select className="field" style={{ minHeight: 44, minWidth: 110 }} aria-label={`${r.name} 신청`} value={editRow.answer}
@@ -426,6 +429,7 @@ function Detail({ id }: { id: string }) {
                                 {fmtDateDow(d)}
                               </label>
                             ))}
+                            {evDays.length > 1 && editRow.days.length === 0 && <span className="small" style={{ color: "var(--red-t)" }}>참석일을 골라 주세요</span>}
                           </div>
                         ) : <span className="small">-</span>}
                       </td>
@@ -438,7 +442,7 @@ function Detail({ id }: { id: string }) {
                   ) : (
                     <tr key={r.memberId}>
                       <td className="center">
-                        <input type="checkbox" checked={r.answer === "참석"} disabled={busy} onChange={(e) => quickAttend(r, e.target.checked)}
+                        <input type="checkbox" checked={r.answer === "참석"} disabled={busy || !!editRow} onChange={(e) => quickAttend(r, e.target.checked)}
                           style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`} />
                       </td>
                       <td><b>{r.name}</b>{tags(r)}</td>
@@ -458,7 +462,7 @@ function Detail({ id }: { id: string }) {
               </tbody>
             </table>
           </div>
-          <span className="small">맨 앞 “참석” 칸을 체크하면 바로 참석으로 바뀌어요(여러 날 일정은 모든 날 참석, 날짜는 “수정”에서 고쳐요). 전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 관리자가 바꾼 답에는 “✓ 관리자 체크”(체크한 사람·날짜)가 붙고, 회원이 직접 다시 답하면 사라져요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
+          <span className="small">맨 앞 “참석” 칸을 체크하면 그 줄이 열려요. 참석일을 고르고(하루 일정은 미리 골라져 있어요) “저장”을 누르면 반영돼요. 체크를 풀고 저장하면 미응답으로 돌아가요. 전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 관리자가 바꾼 답에는 “✓ 관리자 체크”(체크한 사람·날짜)가 붙고, 회원이 직접 다시 답하면 사라져요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
           {ev.club && (
             <>
               <span className="small">소모임 일정이라 참석 신청 명단에는 {clubLabel(ev.club)} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
