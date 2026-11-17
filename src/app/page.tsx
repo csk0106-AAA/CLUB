@@ -50,9 +50,10 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memberId, code }),
       });
-      const d = await r.json();
-      if (!r.ok) {
-        setError(d.error ?? "로그인하지 못했어요.");
+      // 서버 오류 화면(HTML)이 오면 JSON 이 아니다 → 상태 코드를 함께 보여 줘서 원인을 찾을 수 있게
+      const d = await r.json().catch(() => null);
+      if (!r.ok || !d) {
+        setError(d?.error ?? `서버에서 오류가 났어요(코드 ${r.status}). 잠시 후 다시 시도하고, 계속되면 관리자에게 이 코드를 알려 주세요.`);
         return;
       }
       resetTabsCache();

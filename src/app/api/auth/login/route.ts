@@ -17,6 +17,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `잠시 후 다시 시도해 주세요. (${wait}초)` }, { status: 429 });
   }
 
+  // 서버 쪽 문제(설정 값 빠짐·DB 연결 실패)는 오류 화면 대신 원인을 알려 주는 JSON 으로 돌려준다(로그에도 남긴다).
+  try {
+    return await login(memberId, code);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[login] 실패", msg);
+    if (msg.includes("SESSION_SECRET")) {
+      return NextResponse.json({ error: "서버 설정(SESSION_SECRET)이 빠져 있어서 로그인할 수 없어요. 관리자에게 알려 주세요." }, { status: 500 });
+    }
+    return NextResponse.json({ error: "서버에서 회원 정보를 읽지 못했어요(DB 연결). 잠시 후 다시 시도하고, 계속되면 관리자에게 알려 주세요." }, { status: 500 });
+  }
+}
+
+async function login(memberId: string, code: string) {
   const s = await getStore();
   const member = (await s.list("Members")).find((m) => m.id === memberId);
   // 개인 초대코드 = 명단에 등록된 연락처 뒷자리 4자리. 연락처가 없는 회원만 공통 초대코드를 쓴다.
