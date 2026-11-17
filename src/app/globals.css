@@ -264,6 +264,21 @@ a { color: var(--violet-t); }
 .compact-form .l { font-size: calc(12px * var(--fs, 1)); margin-bottom: 4px; }
 .compact-form .df button { min-height: 34px; width: 34px; }
 .compact-form .rules .field { min-height: 34px; font-size: calc(13px * var(--fs, 1)); }
+/* 좁은 화면(640px 이하): .tbl.stack 표는 한 줄을 카드처럼 쌓아 보여 준다(칸 이름은 td 의 data-label). 옆으로 밀지 않아도 다 보이게 */
+@media (max-width: 640px) {
+  .tblw:has(> .tbl.stack) { overflow-x: visible; }
+  .tbl.stack { min-width: 0 !important; width: 100%; }
+  .tbl.stack thead { display: none; }
+  .tbl.stack, .tbl.stack tbody { display: block; }
+  .tbl.stack tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; padding: 10px; border-top: 1px solid var(--line2); }
+  .tbl.stack tbody tr:first-child { border-top: 0; }
+  .tbl.stack td { display: block; padding: 0 !important; border: 0 !important; min-width: 0; }
+  .tbl.stack td::before { content: attr(data-label); display: block; font-size: calc(11px * var(--fs, 1)); color: var(--sub); margin-bottom: 2px; }
+  .tbl.stack td[data-label=""]::before { display: none; }
+  .tbl.stack td.wide { grid-column: 1 / -1; }
+  .tbl.stack td.act { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; align-items: center; }
+  .tbl.stack .field { width: 100% !important; min-width: 0 !important; }
+}
 .compact-form .rules > li { padding: 4px 6px; }
 textarea.field { padding: 10px 12px; line-height: 1.55; }
 .field::placeholder { color: var(--muted); }
@@ -828,3 +843,5 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 
 /* 관리자 위쪽 메뉴 5개(모임설정·회원관리·일정관리·소모임관리·활동 템플릿)가 휴대폰 한 줄에 들어가게 */
 @media (max-width: 420px) { .modes { gap: 12px; } .modes a { font-size: calc(14px * min(var(--fs, 1), 1.15)); } }
+/* 더 좁으면 관리자 구분 5개가 한 줄에 다 보이게 더 작게 */
+@media (max-width: 360px) { .modes { gap: 8px; justify-content: space-between; } .modes a { font-size: calc(12.5px * min(var(--fs, 1), 1.1)); letter-spacing: -0.3px; } }

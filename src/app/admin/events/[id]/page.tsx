@@ -415,11 +415,11 @@ function Detail({ id }: { id: string }) {
 
       {tab === "apply" && (
         <>
-          <div className="cards">
-            <div className="card"><span className="small">참석</span><div className="big" style={{ color: "var(--green-t)" }}>{attend.length}명</div></div>
-            <div className="card"><span className="small">불참</span><div className="big">{absent.length}명</div></div>
-            <div className="card"><span className="small">미응답</span><div className="big" style={{ color: "var(--orange-t)" }}>{noAns.length}명</div></div>
-          </div>
+          <MiniStats items={[
+            ["참석", `${attend.length}명`, undefined, "var(--green-t)"],
+            ["불참", `${absent.length}명`],
+            ["미응답", `${noAns.length}명`, undefined, "var(--orange-t)"],
+          ]} />
           {noAns.length > 0 && (
             <div className="card row" style={{ flexWrap: "wrap" }}>
               <span className="grow small">미응답 {noAns.length}명: {noAns.map((r) => r.name).join(", ")}</span>
@@ -427,24 +427,24 @@ function Detail({ id }: { id: string }) {
             </div>
           )}
           <div className="tblw">
-            <table className="tbl" style={{ minWidth: 640 }}>
+            <table className="tbl compact stack" style={{ minWidth: 600 }}>
               <thead><tr><th>참석</th><th>이름</th><th>신청</th><th>참석 날짜</th><th>메모</th><th></th></tr></thead>
               <tbody>
                 {rows.map((r) =>
                   editRow?.memberId === r.memberId ? (
                     <tr key={r.memberId} style={{ background: "var(--soft)" }}>
-                      <td className="center">
+                      <td className="center" data-label="참석">
                         <input type="checkbox" checked={editRow.answer === "참석"} style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`}
                           onChange={(e) => setEditRow({ ...editRow, answer: e.target.checked ? "참석" : "", days: e.target.checked ? (evDays.length === 1 ? evDays : editRow.days) : [] })} />
                       </td>
-                      <td><b>{r.name}</b>{tags(r)}</td>
-                      <td>
-                        <select className="field" style={{ minHeight: 44, minWidth: 110 }} aria-label={`${r.name} 신청`} value={editRow.answer}
+                      <td data-label="이름"><b>{r.name}</b>{tags(r)}</td>
+                      <td data-label="신청">
+                        <select className="field" style={{ minWidth: 100 }} aria-label={`${r.name} 신청`} value={editRow.answer}
                           onChange={(e) => setEditRow({ ...editRow, answer: e.target.value })}>
                           <option value="참석">참석</option><option value="불참">불참</option><option value="">미응답</option>
                         </select>
                       </td>
-                      <td>
+                      <td className="wide" data-label="참석 날짜">
                         {editRow.answer === "참석" ? (
                           <div className="checks" role="group" aria-label={`${r.name} 참석 날짜`} style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
                             {evDays.map((d) => (
@@ -458,29 +458,29 @@ function Detail({ id }: { id: string }) {
                           </div>
                         ) : <span className="small">-</span>}
                       </td>
-                      <td><input className="field" style={{ minHeight: 44 }} aria-label={`${r.name} 메모`} maxLength={200} value={editRow.memo} onChange={(e) => setEditRow({ ...editRow, memo: e.target.value })} /></td>
-                      <td style={{ whiteSpace: "nowrap" }}>
+                      <td className="wide" data-label="메모"><input className="field" aria-label={`${r.name} 메모`} maxLength={200} value={editRow.memo} onChange={(e) => setEditRow({ ...editRow, memo: e.target.value })} /></td>
+                      <td className="act" data-label="" style={{ whiteSpace: "nowrap" }}>
                         <button className="mini" type="button" disabled={busy} onClick={saveRow}>저장</button>{" "}
                         <button className="mini" type="button" onClick={() => setEditRow(null)}>취소</button>
                       </td>
                     </tr>
                   ) : (
                     <tr key={r.memberId}>
-                      <td className="center">
+                      <td className="center" data-label="참석">
                         <input type="checkbox" checked={r.answer === "참석"} disabled={busy || !!editRow} onChange={(e) => quickAttend(r, e.target.checked)}
                           style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`} />
                       </td>
-                      <td><b>{r.name}</b>{tags(r)}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>
+                      <td data-label="이름"><b>{r.name}</b>{tags(r)}</td>
+                      <td data-label="신청" style={{ whiteSpace: "nowrap" }}>
                         <span className={`pill ${r.answer === "참석" ? "ok" : r.answer === "불참" ? "gray" : "warn"}`}>{r.answer || "미응답"}</span>
                         {r.checkedBy && r.answer && (
                           <span className="pill blue" style={{ marginLeft: 4 }} title={`${r.checkedBy} 님이 ${fmtDateTime(r.checkedAt ?? "")}에 체크했어요`}>✓ 관리자 체크</span>
                         )}
                         {r.checkedBy && r.answer && <span className="small" style={{ display: "block", marginTop: 2 }}>{r.checkedBy} · {fmtDate(r.checkedAt ?? "")}</span>}
                       </td>
-                      <td className="num">{dayText(r.days)}</td>
-                      <td>{r.memo || <span className="small">-</span>}</td>
-                      <td><button className="mini" type="button" onClick={() => setEditRow({ memberId: r.memberId, answer: r.answer, memo: r.memo, days: r.days ? r.days.split(",").filter(Boolean) : [] })}>수정</button></td>
+                      <td className="num" data-label="참석 날짜">{dayText(r.days) || "-"}</td>
+                      <td data-label="메모">{r.memo || <span className="small">-</span>}</td>
+                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => setEditRow({ memberId: r.memberId, answer: r.answer, memo: r.memo, days: r.days ? r.days.split(",").filter(Boolean) : [] })}>수정</button></td>
                     </tr>
                   ),
                 )}
@@ -519,7 +519,7 @@ function Detail({ id }: { id: string }) {
             {rules.length === 0 && <span className="small" style={{ fontSize: fs(12) }}>아직 회비가 없어요. 회비를 받는 일정이라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
             {rules.length > 0 && (
               <div className="tblw">
-                <table className="tbl compact" style={{ minWidth: 520 }}>
+                <table className="tbl compact stack" style={{ minWidth: 520 }}>
                   <thead>
                     <tr><th>회원구분</th><th>직책</th><th>참석일</th><th>금액(원)</th><th style={{ width: 70 }}><span className="sr-only">삭제</span></th></tr>
                   </thead>
@@ -529,19 +529,19 @@ function Detail({ id }: { id: string }) {
                       const sel = {} as const;
                       return (
                         <tr key={i}>
-                          <td>
+                          <td data-label="회원구분">
                             <select className="field" style={sel} aria-label={`${i + 1}번째 줄 회원구분`} value={r.kind} onChange={(e) => upd({ kind: e.target.value })}>
                               <option value="">전체</option>
                               {[...new Set([...opts.kinds, ...(r.kind ? [r.kind] : [])])].map((k) => <option key={k}>{k}</option>)}
                             </select>
                           </td>
-                          <td>
+                          <td data-label="직책">
                             <select className="field" style={sel} aria-label={`${i + 1}번째 줄 직책`} value={r.position} onChange={(e) => upd({ position: e.target.value })}>
                               <option value="">전체</option>
                               {[...new Set([...opts.positions, ...(r.position ? [r.position] : [])])].map((p) => <option key={p}>{p}</option>)}
                             </select>
                           </td>
-                          <td>
+                          <td data-label="참석일">
                             <select className="field" style={sel} aria-label={`${i + 1}번째 줄 참석일`} value={r.days} onChange={(e) => upd({ days: e.target.value })}>
                               <option value="">전체</option>
                               {Array.from({ length: dayCount }, (_, d) => d + 1).map((d) => (
@@ -549,10 +549,10 @@ function Detail({ id }: { id: string }) {
                               ))}
                             </select>
                           </td>
-                          <td>
+                          <td data-label="금액(원)">
                             <input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} />
                           </td>
-                          <td>
+                          <td className="act" data-label="">
                             <button className="mini danger" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button>
                           </td>
                         </tr>
@@ -578,7 +578,7 @@ function Detail({ id }: { id: string }) {
             </span>
             {supports.length > 0 && (
               <div className="tblw">
-                <table className="tbl compact" style={{ minWidth: 520 }}>
+                <table className="tbl compact stack" style={{ minWidth: 520 }}>
                   <thead><tr><th>구분</th><th>지원한 분·내용</th><th>금액(원)</th><th>메모</th><th style={{ width: 70 }}><span className="sr-only">삭제</span></th></tr></thead>
                   <tbody>
                     {supports.map((x, i) => {
@@ -586,19 +586,19 @@ function Detail({ id }: { id: string }) {
                       const sel = {} as const;
                       return (
                         <tr key={i}>
-                          <td>
+                          <td data-label="구분">
                             <select className="field" style={sel} aria-label={`${i + 1}번째 지원금 구분`} value={x.kind} onChange={(e) => upd({ kind: e.target.value as Support["kind"] })}>
                               <option value="dues">{SUPPORT_LABEL.dues}</option>
                               <option value="member">{SUPPORT_LABEL.member}</option>
                             </select>
                           </td>
-                          <td>
+                          <td data-label="지원한 분·내용">
                             <input className="field" style={sel} list={x.kind === "member" ? "sup-members" : undefined} maxLength={60} aria-label={`${i + 1}번째 지원한 분·내용`}
                               placeholder={x.kind === "member" ? "회원 이름" : `예) ${new Date().getFullYear()} 연회비`} value={x.name} onChange={(e) => upd({ name: e.target.value })} />
                           </td>
-                          <td><input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 지원금 금액`} value={x.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} /></td>
-                          <td><input className="field" style={sel} maxLength={200} aria-label={`${i + 1}번째 지원금 메모`} value={x.memo} onChange={(e) => upd({ memo: e.target.value })} /></td>
-                          <td><button className="mini danger" type="button" aria-label={`${i + 1}번째 지원금 삭제`} onClick={() => setSupports(supports.filter((_, j) => j !== i))}>삭제</button></td>
+                          <td data-label="금액(원)"><input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 지원금 금액`} value={x.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} /></td>
+                          <td data-label="메모"><input className="field" style={sel} maxLength={200} aria-label={`${i + 1}번째 지원금 메모`} value={x.memo} onChange={(e) => upd({ memo: e.target.value })} /></td>
+                          <td className="act" data-label=""><button className="mini danger" type="button" aria-label={`${i + 1}번째 지원금 삭제`} onClick={() => setSupports(supports.filter((_, j) => j !== i))}>삭제</button></td>
                         </tr>
                       );
                     })}
@@ -629,19 +629,19 @@ function Detail({ id }: { id: string }) {
           {attend.length === 0 && <div className="msg info">아직 참석을 신청한 회원이 없어요.</div>}
           {attend.length > 0 && (
             <div className="tblw">
-              <table className="tbl compact" style={{ minWidth: 460 }}>
+              <table className="tbl compact stack" style={{ minWidth: 460 }}>
                 <thead><tr><th>이름</th><th>금액</th><th>입금 상태</th><th>확인일</th><th></th></tr></thead>
                 <tbody>
                   {attend.map((r) => (
                     <tr key={r.memberId}>
-                      <td><b>{r.name}</b></td>
-                      <td className="num">{r.feePending ? <span className="small">날짜 선택 전</span> : owed(r) ? owed(r).toLocaleString("ko-KR") : "-"}</td>
-                      <td>
+                      <td data-label="이름"><b>{r.name}</b></td>
+                      <td className="num" data-label="금액">{r.feePending ? <span className="small">날짜 선택 전</span> : owed(r) ? owed(r).toLocaleString("ko-KR") : "-"}</td>
+                      <td data-label="입금 상태">
                         <span className={`pill ${r.paid ? "ok" : "warn"}`}>{r.paid ? "입금" : "미입금"}</span>
                         {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {fmtDate(r.payNotice)}</span>}
                       </td>
-                      <td className="num">{fmtDate(r.paidAt)}</td>
-                      <td><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "취소" : "입금 확인"}</button></td>
+                      <td className="num" data-label="확인일">{fmtDate(r.paidAt) || "-"}</td>
+                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "취소" : "입금 확인"}</button></td>
                     </tr>
                   ))}
                 </tbody>

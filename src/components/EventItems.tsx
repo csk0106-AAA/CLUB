@@ -298,8 +298,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       )}
       {/* 비용 목록 바로 위 한 줄: 왼쪽 1인 회비 제안(+ 기본 회비로 정하기) · 오른쪽 + 비용 추가 */}
       {kind === "costs" && (
-        <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
-          <span className="row grow" style={{ gap: 4, flexWrap: "nowrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
+        <div className="row" style={{ gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <span className="row grow" style={{ gap: 4, flexWrap: "wrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
             <span className="small" style={{ fontSize: fs(12) }}>1인 회비 제안</span>
             <b className="num" style={{ color: "var(--blue-t)", fontSize: fs(13) }}>{suggest ? won(suggest) : "-"}</b>
             {canEdit && suggest > 0 && <button className="mini" type="button" style={{ minHeight: 28, padding: "0 6px", fontSize: fs(11), whiteSpace: "nowrap" }} onClick={() => applyFee(suggest)}>기본 회비로 정하기</button>}
@@ -314,7 +314,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       )}
       {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. “+ {TITLE[kind]} 추가”로 넣어 주세요.</div>}
       <div className="tblw">
-        <table className="tbl compact" style={{ minWidth: kind === "costs" ? 680 : kind === "prep" ? 560 : 520 }}>
+        <table className="tbl compact stack" style={{ minWidth: kind === "costs" ? 680 : kind === "prep" ? 560 : 520 }}>
           <thead>
             <tr>
               {kind === "schedule" && <><th>일시</th><th>내용</th></>}
@@ -329,7 +329,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
               const row = kind === "costs" ? ds.item(idx) : null;
               return (
                 <tr key={i.id} ref={row?.ref} style={row?.style}>
-                  {dragCosts && <td style={{ padding: "0 2px" }}><DragHandle plain {...ds.handle(idx, String(i.item))} /></td>}
+                  {dragCosts && <td className="wide" data-label="" style={{ padding: "0 2px" }}><DragHandle plain {...ds.handle(idx, String(i.item))} /></td>}
                   {kind === "schedule" && (
                     <>
                       <td><DateField mode="datetime" ariaLabel="일시" style={{ minWidth: 230 }} inputStyle={{ minHeight: 44 }} value={String(d.at)} disabled={!canEdit} onChange={(v) => set(i.id, "at", v)} /></td>
@@ -338,23 +338,23 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                   )}
                   {kind === "prep" && (
                     <>
-                      <td className="center"><input aria-label="완료" type="checkbox" style={{ width: 20, height: 20 }} checked={Boolean(i.done)} disabled={!canEdit} onChange={(e) => toggle(i.id, e.target.checked)} /></td>
-                      <td>
+                      <td className="center" data-label="완료"><input aria-label="완료" type="checkbox" style={{ width: 20, height: 20 }} checked={Boolean(i.done)} disabled={!canEdit} onChange={(e) => toggle(i.id, e.target.checked)} /></td>
+                      <td data-label="비용 항목">
                         <select aria-label="비용 항목" className="field" style={{ ...cs, width: 110 }} value={String(d.category ?? "")} disabled={!canEdit} onChange={(e) => save(i.id, { category: e.target.value })}>
                           <option value="">(없음)</option>
                           {[...new Set([...costNames, ...(d.category ? [String(d.category)] : [])])].map((n) => <option key={n} value={n}>{n}{costNames.includes(n) ? "" : " (비용에 없음)"}</option>)}
                         </select>
                       </td>
-                      <td><input aria-label="준비물" className="field" style={{ ...cs, minWidth: 120, textDecoration: i.done ? "line-through" : undefined }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
-                      <td><input aria-label="가격" className="field num" inputMode="numeric" style={{ ...cs, width: 100 }} value={String(d.price ?? 0)} disabled={!canEdit} onChange={(e) => set(i.id, "price", Number(e.target.value.replace(/\D/g, "")))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
-                      <td><input aria-label="담당" className="field" style={{ ...cs, width: 80 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td className="wide" data-label="준비물"><input aria-label="준비물" className="field" style={{ ...cs, minWidth: 120, textDecoration: i.done ? "line-through" : undefined }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td data-label="가격(원)"><input aria-label="가격" className="field num" inputMode="numeric" style={{ ...cs, width: 100 }} value={String(d.price ?? 0)} disabled={!canEdit} onChange={(e) => set(i.id, "price", Number(e.target.value.replace(/\D/g, "")))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td data-label="담당"><input aria-label="담당" className="field" style={{ ...cs, width: 80 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
                     </>
                   )}
                   {kind === "costs" && (
                     <>
-                      <td><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
-                      <td><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
-                      <td>
+                      <td className="wide" data-label="항목"><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td data-label="예산(원)"><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td data-label="집행(원)">
                         {/* 집행 칸에는 합계(직접 적은 집행 + 준비목록에서 완료된 같은 항목 가격)를 보여 준다.
                             고치면 준비목록 합계를 뺀 나머지를 "직접 적은 집행"으로 저장한다. */}
                         {(() => {
@@ -366,8 +366,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                           );
                         })()}
                       </td>
-                      <td><input aria-label="담당" className="field" style={{ ...cs, width: 90 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
-                      <td className="center">
+                      <td data-label="담당"><input aria-label="담당" className="field" style={{ ...cs, width: 90 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td className="center" data-label="메모">
                         {/* 메모는 아이콘만: 누르면 창에서 보고 고친다(메모가 있으면 진하게) */}
                         <button type="button" className="mini" title={i.memo ? "메모 보기" : "메모 쓰기"} aria-label={`${String(i.item)} 메모${i.memo ? " 보기" : " 쓰기"}`}
                           style={{ minHeight: 40, width: 44, padding: 0, justifyContent: "center", color: i.memo ? "var(--blue-t)" : "var(--sub)", opacity: i.memo || canEdit ? 1 : 0.4 }}
@@ -380,7 +380,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                       </td>
                     </>
                   )}
-                  <td style={{ whiteSpace: "nowrap" }}>
+                  <td className="act" data-label="" style={{ whiteSpace: "nowrap" }}>
                     {canEdit && <button className="mini danger" type="button" style={{ minHeight: 32, fontSize: fs(12) }} onClick={() => remove(i.id)}>삭제</button>}
                   </td>
                 </tr>
