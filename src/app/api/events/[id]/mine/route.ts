@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { bad, guard } from "@/lib/api";
+import { bad, guard, parseJson } from "@/lib/api";
+import { teams, teamsState } from "@/lib/capsule";
 import { DIRS, DIR_LABEL, carpoolState, cars } from "@/lib/carpool";
 import { roomState, rooms } from "@/lib/rooms";
 import { gTeams } from "@/lib/groups";
@@ -38,7 +39,23 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         teams: teams.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid) })),
       };
     });
-  const groupsPending = evGroups.filter((x) => x.published !== "true").length;
+  let groupsPending = evGroups.filter((x) => x.published !== "true").length;
+
+  // 팀 활동(활동 화면의 "팀 구성")에서 배포한 팀도 조편성처럼 보여 준다
+  const acts = (await s.list("EventActivities")).filter((a) => a.eventId === id).sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  for (const a of acts) {
+    const ts = await teams(a.id);
+    if (ts.length === 0) continue;
+    if (!(await teamsState(a.id)).published) {
+      groupsPending++;
+      continue;
+    }
+    const t = ts.find((y) => y.memberIds.includes(g.s.mid));
+    myGroups.push({
+      title: parseJson<{ name?: string }>(a.config, {}).name ?? "팀 활동", team: t?.name ?? "", members: t ? t.memberIds.map(nmMe) : [],
+      teams: ts.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid) })),
+    });
+  }
 
   // 구간별(갈 때 → 올 때)로 내가 운전하거나 타는 차량
   const myCars = state.published
