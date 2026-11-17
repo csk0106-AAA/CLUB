@@ -12,7 +12,7 @@ import { eduYes, norm, parseMembers, splitTable } from "@/lib/member-import";
 import { downloadXlsx, excelDate, readXlsx } from "@/lib/xlsx";
 import { DragHandle, useDragSort } from "@/components/DragSort";
 import { phoneKey } from "@/lib/phone";
-import { ageGroupOf } from "@/lib/age-group";
+import { ageGroupOf, normBirth } from "@/lib/age-group";
 import { typePhone } from "@/lib/phone";
 import { fs } from "@/lib/fs";
 
@@ -84,7 +84,8 @@ function customFromImport(text: string, fields: string[]): Map<string, Record<st
     const name = cells[nameCol];
     if (!name) continue;
     const v: Record<string, string> = {};
-    for (const [f, i] of cols) if (cells[i]) v[f] = cells[i].slice(0, 200);
+    // 빈 칸도 넣는다(엑셀로 고칠 때 지운 값을 지우려고). 새 회원은 빈 값을 저장하지 않는다.
+    for (const [f, i] of cols) v[f] = (cells[i] ?? "").slice(0, 200);
     out.set(name, v);
   }
   return out;
@@ -117,15 +118,44 @@ function Members() {
   type Dup = "skip" | "update" | "new";
   const [dupChoice, setDupChoice] = useState<Record<string, Dup>>({});
   const dupKey = (r: { name: string; line?: number }) => `${r.line}:${r.name}`;
+  // 엑셀받기로 받은 파일(회원ID 열)을 고쳐 올리면: edit(바뀐 항목이 있음 → 고침) | nochange(그대로)
+  const has = (k: string) => preview.present.includes(k);
+  const changesOf = useCallback((r: (typeof preview.rows)[number], ex: M): string[] => {
+    const out: string[] = [];
+    const cmp = (label: string, key: string, a: string, b: string, show = (x: string) => x || "(빈칸)") => {
+      if (has(key) && a.trim() !== b.trim()) out.push(`${label} ${show(b.trim())} → ${show(a.trim())}`);
+    };
+    cmp("성명", "name", r.name, ex.name);
+    cmp("회원구분", "kind", r.kind, ex.kind ?? "");
+    if (has("edu") && eduYes(r.edu) !== !!ex.edu) out.push(`교육이수 ${ex.edu ? "YES" : "NO"} → ${eduYes(r.edu) ? "YES" : "NO"}`);
+    cmp("직책", "position", r.position, ex.position ?? "");
+    cmp("성별", "gender", r.gender, ex.gender ?? "");
+    cmp("회사명", "company", r.company, ex.company ?? "");
+    cmp("직위", "title", r.title, ex.title ?? "");
+    if (has("birth") && (normBirth(r.birth) || r.birth.trim()) !== (ex.birth ?? "")) out.push(`생년월일 ${ex.birth || "(빈칸)"} → ${normBirth(r.birth) || r.birth || "(빈칸)"}`);
+    if (has("phone") && phoneKey(r.phone) !== phoneKey(ex.phone)) out.push(`연락처 ${ex.phone || "(빈칸)"} → ${r.phone || "(빈칸)"}`);
+    cmp("메모", "memo", r.memo, ex.memo ?? "", (x) => (x ? (x.length > 20 ? `${x.slice(0, 20)}…` : x) : "(빈칸)"));
+    const cf = importCustom.get(r.name) ?? {};
+    for (const c of Object.keys(cf)) if ((cf[c] ?? "").trim() !== (ex.fields[c] ?? "").trim()) out.push(`${c} ${ex.fields[c] || "(빈칸)"} → ${cf[c] || "(빈칸)"}`);
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview.present, importCustom]);
   const classify = useMemo(() => {
     const byName = new Map((list ?? []).map((m) => [m.name.trim(), m]));
+    const byId = new Map((list ?? []).map((m) => [m.id, m]));
     return preview.rows.map((r) => {
+      const mine = r.id ? byId.get(r.id.trim()) : undefined;
+      if (mine) {
+        const changes = changesOf(r, mine);
+        return { kind: changes.length ? ("edit" as const) : ("nochange" as const), ex: mine, changes };
+      }
       const ex = byName.get(r.name.trim());
-      if (!ex) return { kind: "new" as const, ex: null };
+      if (!ex) return { kind: "new" as const, ex: null, changes: [] as string[] };
       const a = phoneKey(r.phone), b = phoneKey(ex.phone);
-      return { kind: !a || !b || a === b ? ("same" as const) : ("dup" as const), ex };
+      return { kind: !a || !b || a === b ? ("same" as const) : ("dup" as const), ex, changes: [] as string[] };
     });
-  }, [preview.rows, list]);
+  }, [preview.rows, list, changesOf]);
+  const editRows = preview.rows.map((r, i) => ({ r, c: classify[i] })).filter((x) => x.c?.kind === "edit");
   const dupRows = preview.rows.map((r, i) => ({ r, c: classify[i] })).filter((x) => x.c.kind === "dup");
   const dupLeft = dupRows.filter((x) => !dupChoice[dupKey(x.r)]).length;
   const willAdd = preview.rows.filter((r, i) => classify[i]?.kind === "new" || (classify[i]?.kind === "dup" && dupChoice[dupKey(r)] === "new")).length;
@@ -142,18 +172,46 @@ function Members() {
   async function importAll() {
     setBusy(true);
     setMsg(null);
-    const rows = preview.rows.map(({ line, edu, memo, ...r }) => ({
+    // 1) 회원ID 로 찾은 회원: 표에 있는 항목만 고친다
+    let editNote = "";
+    if (editRows.length) {
+      const upd = editRows.map(({ r }) => ({
+        id: r.id.trim(),
+        ...(has("name") ? { name: r.name } : {}),
+        ...(has("kind") ? { kind: r.kind } : {}),
+        ...(has("position") ? { position: r.position } : {}),
+        ...(has("gender") ? { gender: r.gender } : {}),
+        ...(has("company") ? { company: r.company } : {}),
+        ...(has("title") ? { title: r.title } : {}),
+        ...(has("birth") ? { birth: r.birth } : {}),
+        ...(has("phone") ? { phone: r.phone } : {}),
+        ...(has("edu") ? { edu: eduYes(r.edu) } : {}),
+        ...(has("memo") ? { memo: r.memo.slice(0, 500) } : {}),
+        ...(importCustom.has(r.name) ? { fields: importCustom.get(r.name) } : {}),
+      }));
+      const u = await api<{ updated: number; renamed: { from: string; to: string }[] }>("/api/admin/members/bulk-update", { body: { rows: upd } });
+      if (!u.ok) { setBusy(false); return setMsg({ tone: "bad", text: `회원 정보를 고치지 못했어요. ${u.error}` }); }
+      editNote = `${u.data.updated}명의 정보를 고쳤어요.${u.data.renamed.length ? ` (${u.data.renamed.map((x) => `${x.from}→${x.to}`).join(", ")}: 같은 이름이 있어 알파벳을 붙였어요)` : ""} `;
+    }
+    // 2) 나머지 줄: 새 회원 추가(이미 있는 회원은 건너뜀)
+    const rows = preview.rows.filter((_, i) => classify[i]?.kind !== "edit" && classify[i]?.kind !== "nochange").map(({ line, edu, memo, id: _id, ...r }) => ({
       ...r, edu: eduYes(edu), ...(memo ? { memo: memo.slice(0, 500) } : {}),
       fields: importCustom.get(r.name) ?? {}, dup: dupChoice[dupKey({ name: r.name, line })],
     }));
+    if (!rows.length) {
+      setBusy(false);
+      setMsg({ tone: "info", text: editNote.trim() || "바뀐 내용이 없어요." });
+      setImportText(""); setDupChoice({}); setImportOpen(false); load();
+      return;
+    }
     const r = await api<{ added: number; skipped: string[]; renamed?: { from: string; to: string }[]; updated?: string[] }>("/api/admin/members/bulk", { body: { rows } });
     setBusy(false);
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) return setMsg({ tone: "bad", text: `${editNote}${r.error}` });
     const sk = r.data.skipped;
     const rn = r.data.renamed ?? [];
     if (rn.length) window.alert(`같은 이름의 회원이 있어서(연락처가 달라 다른 사람으로 봤어요) 이름 뒤에 알파벳을 붙였어요.\n${rn.slice(0, 10).map((x) => `${x.from} → ${x.to}`).join("\n")}${rn.length > 10 ? `\n외 ${rn.length - 10}명` : ""}`);
     const up = r.data.updated ?? [];
-    setMsg({ tone: "info", text: `${r.data.added}명을 추가했어요.${rn.length ? ` 동명이인 ${rn.length}명은 이름 뒤에 알파벳을 붙였어요.` : ""}${up.length ? ` ${up.length}명(${up.slice(0, 5).join(", ")}${up.length > 5 ? " 외" : ""})은 기존 회원의 연락처를 새 번호로 고쳤어요.` : ""}${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
+    setMsg({ tone: "info", text: `${editNote}${r.data.added}명을 추가했어요.${rn.length ? ` 동명이인 ${rn.length}명은 이름 뒤에 알파벳을 붙였어요.` : ""}${up.length ? ` ${up.length}명(${up.slice(0, 5).join(", ")}${up.length > 5 ? " 외" : ""})은 기존 회원의 연락처를 새 번호로 고쳤어요.` : ""}${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
     setImportText("");
     setDupChoice({});
     setImportOpen(false);
@@ -287,19 +345,20 @@ function Members() {
 
   /* ── 엑셀 ── */
   const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10).replace(/-/g, "");
-  // 회원정보 내려받기: 지금 보이는 명단(구분 필터 적용) 그대로
+  // 엑셀받기: 올리기 양식과 같은 모양에 지금 보이는 회원정보를 채워 받는다(구분 필터 적용).
+  // 맨 끝 "회원ID" 열로 회원을 찾으므로, 고쳐서 올리면 그 회원의 정보가 바뀐다. 빈 줄에 적으면 새 회원으로 들어간다.
+  const ID_HEAD = "회원ID(수정 금지)";
+  const TEMPLATE_HEAD = () => ["성명", "회원구분", "교육이수", "직책", "성별", "회사명", "직위", "생년월일", "연락처", ...custom, "메모", ID_HEAD];
   function downloadMembers() {
-    const head = ["NO", "성명", "회원구분", "교육이수", "직책", "소모임", "성별", "회사명", "직위", "생년월일", "연락처", "연령대", ...custom, "메모", "권한"];
     const rows = shown.map((m) => [
-      m.no ?? "", m.name, m.kind ?? "", m.edu ? "YES" : "NO", m.position ?? "", clubsText(m.clubs ?? []), m.gender ?? "", m.company ?? "", m.title ?? "",
-      m.birth ?? "", m.phone ?? "", m.ageGroup ?? "", ...custom.map((c) => m.fields[c] ?? ""), m.memo ?? "", (m.effective ?? []).map((p) => PERM_LABELS[p] ?? p).join(", "),
+      m.name, m.kind ?? "", m.edu ? "YES" : "NO", m.position ?? "", m.gender ?? "", m.company ?? "", m.title ?? "",
+      m.birth ?? "", m.phone ?? "", ...custom.map((c) => m.fields[c] ?? ""), m.memo ?? "", m.id,
     ]);
     const label = filter.length ? `_${filter.join("·")}` : "";
-    downloadXlsx(`회원명단${label}_${today}.xlsx`, [{ name: "회원명단", rows: [head, ...rows], boldFirst: true, widths: head.map((h) => (h === "메모" ? 30 : h === "소모임" || h === "회사명" || h === "권한" ? 18 : h === "NO" ? 6 : 12)) }]);
+    downloadTemplate(rows, `회원명단${label}_${today}.xlsx`);
   }
-  // 올리기용 양식: 첫 줄 머리글만 있는 시트 + 작성 방법 시트
-  const TEMPLATE_HEAD = () => ["성명", "회원구분", "교육이수", "직책", "성별", "회사명", "직위", "생년월일", "연락처", ...custom, "메모"];
-  function downloadTemplate() {
+  // 올리기용 양식(빈 양식 또는 회원정보를 채운 양식) + 작성 방법 시트
+  function downloadTemplate(data: string[][] = [], file = "회원명단_올리기양식.xlsx") {
     const head = TEMPLATE_HEAD();
     const guide: string[][] = [
       ["항목", "적는 방법"],
@@ -313,12 +372,15 @@ function Members() {
       ...custom.map((c) => [c, "추가 항목 (자유롭게)"]),
       ["메모", "관리자만 보는 메모 (500자까지)"],
       ["", ""],
+      [ID_HEAD, "엑셀받기로 받은 회원의 번호예요. 고치거나 지우지 마세요. 이 번호가 있는 줄은 그 회원의 정보를 고치고, 없는 줄(새로 적은 줄)은 새 회원으로 넣어요."],
+      ["", ""],
       ["참고", "‘회원명단’ 시트의 첫 줄(머리글)은 지우거나 바꾸지 마세요. 둘째 줄부터 한 줄에 한 명씩 적어요."],
-      ["참고", "관리자 권한과 소모임은 여기서 넣을 수 없어요. 넣은 뒤 회원 수정에서 정해 주세요."],
+      ["참고", "고친 파일을 ‘엑셀올리기’로 올리면, 바뀐 내용을 미리 보여 준 뒤 확인하면 반영해요. 칸을 비우면 그 값이 지워져요."],
+      ["참고", "관리자 권한과 소모임은 여기서 바꿀 수 없어요. 회원 수정·소모임관리에서 정해 주세요. 회원을 지우는 것도 회원명단에서 해요(줄을 지워도 회원은 그대로예요)."],
       ["예시", "김하늘 · 정회원 · YES · 회장 · 여 · 예시상사 · 대표 · 1970-01-01 · 010-0000-0001"],
     ];
-    downloadXlsx("회원명단_올리기양식.xlsx", [
-      { name: "회원명단", rows: [head], boldFirst: true, widths: head.map((h) => (h === "메모" ? 30 : h === "회사명" ? 18 : 12)) },
+    downloadXlsx(file, [
+      { name: "회원명단", rows: [head, ...data], boldFirst: true, widths: head.map((h) => (h === "메모" ? 30 : h === ID_HEAD ? 38 : h === "회사명" ? 18 : 12)) },
       { name: "작성 방법", rows: guide, boldFirst: true, widths: [12, 90] },
     ]);
   }
@@ -362,20 +424,20 @@ function Members() {
         </div>
       )}
 
-      {/* 오른쪽 추가 버튼들(요약 숫자는 회원구분 필터 바로 위에) */}
-      <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-        <div className="row" style={{ gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
-          <button className="mini" type="button" aria-expanded={importOpen} onClick={() => setImportOpen(!importOpen)} style={{ fontSize: fs(12) }}>{importOpen ? "붙여넣기 닫기" : "명단 붙여넣기"}</button>
-          <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }} style={{ fontSize: fs(12) }}>+ 항목 추가</button>
-          <button className="btn" type="button" aria-haspopup="dialog" onClick={startAdd} style={{ width: "auto", minHeight: 36, padding: "0 12px", fontSize: fs(12) }}>+ 회원 추가</button>
-        </div>
-      </div>
-      {/* 엑셀: 지금 보이는 명단 내려받기 · 올리기 양식 받기 · 양식에 적은 파일 올리기(미리보기 후 추가) */}
-      <div className="row" role="group" aria-label="엑셀" style={{ gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <span className="small" style={{ fontSize: fs(12) }}>엑셀</span>
-        <button className="mini" type="button" disabled={!shown.length} onClick={downloadMembers} style={{ fontSize: fs(12) }}>⬇ 회원정보 다운로드{filter.length ? `(${shown.length}명)` : ""}</button>
-        <button className="mini" type="button" onClick={downloadTemplate} style={{ fontSize: fs(12) }}>⬇ 양식 받기</button>
-        <button className="mini" type="button" onClick={() => xlsRef.current?.click()} style={{ fontSize: fs(12) }}>⬆ 엑셀 올리기</button>
+      {/* 한 줄: 회원추가 · 항목추가 · 명단붙이기 · 엑셀받기(지금 보이는 명단을 양식 모양으로). 빈 양식 받기·엑셀 업로드는 명단붙이기 안에 */}
+      <div role="group" aria-label="회원 명단 도구" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.5fr)", gap: 4 }}>
+        {(() => {
+          const b = { minHeight: 36, padding: "0 2px", fontSize: fs(12), whiteSpace: "nowrap", justifyContent: "center", width: "100%" } as const;
+          return (
+            <>
+              <button className="btn" type="button" aria-haspopup="dialog" onClick={startAdd} style={b}>회원추가</button>
+              <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }} style={b}>항목추가</button>
+              <button className="mini" type="button" aria-expanded={importOpen} aria-pressed={importOpen} onClick={() => setImportOpen(!importOpen)} style={b}>명단붙이기</button>
+              <button className="mini" type="button" disabled={!shown.length} onClick={downloadMembers} style={b}
+                title={filter.length ? `지금 보이는 ${shown.length}명을 엑셀 양식으로 받아요(고쳐서 명단붙이기 › 엑셀 업로드로 올리면 반영)` : "회원정보를 엑셀 양식으로 받아요(고쳐서 명단붙이기 › 엑셀 업로드로 올리면 반영)"}>회원정보다운로드</button>
+            </>
+          );
+        })()}
         <input ref={xlsRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" tabIndex={-1} aria-hidden="true"
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadExcel(f); }} />
       </div>
@@ -403,10 +465,14 @@ function Members() {
 
       {importOpen && (
         <section className="card" aria-label="명단 붙여넣기" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>명단 한 번에 넣기</b>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>명단 한 번에 넣기</b>
+            <button className="mini" type="button" onClick={() => downloadTemplate()} style={{ fontSize: fs(12) }}>⬇ 엑셀 양식 받기</button>
+            <button className="mini" type="button" onClick={() => xlsRef.current?.click()} style={{ fontSize: fs(12) }} title="양식에 적었거나 엑셀받기로 받아 고친 파일을 올려요(미리보기 후 반영)">⬆ 엑셀 업로드</button>
+          </div>
           <span className="small">
-            엑셀이나 구글 시트에서 표를 복사해 붙여 넣거나, CSV 내용을 붙여 넣으세요(위의 “엑셀 올리기”로 양식 파일을 올려도 여기에 채워져요). 첫 줄에 머리글(성명, 회원구분, 교육이수, 직책, 성별, 회사명, 직위, 생년월일, 연락처, 메모)이 있으면 그 순서를 따르고,
-            없으면 이 순서로 읽어요. 이미 있는 회원은 건너뛰고, 관리자 권한은 여기서 줄 수 없어요.
+            “엑셀 양식 받기”(빈 양식)에 적거나 “회원정보다운로드”로 받은 파일을 고친 뒤 “엑셀 업로드”로 올리면 여기에 채워져요. 표를 복사해 붙여 넣어도 돼요.
+            새로 적은 줄은 새 회원으로 넣고, 회원ID가 있는 줄은 그 회원의 바뀐 정보만 고쳐요(넣기 전에 아래에서 확인해요). 관리자 권한·소모임은 여기서 바꿀 수 없어요.
           </span>
           <label className="l" htmlFor="imp">붙여 넣을 명단</label>
           <textarea id="imp" className="field" rows={6} style={{ padding: 12, fontFamily: "inherit" }} value={importText}
@@ -418,8 +484,22 @@ function Members() {
               <span className="small">
                 {preview.rows.length}명을 읽었어요 · 새 회원 {classify.filter((c) => c.kind === "new").length}명
                 {classify.some((c) => c.kind === "same") ? ` · 이미 있는 같은 회원 ${classify.filter((c) => c.kind === "same").length}명(이름·연락처가 같아 건너뛰어요)` : ""}
+                {editRows.length ? ` · 정보를 고칠 회원 ${editRows.length}명` : ""}
+                {classify.some((c) => c.kind === "nochange") ? ` · 바뀐 것 없는 회원 ${classify.filter((c) => c.kind === "nochange").length}명` : ""}
                 {dupRows.length ? ` · 이름은 같고 연락처가 다른 회원 ${dupRows.length}명(아래에서 골라 주세요)` : ""}. 아래 표를 위아래로 넘겨 모두 확인해 보세요.
               </span>
+              {/* 회원정보다운로드로 받은 파일을 고쳐 올렸을 때: 회원별로 바뀌는 내용 */}
+              {editRows.length > 0 && (
+                <section className="card" aria-label="고칠 회원 정보" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)", maxHeight: 320, overflowY: "auto" }}>
+                  <b>이렇게 고쳐져요 ({editRows.length}명)</b>
+                  {editRows.map(({ r, c }) => (
+                    <div key={`${r.line}-${r.id}`} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span><b>{c.ex?.name}</b> <span className="small">({r.line}번째 줄)</span></span>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>{c.changes.map((x, i) => <li key={i} className="small" style={{ overflowWrap: "anywhere" }}>{x}</li>)}</ul>
+                    </div>
+                  ))}
+                </section>
+              )}
               {dupRows.length > 0 && (
                 <section className="card" aria-label="이름이 같은 회원 처리" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
                   <b>이름은 같은데 연락처가 달라요 ({dupRows.length}명)</b>
@@ -452,6 +532,8 @@ function Members() {
                           const c = classify[i]?.kind;
                           const ch = dupChoice[dupKey(r)];
                           if (c === "same") return <span className="chip line">건너뜀</span>;
+                          if (c === "edit") return <span className="chip warn">고침</span>;
+                          if (c === "nochange") return <span className="chip line">그대로</span>;
                           if (c === "dup") return <span className={`chip ${ch ? "violet" : "warn"}`}>{ch === "skip" ? "건너뜀" : ch === "update" ? "연락처 고침" : ch === "new" ? "새로(동명이인)" : "골라 주세요"}</span>;
                           return <span className="chip violet">새로</span>;
                         })()}</td>
@@ -467,8 +549,12 @@ function Members() {
               <ul style={{ margin: 0, paddingLeft: 18 }}>{preview.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>
             </div>
           )}
-          <button className="btn" type="button" style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }} disabled={busy || preview.rows.length === 0 || dupLeft > 0 || (willAdd === 0 && !dupRows.some((x) => dupChoice[dupKey(x.r)] === "update"))} onClick={importAll}>
-            {preview.rows.length ? `${willAdd}명 추가하기${dupRows.some((x) => dupChoice[dupKey(x.r)] === "update") ? " · 연락처 고치기" : ""}` : "추가하기"}
+          <button className="btn" type="button" style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }} disabled={busy || preview.rows.length === 0 || dupLeft > 0 || (willAdd === 0 && !editRows.length && !dupRows.some((x) => dupChoice[dupKey(x.r)] === "update"))} onClick={importAll}>
+            {!preview.rows.length ? "추가하기" : [
+              editRows.length ? `${editRows.length}명 고치기` : "",
+              willAdd || !editRows.length ? `${willAdd}명 추가하기` : "",
+              dupRows.some((x) => dupChoice[dupKey(x.r)] === "update") ? "연락처 고치기" : "",
+            ].filter(Boolean).join(" · ")}
           </button>
           {dupLeft > 0 && <span className="small" style={{ color: "var(--red-t)" }}>이름이 같은 회원 {dupLeft}명을 어떻게 할지 위에서 골라 주세요.</span>}
         </section>

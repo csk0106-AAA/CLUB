@@ -3,7 +3,8 @@
 export type ImportRow = {
   name: string; kind: string; position: string; gender: string; company: string;
   title: string; birth: string; phone: string; ageGroup: string;
-  edu: string; memo: string; // 교육이수(YES/NO 등 적은 그대로 — 넣을 때 eduYes 로 읽는다), 메모
+  edu: string; memo: string;
+  id: string; // 회원ID(엑셀받기 파일). 있으면 새로 넣지 않고 그 회원을 고친다 // 교육이수(YES/NO 등 적은 그대로 — 넣을 때 eduYes 로 읽는다), 메모
   line?: number; // 붙여 넣은 글에서 몇 번째 줄인지(미리보기·안내용)
 };
 type Key = Exclude<keyof ImportRow, "line">;
@@ -21,6 +22,8 @@ const HEADER: Record<string, Key> = {
   연령대: "ageGroup", 나이대: "ageGroup",
   교육이수: "edu", 이수: "edu", 교육: "edu",
   메모: "memo", 비고: "memo", memo: "memo",
+  // 엑셀받기로 받은 파일의 회원ID: 있으면 그 회원 정보를 고친다
+  회원id: "id", id: "id",
 };
 // 교육이수 칸: YES·O·예·이수·완료·true·1 이면 이수
 export const eduYes = (v: string) => /^(yes|y|o|○|예|네|이수|완료|true|1)$/i.test(v.trim());
@@ -61,12 +64,13 @@ export function splitTable(text: string, sep: string): { cells: string[]; line: 
   return rows;
 }
 
-export function parseMembers(text: string): { rows: ImportRow[]; problems: string[] } {
-  if (!text.trim()) return { rows: [], problems: [] };
+// present: 붙여 넣은 표에 있는 항목(엑셀로 고칠 때 없는 열은 그대로 두려고)
+export function parseMembers(text: string): { rows: ImportRow[]; problems: string[]; present: string[] } {
+  if (!text.trim()) return { rows: [], problems: [], present: [] };
   const firstLine = text.replace(/\r/g, "").split("\n").find((l) => l.trim()) ?? "";
   const sep = firstLine.includes("\t") ? "\t" : ",";
   const table = splitTable(text, sep);
-  if (table.length === 0) return { rows: [], problems: [] };
+  if (table.length === 0) return { rows: [], problems: [], present: [] };
 
   const head = table[0].cells.map(norm);
   const hasHeader = head.some((h) => h in HEADER || HEADER_ONLY.has(h));
@@ -85,7 +89,7 @@ export function parseMembers(text: string): { rows: ImportRow[]; problems: strin
 
   const rows: ImportRow[] = [];
   body.forEach(({ cells, line }) => {
-    const r: ImportRow = { name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", edu: "", memo: "", line };
+    const r: ImportRow = { name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", edu: "", memo: "", id: "", line };
     cols.forEach((k, j) => {
       if (k && cells[j] !== undefined) r[k] = cells[j];
     });
@@ -109,5 +113,5 @@ export function parseMembers(text: string): { rows: ImportRow[]; problems: strin
   for (const [name, lines] of seen) {
     if (lines.length > 1) problems.unshift(`“${name}”이(가) ${lines.length}번 있어요(${lines.join(", ")}번째 줄). 같은 사람이면 한 줄을 지워 주세요.`);
   }
-  return { rows, problems };
+  return { rows, problems, present: cols.filter((k): k is Key => !!k) };
 }
