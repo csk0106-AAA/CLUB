@@ -41,6 +41,8 @@ export const TABS = {
     "editors",
     // showPrep/showCosts: "true"면 준비목록·비용을 회원의 일정 화면에도 보여 준다(읽기만)
     "showPrep", "showCosts",
+    // supports: 지원금 JSON [{kind: dues(연·월회비에서 지원) | member(회원 지원), name, amount, memo}] (lib/supports.ts). 총 예산에 더한다.
+    "supports",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [

@@ -115,6 +115,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const [add, setAdd] = useState<Record<string, string | number | boolean>>({ ...BLANK[kind] });
   const [note, setNote] = useState<Note>(null);
   const [attend, setAttend] = useState(0);
+  const [support, setSupport] = useState(0); // 지원금 합계(회비 탭)
   const [fee, setFee] = useState("");
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState("");
@@ -132,9 +133,10 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       if (ev.ok) setShown(ev.data.event[kind === "prep" ? "showPrep" : "showCosts"] === "true");
     }
     if (kind === "costs") {
-      const e = await api<{ event: { fee: string; feeRules?: { days: string; kind: string; position: string; amount: string }[] }; rows: { answer: string }[] }>(`/api/admin/events/${eventId}`);
+      const e = await api<{ event: { fee: string; feeRules?: { days: string; kind: string; position: string; amount: string }[]; supports?: { amount: string }[] }; rows: { answer: string }[] }>(`/api/admin/events/${eventId}`);
       if (e.ok) {
         setAttend(e.data.rows.filter((x) => x.answer === "참석").length);
+        setSupport((e.data.event.supports ?? []).reduce((n, x) => n + (Number(x.amount) || 0), 0));
         // 현재 기본 회비 = 모두 "전체"인 회비 줄 금액(예전 fee 값이 남아 있으면 그 값)
         const all = (e.data.event.feeRules ?? []).find((x) => !x.days && !x.kind && !x.position);
         setFee(all?.amount ?? e.data.event.fee);
@@ -207,8 +209,9 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
 
   const totalBudget = kind === "costs" ? items.reduce((n, i) => n + Number(i.budget), 0) : 0;
   const totalSpent = kind === "costs" ? items.reduce((n, i) => n + Number(i.spent), 0) : 0;
-  // 1인 회비 제안: 예산 합계를 참석 인원으로 나누고 천 원 단위로 올린다.
-  const suggest = attend > 0 ? Math.ceil(totalBudget / attend / 1000) * 1000 : 0;
+  // 1인 회비 제안: (예산 합계 - 지원금)을 참석 인원으로 나누고 천 원 단위로 올린다.
+  const need = Math.max(0, totalBudget - support);
+  const suggest = attend > 0 ? Math.ceil(need / attend / 1000) * 1000 : 0;
 
   return (
     <>
@@ -234,7 +237,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           <div className="card"><span className="small">집행 합계</span><div className="big">{won(totalSpent)}</div></div>
           <div className="card"><span className="small">잔액</span><div className="big" style={{ color: totalBudget - totalSpent < 0 ? "var(--red-t)" : "var(--green-t)" }}>{won(totalBudget - totalSpent)}</div></div>
           <div className="card">
-            <span className="small">1인 회비 제안 (예산 ÷ 참석 {attend}명)</span>
+            <span className="small">1인 회비 제안 ({support ? `(예산 - 지원금 ${won(support)})` : "예산"} ÷ 참석 {attend}명)</span>
             <div className="big">{suggest ? won(suggest) : "-"}</div>
             <span className="small">현재 기본 회비(“전체” 줄) {fee ? won(fee) : "없음"}</span>
             {canEdit && suggest > 0 && <button className="mini" type="button" style={{ marginTop: 6 }} onClick={() => applyFee(suggest)}>이 금액으로 정하기</button>}
