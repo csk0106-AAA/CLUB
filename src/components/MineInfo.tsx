@@ -60,11 +60,11 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
       {d.groups.map((g, i) => (
         <Fold key={i} title={`조편성 · ${g.title}`}
           summary={g.team ? `내 조 ${g.team} · 조원 ${g.members.length}명` : `내가 들어간 조는 없어요 · 전체 ${g.teams?.length ?? 0}개 조`}>
+          {/* 펼쳐도 요약 한 줄은 그대로(조원 명단은 아래 전체 조에서 내 조로 확인) */}
           {g.team && (
-            <>
-              <div className="row" style={{ flexWrap: "wrap" }}><span className="small">내 조</span><span className="pill blue">{g.team}</span></div>
-              <People label="조원" names={g.members} />
-            </>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+              <span className="small">내 조</span><span className="pill blue">{g.team}</span><span className="small">· 조원 {g.members.length}명</span>
+            </div>
           )}
           {(g.teams?.length ?? 0) > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: g.team ? "1px solid var(--line)" : undefined, paddingTop: g.team ? 8 : 0 }}>
@@ -73,7 +73,15 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
                 {g.teams!.map((t, j) => (
                   <div key={j} style={{ borderTop: j ? "1px solid var(--line)" : undefined, paddingTop: j ? 6 : 0 }}>
                     <span className={`pill ${t.mine ? "blue" : "gray"}`}>{t.name}</span>{" "}
-                    <span className="small">{t.members.length}명 · {t.members.join(", ")}</span>
+                    <span className="small">
+                      {t.members.length}명 ·{" "}
+                      {t.members.map((n, k) => (
+                        <span key={k}>
+                          {k > 0 && ", "}
+                          {n.includes("(나)") ? <b style={{ color: "var(--violet-t)" }}>{n}</b> : n}
+                        </span>
+                      ))}
+                    </span>
                   </div>
                 ))}
               </div>
