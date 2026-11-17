@@ -6,7 +6,7 @@ import { AudiencePicker } from "@/components/AudiencePicker";
 import type { Audience } from "@/lib/audience";
 import {
   checkFileType, FILE_ACCEPT, FORM_HINT, FORM_LABEL, fmtSize, IMAGE_ACCEPT, MAX_FILE_BYTES, MAX_FILES,
-  type FileMeta, type Form, WRITE_FORMS,
+  type FileMeta, type Form, REF_HINTS, REF_KEYS, REF_LABEL, type RefKey, WRITE_FORMS,
 } from "@/lib/board";
 import { api } from "@/lib/client";
 import { FormFields } from "./FormFields";
@@ -17,10 +17,24 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 
 // "AI에게 작성 요청하기": 요청을 적으면 AI가 제목·내용 초안을 만든다. 초안은 미리 보고 "내용에 넣기"를 눌러야
 // 제목·내용 칸에 들어가고, 넣은 뒤에는 칸에서 직접 고쳐서 올린다(AI가 바로 올리지 않는다).
-function AiDraftBox({ form, title, body, onApply }: { form: Form; title: string; body: string; onApply: (title: string, body: string) => void }) {
+function AiDraftBox({ form, title, body, clubs, onApply }: { form: Form; title: string; body: string; clubs: string[]; onApply: (title: string, body: string) => void }) {
   const uid = useId();
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState("");
+  // 참고할 앱 정보: 관리자가 저장해 둔 모임 정보·회비·회칙·일정, 소모임 개요
+  const [refs, setRefs] = useState<RefKey[]>([]);
+  const [refClubs, setRefClubs] = useState<string[]>([]);
+  const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+  // 요청 글에 소모임 이름이나 "회칙"·"회비"·"일정" 같은 말이 있으면 그 정보를 자동으로 체크해 둔다
+  const detect = (text: string) => {
+    const r = REF_KEYS.filter((k) => REF_HINTS[k].test(text));
+    const named = clubs.filter((n) => text.includes(n) || text.includes(n.replace(/\s+/g, "")));
+    // 이름 없이 "소모임"만 있으면 소모임 전체(10개까지)를 참고한다
+    const c = named.length ? named : /소모임/.test(text) && refClubs.length === 0 ? clubs.slice(0, 10) : [];
+    if (r.length) setRefs((cur) => [...new Set([...cur, ...r])]);
+    if (c.length) setRefClubs((cur) => [...new Set([...cur, ...c])]);
+    return { refs: [...new Set([...refs, ...r])], clubs: [...new Set([...refClubs, ...c])] };
+  };
   const [useCur, setUseCur] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -30,8 +44,9 @@ function AiDraftBox({ form, title, body, onApply }: { form: Form; title: string;
   async function ask() {
     setBusy(true);
     setErr("");
+    const picked = detect(request);
     const r = await api<{ title: string; body: string }>("/api/board/ai-draft", {
-      body: { form, request, ...(useCur && hasCur ? { title, body } : {}) },
+      body: { form, request, refs: picked.refs, clubs: picked.clubs, ...(useCur && hasCur ? { title, body } : {}) },
     });
     setBusy(false);
     if (!r.ok) return setErr(r.error);
@@ -60,7 +75,31 @@ function AiDraftBox({ form, title, body, onApply }: { form: Form; title: string;
       <label className="small" htmlFor={`${uid}-r`}>어떤 글을 쓸지 알려 주세요. 날짜·장소·금액처럼 꼭 들어갈 내용을 함께 적으면 더 정확해요.</label>
       <textarea id={`${uid}-r`} className="field" rows={3} maxLength={2000} style={{ padding: 10, lineHeight: 1.5 }}
         placeholder="예) 12월 정기모임 안내 글. 12월 10일 저녁 7시, 광화문 ○○호텔, 회비 5만 원, 참석 여부는 댓글로."
-        value={request} onChange={(e) => setRequest(e.target.value)} />
+        value={request} onChange={(e) => setRequest(e.target.value)} onBlur={() => detect(request)} />
+      <fieldset style={{ border: 0, margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+        <legend className="small" style={{ padding: 0, marginBottom: 6, fontWeight: 700 }}>참고할 정보 (관리자가 앱에 저장해 둔 내용을 AI가 보고 써요)</legend>
+        <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+          {REF_KEYS.map((k) => (
+            <button key={k} type="button" className={`chip ${refs.includes(k) ? "violet" : "line"}`} aria-pressed={refs.includes(k)}
+              style={{ minHeight: 32, cursor: "pointer", border: "1px solid var(--line)" }} onClick={() => setRefs(toggle(refs, k))}>
+              {refs.includes(k) ? "✓ " : ""}{REF_LABEL[k]}
+            </button>
+          ))}
+        </div>
+        {clubs.length > 0 && (
+          <div className="row" style={{ flexWrap: "wrap", gap: 6 }} role="group" aria-label="참고할 소모임">
+            <span className="small" style={{ alignSelf: "center" }}>소모임:</span>
+            {clubs.map((c) => (
+              <button key={c} type="button" className={`chip ${refClubs.includes(c) ? "violet" : "line"}`} aria-pressed={refClubs.includes(c)}
+                disabled={!refClubs.includes(c) && refClubs.length >= 10}
+                style={{ minHeight: 32, cursor: "pointer", border: "1px solid var(--line)" }} onClick={() => setRefClubs(toggle(refClubs, c))}>
+                {refClubs.includes(c) ? "✓ " : ""}{c}
+              </button>
+            ))}
+          </div>
+        )}
+        <span className="small" style={{ fontSize: fs(12) }}>요청에 소모임 이름이나 “회칙·회비·일정·임원” 같은 말이 있으면 자동으로 체크돼요. 소모임은 소개·모임 주기·장소·직책자·회비·계좌·운영 정책을 참고해요.</span>
+      </fieldset>
       {hasCur && (
         <label className="row" style={{ gap: 8, fontSize: fs(14), cursor: "pointer" }}>
           <input type="checkbox" checked={useCur} onChange={(e) => setUseCur(e.target.checked)} style={{ width: 18, height: 18 }} />
@@ -253,7 +292,7 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
           </div>
 
           {meta.aiEnabled && (
-            <AiDraftBox form={form} title={title} body={body} onApply={(t, b) => { setDirty(true); if (t) setTitle(t); setBody(b); }} />
+            <AiDraftBox form={form} title={title} body={body} clubs={meta.clubs ?? []} onApply={(t, b) => { setDirty(true); if (t) setTitle(t); setBody(b); }} />
           )}
 
           <FormFields form={form} data={data} onChange={touch(setData)} kinds={meta.kinds} positions={meta.positions} agendaLabels={meta.agendaLabels} />

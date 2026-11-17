@@ -27,6 +27,18 @@ export const isForm = (f: string): f is Form => (FORMS as readonly string[]).inc
 export const WRITE_FORMS: Form[] = FORMS.filter((f) => f !== "minutes" && f !== "rules" && f !== "fee");
 export const isWriteForm = (f: string): f is Form => (WRITE_FORMS as string[]).includes(f);
 
+// 글쓰기 "AI에게 작성 요청하기"에서 참고하게 할 앱 정보(소모임은 따로 고른다). 서버: lib/board-ai-context.ts
+export const REF_KEYS = ["group", "dues", "rules", "events"] as const;
+export type RefKey = (typeof REF_KEYS)[number];
+export const REF_LABEL: Record<RefKey, string> = { group: "모임 정보·임원진", dues: "모임 회비", rules: "회칙", events: "다가오는 일정" };
+// 요청 글에 이런 말이 있으면 그 정보를 자동으로 함께 참고한다
+export const REF_HINTS: Record<RefKey, RegExp> = {
+  group: /임원|회장|총무|운영진|모임 소개|정회원|회원 수/,
+  dues: /회비|연회비|월회비|입금|계좌/,
+  rules: /회칙|규정|조항|조문/,
+  events: /일정|정기모임|워크숍|행사|모임 안내|다음 모임/,
+};
+
 export const FORM_LABEL: Record<Form, string> = {
   rules: "회칙",
   fee: "회비 안내",
