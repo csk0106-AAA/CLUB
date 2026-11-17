@@ -362,15 +362,8 @@ function Members() {
         </div>
       )}
 
-      {/* 요약(목업 C): 전체 N명 · 구분별 숫자 + 오른쪽 추가 버튼 */}
+      {/* 오른쪽 추가 버튼들(요약 숫자는 회원구분 필터 바로 위에) */}
       <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-        {list && (
-          <p className="small" role="group" aria-label="회원 요약" style={{ margin: 0, flex: "1 1 200px", fontSize: fs(13) }}>
-            {/* 구분별 명수는 아래 필터 버튼에 보인다 */}
-            <Link href="/admin/admins">권한자 {admins.length}</Link>
-            <span>, 남 {list.filter((m) => m.gender === "남").length}, 여 {list.filter((m) => m.gender === "여").length}</span>
-          </p>
-        )}
         <div className="row" style={{ gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
           <button className="mini" type="button" aria-expanded={importOpen} onClick={() => setImportOpen(!importOpen)} style={{ fontSize: fs(12) }}>{importOpen ? "붙여넣기 닫기" : "명단 붙여넣기"}</button>
           <button className="mini" type="button" aria-expanded={colsOpen} onClick={() => { setColsOpen(!colsOpen); setColsDraft(custom); }} style={{ fontSize: fs(12) }}>+ 항목 추가</button>
@@ -558,6 +551,13 @@ function Members() {
       </form>
       </Popup>
 
+      {/* 요약: 권한자·남·여 (구분별 명수는 아래 필터 버튼에) */}
+      {list && (
+        <p className="small" role="group" aria-label="회원 요약" style={{ margin: "0 0 -6px", fontSize: fs(13) }}>
+          <Link href="/admin/admins">권한자 {admins.length}</Link>
+          <span>, 남 {list.filter((m) => m.gender === "남").length}, 여 {list.filter((m) => m.gender === "여").length}</span>
+        </p>
+      )}
       {/* 회원구분 보기: 한 줄, "전체" 외에는 여러 개를 함께 고를 수 있다(아무것도 안 고르면 전체) */}
       <div className="fpills" role="group" aria-label="회원구분 보기 (여러 개 선택 가능)">
         <button type="button" aria-pressed={filter.length === 0} onClick={() => setFilter([])}>전체 {list?.length ?? 0}</button>
