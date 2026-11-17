@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { PasswordField } from "@/components/PasswordField";
-import { DateField } from "@/components/DateField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -93,34 +92,11 @@ function Settings() {
       <span className="small">회원구분·직책·소모임 목록은 <Link href="/admin/kinds">회원 구분</Link> 메뉴에서 정해요.</span>
 
       <button className="btn" type="submit" disabled={busy} style={{ width: "auto", minWidth: 200, alignSelf: "flex-start" }}>{busy ? "저장 중…" : "저장"}</button>
-      <ProfileReveal />
     </form>
   );
 }
 
-// 프로필 북 실명 공개 시점. 이 시각 전에는 별칭으로만 보인다.
-function ProfileReveal() {
-  const [at, setAt] = useState("");
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
-  useEffect(() => {
-    api<{ revealAt: string }>("/api/admin/profile-settings").then((r) => r.ok && setAt(r.data.revealAt));
-  }, []);
-  async function save() {
-    const r = await api("/api/admin/profile-settings", { method: "PUT", body: { revealAt: at } });
-    setMsg(r.ok ? { tone: "info", text: at ? "실명 공개 시점을 저장했어요." : "공개 시점을 지웠어요. 별칭으로만 보여요." } : { tone: "bad", text: r.error });
-  }
-  return (
-    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b style={{ font: `700 ${fs(17)} var(--display)` }}>프로필 북 실명 공개 시점</b>
-      <span className="small">일정이 끝난 뒤 별칭 대신 실명으로 보여 줄 시점이에요(한국 시간). 비워 두면 계속 별칭으로만 보여요.</span>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <DateField mode="datetime" ariaLabel="실명 공개 시점" style={{ width: 300, maxWidth: "100%" }} value={at} onChange={setAt} />
-        <button className="mini" type="button" style={{ minHeight: 46 }} onClick={save}>저장</button>
-      </div>
-    </div>
-  );
-}
+// 프로필 북 실명 공개 시점은 '내가 누굴까요?' 활동 템플릿(활동 설정)에서 정한다(components/TemplateEditor.tsx).
 
 export default function SettingsPage() {
   return <AdminGate mode="group" need={["group"]} active="/admin/settings"><Settings /></AdminGate>;

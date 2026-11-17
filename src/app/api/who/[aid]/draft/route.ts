@@ -4,10 +4,9 @@ import { ask, extractJson, introAliasPrompt, isAiEnabled } from "@/lib/ai";
 import { bad, guard } from "@/lib/api";
 import { generateTruthLies, keyWords, qaPairs } from "@/lib/truthlies";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
-import { canJoin } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import { guidelinesFor } from "@/lib/ai-guides";
-import { loadWho, myInterview, myProfile, myTruthLies, normAlias, writeClosed } from "@/lib/who";
+import { inGame, loadWho, myInterview, myProfile, myTruthLies, normAlias, writeClosed, writeGate } from "@/lib/who";
 
 type Ctx = { params: Promise<{ aid: string }> };
 
@@ -21,7 +20,7 @@ export async function POST(_req: Request, ctx: Ctx) {
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const closed = writeClosed(w);
+  const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
 
   const s = await getStore();
@@ -32,9 +31,11 @@ export async function POST(_req: Request, ctx: Ctx) {
   if (!row || row.status !== "done") return bad("인터뷰를 끝낸 뒤에 소개 글을 만들 수 있어요.");
   const messages = iv.messages;
   const terms = termsFrom(await s.list("Members"));
-  const answers = messages.filter((m) => m.role === "me").map((m) => generalize(m.text, terms));
-  // 불참하는 분은 활동에 들어가지 않으므로 2진실 1거짓은 만들지 않는다(프로필 북용 소개만).
-  const inAct = await canJoin(w.cfg, w.act, w.ev, g.s.mid);
+  // 게임에 들어가는 회원(별칭으로 가려짐)만 2진실 1거짓을 만들고 이름·회사명 같은 신원 정보를 일반화한다.
+  // 프로필 북 작성(실명 공개)은 2진실 1거짓 없이, 답변 그대로 쓴다.
+  const inAct = await inGame(w, g.s.mid);
+  const gen = (t: string) => (inAct ? generalize(t, terms) : t);
+  const answers = messages.filter((m) => m.role === "me").map((m) => gen(m.text));
 
   let mode: "ai" | "manual" = "manual";
   let intro = answers.join("\n\n");
@@ -71,7 +72,7 @@ export async function POST(_req: Request, ctx: Ctx) {
       if (!o.success || (!alias && !aliasOk(o.data.alias))) continue;
       mode = "ai";
       if (!alias) alias = o.data.alias;
-      intro = generalize(o.data.intro, terms);
+      intro = gen(o.data.intro);
       leaked = avoidWords.filter((k) => intro.includes(k));
       if (leaked.length === 0) break;
       banned = [...new Set([...banned, ...leaked])];
@@ -90,7 +91,7 @@ export async function POST(_req: Request, ctx: Ctx) {
   }
 
   // leaked: 세 번 써도 소개 글에 남은 2진실 1거짓 단어(화면에서 직접 지우도록 알려 준다)
-  return NextResponse.json({ mode, alias, inActivity: inAct, draftMd: intro, statements: inAct ? statements : [], lieIndex, leaked, remaining: findIdentity(intro, terms) });
+  return NextResponse.json({ mode, alias, inActivity: inAct, draftMd: intro, statements: inAct ? statements : [], lieIndex, leaked, remaining: inAct ? findIdentity(intro, terms) : [] });
 }
 
 const save = z.object({
@@ -106,7 +107,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const closed = writeClosed(w);
+  const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
   const parsed = save.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 거짓 번호는 1~3번 중 하나예요.");
@@ -119,7 +120,7 @@ export async function PUT(req: Request, ctx: Ctx) {
 
   const now = new Date().toISOString();
   await s.update("Profiles", profile.id, { draftMd: d.introMd, introStatus: d.introMd.trim() ? "draft" : "none", updatedAt: now });
-  if (d.statements && (await canJoin(w.cfg, w.act, w.ev, g.s.mid))) {
+  if (d.statements && (await inGame(w, g.s.mid))) {
     const tl = await myTruthLies(g.s.mid, aid);
     const tlPatch = { statements: JSON.stringify(d.statements), lieIndex: String(d.lieIndex ?? 0), status: "draft" };
     if (tl) await s.update("TruthLies", tl.id, tlPatch);

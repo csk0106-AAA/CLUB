@@ -4,8 +4,7 @@ import { bad, guard } from "@/lib/api";
 import { findIdentity, termsFrom } from "@/lib/identity";
 import { notifyProfilePush } from "@/lib/push";
 import { getStore } from "@/lib/store";
-import { canJoin } from "@/lib/participants";
-import { loadWho, myProfile, myTruthLies, writeClosed } from "@/lib/who";
+import { inGame, loadWho, myProfile, myTruthLies, writeClosed, writeGate } from "@/lib/who";
 
 type Ctx = { params: Promise<{ aid: string }> };
 
@@ -24,7 +23,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const closed = writeClosed(w);
+  const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("소개 글은 20자 이상, 2진실 1거짓은 문장 3개와 거짓 번호가 필요해요.");
@@ -32,13 +31,14 @@ export async function POST(req: Request, ctx: Ctx) {
 
   const s = await getStore();
   const profile = await myProfile(g.s.mid);
-  if (!profile?.alias) return bad("별칭을 먼저 정해 주세요.");
-
-  const inAct = await canJoin(w.cfg, w.act, w.ev, g.s.mid);
+  if (!profile) return bad("소개 글을 먼저 만들어 주세요.");
+  // 게임 참여(별칭으로 가려짐)일 때만 별칭이 필요하고 신원 정보를 검사한다. 프로필 북 작성은 실명으로 공개된다.
+  const inAct = await inGame(w, g.s.mid);
+  if (inAct && !profile.alias) return bad("별칭을 먼저 정해 주세요.");
   if (inAct && (!d.statements || d.lieIndex === undefined)) return bad("2진실 1거짓은 문장 3개와 거짓 번호가 필요해요.");
 
   const terms = termsFrom(await s.list("Members"));
-  const hitsIntro = findIdentity(d.introMd, terms);
+  const hitsIntro = inAct ? findIdentity(d.introMd, terms) : [];
   const hitsTl = inAct && d.statements ? findIdentity(d.statements.join(" "), terms) : [];
   if (hitsIntro.length || hitsTl.length) {
     const list = [...new Set([...hitsIntro, ...hitsTl])].join(", ");
@@ -70,7 +70,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const closed = writeClosed(w);
+  const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
   const s = await getStore();
   const profile = await myProfile(g.s.mid);

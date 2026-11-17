@@ -11,11 +11,10 @@ import { api, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Data = {
-  revealed: boolean; revealAt: string;
-  // company·title·clubs 는 실명 공개 뒤에만 온다
-  // fresh: 마지막으로 본 뒤 처음 공개(NEW) / 다시 공개·수정(UP)
-  items: { id: string; alias: string; name: string; mine: boolean; fresh?: Fresh | null; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
-  missingCount: number; missing: { name: string; company?: string; title?: string; clubs?: string[] }[];
+  // key: 상세 화면 주소, masked: '내가 누굴까요?' 참여 중이라 별칭으로 보임(이름 칸에 별칭, 회사·사진 없음)
+  // hasIntro: 공개된 소개가 있는지, fresh: 마지막으로 본 뒤 처음 공개(NEW) / 다시 공개·수정(UP)
+  items: { key: string; masked: boolean; name: string; hasIntro: boolean; mine: boolean; fresh?: Fresh | null; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
+  maskedCount: number;
 };
 
 // 실명 공개 뒤 표시: "올림피아드 / 대표 / 골프, 등산" (빈 항목은 건너뜀)
@@ -23,7 +22,8 @@ function details(m: { company?: string; title?: string; clubs?: string[] }): str
   return [m.company, m.title, (m.clubs ?? []).join(", ")].filter((x) => x && x.trim()).join(" / ");
 }
 
-// 회원 프로필 북: 공개로 승인된 소개만 보인다. 공개 시점 전에는 별칭, 이후에는 실명.
+// 회원 프로필 북: 모든 회원을 이름으로 보여 준다. 누르면 소개(없으면 본인은 "소개 작성하기").
+// '내가 누굴까요?'에 참여 중인 회원은 실명 공개 시점까지 별칭(랜덤 닉네임)으로만 보인다.
 export default function ProfilesPage() {
   const router = useRouter();
   const [d, setD] = useState<Data | null>(null);
@@ -94,32 +94,31 @@ export default function ProfilesPage() {
       {d && (
         <>
           <p className="small" style={{ margin: 0, fontSize: fs(12) }}>
-            {d.revealed ? "회원이 공개로 승인한 소개를 실명으로 보여 드려요." : `회원이 공개로 승인한 소개예요. 지금은 별칭으로만 보여요${d.revealAt ? ` (${fmtDateTime(d.revealAt)}부터 실명)` : ""}.`}
+            이름을 누르면 소개를 볼 수 있어요.{d.maskedCount > 0 ? ` “내가 누굴까요?”에 참여 중인 ${d.maskedCount}명은 실명 공개 전까지 별칭으로 보여요.` : ""}
           </p>
-          {d.items.length === 0 && <div className="msg info">아직 공개된 소개가 없어요. 회원이 작성하고 배포하면 여기에 나타나요.</div>}
+          {d.items.length === 0 && <div className="msg info">아직 회원이 없어요.</div>}
           <div className="rows bleed">
             {d.items.map((p) => (
-              <button key={p.id} type="button" className="opt" onClick={() => router.push(`/profiles/${p.id}`)}
-                style={d.revealed && p.name ? { flexDirection: "row", alignItems: "center", gap: 12 } : undefined}>
-                {/* 프로필 사진·캐릭터는 실명 공개 뒤에만(공개 전에는 별칭의 주인을 알아챌 수 있어서 서버가 내려주지도 않는다) */}
-                {d.revealed && p.name && <Avatar member={{ name: p.name, avatar: p.avatar ?? null }} size={44} />}
+              <button key={p.key} type="button" className="opt" onClick={() => router.push(`/profiles/${p.key}`)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                {/* 별칭 회원은 사진·캐릭터를 내려받지 않는다(주인을 알아챌 수 있어서) */}
+                {p.masked ? <span className="avatar" aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 12, background: "var(--violet-bg)", color: "var(--violet)", fontSize: fs(18) }}>?</span>
+                  : <Avatar member={{ name: p.name, avatar: p.avatar ?? null }} size={44} />}
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 0 }}>
                   <span className="name">
-                    {d.revealed && p.name ? p.name : `“${p.alias}”`}
+                    {p.masked ? `“${p.name}”` : p.name}
                     {p.fresh && <FreshChip fresh={p.fresh} style={{ marginLeft: 6, verticalAlign: "middle" }} />}
-                    {d.revealed && p.name && details(p) && <span style={{ font: `400 ${fs(13)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
+                    {!p.masked && details(p) && <span style={{ font: `400 ${fs(13)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
                   </span>
-                  {d.revealed && p.name && <span className="small">별칭 “{p.alias}”</span>}
-                  {p.mine && <span className="chip violet">내 소개</span>}
+                  <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                    {p.mine && <span className="chip violet">나</span>}
+                    {p.masked && <span className="chip line">별칭 · 내가 누굴까요?</span>}
+                    {!p.hasIntro && <span className="chip gray">{p.mine && !p.masked ? "소개 작성하기" : "소개 준비 중"}</span>}
+                  </span>
                 </span>
               </button>
             ))}
           </div>
-          {d.revealed ? (
-            d.missing.length > 0 && <div className="card"><b>미작성</b><ul className="small" style={{ margin: "4px 0 0", paddingLeft: 20 }}>{d.missing.map((m, i) => <li key={i}>{[m.name, details(m)].filter(Boolean).join(" / ")}</li>)}</ul></div>
-          ) : (
-            d.missingCount > 0 && <p className="hint">아직 작성하지 않은 회원이 {d.missingCount}명 있어요.</p>
-          )}
         </>
       )}
       <MemberTabs on="profiles" />

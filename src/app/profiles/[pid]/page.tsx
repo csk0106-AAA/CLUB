@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, type AvatarView } from "@/components/Avatars";
@@ -12,7 +13,8 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
   const { pid } = use(params);
   const router = useRouter();
   const [p, setP] = useState<{
-    alias: string; name: string; introMd: string; mine: boolean;
+    alias: string; name: string; introMd: string; mine: boolean; masked: boolean;
+    myActivity: { aid: string; eventId: string } | null; // 내가 참여 중인 '내가 누굴까요?'(그 활동에서 소개를 쓴다)
     company: string; title: string; clubs: string[]; avatar: AvatarView; // 실명 공개 뒤에만 값이 있다
     truthLies: { statements: string[]; lieIndex: number } | null;
     traitsMd: string; readingMd: string; sajuInfo: SajuInfo | null;
@@ -35,14 +37,36 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
       {!p && !error && <p className="small">불러오는 중이에요…</p>}
       {p && (
         <>
-          <div className="row">{p.name ? <Avatar member={{ name: p.name, avatar: p.avatar }} size={56} /> : <Mascot size={56} />}<div><h1 className="title" style={{ fontSize: fs(22) }}>{p.name || `“${p.alias}”`}</h1>{p.name && <div className="small">별칭 “{p.alias}”</div>}</div></div>
+          <div className="row">{p.name ? <Avatar member={{ name: p.name, avatar: p.avatar }} size={56} /> : <Mascot size={56} />}<div><h1 className="title" style={{ fontSize: fs(22) }}>{p.name || `“${p.alias}”`}</h1>{p.masked && <div className="small">“내가 누굴까요?” 참여 중 · 실명 공개 전까지 별칭으로 보여요</div>}</div></div>
           {p.name && (
             <p style={{ margin: 0, fontWeight: 700 }}>
               {[p.name, p.company, p.title, (p.clubs ?? []).join(", ")].filter((x) => x && x.trim()).join(" / ")}
             </p>
           )}
           {p.mine && <span className="pill blue" style={{ alignSelf: "flex-start" }}>내 소개</span>}
-          <article className="card" style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{p.introMd}</article>
+          {p.introMd ? (
+            <article className="card" style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{p.introMd}</article>
+          ) : p.mine && p.myActivity ? (
+            // 게임 참여 중: 그 활동에서 별칭으로 소개를 쓴다
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <b style={{ font: `700 ${fs(16)} var(--display)` }}>“내가 누굴까요?” 활동에서 소개를 작성해요</b>
+              <span className="small">참여 중인 활동의 AI 인터뷰로 소개를 쓰면, 실명 공개 시점 전까지 별칭으로 여기에 보여요.</span>
+              <Link className="btn" href={`/events/${p.myActivity.eventId}/who/${p.myActivity.aid}`} style={{ textDecoration: "none" }}>활동에서 소개 작성하기</Link>
+            </div>
+          ) : p.mine ? (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
+              <b style={{ font: `700 ${fs(16)} var(--display)` }}>AI와의 인터뷰를 통해 나를 소개하세요.</b>
+              <Link className="btn" href="/profiles/write" style={{ textDecoration: "none", width: "auto", minWidth: 180 }}>소개 작성하기</Link>
+            </div>
+          ) : (
+            <div className="msg info">아직 소개를 작성하지 않았어요.</div>
+          )}
+          {/* 내 소개가 있으면 고치기(게임 참여 중에는 활동 화면에서) */}
+          {p.mine && p.introMd && (
+            p.myActivity
+              ? <Link className="btn white" href={`/events/${p.myActivity.eventId}/who/${p.myActivity.aid}`} style={{ textDecoration: "none", width: "auto", alignSelf: "flex-start" }}>활동에서 소개 고치기</Link>
+              : <Link className="btn white" href="/profiles/write" style={{ textDecoration: "none", width: "auto", alignSelf: "flex-start" }}>내 소개 고치기</Link>
+          )}
           {p.truthLies && p.truthLies.statements.length === 3 && (
             <section className="card" aria-label="2진실 1거짓" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <b style={{ font: `700 ${fs(17)} var(--display)` }}>2진실 1거짓</b>

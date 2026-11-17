@@ -5,7 +5,7 @@ import { bad, guard } from "@/lib/api";
 import { findIdentity, generalize, revisionRuleCheck, termsFrom } from "@/lib/identity";
 import { getStore } from "@/lib/store";
 import { guidelinesFor } from "@/lib/ai-guides";
-import { loadWho, writeClosed } from "@/lib/who";
+import { inGame, loadWho, writeClosed, writeGate } from "@/lib/who";
 
 const body = z.object({ request: z.string().trim().min(1).max(500), introMd: z.string().min(1).max(8000) });
 
@@ -19,7 +19,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const closed = writeClosed(w);
+  const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("수정 요청을 입력해 주세요.");
@@ -37,8 +37,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   if (out.startsWith("거절:")) {
     return NextResponse.json({ refused: true, error: `${REFUSE} 이유: ${out.slice(3).trim()}` }, { status: 422 });
   }
-  let text = generalize(out, terms);
-  if (findIdentity(text, terms).length > 0) {
+  const game = await inGame(w, g.s.mid);
+  let text = game ? generalize(out, terms) : out;
+  if (game && findIdentity(text, terms).length > 0) {
     return NextResponse.json({ refused: true, error: `${REFUSE} 이유: 고친 글에 신원이 드러나는 정보가 있어요.` }, { status: 422 });
   }
   return NextResponse.json({ introMd: text });

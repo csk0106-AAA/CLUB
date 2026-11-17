@@ -4,44 +4,43 @@ import { avatarView } from "@/lib/avatar";
 import { consentRequired, hasConsent } from "@/lib/consent";
 import { memberClubs } from "@/lib/lists";
 import { isGuest } from "@/lib/member-kind";
-import { getSetting, getStore } from "@/lib/store";
+import { ensureAlias, maskedMembers } from "@/lib/profile-book";
+import { getStore } from "@/lib/store";
 import { profileFreshness } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
-// 회원 프로필 북. 공개로 승인된 소개만 보인다(2진실 1거짓, 인터뷰, 고민, 타임캡슐, 생년월일 등은 절대 포함하지 않는다).
-// 공개 시점 전에는 별칭으로만 보여 주고, 미작성 회원의 이름은 밝히지 않는다(이름이 남으면 별칭의 주인을 추측하기 쉬워진다).
-// 공개 시점 이후에는 실명으로 보이고 미작성 회원도 "미작성"으로 표시한다.
+// 회원 프로필 북: 모든 회원을 이름으로 보여 준다(2진실 1거짓, 인터뷰, 고민, 타임캡슐, 생년월일 등은 절대 포함하지 않는다).
+//  - 실명 공개 전인 '내가 누굴까요?' 활동에 참여 중인 회원은 이름 대신 별칭(랜덤 닉네임)으로만 보이고,
+//    회사·직책·소모임·프로필 사진도 내려주지 않는다(별칭의 주인을 알아챌 수 없게). 실명 공개 시점이 지나면 실명으로.
+//  - key: 상세 화면 주소(별칭 회원은 프로필 번호, 그 밖에는 "m-회원번호"). 별칭 회원의 회원 번호는 내려주지 않는다.
 export async function GET() {
   const g = await guard();
   if ("err" in g) return g.err;
   if (!(await hasConsent(g.s.mid))) return consentRequired();
   const s = await getStore();
-  const [members, profiles] = await Promise.all([s.list("Members"), s.list("Profiles")]);
-  const revealAt = await getSetting<string>("profileRevealAt", "");
-  const revealed = revealAt !== "" && Date.now() >= Date.parse(`${revealAt}:00+09:00`);
+  const [members, profiles, masked] = await Promise.all([s.list("Members"), s.list("Profiles"), maskedMembers()]);
   const freshness = await profileFreshness(g.s.mid);
 
   const live = members.filter((m) => !isGuest(m.kind));
-  // 실명 공개 뒤에만: 이름 / 회사명 / 회사 직책 / 소모임. 공개 전에는 이 값들을 아예 내려주지 않는다.
-  // 프로필 사진·캐릭터도 실명 공개 뒤에만(공개 전에 내려주면 별칭의 주인을 알아챌 수 있다).
-  const card = (m: (typeof members)[number]) => ({
-    name: m.name, company: m.company ?? "", title: m.title ?? "", clubs: memberClubs(m).map((c) => c.name), avatar: avatarView(m),
+  // 별칭으로 가릴 회원은 별칭이 꼭 있어야 한다(없으면 랜덤으로 정해 둔다)
+  for (const m of live) if (masked.has(m.id)) await ensureAlias(m.id, profiles);
+
+  const items = live.map((m) => {
+    const p = profiles.find((x) => x.memberId === m.id);
+    const hasIntro = p?.introStatus === "approved";
+    const fresh = hasIntro && p ? freshness.get(p.id) ?? null : null;
+    if (masked.has(m.id) && p) {
+      return { key: p.id, masked: true, name: p.alias, hasIntro, mine: m.id === g.s.mid, fresh };
+    }
+    return {
+      key: `m-${m.id}`, masked: false, name: m.name, hasIntro, mine: m.id === g.s.mid, fresh,
+      company: m.company ?? "", title: m.title ?? "", clubs: memberClubs(m).map((c) => c.name), avatar: avatarView(m),
+    };
   });
-  const authored = live.flatMap((m) => {
-    const p = profiles.find((x) => x.memberId === m.id && x.introStatus === "approved");
-    if (!p) return [];
-    // fresh: NEW / UP 표시(하단 프로필 북 탭 숫자와 같은 기준). 별칭 목록에도 실어도 신원은 드러나지 않는다.
-    const base = { id: p.id, alias: p.alias, mine: m.id === g.s.mid, fresh: freshness.get(p.id) ?? null };
-    return [revealed ? { ...base, ...card(m) } : { ...base, name: "" }];
-  });
-  const missing = live.filter((m) => !profiles.some((x) => x.memberId === m.id && x.introStatus === "approved"));
 
   return NextResponse.json({
-    revealed,
-    revealAt,
-    items: authored.sort((a, b) => (revealed ? a.name.localeCompare(b.name, "ko") : a.alias.localeCompare(b.alias, "ko"))),
-    missingCount: missing.length,
-    missing: revealed ? missing.map(card) : [],
+    items: items.sort((a, b) => a.name.localeCompare(b.name, "ko")),
+    maskedCount: items.filter((i) => i.masked).length,
   });
 }

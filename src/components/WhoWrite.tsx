@@ -1,0 +1,466 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { IconMic } from "@/components/Icons";
+import { Mascot } from "@/components/Mascot";
+import { SajuPanel, type SajuInfo } from "@/components/SajuPanel";
+import { api, fmtDate, fmtDateTime } from "@/lib/client";
+import { useVoice } from "@/lib/voice";
+import { fs } from "@/lib/fs";
+
+export type Msg = { role: "ai" | "me"; text: string; scope?: "intro" | "truthlie" | "none" };
+export type WhoState = {
+  activity: { id: string; name: string };
+  event: { id: string; name: string };
+  book: boolean; // 프로필 북의 "소개 작성하기"(2진실 1거짓 없음, 실명 공개)
+  blockedBy: { aid: string; eventId: string } | null; // 프로필 북 작성: 참여 중인 '내가 누굴까요?' 활동(그쪽에서 쓴다)
+  pre: { status: string; opensAt: string; closesAt: string };
+  guess: { status: string; opensAt: string; closesAt: string };
+  aiEnabled: boolean;
+  state: "none" | "prompt" | "optout" | "in";
+  inActivity: boolean; // 게임 참여(별칭·2진실 1거짓)
+  participants: string;
+  revealAt: string; // 프로필 북 실명 공개 시각(ISO)
+  profile: {
+    alias: string; draftMd: string; introMd: string; introStatus: string;
+    readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean;
+    sajuInfo: SajuInfo | null;
+  };
+  interview: { messages: Msg[]; status: string; answered: number; required: number };
+  truthLies: { statements: string[]; lieIndex: number; status: string };
+};
+export type Note = { tone: "bad" | "info"; text: string } | null;
+
+const WHEN: Record<string, string> = {
+  before: "아직 작성 기간이 아니에요.",
+  closed: "작성 기간이 끝났어요.",
+  unknown: "일정 날짜가 정해지면 작성 기간이 열려요.",
+  none: "이 활동에는 사전 작성이 없어요.",
+};
+const RESET_ASK = "기존 내소개 내용은 삭제 됩니다. 새로 진행하시겠습니까?";
+
+// 인터뷰 답변 하나 고치기(타이핑 또는 음성)
+function AnswerEdit({ idx, q, value, onChange }: { idx: number; q: string; value: string; onChange: (v: string) => void }) {
+  const voice = useVoice(() => value, onChange);
+  return (
+    <li className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="say" style={{ alignItems: "flex-start" }}>
+        <Mascot size={28} />
+        <div className="bubble" style={{ fontSize: fs(14) }}>{q}</div>
+      </div>
+      <label className="l" htmlFor={`ea-${idx}`} style={{ margin: 0 }}>내 답변 {idx + 1}</label>
+      <textarea id={`ea-${idx}`} className="field" rows={3} maxLength={2000} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={value} onChange={(e) => onChange(e.target.value)} />
+      <div className="row" style={{ gap: 8 }}>
+        {voice.supported && (
+          <button type="button" className={`mic ${voice.listening ? "on" : ""}`} aria-label={voice.listening ? `답변 ${idx + 1} 음성 입력 멈추기` : `답변 ${idx + 1} 음성으로 덧붙이기`} aria-pressed={voice.listening} onClick={voice.toggle}>
+            <IconMic />
+          </button>
+        )}
+        <span className="small grow">{voice.note || (voice.listening ? "듣고 있어요. 끝나면 마이크를 한 번 더 눌러 주세요." : voice.supported ? "마이크를 누르면 말한 내용이 답변 끝에 이어 붙어요." : "")}</span>
+      </div>
+    </li>
+  );
+}
+
+/* ───────────── 내 소개 작성(활동·프로필 북 공통) ───────────── */
+export function WhoWrite(props: {
+  st: WhoState; aid: string; busy: boolean; setBusy: (b: boolean) => void; setNote: (n: Note) => void; reload: () => Promise<void>;
+}) {
+  const { st, aid, busy, setBusy, setNote, reload } = props;
+  const open = st.pre.status === "open";
+  const approved = st.profile.introStatus === "approved";
+  const inAct = st.inActivity;
+
+  const [alias, setAlias] = useState(st.profile.alias);
+  const [intro, setIntro] = useState(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
+  const [stmts, setStmts] = useState<string[]>(st.truthLies.statements);
+  const [lie, setLie] = useState(st.truthLies.lieIndex);
+  const [reviseText, setReviseText] = useState("");
+  const [lastReq, setLastReq] = useState(""); // 마지막 수정 요청(말풍선으로 보여 줌)
+  const [refusal, setRefusal] = useState(""); // 지침 때문에 반영하지 못한 이유
+  const [answer, setAnswer] = useState("");
+  const [editAlias, setEditAlias] = useState(false);
+  // 기존 인터뷰 수정하기: 질문별 답변 고치기
+  const [editing, setEditing] = useState<{ q: string; a: string }[] | null>(null);
+  const chatEnd = useRef<HTMLDivElement>(null);
+
+  // 다시 불러오면(새 초안·배포) 화면 값도 맞춘다
+  useEffect(() => {
+    setIntro(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
+    setAlias(st.profile.alias);
+    setStmts(st.truthLies.statements);
+    setLie(st.truthLies.lieIndex);
+  }, [st.profile.introStatus, st.profile.introMd, st.profile.draftMd, st.profile.alias, st.truthLies.statements, st.truthLies.lieIndex]);
+
+  useEffect(() => {
+    chatEnd.current?.scrollIntoView({ block: "end" });
+  }, [st.interview.messages.length]);
+
+  const voice = useVoice(() => answer, setAnswer);
+
+  async function run(fn: () => Promise<void>) {
+    setBusy(true);
+    setNote(null);
+    try {
+      await fn();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 별칭 바꾸기: 소개 글 초안에 들어 있는 예전 별칭도 서버가 함께 바꿔 준다.
+  const saveAlias = () => run(async () => {
+    const r = await api<{ alias: string; draftMd: string }>(`/api/who/${aid}/alias`, { body: { alias } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (r.data.draftMd) setIntro(r.data.draftMd);
+    setEditAlias(false);
+    setNote({ tone: "info", text: `별칭을 “${r.data.alias}”(으)로 정했어요. 소개 글 속 별칭도 함께 바꿨어요.` });
+    await reload();
+  });
+
+  const startInterview = () => run(async () => {
+    const r = await api(`/api/who/${aid}/interview`, { body: {} });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    await reload();
+  });
+
+  const sendAnswer = () => run(async () => {
+    if (voice.listening) voice.toggle();
+    const r = await api(`/api/who/${aid}/interview`, { body: { answer } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setAnswer("");
+    await reload();
+  });
+
+  const makeDraft = () => run(async () => {
+    const r = await api<{ mode: string; draftMd: string; statements: string[]; lieIndex: number; leaked: string[]; remaining: string[] }>(`/api/who/${aid}/draft`, { body: {} });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setIntro(r.data.draftMd);
+    setStmts(r.data.statements);
+    setLie(r.data.lieIndex);
+    setNote(
+      r.data.mode === "manual"
+        ? { tone: "info", text: inAct ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬은 뒤, 2진실 1거짓 문장 3개를 적어 주세요." : "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 글을 다듬어 주세요." }
+        : r.data.leaked?.length
+          ? { tone: "bad", text: `소개 글에 2진실 1거짓 내용(${r.data.leaked.join(", ")})이 남아 있어요. 소개 글에서 지우거나 “다시 만들기”를 눌러 주세요.` }
+          : { tone: "info", text: inAct ? "별칭, 소개 글, 2진실 1거짓을 만들었어요. 2진실 1거짓 내용은 소개 글에 넣지 않았어요. 읽어 보고 고칠 부분을 알려 주세요." : "소개 글을 만들었어요. 읽어 보고 고칠 부분을 알려 주세요." },
+    );
+    await reload();
+  });
+
+  const saveDraft = (silent = false) => run(async () => {
+    const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, ...(inAct ? { statements: stmts, lieIndex: lie } : {}) } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!silent) setNote({ tone: "info", text: "저장했어요. 승인하기 전에는 다른 회원에게 보이지 않아요." });
+    await reload();
+  });
+
+  // 수정 요청. 빠른 버튼(더 짧게, 부드럽게)은 정해진 요청문을 그대로 보낸다.
+  const revise = (request = reviseText) => run(async () => {
+    const req = request.trim();
+    if (!req) return;
+    setLastReq(req);
+    setRefusal("");
+    const r = await api<{ introMd: string }>(`/api/who/${aid}/revise`, { body: { request: req, introMd: intro } });
+    if (r.ok) {
+      setIntro(r.data.introMd);
+      if (request === reviseText) setReviseText("");
+      return setNote({ tone: "info", text: "요청대로 고쳤어요. 마음에 들면 최종 배포를 눌러 주세요." });
+    }
+    if (r.status === 422) {
+      // 서버 문구: "관리자 지침에 맞지 않아 반영할 수 없습니다. 이유: …" → 이유만 보여 준다.
+      const reason = r.error.includes("이유:") ? r.error.split("이유:").slice(1).join("이유:").trim() : r.error;
+      return setRefusal(/[.?!요다]$/.test(reason) ? reason : `${reason}.`);
+    }
+    setNote({ tone: "bad", text: r.error });
+  });
+
+  const approve = () => run(async () => {
+    const r = await api(`/api/who/${aid}/approve`, { body: { introMd: intro, ...(inAct ? { statements: stmts, lieIndex: lie } : {}) } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setNote({
+      tone: "info",
+      text: inAct
+        ? `배포했어요. 다른 회원은 별칭으로 내 소개를 읽어요${st.revealAt ? `(${fmtDateTime(st.revealAt)}부터 실명)` : ""}.`
+        : "배포했어요. 프로필 북에 내 이름과 소개가 보여요.",
+    });
+    await reload();
+  });
+
+  const unapprove = () => run(async () => {
+    const r = await api(`/api/who/${aid}/approve`, { method: "DELETE" });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setNote({ tone: "info", text: "승인을 취소했어요. 다시 고치고 배포할 수 있어요." });
+    await reload();
+  });
+
+  // 다시 만들기: 2진실 1거짓과 소개 글을 항상 함께 새로 만든다(둘이 겹치지 않게). 별칭은 그대로.
+  const redo = () => {
+    if (window.confirm(`인터뷰 답변으로 ${inAct ? "2진실 1거짓과 소개 글을" : "소개 글을"} 함께 다시 만들까요? 지금 고친 내용은 새로 만든 내용으로 바뀌어요.${inAct ? " 별칭은 그대로예요." : ""}`)) makeDraft();
+  };
+
+  // 기존 인터뷰 수정하기: 질문과 내 답변을 짝지어 보여 준다
+  const startEdit = () => {
+    const ms = st.interview.messages;
+    const pairs = ms.flatMap((m, i) => (m.role === "me" ? [{ q: ms[i - 1]?.role === "ai" ? ms[i - 1].text : "", a: m.text }] : []));
+    setEditing(pairs);
+    setNote(null);
+  };
+  // 고친 답변 저장 → 소개 글(과 2진실 1거짓) 다시 만들기
+  const saveEdit = () => run(async () => {
+    if (!editing) return;
+    if (editing.some((p) => !p.a.trim())) return setNote({ tone: "bad", text: "빈 답변이 있어요. 답변을 적어 주세요." });
+    const r = await api(`/api/who/${aid}/interview`, { method: "PUT", body: { answers: editing.map((p) => p.a.trim()) } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setEditing(null);
+    const d = await api<{ draftMd: string; statements: string[]; lieIndex: number }>(`/api/who/${aid}/draft`, { body: {} });
+    if (!d.ok) {
+      setNote({ tone: "bad", text: `답변은 저장했어요. 소개 글을 다시 만들지 못했어요: ${d.error}` });
+    } else {
+      setIntro(d.data.draftMd);
+      setStmts(d.data.statements);
+      setLie(d.data.lieIndex);
+      setNote({ tone: "info", text: "고친 답변으로 소개 글을 다시 만들었어요. 확인하고 최종 배포를 눌러 주세요." });
+    }
+    await reload();
+  });
+  // AI 인터뷰 다시 하기: 기존 내 소개를 지우고 처음부터
+  const restart = () => {
+    if (!window.confirm(RESET_ASK)) return;
+    run(async () => {
+      const r = await api(`/api/who/${aid}/interview`, { method: "DELETE" });
+      if (!r.ok) return setNote({ tone: "bad", text: r.error });
+      setIntro("");
+      const s = await api(`/api/who/${aid}/interview`, { body: {} });
+      if (!s.ok) setNote({ tone: "bad", text: s.error });
+      else setNote({ tone: "info", text: "기존 내 소개를 지웠어요. AI 인터뷰를 처음부터 다시 시작해요." });
+      await reload();
+    });
+  };
+  const tlEmpty = stmts.every((x) => !x.trim());
+
+  if (!open) {
+    return (
+      <div className="msg info">
+        {WHEN[st.pre.status] ?? ""}{st.pre.opensAt ? ` 작성 기간은 ${fmtDate(st.pre.opensAt)} ~ ${fmtDate(st.pre.closesAt)} 예요.` : ""}
+        {approved && " 승인된 소개는 그대로 공개돼 있어요."}
+      </div>
+    );
+  }
+
+  const iv = st.interview;
+  const hasAlias = Boolean(st.profile.alias);
+  const interviewDone = iv.status === "done";
+  const hasDraft = st.profile.introStatus === "draft" || approved || intro.trim().length > 0;
+  const reading = {
+    readingStatus: st.profile.readingStatus, readingMd: st.profile.readingMd,
+    traitsMd: st.profile.traitsMd, traitsShown: st.profile.traitsShown, sajuInfo: st.profile.sajuInfo,
+  };
+  const readingChosen = st.profile.readingStatus === "done" || st.profile.readingStatus === "skipped";
+  // 인터뷰 없이 이미 공개된 소개가 있는 경우(예전 방식): 다시 하기만 할 수 있다
+  const introOnly = approved && iv.messages.length === 0;
+
+  // 기존 인터뷰 수정 화면
+  if (editing) {
+    return (
+      <section aria-label="기존 인터뷰 수정하기" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="msg info">질문별 내 답변을 고쳐 주세요. 키보드로 고치거나 마이크로 말해서 덧붙일 수 있어요. 저장하면 고친 답변으로 소개 글{inAct ? "과 2진실 1거짓" : ""}을 다시 만들어요{approved ? "(다시 배포할 때까지 지금 공개된 소개는 숨겨져요)" : ""}.</div>
+        <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          {editing.map((p, i) => (
+            <AnswerEdit key={i} idx={i} q={p.q} value={p.a} onChange={(v) => setEditing((cur) => cur?.map((x, j) => (j === i ? { ...x, a: v } : x)) ?? cur)} />
+          ))}
+        </ol>
+        <div className="footer-actions">
+          <button className="btn" type="button" disabled={busy} onClick={saveEdit}>{busy ? "저장하고 다시 만드는 중…" : "저장하고 소개 글 다시 만들기"}</button>
+          <button className="btn white" type="button" disabled={busy} onClick={() => setEditing(null)}>취소</button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      {inAct && (
+        <div className="msg info" role="status">
+          이 활동에 참여해요. 프로필 북에는 실명 대신 별칭 “{st.profile.alias}”(으)로 보여요{st.revealAt ? `. ${fmtDateTime(st.revealAt)}에 실명과 소개가 함께 공개돼요` : ""}.
+        </div>
+      )}
+      {!st.aiEnabled && (
+        <div className="msg info" role="status">AI가 아직 연결되지 않아 정해진 질문으로 진행해요. 소개 글은 내 답변을 모아 초안을 만들고 직접 다듬어요.</div>
+      )}
+
+      {/* 인터뷰를 마친 뒤: 기존 인터뷰 수정하기 / AI 인터뷰 다시 하기 */}
+      {(interviewDone || introOnly) && (
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          {interviewDone && <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={startEdit}>기존 인터뷰 수정하기</button>}
+          <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={restart}>AI 인터뷰 다시 하기</button>
+        </div>
+      )}
+
+      {/* 1. 인터뷰 (별칭은 인터뷰가 끝난 뒤 AI가 소개 글과 함께 제안한다) */}
+      {!interviewDone && !introOnly && (
+        <section aria-label="인터뷰" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {iv.messages.length === 0 ? (
+            <>
+              <div className="msg info">질문에 답하면 소개 글을 만들 수 있어요. 약 10분이면 끝나고, 중간에 나가도 저장돼서 이어서 쓸 수 있어요.{inAct ? " 이름과 회사명은 쓰지 않아도 돼요." : ""}</div>
+              <button className="btn" type="button" disabled={busy} onClick={startInterview}>인터뷰 시작하기</button>
+            </>
+          ) : (
+            <>
+              <div role="log" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {iv.messages.map((m, i) =>
+                  m.role === "ai" ? (
+                    <div key={i} className="say">
+                      <Mascot size={32} />
+                      <div className="bubble">{m.text}</div>
+                    </div>
+                  ) : (
+                    <div key={i} className="mine">{m.text}</div>
+                  ),
+                )}
+                <div ref={chatEnd} />
+              </div>
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label className="l" htmlFor="ans">내 답변</label>
+                <textarea id="ans" className="field" rows={3} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={answer} onChange={(e) => setAnswer(e.target.value)} />
+                <p className="hint" role="status" style={{ fontSize: fs(12) }}>
+                  {voice.note || (voice.supported
+                    ? voice.listening ? "듣고 있어요. 말씀이 끝나면 마이크를 한 번 더 눌러 주세요." : "마이크를 누르고 말씀하세요. 말한 내용이 위 입력창에 글자로 나와요. 확인하고 고친 뒤 보내 주세요."
+                    : "이 기기에서는 음성 입력을 쓸 수 없어요. 키보드로 입력해 주세요.")}
+                </p>
+                <div className="row">
+                  {voice.supported && (
+                    <button type="button" className={`mic ${voice.listening ? "on" : ""}`} aria-label={voice.listening ? "음성 입력 멈추기" : "음성으로 입력"} aria-pressed={voice.listening} onClick={voice.toggle}>
+                      <IconMic />
+                    </button>
+                  )}
+                  <button className="btn" type="button" disabled={busy || !answer.trim()} onClick={sendAnswer}>보내기</button>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* 인터뷰 마지막 단계: 명리학 사주 보기 / 안 보기 (고르기 전에는 소개 글 만들기를 보여 주지 않는다) */}
+      {interviewDone && !hasDraft && st.aiEnabled && (
+        <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />
+      )}
+
+      {/* 2. 초안 만들기 */}
+      {interviewDone && !hasDraft && (!st.aiEnabled || readingChosen) && (
+        <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {inAct ? "별칭과 소개 글, 2진실 1거짓을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
+          <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : inAct ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
+        </section>
+      )}
+
+      {/* 3. 미리보기 · 수정 · 승인 */}
+      {(interviewDone || introOnly) && hasDraft && (
+        <section aria-label="미리보기와 승인" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <h2 className="h3 grow">{inAct && hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
+            <span className={`chip ${approved ? "violet" : "gray"}`}>{approved ? "배포됨 ✓" : "초안 · 나만 보여요"}</span>
+            {!approved && interviewDone && (
+              <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "다시 만들기"}</button>
+            )}
+          </div>
+
+          {/* 별칭(게임 참여일 때만): 랜덤으로 정해진 별칭을 확인하고, 필요하면 고쳐서 '바꾸기' */}
+          {inAct && ((!hasAlias || editAlias) && !approved ? (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label className="l" htmlFor="alias">{hasAlias ? "새 별칭" : "별칭을 정해 주세요"}</label>
+              <span className="small">이름과 회사명이 드러나면 안 되고, 다른 회원과 겹치면 안 돼요. 바꾸면 소개 글 속 별칭도 함께 바뀌어요.</span>
+              <input id="alias" className="field" value={alias} maxLength={20} onChange={(e) => setAlias(e.target.value)} placeholder="예: 평상 위의 독서가" />
+              <div className="row">
+                <button className="btn" type="button" disabled={busy || alias.trim().length < 2} style={{ width: "auto", minWidth: 120 }} onClick={saveAlias}>{hasAlias ? "바꾸기" : "정하기"}</button>
+                {hasAlias && <button className="btn white" type="button" style={{ width: "auto", minWidth: 100 }} onClick={() => setEditAlias(false)}>취소</button>}
+              </div>
+            </div>
+          ) : (
+            <div className="card row" style={{ flexWrap: "wrap" }}>
+              <span className="small">내 별칭</span>
+              <b style={{ font: `700 ${fs(15)} var(--display)` }}>{st.profile.alias}</b>
+              <span className="grow" />
+              {!approved && <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>}
+            </div>
+          ))}
+          <label className="l" htmlFor="intro">소개 글 (직접 고칠 수 있어요)</label>
+          <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} disabled={approved} onChange={(e) => setIntro(e.target.value)} />
+
+          {!approved && (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span className="l" id="quick-l">빠르게 고치기</span>
+              <div className="quick" role="group" aria-labelledby="quick-l">
+                <button className="btn white" type="button" disabled={busy || intro.trim().length < 2} onClick={() => revise("더 짧게 줄여 주세요.")}>더 짧게</button>
+                <button className="btn white" type="button" disabled={busy || intro.trim().length < 2} onClick={() => revise("말투를 더 부드럽게 해 주세요.")}>부드럽게</button>
+              </div>
+              {(lastReq || refusal) && (
+                <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {lastReq && <div className="mine">{lastReq}</div>}
+                  {refusal && (
+                    <div className="fb bad" role="alert">
+                      <span className="ic" aria-hidden="true">!</span>
+                      <div><b>반영할 수 없어요</b><span className="t">{refusal} 다른 수정은 계속 도와드릴게요.</span></div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <label className="l" htmlFor="rev">고치고 싶은 점 (예: 취미 이야기를 더 넣어 주세요)</label>
+              <input id="rev" className="field" value={reviseText} onChange={(e) => setReviseText(e.target.value)} />
+              <button className="btn blue" type="button" disabled={busy || !reviseText.trim()} onClick={() => revise()}>{busy ? "고치는 중…" : "이렇게 고쳐 주세요"}</button>
+            </div>
+          )}
+
+          {inAct && (
+            <>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <h3 className="h3 grow">2진실 1거짓</h3>
+                {!approved && st.aiEnabled && (
+                  <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글과 함께 다시 만들기"}</button>
+                )}
+              </div>
+              <span className="small" style={{ fontSize: fs(12), marginTop: -6 }}>
+                {st.aiEnabled
+                  ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들고, 소개 글은 이 내용을 빼고 써요(소개 글을 읽고 정답을 알 수 없게). 다시 만들면 소개 글도 함께 바뀌어요. 직접 고칠 때는 진실 내용이 소개 글에 들어가지 않게 해 주세요."
+                  : "소개 글에 쓰지 않은 내용으로 문장 3개를 적고, 거짓인 문장 하나를 골라 주세요. 너무 뻔하거나 실례가 되는 거짓은 피해 주세요."}
+                {" "}활동이 끝나면 정답과 함께 프로필 북의 내 소개에 실려요.
+              </span>
+              {!approved && st.aiEnabled && tlEmpty && <div className="msg info" role="status">2진실 1거짓이 비어 있어요. “소개 글과 함께 다시 만들기”를 눌러 주세요.</div>}
+              <ul className="rows">
+                {stmts.map((t, i) => (
+                  <li key={i} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", background: lie === i ? "var(--red-bg)" : undefined }}>
+                    <div className="row" style={{ gap: 8 }}>
+                      <label className="l grow" htmlFor={`st-${i}`} style={{ margin: 0 }}>문장 {i + 1}</label>
+                      {lie === i && <span className="chip red">거짓</span>}
+                    </div>
+                    <input id={`st-${i}`} className="field" style={{ minHeight: 44, fontSize: fs(15) }} value={t} disabled={approved} onChange={(e) => setStmts(stmts.map((x, j) => (j === i ? e.target.value : x)))} />
+                    <label className="row" style={{ gap: 8, minHeight: 32, fontSize: fs(13), cursor: approved ? "default" : "pointer" }}>
+                      <input type="radio" name="lie" checked={lie === i} disabled={approved} onChange={() => setLie(i)} style={{ width: 18, height: 18 }} />
+                      <span>이 문장이 거짓이에요</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {/* 명리학: 성격·성향(소개 페이지 맨 끝에 공개, 뺄 수 있음) + 생애주기 풀이(나만) */}
+          {st.aiEnabled && <SajuPanel aid={aid} r={reading} canWrite={open} published={approved} onChanged={reload} />}
+
+          <div className="footer-actions">
+            {approved ? (
+              <button className="btn white" type="button" disabled={busy} onClick={unapprove}>승인 취소하고 다시 고치기</button>
+            ) : (
+              <>
+                <button className="btn white" type="button" disabled={busy} onClick={() => saveDraft()}>임시 저장</button>
+                <button className="btn" type="button" disabled={busy || (inAct && !hasAlias) || intro.trim().length < 20 || (inAct && stmts.some((s) => s.trim().length < 2))} onClick={approve}>최종 배포하겠습니다</button>
+                <p className="hint center">승인하기 전에는 다른 회원과 관리자에게 보이지 않아요. 승인 뒤에도 취소하고 다시 고칠 수 있어요.</p>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}

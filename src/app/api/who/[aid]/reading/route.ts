@@ -8,7 +8,7 @@ import { findIdentity, generalize, termsFrom } from "@/lib/identity";
 import { computeSaju, sajuInfoOf, sajuInput, sajuSummary } from "@/lib/saju";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
-import { loadWho, myProfile, writeClosed } from "@/lib/who";
+import { loadWho, myProfile, writeClosed, writeGate } from "@/lib/who";
 
 type Ctx = { params: Promise<{ aid: string }> };
 
@@ -47,7 +47,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const closed = writeClosed(w);
+  const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
 
   const raw = await req.json().catch(() => null);

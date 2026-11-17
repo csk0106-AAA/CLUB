@@ -1,6 +1,7 @@
 "use client";
 
 import type { TemplateConfig } from "@/lib/template-schema";
+import { DateField } from "./DateField";
 import { DragHandle, useDragSort } from "./DragSort";
 import { fs } from "@/lib/fs";
 
@@ -91,6 +92,32 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
           </div>
         )}
       </div>
+
+      {/* 소개 작성 활동('내가 누굴까요?'): 프로필 북 실명 공개 시점 */}
+      {pre.steps.includes("ai_interview") && (
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>프로필 북 실명 공개 시점</b>
+          <span className="small">이 활동의 참여 회원은 프로필 북에서 이름 대신 별칭(랜덤 닉네임)으로 보이다가, 이 시점이 지나면 실명과 소개가 함께 공개돼요.</span>
+          <label className="l" htmlFor="t-reveal" style={{ marginBottom: 0 }}>공개 시점</label>
+          <select id="t-reveal" className="field" value={value.reveal?.mode ?? "end"}
+            onChange={(e) => onChange({ ...value, reveal: { ...value.reveal, mode: e.target.value as "end" | "after" | "at" } })}>
+            <option value="end">일정(활동)이 끝나면 바로</option>
+            <option value="after">일정(활동)이 끝나고 정한 시간 뒤</option>
+            <option value="at">날짜와 시간 직접 정하기</option>
+          </select>
+          {value.reveal?.mode === "after" && (
+            <div><label className="l" htmlFor="t-reveal-h">끝나고 몇 시간 뒤</label>
+              <input id="t-reveal-h" className="field" type="number" min={0} max={2000} style={{ maxWidth: 160 }} value={value.reveal?.hours ?? 0}
+                onChange={(e) => onChange({ ...value, reveal: { mode: "after", ...value.reveal, hours: Math.max(0, Number(e.target.value) || 0) } })} /></div>
+          )}
+          {value.reveal?.mode === "at" && (
+            <div><span className="l">공개 일시 (한국 시간)</span>
+              <DateField mode="datetime" ariaLabel="실명 공개 일시" style={{ width: 300, maxWidth: "100%" }} value={value.reveal?.at ?? ""}
+                onChange={(v) => onChange({ ...value, reveal: { mode: "at", ...value.reveal, at: v } })} /></div>
+          )}
+          <span className="small">“끝나면”은 일정 › 활동에 정한 진행 시간이 있으면 그 끝, 없으면 일정이 끝나는 시각이에요. 날짜를 직접 정하는 것은 일정에 넣은 활동 설정에서 하는 게 좋아요(템플릿은 여러 일정에 쓰이므로).</span>
+        </div>
+      )}
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>현장 진행 단계</b>

@@ -67,6 +67,21 @@ export function guessStatus(cfg: TemplateConfig, startsAt: string, now = Date.no
   return windowStatus(cfg.guessPhase, startsAt, now);
 }
 
+// 프로필 북 실명 공개 시각(소개 작성 활동). 일정(활동) 끝 시각을 모르면 null(아직 공개 안 함).
+//  활동에 진행 시간(endsAt)이 있으면 그것을, 없으면 일정의 끝(없으면 시작) 시각을 기준으로 한다.
+export function revealTime(cfg: TemplateConfig, act: { endsAt?: string }, ev: { startsAt?: string; endsAt?: string }): number | null {
+  const r = cfg.reveal;
+  if (r?.mode === "at") return r.at ? eventStart(r.at) : null;
+  const end = eventStart(act.endsAt || ev.endsAt || ev.startsAt || "");
+  if (end == null) return null;
+  return r?.mode === "after" ? end + (r.hours ?? 0) * 60 * 60 * 1000 : end;
+}
+
+export const isRevealed = (cfg: TemplateConfig, act: { endsAt?: string }, ev: { startsAt?: string; endsAt?: string }, now = Date.now()): boolean => {
+  const t = revealTime(cfg, act, ev);
+  return t != null && now >= t;
+};
+
 // '내가 누굴까요?' 방식(AI 인터뷰로 소개 작성)의 활동인지: 템플릿의 사전 작성 단계로 판단한다.
 export function isWhoAmI(cfg: TemplateConfig): boolean {
   return cfg.preEvent.steps.includes("ai_interview");

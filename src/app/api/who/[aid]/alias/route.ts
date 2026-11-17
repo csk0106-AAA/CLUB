@@ -3,7 +3,7 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { findIdentity, termsFrom } from "@/lib/identity";
 import { getStore } from "@/lib/store";
-import { loadWho, myProfile, normAlias, writeClosed } from "@/lib/who";
+import { loadWho, myProfile, normAlias, writeClosed, writeGate } from "@/lib/who";
 
 const body = z.object({ alias: z.string().trim().min(2).max(20) });
 
@@ -14,7 +14,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const closed = writeClosed(w);
+  const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
 
   const parsed = body.safeParse(await req.json().catch(() => null));

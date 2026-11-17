@@ -64,6 +64,9 @@ export const templateConfigSchema = z.object({
   // note: 진행자에게 주는 안내(예: 프로젝터를 띄울 노트북 준비). 진행자 사람·번호는 일정마다 정하므로 템플릿에 넣지 않는다.
   host: z.object({ required: z.boolean(), note: z.string().max(500).optional() }).optional(),
   // 템플릿 버전(v2 이상)의 출처: derivedFrom 은 그 템플릿의 v1 id, sourceEvent 는 일정에서 고쳐 만든 버전이면 그 일정
+  // 프로필 북 실명 공개 시점(소개 작성 활동). 참여 회원은 이 시점까지 프로필 북에 별칭으로만 보이고, 지나면 실명과 소개가 함께 보인다.
+  //  end: 일정(활동)이 끝날 때 / after: 끝나고 hours 시간 뒤 / at: 정한 일시(한국 시간 YYYY-MM-DDTHH:mm)
+  reveal: z.object({ mode: z.enum(["end", "after", "at"]).default("end"), hours: z.number().int().min(0).max(2000).optional(), at: z.string().max(20).optional() }).optional(),
   derivedFrom: z.string().optional(), // v1 템플릿 id
   sourceEvent: z.object({ id: z.string(), name: z.string(), date: z.string() }).optional(),
 });
