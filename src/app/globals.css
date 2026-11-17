@@ -270,13 +270,16 @@ a { color: var(--violet-t); }
   .tbl.stack { min-width: 0 !important; width: 100%; }
   .tbl.stack thead { display: none; }
   .tbl.stack, .tbl.stack tbody { display: block; }
-  .tbl.stack tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; padding: 10px; border-top: 1px solid var(--line2); }
+  /* 한 줄 = 카드 하나. 칸은 옆으로 이어 붙이고(넘치면 다음 줄), 입력 칸은 이름표를 위에 두고 폭을 나눠 쓴다 */
+  .tbl.stack tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px; border-top: 1px solid var(--line2); }
   .tbl.stack tbody tr:first-child { border-top: 0; }
-  .tbl.stack td { display: block; padding: 0 !important; border: 0 !important; min-width: 0; }
-  .tbl.stack td::before { content: attr(data-label); display: block; font-size: calc(11px * var(--fs, 1)); color: var(--sub); margin-bottom: 2px; }
+  .tbl.stack td { display: block; padding: 0 !important; border: 0 !important; min-width: 0; text-align: left !important; }
+  .tbl.stack td::before { content: attr(data-label); font-size: calc(11px * var(--fs, 1)); color: var(--sub); margin-right: 4px; }
   .tbl.stack td[data-label=""]::before { display: none; }
-  .tbl.stack td.wide { grid-column: 1 / -1; }
-  .tbl.stack td.act { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; align-items: center; }
+  .tbl.stack td:has(.field) { flex: 1 1 130px; }
+  .tbl.stack td:has(.field)::before { display: block; margin: 0 0 2px; }
+  .tbl.stack td.wide { flex-basis: 100%; }
+  .tbl.stack td.act { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   .tbl.stack .field { width: 100% !important; min-width: 0 !important; }
 }
 .compact-form .rules > li { padding: 4px 6px; }

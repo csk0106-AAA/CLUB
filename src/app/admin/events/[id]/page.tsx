@@ -433,11 +433,11 @@ function Detail({ id }: { id: string }) {
                 {rows.map((r) =>
                   editRow?.memberId === r.memberId ? (
                     <tr key={r.memberId} style={{ background: "var(--soft)" }}>
-                      <td className="center" data-label="참석">
+                      <td className="center" data-label="">
                         <input type="checkbox" checked={editRow.answer === "참석"} style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`}
                           onChange={(e) => setEditRow({ ...editRow, answer: e.target.checked ? "참석" : "", days: e.target.checked ? (evDays.length === 1 ? evDays : editRow.days) : [] })} />
                       </td>
-                      <td data-label="이름"><b>{r.name}</b>{tags(r)}</td>
+                      <td data-label=""><b>{r.name}</b>{tags(r)}</td>
                       <td data-label="신청">
                         <select className="field" style={{ minWidth: 100 }} aria-label={`${r.name} 신청`} value={editRow.answer}
                           onChange={(e) => setEditRow({ ...editRow, answer: e.target.value })}>
@@ -466,19 +466,19 @@ function Detail({ id }: { id: string }) {
                     </tr>
                   ) : (
                     <tr key={r.memberId}>
-                      <td className="center" data-label="참석">
+                      <td className="center" data-label="">
                         <input type="checkbox" checked={r.answer === "참석"} disabled={busy || !!editRow} onChange={(e) => quickAttend(r, e.target.checked)}
                           style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`} />
                       </td>
-                      <td data-label="이름"><b>{r.name}</b>{tags(r)}</td>
-                      <td data-label="신청" style={{ whiteSpace: "nowrap" }}>
+                      <td data-label=""><b>{r.name}</b>{tags(r)}</td>
+                      <td data-label="" style={{ whiteSpace: "nowrap" }}>
                         <span className={`pill ${r.answer === "참석" ? "ok" : r.answer === "불참" ? "gray" : "warn"}`}>{r.answer || "미응답"}</span>
                         {r.checkedBy && r.answer && (
                           <span className="pill blue" style={{ marginLeft: 4 }} title={`${r.checkedBy} 님이 ${fmtDateTime(r.checkedAt ?? "")}에 체크했어요`}>✓ 관리자 체크</span>
                         )}
                         {r.checkedBy && r.answer && <span className="small" style={{ display: "block", marginTop: 2 }}>{r.checkedBy} · {fmtDate(r.checkedAt ?? "")}</span>}
                       </td>
-                      <td className="num" data-label="참석 날짜">{dayText(r.days) || "-"}</td>
+                      <td className="num" data-label="참석일">{dayText(r.days) || "-"}</td>
                       <td data-label="메모">{r.memo || <span className="small">-</span>}</td>
                       <td className="act" data-label=""><button className="mini" type="button" onClick={() => setEditRow({ memberId: r.memberId, answer: r.answer, memo: r.memo, days: r.days ? r.days.split(",").filter(Boolean) : [] })}>수정</button></td>
                     </tr>
@@ -634,9 +634,9 @@ function Detail({ id }: { id: string }) {
                 <tbody>
                   {attend.map((r) => (
                     <tr key={r.memberId}>
-                      <td data-label="이름"><b>{r.name}</b></td>
+                      <td data-label=""><b>{r.name}</b></td>
                       <td className="num" data-label="금액">{r.feePending ? <span className="small">날짜 선택 전</span> : owed(r) ? owed(r).toLocaleString("ko-KR") : "-"}</td>
-                      <td data-label="입금 상태">
+                      <td data-label="">
                         <span className={`pill ${r.paid ? "ok" : "warn"}`}>{r.paid ? "입금" : "미입금"}</span>
                         {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {fmtDate(r.payNotice)}</span>}
                       </td>

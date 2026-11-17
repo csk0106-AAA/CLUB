@@ -79,7 +79,7 @@ function PrepFiles({ eventId, canEdit }: { eventId: string; canEdit: boolean }) 
           </>
         )}
       </div>
-      <span className="small">사진·문서(pdf, 오피스, hwp, zip, txt)를 하나에 4MB까지, 일정 하나에 20개까지 올려요. “회원에게 준비 목록 보이기”를 켜면 회원도 내려받을 수 있어요.</span>
+      <span className="small">사진·문서(pdf, 오피스, hwp, zip, txt)를 하나에 4MB까지, 일정 하나에 20개까지 올려요. 준비목록 “공개”를 켜면 회원도 내려받을 수 있어요.</span>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {files && files.length === 0 && <span className="small">아직 올린 파일이 없어요.</span>}
       {files && files.length > 0 && (
@@ -259,20 +259,23 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const suggest = attend > 0 ? Math.ceil(need / attend / 1000) * 1000 : 0;
   // 비용 목록 칸: 위 요약과 어울리게 작은 글씨
   const cs = { minHeight: 36, fontSize: fs(13), padding: "0 8px" } as const;
+  // 회원 공개 스위치(준비목록·비용 공통): "공개 [스위치]"
+  const visSwitch = kind !== "schedule" && shown !== null ? (
+    <>
+      <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>공개</span>
+      <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} aria-label={`${TITLE[kind]} 회원 공개`}
+        title={shown ? "회원 일정 화면에 보여요(읽기만)" : "관리자만 봐요"}
+        disabled={!canEdit} onClick={() => setVisible(!shown)} style={{ transform: "scale(0.75)", flex: "none", margin: "0 -6px" }} />
+    </>
+  ) : null;
 
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 일정 화면에도 보여요.</span>}
-      {kind !== "schedule" && shown !== null && (
-        // 한 줄로 작게: (비용) 왼쪽 1인 회비 제안 + 기본 회비로 정하기 · 오른쪽 "회원 공개 [스위치] 켜짐/꺼짐"
-        <div className="row" style={{ gap: 6, justifyContent: "flex-end", fontSize: fs(13), flexWrap: "nowrap" }}>
-          <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>{kind === "costs" ? "공개" : "회원 공개"}</span>
-          <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} title={shown ? "회원 일정 화면에 보여요(읽기만)" : "관리자만 봐요"}
-            aria-label={kind === "costs" ? "회원 공개" : undefined}
-            disabled={!canEdit} onClick={() => setVisible(!shown)} style={{ transform: "scale(0.75)", transformOrigin: "right center", flex: "none" }} />
-          {kind !== "costs" && <span className="small" style={{ fontSize: fs(12), minWidth: 28, color: shown ? "var(--blue-t)" : "var(--sub)" }}>{shown ? "켜짐" : "꺼짐"}</span>}
-        </div>
+      {kind === "costs" && visSwitch && (
+        // 비용: 오른쪽 위 한 줄 "공개 [스위치]"
+        <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>{visSwitch}</div>
       )}
       {kind === "prep" && <span className="small" style={{ fontSize: fs(12) }}>끝낸 것은 체크해 주세요. “비용 항목”을 고르면 완료 체크된 준비물의 가격이 같은 이름의 비용 항목 집행 금액에 더해져요.</span>}
 
@@ -309,8 +312,12 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       )}
 
       {/* 준비목록: 목록 바로 위 오른쪽에 작은 빨간 "+ 준비 목록 추가"(비용과 같은 모양) */}
-      {kind === "prep" && canEdit && (
-        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-end", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 준비 목록 추가</button>
+      {/* 준비목록: 한 줄에 왼쪽 "공개 [스위치]" · 오른쪽 "+ 준비 목록 추가" */}
+      {kind === "prep" && (visSwitch || canEdit) && (
+        <div className="row" style={{ gap: 6, justifyContent: "space-between" }}>
+          <span className="row" style={{ gap: 6 }}>{visSwitch}</span>
+          {canEdit && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 준비 목록 추가</button>}
+        </div>
       )}
       {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. “+ {TITLE[kind]} 추가”로 넣어 주세요.</div>}
       <div className="tblw">
