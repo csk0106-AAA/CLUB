@@ -262,7 +262,9 @@ a { color: var(--violet-t); }
 .tbl.compact th { padding: 6px 6px; font-size: calc(11px * var(--fs, 1)); }
 .tbl.compact .field, .compact-form .field { min-height: 34px; font-size: calc(13px * var(--fs, 1)); padding: 0 8px; }
 .compact-form .l { font-size: calc(12px * var(--fs, 1)); margin-bottom: 4px; }
-.compact-form .df button { min-height: 34px; width: 34px; }
+.compact-form .df button { min-height: 34px; width: 32px; min-width: 32px; padding: 0; }
+.compact-form .df { gap: 4px; }
+.compact-form .df .field { padding: 0 6px; }
 .compact-form .rules .field { min-height: 34px; font-size: calc(13px * var(--fs, 1)); }
 /* 좁은 화면(640px 이하): .tbl.stack 표는 한 줄을 카드처럼 쌓아 보여 준다(칸 이름은 td 의 data-label). 옆으로 밀지 않아도 다 보이게 */
 @media (max-width: 640px) {

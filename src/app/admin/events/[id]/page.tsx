@@ -500,7 +500,8 @@ function Detail({ id }: { id: string }) {
       {tab === "fee" && (
         <>
           {/* 회비 설정(개요에서 옮겨 옴): 입금 기한·계좌·예금주와 조건별 회비 줄. 아래 "회비 저장"으로 저장해요. */}
-          <div className="grid2">
+          {/* 입금 기한 · 입금 계좌 · 예금주 한 줄(좁으면 계좌가 넓게) */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.45fr) minmax(0, 1.25fr) minmax(0, 0.8fr)", gap: 6 }}>
             {!light && <><div className="compact-form"><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
             <div className="compact-form"><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
             <div className="compact-form"><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div></>}
