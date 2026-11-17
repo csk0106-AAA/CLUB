@@ -9,6 +9,7 @@ import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
 import { norm, parseMembers, splitTable } from "@/lib/member-import";
+import { phoneKey } from "@/lib/phone";
 import { ageGroupOf } from "@/lib/age-group";
 import { typePhone } from "@/lib/phone";
 import { fs } from "@/lib/fs";
@@ -109,6 +110,23 @@ function Members() {
   const [newCol, setNewCol] = useState("");
   const [requirement, setRequirement] = useState(""); // 정회원 필수 조건(모임개요)
   const importCustom = useMemo(() => customFromImport(importText, custom), [importText, custom]);
+  // 이미 있는 회원과 비교: new(새 회원) | same(이름·연락처가 같거나 한쪽 연락처가 비어 있음 → 건너뜀) | dup(이름만 같고 연락처가 다름 → 관리자가 고름)
+  type Dup = "skip" | "update" | "new";
+  const [dupChoice, setDupChoice] = useState<Record<string, Dup>>({});
+  const dupKey = (r: { name: string; line?: number }) => `${r.line}:${r.name}`;
+  const classify = useMemo(() => {
+    const byName = new Map((list ?? []).map((m) => [m.name.trim(), m]));
+    return preview.rows.map((r) => {
+      const ex = byName.get(r.name.trim());
+      if (!ex) return { kind: "new" as const, ex: null };
+      const a = phoneKey(r.phone), b = phoneKey(ex.phone);
+      return { kind: !a || !b || a === b ? ("same" as const) : ("dup" as const), ex };
+    });
+  }, [preview.rows, list]);
+  const dupRows = preview.rows.map((r, i) => ({ r, c: classify[i] })).filter((x) => x.c.kind === "dup");
+  const dupLeft = dupRows.filter((x) => !dupChoice[dupKey(x.r)]).length;
+  const willAdd = preview.rows.filter((r, i) => classify[i]?.kind === "new" || (classify[i]?.kind === "dup" && dupChoice[dupKey(r)] === "new")).length;
+  const tail4 = (p?: string) => { const d = phoneKey(p); return d ? `끝자리 ${d.slice(-4)}` : "없음"; };
 
   async function saveCols(next: string[]) {
     const r = await api<{ fields: string[] }>("/api/admin/members/fields", { method: "PUT", body: { fields: next } });
@@ -121,15 +139,17 @@ function Members() {
   async function importAll() {
     setBusy(true);
     setMsg(null);
-    const rows = preview.rows.map(({ line: _line, ...r }) => ({ ...r, fields: importCustom.get(r.name) ?? {} }));
-    const r = await api<{ added: number; skipped: string[]; renamed?: { from: string; to: string }[] }>("/api/admin/members/bulk", { body: { rows } });
+    const rows = preview.rows.map(({ line, ...r }) => ({ ...r, fields: importCustom.get(r.name) ?? {}, dup: dupChoice[dupKey({ name: r.name, line })] }));
+    const r = await api<{ added: number; skipped: string[]; renamed?: { from: string; to: string }[]; updated?: string[] }>("/api/admin/members/bulk", { body: { rows } });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     const sk = r.data.skipped;
     const rn = r.data.renamed ?? [];
     if (rn.length) window.alert(`같은 이름의 회원이 있어서(연락처가 달라 다른 사람으로 봤어요) 이름 뒤에 알파벳을 붙였어요.\n${rn.slice(0, 10).map((x) => `${x.from} → ${x.to}`).join("\n")}${rn.length > 10 ? `\n외 ${rn.length - 10}명` : ""}`);
-    setMsg({ tone: "info", text: `${r.data.added}명을 추가했어요.${rn.length ? ` 동명이인 ${rn.length}명은 이름 뒤에 알파벳을 붙였어요.` : ""}${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
+    const up = r.data.updated ?? [];
+    setMsg({ tone: "info", text: `${r.data.added}명을 추가했어요.${rn.length ? ` 동명이인 ${rn.length}명은 이름 뒤에 알파벳을 붙였어요.` : ""}${up.length ? ` ${up.length}명(${up.slice(0, 5).join(", ")}${up.length > 5 ? " 외" : ""})은 기존 회원의 연락처를 새 번호로 고쳤어요.` : ""}${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
     setImportText("");
+    setDupChoice({});
     setImportOpen(false);
     load();
   }
@@ -287,14 +307,47 @@ function Members() {
           {preview.rows.length > 0 && (
             <>
               {importCustom.size > 0 && <span className="small">추가 항목({custom.filter((c) => [...importCustom.values()].some((v) => c in v)).join(", ")}) 값도 함께 넣어요.</span>}
-              <span className="small">{preview.rows.length}명을 읽었어요{preview.rows.filter((r) => list?.some((m) => m.name === r.name)).length ? ` · 그중 ${preview.rows.filter((r) => list?.some((m) => m.name === r.name)).length}명은 이미 있어서 건너뛰어요` : ""}. 아래 표를 위아래로 넘겨 모두 확인해 보세요.</span>
+              <span className="small">
+                {preview.rows.length}명을 읽었어요 · 새 회원 {classify.filter((c) => c.kind === "new").length}명
+                {classify.some((c) => c.kind === "same") ? ` · 이미 있는 같은 회원 ${classify.filter((c) => c.kind === "same").length}명(이름·연락처가 같아 건너뛰어요)` : ""}
+                {dupRows.length ? ` · 이름은 같고 연락처가 다른 회원 ${dupRows.length}명(아래에서 골라 주세요)` : ""}. 아래 표를 위아래로 넘겨 모두 확인해 보세요.
+              </span>
+              {dupRows.length > 0 && (
+                <section className="card" aria-label="이름이 같은 회원 처리" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
+                  <b>이름은 같은데 연락처가 달라요 ({dupRows.length}명)</b>
+                  <span className="small">앱에 이미 있는 회원과 이름이 같지만 연락처가 달라요. 같은 사람인지 다른 사람인지 골라 주세요. 같은 사람을 새로 넣으면 회원이 둘이 돼요.</span>
+                  {dupRows.map(({ r, c }) => {
+                    const k = dupKey(r);
+                    const opts: [Dup, string][] = [["skip", "같은 사람 · 건너뛰기"], ["update", "같은 사람 · 연락처를 새 번호로 고치기"], ["new", `다른 사람 · “${r.name}B”처럼 새로 넣기`]];
+                    return (
+                      <div key={k} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, padding: 10 }}>
+                        <span><b>{r.name}</b> <span className="small">({r.line}번째 줄)</span></span>
+                        <span className="small">명단 연락처: {tail4(r.phone)} · 앱에 있는 연락처: {tail4(c.ex?.phone)}{c.ex?.company ? ` · 앱의 회사: ${c.ex.company}` : ""}{r.company ? ` · 명단의 회사: ${r.company}` : ""}</span>
+                        <div className="checks" role="radiogroup" aria-label={`${r.name} 처리`}>
+                          {opts.map(([v, l]) => (
+                            <label key={v}><input type="radio" name={`dup-${k}`} checked={dupChoice[k] === v} onChange={() => setDupChoice({ ...dupChoice, [k]: v })} />{l}</label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
+              )}
               {/* 읽은 명단 전체: 세로 스크롤(머리글 고정), 맨 앞은 순서와 붙여 넣은 글의 줄 번호 */}
               <div className="tblw" style={{ maxHeight: 360, overflowY: "auto" }}>
                 <table className="tbl" style={{ minWidth: 820 }}>
-                  <thead style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--card, #fff)" }}><tr><th>#</th><th>줄</th><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th></tr></thead>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--card, #fff)" }}><tr><th>#</th><th>줄</th><th>처리</th><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th></tr></thead>
                   <tbody>
                     {preview.rows.map((r, i) => (
-                      <tr key={i}><td className="num">{i + 1}</td><td className="num small">{r.line}</td><td><b>{r.name}</b></td><td>{r.kind}</td><td>{r.position}</td><td>{r.gender}</td><td>{r.company}</td><td>{r.title}</td><td className="num">{fmtDate(r.birth)}</td><td className="num">{r.phone}</td></tr>
+                      <tr key={i}><td className="num">{i + 1}</td><td className="num small">{r.line}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>{(() => {
+                          const c = classify[i]?.kind;
+                          const ch = dupChoice[dupKey(r)];
+                          if (c === "same") return <span className="chip line">건너뜀</span>;
+                          if (c === "dup") return <span className={`chip ${ch ? "violet" : "warn"}`}>{ch === "skip" ? "건너뜀" : ch === "update" ? "연락처 고침" : ch === "new" ? "새로(동명이인)" : "골라 주세요"}</span>;
+                          return <span className="chip violet">새로</span>;
+                        })()}</td>
+                        <td><b>{r.name}</b></td><td>{r.kind}</td><td>{r.position}</td><td>{r.gender}</td><td>{r.company}</td><td>{r.title}</td><td className="num">{fmtDate(r.birth)}</td><td className="num">{r.phone}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -306,9 +359,10 @@ function Members() {
               <ul style={{ margin: 0, paddingLeft: 18 }}>{preview.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>
             </div>
           )}
-          <button className="btn" type="button" style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }} disabled={busy || preview.rows.length === 0} onClick={importAll}>
-            {preview.rows.length ? `${preview.rows.length}명 추가하기` : "추가하기"}
+          <button className="btn" type="button" style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }} disabled={busy || preview.rows.length === 0 || dupLeft > 0} onClick={importAll}>
+            {preview.rows.length ? `${willAdd}명 추가하기${dupRows.some((x) => dupChoice[dupKey(x.r)] === "update") ? " · 연락처 고치기" : ""}` : "추가하기"}
           </button>
+          {dupLeft > 0 && <span className="small" style={{ color: "var(--red-t)" }}>이름이 같은 회원 {dupLeft}명을 어떻게 할지 위에서 골라 주세요.</span>}
         </section>
       )}
 

@@ -8,6 +8,17 @@ export function formatPhone(input: string): string | null {
 
 export const phoneDigits = (p?: string) => (p ?? "").replace(/\D/g, "");
 
+// 같은 번호인지 비교할 때 쓰는 값: 숫자만, 국가번호(+82)로 적은 번호는 0 으로 시작하게 바꾼다
+//  "+82 10-1234-5678", "82-010-1234-5678" → "01012345678"
+export function phoneKey(p?: string): string {
+  const d = phoneDigits(p);
+  if (d.startsWith("82") && d.length >= 11) {
+    const rest = d.slice(2);
+    return rest.startsWith("0") ? rest : `0${rest}`;
+  }
+  return d;
+}
+
 // 입력하는 동안 하이픈 넣기: 숫자만 쳐도 "010-0000-0000"(02 지역번호는 "02-000-0000"/"02-0000-0000")
 export function typePhone(input: string): string {
   const d = input.replace(/\D/g, "").slice(0, 11);
@@ -26,4 +37,4 @@ export function typePhone(input: string): string {
 }
 
 // 저장할 때: 형식에 맞으면 하이픈 넣은 모양으로, 아니면 적은 그대로
-export const tidyPhone = (p: string): string => formatPhone(p) ?? p.trim();
+export const tidyPhone = (p: string): string => formatPhone(p) ?? formatPhone(phoneKey(p)) ?? p.trim();
