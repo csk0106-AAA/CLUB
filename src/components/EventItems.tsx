@@ -5,6 +5,7 @@ import { api, fmtDate, won } from "@/lib/client";
 import { DateField } from "./DateField";
 import { Popup } from "./Popup";
 import { ScheduleBoard } from "./ScheduleBoard";
+import { DragHandle, useDragSort } from "./DragSort";
 import { fs } from "@/lib/fs";
 
 type Kind = "schedule" | "prep" | "costs";
@@ -118,6 +119,14 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const [support, setSupport] = useState(0); // 지원금 합계(회비 탭)
   // 비용 메모 보기·고치기 창(목록에는 메모 아이콘만)
   const [memoOf, setMemoOf] = useState<{ id: string; item: string; text: string } | null>(null);
+  // 비용 목록 순서: ⠿ 손잡이를 끌어서(또는 방향키로) 바꾸고 바로 저장
+  const ds = useDragSort(items ?? [], (next) => {
+    setItems(next);
+    api(base, { method: "PUT", body: { ids: next.map((x) => x.id) } }).then((r) => {
+      if (!r.ok) { setNote({ tone: "bad", text: `순서를 저장하지 못했어요. ${r.error}` }); load(); }
+    });
+  });
+  const dragCosts = kind === "costs" && canEdit && (items?.length ?? 0) > 1;
   const [fee, setFee] = useState("");
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState("");
@@ -254,7 +263,13 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
               </div>
             ))}
           </dl>
-          {canEdit && suggest > 0 && <button className="mini" type="button" style={{ alignSelf: "flex-end" }} onClick={() => applyFee(suggest)}>{won(suggest)}을 기본 회비로 정하기</button>}
+          {/* 한 줄: 왼쪽(잔액 아래) + 비용 추가 · 오른쪽 기본 회비로 정하기 */}
+          {canEdit && (
+            <div className="row" style={{ gap: 8, justifyContent: "space-between" }}>
+              <button className="mini" type="button" aria-haspopup="dialog" onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
+              {suggest > 0 && <button className="mini" type="button" onClick={() => applyFee(suggest)}>{won(suggest)}을 기본 회비로 정하기</button>}
+            </div>
+          )}
         </section>
       )}
 
@@ -265,15 +280,17 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
             <tr>
               {kind === "schedule" && <><th>일시</th><th>내용</th></>}
               {kind === "prep" && <><th>완료</th><th>준비물</th><th>담당</th></>}
-              {kind === "costs" && <><th>항목</th><th>예산(원)</th><th>집행(원)</th><th>상태</th><th>담당</th><th>메모</th></>}
+              {kind === "costs" && <>{dragCosts && <th style={{ width: 44 }}><span className="sr-only">순서</span></th>}<th>항목</th><th>예산(원)</th><th>집행(원)</th><th>상태</th><th>담당</th><th>메모</th></>}
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {items.map((i) => {
+            {items.map((i, idx) => {
               const d = draft[i.id] ?? i;
+              const row = kind === "costs" ? ds.item(idx) : null;
               return (
-                <tr key={i.id}>
+                <tr key={i.id} ref={row?.ref} style={row?.style}>
+                  {dragCosts && <td style={{ padding: "0 2px" }}><DragHandle plain {...ds.handle(idx, String(i.item))} /></td>}
                   {kind === "schedule" && (
                     <>
                       <td><DateField mode="datetime" ariaLabel="일시" style={{ minWidth: 230 }} inputStyle={{ minHeight: 44 }} value={String(d.at)} disabled={!canEdit} onChange={(v) => set(i.id, "at", v)} /></td>
@@ -323,7 +340,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
 
       {canEdit && (
         <>
-        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setErr(""); setOpen(true); }}>+ {TITLE[kind]} 추가</button>
+        {/* 비용은 위 요약 카드 안에 "+ 비용 추가"가 있다 */}
+        {kind !== "costs" && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setErr(""); setOpen(true); }}>+ {TITLE[kind]} 추가</button>}
         <Popup id={`item-new-${kind}`} title={`${TITLE[kind]} 추가`} open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(add) !== JSON.stringify(BLANK[kind])}>
         <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {err && <div className="msg bad" role="alert">{err}</div>}
