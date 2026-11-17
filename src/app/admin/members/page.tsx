@@ -364,9 +364,8 @@ function Members() {
       <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
         {list && (
           <p className="small" role="group" aria-label="회원 요약" style={{ margin: 0, flex: "1 1 200px", fontSize: fs(13) }}>
-            전체 <b style={{ color: "var(--ink)" }}>{list.length}</b>명
-            {[...counts.entries()].map(([k, n]) => <span key={k}> · {k} {n}</span>)}
-            <span> · 남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}{list.some((m) => !m.gender) ? ` · 성별 미입력 ${list.filter((m) => !m.gender).length}` : ""}</span>
+            {/* 구분별 명수는 아래 필터 버튼에 보인다 */}
+            <span>남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}</span>
             {" · "}<Link href="/admin/admins">권한자 {admins.length}</Link>
           </p>
         )}
@@ -560,13 +559,13 @@ function Members() {
 
       {/* 회원구분 보기: 한 줄, "전체" 외에는 여러 개를 함께 고를 수 있다(아무것도 안 고르면 전체) */}
       <div className="fpills" role="group" aria-label="회원구분 보기 (여러 개 선택 가능)">
-        <button type="button" aria-pressed={filter.length === 0} onClick={() => setFilter([])}>전체</button>
-        {[...kindTabs, "미지정"].map((k) => {
+        <button type="button" aria-pressed={filter.length === 0} onClick={() => setFilter([])}>전체 {list?.length ?? 0}</button>
+        {[...kindTabs, ...(counts.get("미지정") || filter.includes("미지정") ? ["미지정"] : [])].map((k) => {
           const on = filter.includes(k);
           return (
-            <button key={k} type="button" aria-pressed={on}
+            <button key={k} type="button" aria-pressed={on} aria-label={`${k} ${counts.get(k) ?? 0}명`}
               onClick={() => setFilter(on ? filter.filter((x) => x !== k) : [...filter, k])}>
-              {on ? "✓ " : ""}{k}
+              {on ? "✓ " : ""}{k} {counts.get(k) ?? 0}
             </button>
           );
         })}
