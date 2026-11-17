@@ -13,6 +13,8 @@ export const TABS = {
     // edu: 교육 이수 여부("true"면 이수). 회원 신청 승인 때 정회원(이수) / 준회원(비이수)을 가른다(lib/member-apps.ts).
     // memo: 관리자 메모(예: 명예회원 등록 사유). 관리자에게만 보인다.
     "edu", "memo",
+    // bookHidden: "true"면 프로필 북에 나오지 않는다(회원이 설정에서, 관리자가 회원명단·회원 수정에서 정한다)
+    "bookHidden",
   ],
   Org: ["id", "dept", "role", "memberId", "clubName", "frequency", "leaderId"],
   // history: 조문 변경 기록 [{at, by, what}] JSON (최근 30개)
