@@ -377,6 +377,16 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     load();
   }
 
+  // 리허설 초기화: 진행 순서·거짓 투표·회원 화면·룰렛·뽑은 고민만 지운다(두 번 확인)
+  async function rehearsalReset(a: Act) {
+    if (!window.confirm(`“${a.config.name}”의 리허설 기록을 지울까요?\n\n지우는 것: 진행 순서(누구 차례까지 했는지), 거짓 투표, 점수, 동점자 룰렛, 뽑은 고민, 회원 화면 상태\n남기는 것: 소개 글, 2진실 1거짓, 사전 추측, 인터뷰, 고민 글, 출석·팀`)) return;
+    if (!window.confirm("정말 지울까요? 지운 기록은 되돌릴 수 없어요.\n본 행사를 시작한 뒤에는 누르지 마세요.")) return;
+    const r = await api<{ rounds: number; votes: number; worries: number }>(`/api/admin/events/${eventId}/activities/${a.id}/rehearsal-reset`, { body: {} });
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setMsg({ tone: "info", text: `리허설 기록을 지웠어요(진행 차례 ${r.data.rounds}개 · 투표 ${r.data.votes}개${r.data.worries ? ` · 뽑은 고민 ${r.data.worries}개` : ""}). 본 행사 때 처음부터 진행할 수 있어요.` });
+    load();
+  }
+
   if (guideFor) {
     const t = tpls.find((x) => x.id === guideFor.templateId);
     return (
@@ -487,6 +497,12 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                 ? `현재 단계: ${a.live.stepLabel} · 회원 화면: ${a.live.unlocked ? `켜짐 (${SCREEN_LABELS[a.live.memberScreen] ?? a.live.memberScreen})` : "잠김 (대기 화면)"}`
                 : "현장 진행 전이에요. 버튼을 누르면 회원 화면이 템플릿 설정대로 바뀌어요."}
             </div>
+            {canEdit && (
+              <div className="row" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
+                <span className="small grow" style={{ fontSize: fs(12) }}>리허설을 해 봤다면 본 행사 전에 진행 기록을 지워 주세요. 소개 글·2진실 1거짓·사전 추측 등 미리 받은 내용은 남아요.</span>
+                <button className="mini danger" type="button" style={{ fontSize: fs(12) }} onClick={() => rehearsalReset(a)}>리허설 기록 지우기</button>
+              </div>
+            )}
             <span className="small" style={{ fontSize: fs(12) }}>잠그기: 회원 화면을 대기 화면으로 잠가요(다시 열기로 지금 단계를 다시 켜요) · 처음으로: 현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로). 진행자 전체화면으로 진행할 때는 전체화면 위쪽에서 잠그기·다시 열기를 바로 누를 수 있어요(처음으로는 리허설 뒤 정리용이라 여기에만 있어요).</span>
           </div>
         </div>
