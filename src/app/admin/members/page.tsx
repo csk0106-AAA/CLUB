@@ -26,6 +26,7 @@ type M = {
   avatar?: AvatarView; // 프로필 사진·캐릭터(없으면 이름 첫 글자)
   edu?: boolean; // 교육 이수
   memo?: string; // 관리자 메모(명예회원 등록 사유 등)
+  bookHidden?: string; // "true"면 프로필 북에 안 나옴
   app?: AppMark; // 회원 신청 "승인 전" / "반려"
 };
 type AppMark = { id: string; status: "pending" | "rejected"; type: string; reason: string; at: string } | null;
@@ -34,12 +35,12 @@ type Lists = { memberKinds: { value: string; definition: string }[]; positions: 
 type Form = {
   name: string; kind: string; position: string; gender: string; company: string; title: string;
   birth: string; phone: string; ageGroup: string; clubs: Seat[]; fields: Record<string, string>;
-  edu: boolean; memo: string;
+  edu: boolean; memo: string; bookShown: boolean;
 };
 
 const EMPTY: Form = {
   name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", clubs: [], fields: {},
-  edu: false, memo: "",
+  edu: false, memo: "", bookShown: true,
 };
 const OFF = " (목록에 없음)";
 const clubsText = (c: Seat[]) => c.map((x) => (x.role ? `${x.name}(${x.role})` : x.name)).join(", ");
@@ -184,7 +185,7 @@ function Members() {
     const f: Form = {
       name: m.name, kind: m.kind ?? "", position: m.position ?? "", gender: m.gender ?? "", company: m.company ?? "", title: m.title ?? "",
       birth: m.birth ?? "", phone: m.phone ?? "", ageGroup: m.ageGroup ?? "", clubs: m.clubs ?? [], fields: m.fields ?? {},
-      edu: !!m.edu, memo: m.memo ?? "",
+      edu: !!m.edu, memo: m.memo ?? "", bookShown: m.bookHidden !== "true",
     };
     setEditId(m.id);
     setForm(f);
@@ -258,6 +259,27 @@ function Members() {
     });
   }
   const xlsRef = useRef<HTMLInputElement>(null);
+
+  // 프로필 북 노출·교육 이수 바꾸기(한 명 또는 여러 명)
+  async function setFlags(ids: string[], flags: { bookShown?: boolean; edu?: boolean }, ok: (n: number) => string) {
+    const r = await api<{ changed: number }>("/api/admin/members/flags", { body: { ids, ...flags } });
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setMsg({ tone: "info", text: ok(r.data.changed) });
+    load();
+  }
+  const toggleBook = (m: M) => {
+    const show = m.bookHidden === "true";
+    setFlags([m.id], { bookShown: show }, () => `${m.name} 님을 프로필 북${show ? "에 보이게 했어요" : "에서 뺐어요"}.`);
+  };
+  // 교육 이수 일괄 YES: 지금 보이는 회원 중 명예회원은 빼고
+  function eduAllYes() {
+    const targets = shown.filter((m) => m.kind !== "명예회원");
+    const todo = targets.filter((m) => !m.edu);
+    const honor = shown.length - targets.length;
+    if (!todo.length) return setMsg({ tone: "info", text: "바꿀 회원이 없어요. 보이는 회원(명예회원 제외)은 모두 이미 YES예요." });
+    if (!window.confirm(`“${requirement || "교육과정 수료"}” 하셨나요?\n보이는 회원 ${targets.length}명(명예회원 ${honor}명 제외) 중 NO 인 ${todo.length}명을 모두 YES 로 바꿀까요?`)) return;
+    setFlags(todo.map((m) => m.id), { edu: true }, (n) => `${n}명의 교육 이수를 YES 로 바꿨어요.${honor ? ` 명예회원 ${honor}명은 그대로 두었어요.` : ""}`);
+  }
   const dsNarrow = useDragSort(shown, reorder);
   const dsWide = useDragSort(shown, reorder);
 
@@ -356,6 +378,7 @@ function Members() {
       </div>
       {/* 엑셀: 지금 보이는 명단 내려받기 · 올리기 양식 받기 · 양식에 적은 파일 올리기(미리보기 후 추가) */}
       <div className="row" role="group" aria-label="엑셀" style={{ gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <button className="mini" type="button" disabled={!shown.length} onClick={eduAllYes} style={{ fontSize: fs(12) }} title="지금 보이는 회원 중 명예회원을 뺀 회원의 교육 이수를 YES 로">교육이수 일괄 YES</button>
         <span className="small" style={{ fontSize: fs(12) }}>엑셀</span>
         <button className="mini" type="button" disabled={!shown.length} onClick={downloadMembers} style={{ fontSize: fs(12) }}>⬇ 회원정보 다운로드{filter.length ? `(${shown.length}명)` : ""}</button>
         <button className="mini" type="button" onClick={downloadTemplate} style={{ fontSize: fs(12) }}>⬇ 양식 받기</button>
@@ -498,6 +521,14 @@ function Members() {
               <button type="button" aria-pressed={!form.edu} onClick={() => set("edu", false)} style={{ minHeight: 46 }}>NO</button>
             </div>
           </div>
+          <div>
+            {/* 프로필 북 노출: 회원이 설정에서도 바꿀 수 있다 */}
+            <span className="l" id="f-book-l">프로필 북 노출</span>
+            <label className="row" style={{ gap: 8, minHeight: 46, cursor: "pointer" }}>
+              <input type="checkbox" checked={form.bookShown} onChange={(e) => set("bookShown", e.target.checked)} style={{ width: 20, height: 20 }} aria-labelledby="f-book-l" />
+              <span>{form.bookShown ? "프로필 북에 보여요" : "프로필 북에서 빠져요"}</span>
+            </label>
+          </div>
           {custom.map((c, i) => (
             <div key={c}><label className="l" htmlFor={`f-x${i}`}>{c}</label><input id={`f-x${i}`} className="field" maxLength={200} value={form.fields[c] ?? ""} onChange={(e) => set("fields", { ...form.fields, [c]: e.target.value })} /></div>
           ))}
@@ -563,6 +594,10 @@ function Members() {
               <span style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
                 <span className="chip line">{m.kind || "미지정"}</span>
                 {m.app && <AppLabel app={m.app} />}
+                {/* 프로필 북 노출: 눌러서 켜고 끈다 */}
+                <label className="small" style={{ display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", whiteSpace: "nowrap", fontSize: fs(11) }}>
+                  <input type="checkbox" checked={m.bookHidden !== "true"} onChange={() => toggleBook(m)} style={{ width: 16, height: 16 }} aria-label={`${m.name} 프로필 북 노출`} />북
+                </label>
               </span>
               <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" onClick={() => startEdit(m)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
@@ -574,12 +609,12 @@ function Members() {
           ))}
         </ul>
       )}
-      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>⠿ 손잡이를 끌어서 순서를 바꾸고(바로 저장돼요), 연필 아이콘으로 수정, 휴지통 아이콘으로 삭제해요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
-      {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>NO 옆 ⠿ 손잡이를 끌어서 순서를 바꿔요(바로 저장돼요). 회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
+      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>⠿ 손잡이를 끌어서 순서를 바꾸고(바로 저장돼요), 연필 아이콘으로 수정, 휴지통 아이콘으로 삭제해요. “북” 체크를 끄면 그 회원은 프로필 북에서 빠져요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
+      {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>NO 옆 ⠿ 손잡이를 끌어서 순서를 바꿔요(바로 저장돼요). “프로필북” 체크를 끄면 그 회원은 프로필 북에서 빠져요(회원도 설정에서 바꿀 수 있어요). 회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
       {shown.length > 0 && (
         <div className="tblw only-wide">
           <table className="tbl" style={{ minWidth: 1200 + custom.length * 110 }}>
-            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
+            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
             <tbody>
               {shown.map((m, i) => (
                 <tr key={m.id} ref={dsWide.item(i).ref} style={dsWide.item(i).style}>
@@ -589,6 +624,10 @@ function Members() {
                   <td><b>{m.name}</b></td>
                   <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}{m.app && <> {m.app && <AppLabel app={m.app} />}</>}</td>
                   <td className="center">{m.edu ? "YES" : "NO"}</td>
+                  <td className="center">
+                    <input type="checkbox" checked={m.bookHidden !== "true"} onChange={() => toggleBook(m)} style={{ width: 18, height: 18, cursor: "pointer" }}
+                      aria-label={`${m.name} 프로필 북 노출`} title={m.bookHidden === "true" ? "프로필 북에서 빠져 있어요" : "프로필 북에 보여요"} />
+                  </td>
                   <td>{m.position}{m.position && !lists.positions.includes(m.position) && <span className="small">{OFF}</span>}</td>
                   <td>{clubsText(m.clubs ?? [])}</td>
                   <td>

@@ -37,7 +37,8 @@ export async function POST(req: Request) {
   const renamed: { from: string; to: string }[] = [];
   const updated: string[] = [];
   const phoneFix: { id: string; phone: string }[] = [];
-  for (const { fields, edu, memo, dup, ...r } of parsed.data.rows) {
+  for (const { fields, edu, memo, dup, bookShown: _bs, ...r } of parsed.data.rows) {
+    void _bs; // 프로필 북 노출은 명단 넣기에서 정하지 않는다(기본: 보임)
     const asked = r.name.trim();
     const phone = digits(r.phone);
     if (known.some((k) => k.name === asked && (!phone || !k.phone || k.phone === phone))) {

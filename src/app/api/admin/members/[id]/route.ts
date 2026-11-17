@@ -18,7 +18,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const parsed = memberBody.extend({ fields: fieldValues }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
-  const { fields, perms, clubs, edu, ...d } = parsed.data;
+  const { fields, perms, clubs, edu, bookShown, ...d } = parsed.data;
 
   const s = await getStore();
   const all = await s.list("Members");
@@ -37,6 +37,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   patch.phone = tidyPhone(rest.phone); // 숫자만 적어도 010-0000-0000 모양으로
   if (memo !== undefined) patch.memo = memo;
   if (edu !== undefined) patch.edu = edu ? "true" : "";
+  if (bookShown !== undefined) patch.bookHidden = bookShown ? "" : "true";
   if (perms) patch.perms = perms.join("|");
   if (clubs) patch.clubs = clubsJson(clubs);
   // fields 를 보내지 않으면 추가 항목 값은 그대로 둔다.

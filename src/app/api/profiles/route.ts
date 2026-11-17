@@ -3,7 +3,7 @@ import { guard } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
 import { consentRequired, hasConsent } from "@/lib/consent";
 import { memberClubs } from "@/lib/lists";
-import { isGuest } from "@/lib/member-kind";
+import { bookHidden, inBook, isGuest } from "@/lib/member-kind";
 import { ensureAlias, maskedMembers } from "@/lib/profile-book";
 import { getStore } from "@/lib/store";
 import { profileFreshness } from "@/lib/unread";
@@ -22,7 +22,8 @@ export async function GET() {
   const [members, profiles, masked] = await Promise.all([s.list("Members"), s.list("Profiles"), maskedMembers()]);
   const freshness = await profileFreshness(g.s.mid);
 
-  const live = members.filter((m) => !isGuest(m.kind));
+  // 프로필 북 노출을 끈 회원은 빠진다(본인에게는 내 카드가 보인다 — 소개를 쓰고 노출 여부를 확인할 수 있게)
+  const live = members.filter((m) => inBook(m) || (m.id === g.s.mid && !isGuest(m.kind)));
   // 별칭으로 가릴 회원은 별칭이 꼭 있어야 한다(없으면 랜덤으로 정해 둔다)
   for (const m of live) if (masked.has(m.id)) await ensureAlias(m.id, profiles);
 
@@ -34,7 +35,7 @@ export async function GET() {
       return { key: p.id, masked: true, name: p.alias, hasIntro, mine: m.id === g.s.mid, fresh };
     }
     return {
-      key: `m-${m.id}`, masked: false, name: m.name, hasIntro, mine: m.id === g.s.mid, fresh,
+      key: `m-${m.id}`, masked: false, name: m.name, hasIntro, mine: m.id === g.s.mid, fresh, hiddenMine: bookHidden(m),
       company: m.company ?? "", title: m.title ?? "", clubs: memberClubs(m).map((c) => c.name), avatar: avatarView(m),
     };
   });

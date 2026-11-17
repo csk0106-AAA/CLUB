@@ -4,7 +4,7 @@ import { bad, guard, parseJson } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
 import { consentRequired, hasConsent } from "@/lib/consent";
 import { memberClubs } from "@/lib/lists";
-import { isGuest } from "@/lib/member-kind";
+import { inBook, isGuest } from "@/lib/member-kind";
 import { maskedMembers } from "@/lib/profile-book";
 import { getStore } from "@/lib/store";
 
@@ -25,7 +25,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }>
   const byMember = pid.startsWith("m-") ? pid.slice(2) : "";
   const p = byMember ? profiles.find((x) => x.memberId === byMember) : profiles.find((x) => x.id === pid);
   const memberId = byMember || p?.memberId || "";
-  const who = members.find((m) => m.id === memberId && !isGuest(m.kind));
+  // 프로필 북 노출을 끈 회원은 본인만 열 수 있다
+  const who = members.find((m) => m.id === memberId && (inBook(m) || (m.id === g.s.mid && !isGuest(m.kind))));
   if (!who) return bad("프로필을 찾을 수 없어요.", 404);
   const hidden = masked.get(who.id);
   // 별칭 회원을 회원 번호로 열면 안 된다(주소로 주인이 드러남)

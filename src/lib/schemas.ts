@@ -22,6 +22,7 @@ export const memberBody = z.object({
   // 교육 이수 여부·관리자 메모. 보내지 않으면 지금 값을 그대로 둔다.
   edu: z.boolean().optional(),
   memo: z.string().trim().max(500).optional(),
+  bookShown: z.boolean().optional(), // 프로필 북 노출(보내지 않으면 그대로)
   // 보내지 않으면 지금 값을 그대로 둔다(권한은 권한설정 화면에서 바꾼다).
   perms: z.array(z.enum(ADMIN_PERMS)).optional(),
   clubs: clubSeats.optional(),

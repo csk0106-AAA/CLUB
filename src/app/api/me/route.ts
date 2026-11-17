@@ -11,7 +11,7 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-type Member = { id?: string; perms?: string; position?: string; avatar?: string; gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string };
+type Member = { id?: string; perms?: string; position?: string; avatar?: string; gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string; bookHidden?: string };
 type Sess = { name: string; perms: string[]; admin: boolean };
 
 async function view(s: Sess, me: Member) {
@@ -36,6 +36,7 @@ async function view(s: Sess, me: Member) {
     clubOptions: clubs,
     prefs: readPrefs(me.prefs),
     avatar: avatarView(me),
+    bookShown: me.bookHidden !== "true", // 프로필 북에 내가 보이는지
   };
 }
 
@@ -66,6 +67,7 @@ const patch = z
     phone: z.string().max(30),
     clubs: z.array(z.string().trim().min(1).max(40)).max(30),
     prefs: prefsInput,
+    bookShown: z.boolean(), // 프로필 북 노출
   })
   .partial()
   .strict();
@@ -130,6 +132,7 @@ export async function PATCH(req: Request) {
     const next = JSON.stringify(mergePrefs(readPrefs(me.prefs), d.prefs));
     if (next !== me.prefs) upd.prefs = next;
   }
+  if (d.bookShown !== undefined) upd.bookHidden = d.bookShown ? "" : "true";
 
   if (edits.length) extra = withSelfEdits(extra, edits);
   if (extra !== me.extra) upd.extra = extra ?? "";

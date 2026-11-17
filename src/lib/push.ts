@@ -110,6 +110,8 @@ export async function notifyPostPush(postId: string): Promise<void> {
 export async function notifyProfilePush(memberId: string): Promise<void> {
   try {
     const members = await (await getStore()).list("Members");
+    // 프로필 북 노출을 끈 회원의 소개는 알리지 않는다
+    if (members.find((m) => m.id === memberId)?.bookHidden === "true") return;
     await pushTo(members.map((m) => m.id), "profiles", memberId);
   } catch (e) {
     console.error("[push] 프로필 알림 실패", e);

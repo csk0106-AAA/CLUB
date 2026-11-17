@@ -21,6 +21,7 @@ type Me = {
   clubs: { name: string; role: string }[]; clubOptions: string[]; headClubs: string[];
   prefs: Prefs;
   avatar: AvatarView;
+  bookShown?: boolean; // 프로필 북에 내가 보이는지
 };
 
 const THEME_OPTS: { v: Prefs["theme"]; label: string; sub: string }[] = [
@@ -388,6 +389,14 @@ export default function SettingsPage() {
             </div>
             <span className="small" style={{ fontSize: fs(12) }}>폭이 좁은 휴대폰(400px 미만)에서는 글자가 넘치지 않게 8단계(130%)보다 크게는 키우지 않아요. 하단 메뉴 글자는 칸에 맞게 조금만 커져요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
             </div>
+          </section>
+
+          {/* 프로필 북 노출 */}
+          <section className="sect" aria-labelledby="s-book">
+            <h2 id="s-book">프로필 북</h2>
+            <Switch id="sw-book" label="프로필 북에 나를 보이기" on={me.bookShown !== false} disabled={saving}
+              sub={me.bookShown !== false ? "다른 회원이 프로필 북에서 내 이름·소개를 볼 수 있어요." : "프로필 북에서 빠져 있어요. 다른 회원에게 내 이름·소개가 보이지 않아요(나에게만 보여요)."}
+              onChange={(v) => patch({ bookShown: v }, v ? "프로필 북에 보이게 했어요." : "프로필 북에서 뺐어요.")} />
           </section>
 
           {/* 3. 받을 알림 */}
