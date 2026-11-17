@@ -266,7 +266,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           {/* 한 줄: 왼쪽(잔액 아래) + 비용 추가 · 오른쪽 기본 회비로 정하기 */}
           {canEdit && (
             <div className="row" style={{ gap: 8, justifyContent: "space-between" }}>
-              <button className="mini" type="button" aria-haspopup="dialog" onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
+              <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", minHeight: 36, padding: "0 14px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
               {suggest > 0 && <button className="mini" type="button" onClick={() => applyFee(suggest)}>{won(suggest)}을 기본 회비로 정하기</button>}
             </div>
           )}
