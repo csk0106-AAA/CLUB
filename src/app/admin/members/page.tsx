@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
 import { AdminIssues } from "@/components/AdminIssues";
 import { Avatar, type AvatarView } from "@/components/Avatars";
 import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
-import { norm, parseMembers, splitTable } from "@/lib/member-import";
+import { eduYes, norm, parseMembers, splitTable } from "@/lib/member-import";
+import { downloadXlsx, excelDate, readXlsx } from "@/lib/xlsx";
+import { DragHandle, useDragSort } from "@/components/DragSort";
 import { phoneKey } from "@/lib/phone";
 import { ageGroupOf } from "@/lib/age-group";
 import { typePhone } from "@/lib/phone";
@@ -139,7 +141,10 @@ function Members() {
   async function importAll() {
     setBusy(true);
     setMsg(null);
-    const rows = preview.rows.map(({ line, ...r }) => ({ ...r, fields: importCustom.get(r.name) ?? {}, dup: dupChoice[dupKey({ name: r.name, line })] }));
+    const rows = preview.rows.map(({ line, edu, memo, ...r }) => ({
+      ...r, edu: eduYes(edu), ...(memo ? { memo: memo.slice(0, 500) } : {}),
+      fields: importCustom.get(r.name) ?? {}, dup: dupChoice[dupKey({ name: r.name, line })],
+    }));
     const r = await api<{ added: number; skipped: string[]; renamed?: { from: string; to: string }[]; updated?: string[] }>("/api/admin/members/bulk", { body: { rows } });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
@@ -239,6 +244,84 @@ function Members() {
   list?.forEach((m) => counts.set(m.kind || "미지정", (counts.get(m.kind || "미지정") ?? 0) + 1));
   const shown = list?.filter((m) => filter.length === 0 || filter.includes(m.kind || "미지정")) ?? [];
   const admins = list?.filter((m) => m.effective.length > 0) ?? [];
+
+  // 끌어서 순서 바꾸기: 보이는 목록(구분 필터 적용)에서 옮기면 전체 명단에서 그 회원들이 있던 자리 안에서 순서가 바뀐다.
+  // NO 를 1부터 다시 매겨 바로 저장한다. 휴대폰 목록과 PC 표는 따로 끈다(보이는 쪽만 쓴다).
+  function reorder(next: M[]) {
+    if (!list) return;
+    const ids = new Set(next.map((m) => m.id));
+    const queue = [...next];
+    const merged = list.map((m) => (ids.has(m.id) ? (queue.shift() as M) : m)).map((m, i) => ({ ...m, no: String(i + 1) }));
+    setList(merged);
+    api("/api/admin/members/order", { method: "PUT", body: { ids: merged.map((m) => m.id) } }).then((r) => {
+      if (!r.ok) { setMsg({ tone: "bad", text: `순서를 저장하지 못했어요. ${r.error}` }); load(); }
+    });
+  }
+  const xlsRef = useRef<HTMLInputElement>(null);
+  const dsNarrow = useDragSort(shown, reorder);
+  const dsWide = useDragSort(shown, reorder);
+
+  /* ── 엑셀 ── */
+  const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10).replace(/-/g, "");
+  // 회원정보 내려받기: 지금 보이는 명단(구분 필터 적용) 그대로
+  function downloadMembers() {
+    const head = ["NO", "성명", "회원구분", "교육이수", "직책", "소모임", "성별", "회사명", "직위", "생년월일", "연락처", "연령대", ...custom, "메모", "권한"];
+    const rows = shown.map((m) => [
+      m.no ?? "", m.name, m.kind ?? "", m.edu ? "YES" : "NO", m.position ?? "", clubsText(m.clubs ?? []), m.gender ?? "", m.company ?? "", m.title ?? "",
+      m.birth ?? "", m.phone ?? "", m.ageGroup ?? "", ...custom.map((c) => m.fields[c] ?? ""), m.memo ?? "", (m.effective ?? []).map((p) => PERM_LABELS[p] ?? p).join(", "),
+    ]);
+    const label = filter.length ? `_${filter.join("·")}` : "";
+    downloadXlsx(`회원명단${label}_${today}.xlsx`, [{ name: "회원명단", rows: [head, ...rows], boldFirst: true, widths: head.map((h) => (h === "메모" ? 30 : h === "소모임" || h === "회사명" || h === "권한" ? 18 : h === "NO" ? 6 : 12)) }]);
+  }
+  // 올리기용 양식: 첫 줄 머리글만 있는 시트 + 작성 방법 시트
+  const TEMPLATE_HEAD = () => ["성명", "회원구분", "교육이수", "직책", "성별", "회사명", "직위", "생년월일", "연락처", ...custom, "메모"];
+  function downloadTemplate() {
+    const head = TEMPLATE_HEAD();
+    const guide: string[][] = [
+      ["항목", "적는 방법"],
+      ["성명", "꼭 적어 주세요. 이미 있는 회원과 이름·연락처가 같으면 건너뛰어요."],
+      ["회원구분", kinds.map((k) => k.value).join(", ") || "회원구분 목록의 이름"],
+      ["교육이수", `YES 또는 NO${requirement ? ` (“${requirement}” 여부)` : ""}`],
+      ["직책", lists.positions.join(", ") || "직책 목록의 이름 (없으면 비워 두세요)"],
+      ["성별", "남 또는 여"],
+      ["생년월일", "1970-01-01 처럼 (1970.1.1, 700101 도 읽어요). 연령대는 자동으로 계산돼요."],
+      ["연락처", "010-1234-5678 처럼 (숫자만 적어도 돼요)"],
+      ...custom.map((c) => [c, "추가 항목 (자유롭게)"]),
+      ["메모", "관리자만 보는 메모 (500자까지)"],
+      ["", ""],
+      ["참고", "‘회원명단’ 시트의 첫 줄(머리글)은 지우거나 바꾸지 마세요. 둘째 줄부터 한 줄에 한 명씩 적어요."],
+      ["참고", "관리자 권한과 소모임은 여기서 넣을 수 없어요. 넣은 뒤 회원 수정에서 정해 주세요."],
+      ["예시", "김하늘 · 정회원 · YES · 회장 · 여 · 예시상사 · 대표 · 1970-01-01 · 010-0000-0001"],
+    ];
+    downloadXlsx("회원명단_올리기양식.xlsx", [
+      { name: "회원명단", rows: [head], boldFirst: true, widths: head.map((h) => (h === "메모" ? 30 : h === "회사명" ? 18 : 12)) },
+      { name: "작성 방법", rows: guide, boldFirst: true, widths: [12, 90] },
+    ]);
+  }
+  // 엑셀 올리기: 첫 시트를 읽어 "명단 한 번에 넣기" 칸에 넣는다(미리보기에서 확인한 뒤 추가)
+  async function uploadExcel(file: File) {
+    try {
+      const { rows, numeric } = readXlsx(new Uint8Array(await file.arrayBuffer()));
+      if (rows.length < 2) return setMsg({ tone: "bad", text: "엑셀에 회원이 없어요. 첫 줄은 머리글, 둘째 줄부터 회원을 적어 주세요." });
+      const head = rows[0].map(norm);
+      const birthCol = head.findIndex((h) => ["생년월일", "생일", "생년", "출생", "birth"].includes(h));
+      const phoneCol = head.findIndex((h) => ["연락처", "전화", "전화번호", "휴대폰", "휴대전화", "핸드폰", "휴대폰번호", "hp", "phone", "mobile"].includes(h));
+      const fixed = rows.map((r, i) => r.map((v, j) => {
+        if (i === 0 || !numeric[i]?.[j] || !v) return v;
+        // 엑셀이 숫자로 바꿔 저장한 날짜(일련번호)·연락처(앞의 0 빠짐)를 되돌린다
+        if (j === birthCol && /^\d+(\.\d+)?$/.test(v) && Number(v) < 80000) return excelDate(Number(v));
+        if (j === phoneCol && /^1\d{8,9}$/.test(v)) return `0${v}`;
+        return v;
+      }));
+      const cell = (v: string) => (/["\t\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+      setImportText(fixed.map((r) => r.map(cell).join("\t")).join("\n"));
+      setDupChoice({});
+      setImportOpen(true);
+      setMsg({ tone: "info", text: `“${file.name}”에서 ${fixed.length - 1}줄을 읽었어요. 아래 미리보기를 확인하고 “추가하기”를 눌러 주세요.` });
+    } catch {
+      setMsg({ tone: "bad", text: "엑셀 파일을 읽지 못했어요. .xlsx 파일인지 확인해 주세요(예전 .xls 는 엑셀에서 .xlsx 로 다시 저장해 주세요)." });
+    }
+  }
   const kindTabs = [...kinds.map((k) => k.value), ...[...counts.keys()].filter((k) => k !== "미지정" && !kinds.some((x) => x.value === k))];
 
   return (
@@ -271,6 +354,15 @@ function Members() {
           <button className="btn" type="button" aria-haspopup="dialog" onClick={startAdd} style={{ width: "auto", minHeight: 36, padding: "0 12px", fontSize: fs(12) }}>+ 회원 추가</button>
         </div>
       </div>
+      {/* 엑셀: 지금 보이는 명단 내려받기 · 올리기 양식 받기 · 양식에 적은 파일 올리기(미리보기 후 추가) */}
+      <div className="row" role="group" aria-label="엑셀" style={{ gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <span className="small" style={{ fontSize: fs(12) }}>엑셀</span>
+        <button className="mini" type="button" disabled={!shown.length} onClick={downloadMembers} style={{ fontSize: fs(12) }}>⬇ 회원정보 다운로드{filter.length ? `(${shown.length}명)` : ""}</button>
+        <button className="mini" type="button" onClick={downloadTemplate} style={{ fontSize: fs(12) }}>⬇ 양식 받기</button>
+        <button className="mini" type="button" onClick={() => xlsRef.current?.click()} style={{ fontSize: fs(12) }}>⬆ 엑셀 올리기</button>
+        <input ref={xlsRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" tabIndex={-1} aria-hidden="true"
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadExcel(f); }} />
+      </div>
 
       {colsOpen && (
         <section className="card" aria-label="항목 추가" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -297,8 +389,8 @@ function Members() {
         <section className="card" aria-label="명단 붙여넣기" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>명단 한 번에 넣기</b>
           <span className="small">
-            엑셀이나 구글 시트에서 표를 복사해 붙여 넣거나, CSV 내용을 붙여 넣으세요. 첫 줄에 머리글(성명, 회원구분, 직책, 성별, 회사명, 직위, 생년월일, 연락처, 연령대)이 있으면 그 순서를 따르고,
-            없으면 이 순서로 읽어요. 이미 있는 이름은 건너뛰고, 관리자 권한은 여기서 줄 수 없어요.
+            엑셀이나 구글 시트에서 표를 복사해 붙여 넣거나, CSV 내용을 붙여 넣으세요(위의 “엑셀 올리기”로 양식 파일을 올려도 여기에 채워져요). 첫 줄에 머리글(성명, 회원구분, 교육이수, 직책, 성별, 회사명, 직위, 생년월일, 연락처, 메모)이 있으면 그 순서를 따르고,
+            없으면 이 순서로 읽어요. 이미 있는 회원은 건너뛰고, 관리자 권한은 여기서 줄 수 없어요.
           </span>
           <label className="l" htmlFor="imp">붙여 넣을 명단</label>
           <textarea id="imp" className="field" rows={6} style={{ padding: 12, fontFamily: "inherit" }} value={importText}
@@ -359,7 +451,7 @@ function Members() {
               <ul style={{ margin: 0, paddingLeft: 18 }}>{preview.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>
             </div>
           )}
-          <button className="btn" type="button" style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }} disabled={busy || preview.rows.length === 0 || dupLeft > 0} onClick={importAll}>
+          <button className="btn" type="button" style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }} disabled={busy || preview.rows.length === 0 || dupLeft > 0 || (willAdd === 0 && !dupRows.some((x) => dupChoice[dupKey(x.r)] === "update"))} onClick={importAll}>
             {preview.rows.length ? `${willAdd}명 추가하기${dupRows.some((x) => dupChoice[dupKey(x.r)] === "update") ? " · 연락처 고치기" : ""}` : "추가하기"}
           </button>
           {dupLeft > 0 && <span className="small" style={{ color: "var(--red-t)" }}>이름이 같은 회원 {dupLeft}명을 어떻게 할지 위에서 골라 주세요.</span>}
@@ -454,8 +546,9 @@ function Members() {
       {/* 휴대폰: 한 줄 목록(아바타 · 이름/직책 · 회사·소모임 · 구분 칩 · 수정) */}
       {shown.length > 0 && (
         <ul className="rows bleed only-narrow" aria-label="회원 목록">
-          {shown.map((m) => (
-            <li key={m.id} className="mrow">
+          {shown.map((m, i) => (
+            <li key={m.id} className="mrow" ref={dsNarrow.item(i).ref} style={{ ...dsNarrow.item(i).style, paddingLeft: 4 }}>
+              <DragHandle plain {...dsNarrow.handle(i, m.name)} />
               <Avatar member={m} size={36} />
               <span className="who">
                 <b>{m.name}</b>
@@ -481,16 +574,18 @@ function Members() {
           ))}
         </ul>
       )}
-      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>연필 아이콘으로 수정, 휴지통 아이콘으로 삭제해요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
-      {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
+      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>⠿ 손잡이를 끌어서 순서를 바꾸고(바로 저장돼요), 연필 아이콘으로 수정, 휴지통 아이콘으로 삭제해요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
+      {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>NO 옆 ⠿ 손잡이를 끌어서 순서를 바꿔요(바로 저장돼요). 회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
       {shown.length > 0 && (
         <div className="tblw only-wide">
           <table className="tbl" style={{ minWidth: 1200 + custom.length * 110 }}>
             <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
             <tbody>
-              {shown.map((m) => (
-                <tr key={m.id}>
-                  <td className="num">{m.no}</td>
+              {shown.map((m, i) => (
+                <tr key={m.id} ref={dsWide.item(i).ref} style={dsWide.item(i).style}>
+                  <td className="num" style={{ whiteSpace: "nowrap" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><DragHandle plain {...dsWide.handle(i, m.name)} />{m.no}</span>
+                  </td>
                   <td><b>{m.name}</b></td>
                   <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}{m.app && <> {m.app && <AppLabel app={m.app} />}</>}</td>
                   <td className="center">{m.edu ? "YES" : "NO"}</td>

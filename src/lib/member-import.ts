@@ -3,6 +3,7 @@
 export type ImportRow = {
   name: string; kind: string; position: string; gender: string; company: string;
   title: string; birth: string; phone: string; ageGroup: string;
+  edu: string; memo: string; // 교육이수(YES/NO 등 적은 그대로 — 넣을 때 eduYes 로 읽는다), 메모
   line?: number; // 붙여 넣은 글에서 몇 번째 줄인지(미리보기·안내용)
 };
 type Key = Exclude<keyof ImportRow, "line">;
@@ -18,7 +19,11 @@ const HEADER: Record<string, Key> = {
   생년월일: "birth", 생일: "birth", 생년: "birth", 출생: "birth", birth: "birth",
   연락처: "phone", 전화: "phone", 전화번호: "phone", 휴대폰: "phone", 휴대전화: "phone", 핸드폰: "phone", 휴대폰번호: "phone", hp: "phone", phone: "phone", mobile: "phone",
   연령대: "ageGroup", 나이대: "ageGroup",
+  교육이수: "edu", 이수: "edu", 교육: "edu",
+  메모: "memo", 비고: "memo", memo: "memo",
 };
+// 교육이수 칸: YES·O·예·이수·완료·true·1 이면 이수
+export const eduYes = (v: string) => /^(yes|y|o|○|예|네|이수|완료|true|1)$/i.test(v.trim());
 // 회원 항목은 아니지만 머리글 줄임을 알려 주는 이름(이 열은 건너뛴다)
 const HEADER_ONLY = new Set(["no", "번호", "순번", "연번", "순서", "#"]);
 export const norm = (h: string) => h.replace(/\(.*?\)|\[.*?\]/g, "").replace(/[\s.·:_-]/g, "").toLowerCase();
@@ -80,7 +85,7 @@ export function parseMembers(text: string): { rows: ImportRow[]; problems: strin
 
   const rows: ImportRow[] = [];
   body.forEach(({ cells, line }) => {
-    const r: ImportRow = { name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", line };
+    const r: ImportRow = { name: "", kind: "", position: "", gender: "", company: "", title: "", birth: "", phone: "", ageGroup: "", edu: "", memo: "", line };
     cols.forEach((k, j) => {
       if (k && cells[j] !== undefined) r[k] = cells[j];
     });
