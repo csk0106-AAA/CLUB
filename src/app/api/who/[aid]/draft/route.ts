@@ -35,7 +35,8 @@ export async function POST(_req: Request, ctx: Ctx) {
   // 프로필 북 작성(실명 공개)은 2진실 1거짓 없이, 답변 그대로 쓴다.
   const inAct = await inGame(w, g.s.mid);
   const gen = (t: string) => (inAct ? generalize(t, terms) : t);
-  const answers = messages.filter((m) => m.role === "me").map((m) => gen(m.text));
+  // "답변안함"으로 넘긴 질문은 소개 글에 쓰지 않는다
+  const answers = messages.filter((m) => m.role === "me" && !m.skipped).map((m) => gen(m.text));
 
   let mode: "ai" | "manual" = "manual";
   let intro = answers.join("\n\n");

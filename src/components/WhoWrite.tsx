@@ -8,7 +8,8 @@ import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { useVoice } from "@/lib/voice";
 import { fs } from "@/lib/fs";
 
-export type Msg = { role: "ai" | "me"; text: string; scope?: "intro" | "truthlie" | "none" };
+// skipped: "답변안함"으로 넘긴 질문
+export type Msg = { role: "ai" | "me"; text: string; scope?: "intro" | "truthlie" | "none"; skipped?: boolean };
 export type WhoState = {
   activity: { id: string; name: string };
   event: { id: string; name: string };
@@ -26,7 +27,7 @@ export type WhoState = {
     readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean;
     sajuInfo: SajuInfo | null;
   };
-  interview: { messages: Msg[]; status: string; answered: number; required: number };
+  interview: { messages: Msg[]; status: string; answered: number; required: number; canSkip?: boolean }; // canSkip: 지금 질문은 답변안함 가능
   truthLies: { statements: string[]; lieIndex: number; status: string };
 };
 export type Note = { tone: "bad" | "info"; text: string } | null;
@@ -40,7 +41,7 @@ const WHEN: Record<string, string> = {
 const RESET_ASK = "기존 내소개 내용은 삭제 됩니다. 새로 진행하시겠습니까?";
 
 // 인터뷰 답변 하나 고치기(타이핑 또는 음성)
-function AnswerEdit({ idx, q, value, onChange }: { idx: number; q: string; value: string; onChange: (v: string) => void }) {
+function AnswerEdit({ idx, q, value, skipped, onChange }: { idx: number; q: string; value: string; skipped?: boolean; onChange: (v: string) => void }) {
   const voice = useVoice(() => value, onChange);
   return (
     <li className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -48,8 +49,9 @@ function AnswerEdit({ idx, q, value, onChange }: { idx: number; q: string; value
         <Mascot size={28} />
         <div className="bubble" style={{ fontSize: fs(14) }}>{q}</div>
       </div>
-      <label className="l" htmlFor={`ea-${idx}`} style={{ margin: 0 }}>내 답변 {idx + 1}</label>
-      <textarea id={`ea-${idx}`} className="field" rows={3} maxLength={2000} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={value} onChange={(e) => onChange(e.target.value)} />
+      <label className="l" htmlFor={`ea-${idx}`} style={{ margin: 0 }}>내 답변 {idx + 1}{skipped ? " · 답변안함으로 넘겼어요" : ""}</label>
+      <textarea id={`ea-${idx}`} className="field" rows={3} maxLength={2000} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={value}
+        placeholder={skipped ? "비워 두면 계속 답변안함이에요. 적으면 답한 것으로 바뀌어요." : undefined} onChange={(e) => onChange(e.target.value)} />
       <div className="row" style={{ gap: 8 }}>
         {voice.supported && (
           <button type="button" className={`mic ${voice.listening ? "on" : ""}`} aria-label={voice.listening ? `답변 ${idx + 1} 음성 입력 멈추기` : `답변 ${idx + 1} 음성으로 덧붙이기`} aria-pressed={voice.listening} onClick={voice.toggle}>
@@ -81,7 +83,7 @@ export function WhoWrite(props: {
   const [answer, setAnswer] = useState("");
   const [editAlias, setEditAlias] = useState(false);
   // 기존 인터뷰 수정하기: 질문별 답변 고치기
-  const [editing, setEditing] = useState<{ q: string; a: string }[] | null>(null);
+  const [editing, setEditing] = useState<{ q: string; a: string; skipped?: boolean }[] | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
 
   // 다시 불러오면(새 초안·배포) 화면 값도 맞춘다
@@ -121,6 +123,15 @@ export function WhoWrite(props: {
   const startInterview = () => run(async () => {
     const r = await api(`/api/who/${aid}/interview`, { body: {} });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    await reload();
+  });
+
+  // 답변안함: 이 질문을 넘긴다(템플릿에서 허용한 질문만)
+  const skipQuestion = () => run(async () => {
+    if (voice.listening) voice.toggle();
+    const r = await api(`/api/who/${aid}/interview`, { body: { skip: true } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setAnswer("");
     await reload();
   });
 
@@ -202,14 +213,14 @@ export function WhoWrite(props: {
   // 기존 인터뷰 수정하기: 질문과 내 답변을 짝지어 보여 준다
   const startEdit = () => {
     const ms = st.interview.messages;
-    const pairs = ms.flatMap((m, i) => (m.role === "me" ? [{ q: ms[i - 1]?.role === "ai" ? ms[i - 1].text : "", a: m.text }] : []));
+    const pairs = ms.flatMap((m, i) => (m.role === "me" ? [{ q: ms[i - 1]?.role === "ai" ? ms[i - 1].text : "", a: m.skipped ? "" : m.text, skipped: !!m.skipped }] : []));
     setEditing(pairs);
     setNote(null);
   };
   // 고친 답변 저장 → 소개 글(과 2진실 1거짓) 다시 만들기
   const saveEdit = () => run(async () => {
     if (!editing) return;
-    if (editing.some((p) => !p.a.trim())) return setNote({ tone: "bad", text: "빈 답변이 있어요. 답변을 적어 주세요." });
+    if (editing.some((p) => !p.a.trim() && !p.skipped)) return setNote({ tone: "bad", text: "빈 답변이 있어요. 답변을 적어 주세요." });
     const r = await api(`/api/who/${aid}/interview`, { method: "PUT", body: { answers: editing.map((p) => p.a.trim()) } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setEditing(null);
@@ -267,7 +278,7 @@ export function WhoWrite(props: {
         <div className="msg info">질문별 내 답변을 고쳐 주세요. 키보드로 고치거나 마이크로 말해서 덧붙일 수 있어요. 저장하면 고친 답변으로 소개 글{inAct ? "과 2진실 1거짓" : ""}을 다시 만들어요{approved ? "(다시 배포할 때까지 지금 공개된 소개는 숨겨져요)" : ""}.</div>
         <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
           {editing.map((p, i) => (
-            <AnswerEdit key={i} idx={i} q={p.q} value={p.a} onChange={(v) => setEditing((cur) => cur?.map((x, j) => (j === i ? { ...x, a: v } : x)) ?? cur)} />
+            <AnswerEdit key={i} idx={i} q={p.q} value={p.a} skipped={p.skipped} onChange={(v) => setEditing((cur) => cur?.map((x, j) => (j === i ? { ...x, a: v } : x)) ?? cur)} />
           ))}
         </ol>
         <div className="footer-actions">
@@ -314,6 +325,8 @@ export function WhoWrite(props: {
                       <Mascot size={32} />
                       <div className="bubble">{m.text}</div>
                     </div>
+                  ) : m.skipped ? (
+                    <div key={i} className="mine" style={{ opacity: 0.6, fontStyle: "italic" }}>답변안함</div>
                   ) : (
                     <div key={i} className="mine">{m.text}</div>
                   ),
@@ -336,6 +349,9 @@ export function WhoWrite(props: {
                   )}
                   <button className="btn" type="button" disabled={busy || !answer.trim()} onClick={sendAnswer}>보내기</button>
                 </div>
+                {iv.canSkip && (
+                  <button className="btn white" type="button" disabled={busy} onClick={skipQuestion}>답변안함 (이 질문 넘기기)</button>
+                )}
               </div>
             </>
           )}

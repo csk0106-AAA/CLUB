@@ -20,7 +20,8 @@ export const aiPointKeys = (c: { preEvent: { steps: string[] } }): string[] =>
 export type AiSettings = {
   aiGuides: Record<string, string>;
   aiCommon?: string;
-  interview?: { questions: string[]; followUpMax: number };
+  // skippable: 질문마다 "답변안함" 허용(questions 와 같은 순서)
+  interview?: { questions: string[]; followUpMax: number; skippable?: boolean[] };
 };
 
 export function AiGuidesEditor(props: {
@@ -38,9 +39,13 @@ export function AiGuidesEditor(props: {
   const [guides, setGuides] = useState<Record<string, string>>({ ...initial.aiGuides });
   const [common, setCommon] = useState(initial.aiCommon ?? "");
   const hasInterview = keys.includes("followup");
-  const [questions, setQuestions] = useState<string[]>(initial.interview?.questions ?? []);
+  // 질문과 "답변안함" 허용 여부를 한 줄로 묶어 둔다(순서를 바꿔도 함께 움직인다)
+  type Q = { q: string; skip: boolean };
+  const [items, setItems] = useState<Q[]>((initial.interview?.questions ?? []).map((q, i) => ({ q, skip: initial.interview?.skippable?.[i] === true })));
+  const questions = items.map((x) => x.q);
+  const setQ = (i: number, patch: Partial<Q>) => setItems(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   // 인터뷰 질문 순서: ⠿ 손잡이를 끌어서(또는 손잡이에서 위·아래 방향키로) 바꾼다
-  const qds = useDragSort(questions, setQuestions);
+  const qds = useDragSort(items, setItems);
   const [followUpMax, setFollowUpMax] = useState<number>(initial.interview?.followUpMax ?? 6);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -50,7 +55,7 @@ export function AiGuidesEditor(props: {
       setInfo(r.data);
       // 템플릿에 인터뷰 질문이 없으면 기본값으로 채워서 보여 준다(저장하면 템플릿으로 옮겨짐)
       if (!initial.interview?.questions?.length) {
-        setQuestions(r.data.questions);
+        setItems(r.data.questions.map((q) => ({ q, skip: false })));
         setFollowUpMax(r.data.followUpMax);
       }
     });
@@ -60,7 +65,7 @@ export function AiGuidesEditor(props: {
     if (hasInterview && !questions.some((q) => q.trim())) return setErr("인터뷰 질문을 하나 이상 넣어 주세요.");
     setBusy(true);
     setErr("");
-    const e = await onSave({ aiGuides: guides, aiCommon: common, ...(hasInterview ? { interview: { questions, followUpMax } } : {}) }, mode, name);
+    const e = await onSave({ aiGuides: guides, aiCommon: common, ...(hasInterview ? { interview: { questions, followUpMax, skippable: items.map((x) => x.skip) } } : {}) }, mode, name);
     setBusy(false);
     if (e) setErr(e);
   }
@@ -91,16 +96,22 @@ export function AiGuidesEditor(props: {
       {info && hasInterview && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <b style={{ font: `700 ${fs(16)} var(--display)` }}>AI 인터뷰 질문</b>
-          <span className="small">회원에게 차례로 묻는 필수 질문이에요. 다 답하면 AI가 후속 질문을 최대 개수만큼 이어서 물어요.{questions.length > 1 ? " 왼쪽 ⠿ 손잡이를 끌어서 묻는 순서를 바꿔요." : ""}</span>
-          {questions.map((q, i) => (
-            <div key={i} ref={qds.item(i).ref} className="row" style={qds.item(i).style}>
-              {questions.length > 1 && <DragHandle {...qds.handle(i, `질문 ${i + 1}`)} />}
-              <span className="num small" aria-hidden="true" style={{ minWidth: 18, textAlign: "right" }}>{i + 1}</span>
-              <input className="field" aria-label={`질문 ${i + 1}`} maxLength={300} value={q} onChange={(e) => setQuestions(questions.map((x, j) => (j === i ? e.target.value : x)))} />
-              <button className="mini danger" type="button" disabled={questions.length <= 1} style={{ minHeight: 46 }} onClick={() => setQuestions(questions.filter((_, j) => j !== i))}>삭제</button>
+          <span className="small">회원에게 차례로 묻는 필수 질문이에요. 다 답하면 AI가 후속 질문을 최대 개수만큼 이어서 물어요.{items.length > 1 ? " 왼쪽 ⠿ 손잡이를 끌어서 묻는 순서를 바꿔요." : ""} “답변안함 허용”을 체크한 질문은 회원이 답하지 않고 넘어갈 수 있어요(넘긴 질문은 소개 글에 쓰지 않아요).</span>
+          {items.map((it, i) => (
+            <div key={i} ref={qds.item(i).ref} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, padding: 10, ...qds.item(i).style }}>
+              <div className="row" style={{ gap: 6 }}>
+                {items.length > 1 && <DragHandle {...qds.handle(i, `질문 ${i + 1}`)} />}
+                <span className="num small" aria-hidden="true" style={{ minWidth: 18, textAlign: "right" }}>{i + 1}</span>
+                <input className="field" aria-label={`질문 ${i + 1}`} maxLength={300} value={it.q} onChange={(e) => setQ(i, { q: e.target.value })} />
+                <button className="mini danger" type="button" disabled={items.length <= 1} style={{ minHeight: 46 }} onClick={() => setItems(items.filter((_, j) => j !== i))}>삭제</button>
+              </div>
+              <label className="row" style={{ gap: 8, minHeight: 32, fontSize: fs(13), cursor: "pointer", paddingLeft: items.length > 1 ? 50 : 0 }}>
+                <input type="checkbox" checked={it.skip} onChange={(e) => setQ(i, { skip: e.target.checked })} style={{ width: 18, height: 18 }} />
+                <span>답변안함 허용 (회원이 “답변안함”을 누르면 이 질문은 넘어가요)</span>
+              </label>
             </div>
           ))}
-          <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(15) }} onClick={() => setQuestions([...questions, ""])}>+ 질문 추가</button>
+          <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(15) }} onClick={() => setItems([...items, { q: "", skip: false }])}>+ 질문 추가</button>
           <div style={{ maxWidth: 240 }}>
             <label className="l" htmlFor="ag-fu">AI 후속 질문 최대 개수</label>
             <input id="ag-fu" className="field" type="number" min={0} max={12} value={followUpMax} onChange={(e) => setFollowUpMax(Math.max(0, Math.min(12, Number(e.target.value) || 0)))} />

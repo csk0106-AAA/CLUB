@@ -14,7 +14,7 @@ const shape = z.object({
 export function qaPairs(messages: ChatMsg[], terms: IdentityTerms): { q: string; a: string }[] {
   const out: { q: string; a: string }[] = [];
   messages.forEach((m, i) => {
-    if (m.role !== "me") return;
+    if (m.role !== "me" || (m as { skipped?: boolean }).skipped) return; // "답변안함"은 쓰지 않는다
     const q = messages.slice(0, i).reverse().find((x) => x.role === "ai")?.text ?? "";
     out.push({ q, a: generalize(m.text, terms) });
   });

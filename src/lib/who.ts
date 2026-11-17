@@ -9,7 +9,9 @@ import { inRoster, whoStateOf, type WhoState } from "./participants";
 import { PROFILE_AID, whoV1 } from "./profile-book";
 
 export type Scope = "intro" | "truthlie" | "none";
-export type ChatMsg = { role: "ai" | "me"; text: string; scope?: Scope };
+// skipped: 회원이 "답변안함"으로 넘긴 질문(소개 글·2진실 1거짓·후속 질문에 쓰지 않는다)
+export type ChatMsg = { role: "ai" | "me"; text: string; scope?: Scope; skipped?: boolean };
+export const SKIP_TEXT = "답변안함";
 
 // book: 프로필 북의 "소개 작성하기"(일정 활동이 아님 — 템플릿 v1 지침, 2진실 1거짓 없음, 실명으로 공개)
 export type WhoCtx = { ev: Row; act: Row; cfg: TemplateConfig; book?: boolean };
@@ -65,6 +67,14 @@ export async function questions(act?: Row): Promise<string[]> {
   return q.length ? q : DEFAULT_QUESTIONS;
 }
 export const guidelines = () => getSetting<string>("aiGuidelines", DEFAULT_GUIDELINES);
+// 질문마다 "답변안함" 허용 여부(활동 템플릿의 질문을 쓸 때만. 기본 질문은 모두 답해야 한다)
+export async function skippable(act?: Row): Promise<boolean[]> {
+  const iv = (await activityAiConfig(act))?.interview;
+  if (!iv?.questions?.some((q) => q.trim())) return [];
+  // questions() 와 같게 빈 질문은 빼고 순서를 맞춘다
+  return iv.questions.map((q, i) => ({ q: q.trim(), skip: iv.skippable?.[i] === true })).filter((p) => p.q).map((p) => p.skip);
+}
+
 // 후속 질문 최대 개수: 활동 템플릿에 있으면 그것, 없으면 기본값
 export async function followUpMax(act?: Row): Promise<number> {
   const t = (await activityAiConfig(act))?.interview?.followUpMax;
@@ -116,6 +126,12 @@ export async function writeGate(ctx: WhoCtx, memberId: string): Promise<NextResp
   return NextResponse.json({ error: msg }, { status: 403 });
 }
 
-export function interviewView(messages: ChatMsg[], status: string, required: number) {
-  return { messages, status: status || "active", answered: messages.filter((m) => m.role === "me").length, required };
+// canSkip: 지금 묻는 질문이 "답변안함"을 허용하는 필수 질문인지
+export function interviewView(messages: ChatMsg[], status: string, required: number, skips: boolean[] = []) {
+  const answered = messages.filter((m) => m.role === "me").length;
+  const waiting = (status || "active") !== "done" && messages[messages.length - 1]?.role === "ai";
+  return { messages, status: status || "active", answered, required, canSkip: waiting && answered < required && skips[answered] === true };
 }
+
+// 답한 것만("답변안함" 뺀 것) — 소개 글·후속 질문·2진실 1거짓에 쓴다
+export const answeredOnly = (messages: ChatMsg[]) => messages.filter((m) => !(m.role === "me" && m.skipped));

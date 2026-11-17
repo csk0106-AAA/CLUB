@@ -4,7 +4,7 @@ import { guard, parseJson } from "@/lib/api";
 import { isAiEnabled } from "@/lib/ai";
 import { ensureAlias, maskedMembers, PROFILE_AID } from "@/lib/profile-book";
 import { getStore } from "@/lib/store";
-import { interviewView, loadWho, myInterview, myProfile, myTruthLies, questions, whoState, windows } from "@/lib/who";
+import { interviewView, loadWho, myInterview, myProfile, myTruthLies, questions, skippable, whoState, windows } from "@/lib/who";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
     }
   }
 
-  const [profile, iv, tl, qs] = await Promise.all([myProfile(g.s.mid), myInterview(g.s.mid, aid), myTruthLies(g.s.mid, aid), questions(w.act)]);
+  const [profile, iv, tl, qs, skips] = await Promise.all([myProfile(g.s.mid), myInterview(g.s.mid, aid), myTruthLies(g.s.mid, aid), questions(w.act), skippable(w.act)]);
   const rt = w.book ? null : revealTime(w.cfg, w.act, w.ev);
   return NextResponse.json({
     activity: { id: aid, name: w.book ? "내 소개 작성하기" : w.cfg.name },
@@ -67,7 +67,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
       traitsShown: profile?.traitsShown === "true",
       sajuInfo: parseJson<unknown>(profile?.sajuInfo, null),
     },
-    interview: interviewView(iv.messages, iv.row?.status ?? "", qs.length),
+    interview: interviewView(iv.messages, iv.row?.status ?? "", qs.length, skips),
     truthLies: {
       statements: parseJson<string[]>(tl?.statements, ["", "", ""]),
       lieIndex: tl?.lieIndex ? Number(tl.lieIndex) : 0,

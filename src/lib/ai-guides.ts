@@ -56,7 +56,7 @@ export { keyOf as pointKey };
 export const aiSettingsInput = z.object({
   aiGuides: z.record(z.string(), z.string().max(4000)),
   aiCommon: z.string().max(4000).optional(),
-  interview: z.object({ questions: z.array(z.string().max(300)).max(30), followUpMax: z.number().int().min(0).max(12) }).optional(),
+  interview: z.object({ questions: z.array(z.string().max(300)).max(30), followUpMax: z.number().int().min(0).max(12), skippable: z.array(z.boolean()).max(30).optional() }).optional(),
 });
 
 // 이 활동에 맞게 정리: 쓰이지 않는 지점·빈 값은 빼고, 인터뷰는 AI 인터뷰 활동에만 둔다.
@@ -67,9 +67,11 @@ export function cleanAiSettings(cfg: TemplateConfig, input: z.infer<typeof aiSet
     Object.entries(input.aiGuides).map(([k, v]) => [k, v.trim()]).filter(([k, v]) => keys.includes(k) && allowed.has(k) && v),
   );
   const aiCommon = input.aiCommon?.trim() || undefined;
-  const questions = input.interview?.questions.map((q) => q.trim()).filter(Boolean) ?? [];
+  // 빈 질문은 빼고, "답변안함" 허용 여부는 같은 질문에 붙여 둔다
+  const pairs = (input.interview?.questions ?? []).map((q, i) => ({ q: q.trim(), skip: input.interview?.skippable?.[i] === true })).filter((p) => p.q);
+  const questions = pairs.map((p) => p.q);
   const interview = cfg.preEvent.steps.includes("ai_interview") && input.interview && questions.length
-    ? { questions, followUpMax: input.interview.followUpMax }
+    ? { questions, followUpMax: input.interview.followUpMax, ...(pairs.some((p) => p.skip) ? { skippable: pairs.map((p) => p.skip) } : {}) }
     : cfg.interview;
   return { aiGuides, aiCommon, interview };
 }
