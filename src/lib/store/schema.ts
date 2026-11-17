@@ -50,6 +50,8 @@ export const TABS = {
   ],
   EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner"],
   EventPrep: ["id", "eventId", "item", "owner", "done"],
+  // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.
+  EventFiles: ["id", "eventId", "name", "type", "size", "data", "uploadedBy", "createdAt"],
   // place: 위치(주소·장소 이름), memo: 메모(준비물·안내). 일정마다 아이콘으로 보이고 누르면 팝업으로 본다.
   EventSchedule: ["id", "eventId", "at", "title", "place", "memo"],
   // 템플릿 버전: 처음 만든 행이 v1(origin default/custom)이고, 고칠 때마다 새 행이 v2, v3…으로 생긴다(origin "version").

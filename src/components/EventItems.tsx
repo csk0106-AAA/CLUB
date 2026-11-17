@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, fmtDate, won } from "@/lib/client";
 import { DateField } from "./DateField";
 import { Popup } from "./Popup";
@@ -18,6 +18,87 @@ const BLANK: Record<Kind, Record<string, string | number | boolean>> = {
 };
 const STATUS = ["예정", "집행 완료", "보류"];
 const TITLE: Record<Kind, string> = { schedule: "일정", prep: "준비 목록", costs: "비용" };
+
+type FileMeta = { id: string; name: string; type: string; size: number; uploadedBy: string; createdAt: string };
+const fmtSize = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
+
+// 준비목록 파일: 올리기(여러 개), 목록, 내려받기, 지우기. 한 파일 4MB, 일정 하나에 20개까지.
+function PrepFiles({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
+  const base = `/api/admin/events/${eventId}/files`;
+  const [files, setFiles] = useState<FileMeta[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<Note>(null);
+  const ref = useRef<HTMLInputElement>(null);
+  const load = useCallback(async () => {
+    const r = await api<{ files: FileMeta[] }>(base);
+    if (r.ok) setFiles(r.data.files);
+    else setMsg({ tone: "bad", text: r.error });
+  }, [base]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function upload(list: FileList | null) {
+    if (!list?.length) return;
+    setBusy(true);
+    setMsg(null);
+    const fails: string[] = [];
+    for (const f of Array.from(list)) {
+      if (f.size > 4 * 1024 * 1024) { fails.push(`“${f.name}”: 4MB보다 커요.`); continue; }
+      const fd = new FormData();
+      fd.append("file", f, f.name);
+      try {
+        const r = await fetch(base, { method: "POST", body: fd });
+        const j = (await r.json().catch(() => ({}))) as { error?: string };
+        if (!r.ok) fails.push(`“${f.name}”: ${j.error ?? "올리지 못했어요."}`);
+      } catch {
+        fails.push(`“${f.name}”: 연결이 불안정해요.`);
+      }
+    }
+    setBusy(false);
+    setMsg(fails.length ? { tone: "bad", text: fails.join(" ") } : { tone: "info", text: "파일을 올렸어요." });
+    load();
+  }
+  async function remove(f: FileMeta) {
+    if (!window.confirm(`“${f.name}” 파일을 지울까요?`)) return;
+    const r = await api(`${base}/${f.id}`, { method: "DELETE" });
+    setMsg(r.ok ? { tone: "info", text: "지웠어요." } : { tone: "bad", text: r.error });
+    load();
+  }
+
+  return (
+    <section className="card" aria-label="준비목록 파일" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="row" style={{ flexWrap: "wrap" }}>
+        <b className="grow" style={{ font: `700 ${fs(16)} var(--display)` }}>파일 {files ? `${files.length}개` : ""}</b>
+        {canEdit && (
+          <>
+            <input ref={ref} type="file" multiple className="sr-only" tabIndex={-1} aria-hidden="true"
+              accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.hwpx,.zip,.txt,.csv"
+              onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
+            <button className="mini" type="button" disabled={busy || (files?.length ?? 0) >= 20} onClick={() => ref.current?.click()}>{busy ? "올리는 중…" : "+ 파일 올리기"}</button>
+          </>
+        )}
+      </div>
+      <span className="small">사진·문서(pdf, 오피스, hwp, zip, txt)를 하나에 4MB까지, 일정 하나에 20개까지 올려요. “회원에게 준비 목록 보이기”를 켜면 회원도 내려받을 수 있어요.</span>
+      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      {files && files.length === 0 && <span className="small">아직 올린 파일이 없어요.</span>}
+      {files && files.length > 0 && (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          {files.map((f) => (
+            <li key={f.id} className="row" style={{ gap: 8, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
+              <span className="grow" style={{ minWidth: 0 }}>
+                <a href={`${base}/${f.id}`} download={f.name} style={{ overflowWrap: "anywhere", fontWeight: 600 }}>📎 {f.name}</a>
+                <span className="small" style={{ display: "block" }}>{fmtSize(f.size)}{f.uploadedBy ? ` · ${f.uploadedBy}` : ""}{f.createdAt ? ` · ${fmtDate(f.createdAt)}` : ""}</span>
+              </span>
+              <a className="mini" href={`${base}/${f.id}`} download={f.name} style={{ textDecoration: "none" }} aria-label={`${f.name} 내려받기`}>내려받기</a>
+              {canEdit && <button className="mini danger" type="button" onClick={() => remove(f)} aria-label={`${f.name} 지우기`}>삭제</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 // 세부 일정 / 준비 목록 / 비용(예산과 집행). 같은 화면 틀로 세 가지를 다룬다.
 // 일정은 회원에게 보이고, 준비 목록과 비용은 관리자만 본다.
@@ -246,6 +327,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
         </Popup>
         </>
       )}
+      {kind === "prep" && <PrepFiles eventId={eventId} canEdit={canEdit} />}
     </>
   );
 }

@@ -8,6 +8,7 @@ import { memberClubs } from "@/lib/lists";
 import { fixLegacyTypes } from "@/lib/event-migrate";
 import { isGuest } from "@/lib/member-kind";
 import { ITEMS } from "@/lib/items";
+import { fileMeta } from "@/lib/event-files";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     ? prepRows.filter((r) => r.eventId === id).map((r) => ITEMS.prep.view(r)).sort((a, b) => Number(a.done) - Number(b.done))
     : null;
   const costs = showCosts ? costRows.filter((r) => r.eventId === id).map((r) => ITEMS.costs.view(r)) : null;
+  // 준비목록 파일(준비목록을 보일 때만, 내용은 /api/events/[id]/files/[fid] 로 내려받는다)
+  const prepFiles = showPrep
+    ? (await s.list("EventFiles")).filter((r) => r.eventId === id).sort((p, q) => (p.createdAt ?? "").localeCompare(q.createdAt ?? ""))
+      .map((r) => fileMeta(r, (mid) => members.find((m) => m.id === mid)?.name ?? ""))
+    : null;
   const activities = acts
     .filter((x) => x.eventId === id)
     .sort((p, q) => Number(p.order) - Number(q.order))
@@ -89,6 +95,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     },
     activities,
     prep, // null = 회원에게 안 보임
+    prepFiles,
     costs,
     apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "" } : null,
     feeDue: attending && fee !== "" && a?.paid !== "true",

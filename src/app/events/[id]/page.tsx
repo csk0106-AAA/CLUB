@@ -29,6 +29,7 @@ type Detail = {
   activities: { id: string; name: string }[];
   // 관리자가 회원에게 보이기를 켠 준비목록·비용(null = 안 보임)
   prep?: { id: string; item: string; owner: string; done: boolean }[] | null;
+  prepFiles?: { id: string; name: string; size: number }[] | null;
   costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
   feeDue: boolean;
@@ -220,8 +221,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </Fold>
       )}
       {/* 관리자가 "회원에게 보이기"를 켠 준비목록·비용(읽기만) */}
-      {d.prep && d.prep.length > 0 && (
-        <Fold title="준비목록" summary={`${d.prep.filter((x) => x.done).length}/${d.prep.length} 준비됨`}>
+      {d.prep && (d.prep.length > 0 || (d.prepFiles?.length ?? 0) > 0) && (
+        <Fold title="준비목록" summary={`${d.prep.filter((x) => x.done).length}/${d.prep.length} 준비됨${d.prepFiles?.length ? ` · 파일 ${d.prepFiles.length}개` : ""}`}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {d.prep.map((x) => (
               <li key={x.id} className="row" style={{ gap: 8 }}>
@@ -233,6 +234,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               </li>
             ))}
           </ul>
+          {d.prepFiles && d.prepFiles.length > 0 && (
+            <ul aria-label="준비목록 파일" style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+              {d.prepFiles.map((f) => (
+                <li key={f.id} className="row" style={{ gap: 8, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
+                  <span className="grow" style={{ minWidth: 0, overflowWrap: "anywhere" }}>📎 {f.name}
+                    <span className="small" style={{ display: "block" }}>{f.size >= 1048576 ? `${(f.size / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(f.size / 1024))}KB`}</span>
+                  </span>
+                  <a className="mini" href={`/api/events/${d.event.id}/files/${f.id}`} download={f.name} style={{ textDecoration: "none" }} aria-label={`${f.name} 내려받기`}>내려받기</a>
+                </li>
+              ))}
+            </ul>
+          )}
         </Fold>
       )}
       {d.costs && d.costs.length > 0 && (
