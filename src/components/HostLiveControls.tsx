@@ -5,7 +5,8 @@ import { api } from "@/lib/client";
 
 type Live = { active: boolean; stepKey: string; stepLabel: string; unlocked: boolean };
 
-// 진행자 전체화면 위쪽의 회원 화면 조작: 잠그기 ↔ 다시 열기, 처음으로.
+// 진행자 전체화면 위쪽의 회원 화면 조작: 잠그기 ↔ 다시 열기.
+// (처음으로는 진행에 필요 없어 설정 화면의 진행자 컨트롤에만 둔다 — 진행 버튼이 회원 화면을 알아서 바꾼다)
 // 진행하다가 설정 화면으로 돌아가지 않아도 여기서 바로 누른다(설정 화면의 진행자 컨트롤과 같은 동작).
 export function HostLiveControls({ eventId, aid, onChange }: { eventId: string; aid: string; onChange?: () => void }) {
   const url = `/api/admin/events/${eventId}/activities/${aid}/live`;
@@ -46,8 +47,6 @@ export function HostLiveControls({ eventId, aid, onChange }: { eventId: string; 
       {live.active && !live.unlocked && (
         <button className="mini" type="button" disabled={busy} style={btn} title="잠근 회원 화면을 지금 단계로 다시 켜요" onClick={() => send({ action: "activate", step: live.stepKey })}>다시 열기</button>
       )}
-      <button className="mini" type="button" disabled={busy || !live.active} style={btn} title="회원 화면을 시작 전(대기)으로 되돌려요"
-        onClick={() => window.confirm("회원 화면을 처음(시작 전)으로 되돌릴까요?\n회원 화면이 대기 화면이 돼요. 이미 받은 투표·답과 진행 기록은 지우지 않아요.") && send({ action: "reset" })}>처음으로</button>
       {err && <span role="alert" style={{ color: "#ffb4a8", fontSize: 13 }}>{err}</span>}
     </span>
   );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { can, getSession, type Session } from "./auth";
 import { readEditors } from "./editors";
+import { isHost } from "./hosts";
 import { memberClubs } from "./lists";
 import { creatableTypes } from "./perm-keys";
 import { getStore } from "./store";
@@ -89,7 +90,7 @@ export async function hostGuard(aid: string, perm: string | string[] = ["templat
   if (s.host) {
     // 관리자가 진행자를 바꾸거나 지정을 풀면 예전 세션은 바로 막힌다.
     const act = s.host.includes(aid) ? (await (await getStore()).list("EventActivities")).find((a) => a.id === aid) : undefined;
-    return act && act.hostId === s.mid ? { s } : { err: NextResponse.json({ error: "이 활동의 진행자가 아니에요.", hostOnly: true }, { status: 403 }) };
+    return act && isHost(act, s.mid) ? { s } : { err: NextResponse.json({ error: "이 활동의 진행자가 아니에요.", hostOnly: true }, { status: 403 }) };
   }
   const list = Array.isArray(perm) ? perm : [perm];
   if (!list.some((p) => can(s, p))) return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };

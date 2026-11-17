@@ -65,7 +65,8 @@ export const TABS = {
   ActivityTemplates: ["id", "name", "version", "config", "origin", "createdAt"],
   // startsAt/endsAt: 이 활동이 진행되는 날짜와 시간(한국 시간, YYYY-MM-DDTHH:mm). 비어 있으면 시간 제한 없음.
   // hostId: 진행자(회원 id), hostCode: 진행자 접속번호(이 번호로 로그인하면 활동 진행 화면만 보인다)
-  EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode"],
+  // hosts: 진행자 여러 명 JSON [{memberId, code}] — 사람마다 접속번호가 따로(lib/hosts.ts). hostId/hostCode 는 예전 값(첫 진행자)
+  EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode", "hosts"],
   // 활동별 출석 체크: 자동 명단(날짜 선택 기반)을 관리자가 고칠 때만 행이 생긴다. present: true(출석) / false(결석)
   Attendance: ["id", "eventActivityId", "memberId", "present"],
   Teams: ["id", "eventActivityId", "name", "memberIds"],

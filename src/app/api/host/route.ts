@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession, can } from "@/lib/auth";
 import { activityKind, activityMode, liveView, readConfig } from "@/lib/activities";
+import { isHost } from "@/lib/hosts";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export async function GET() {
   const [events, acts, lives] = await Promise.all([st.list("Events"), st.list("EventActivities"), st.list("LiveState")]);
   const items = acts
     // 지정이 풀렸거나 다른 사람으로 바뀌면 바로 목록에서 빠진다.
-    .filter((a) => s.host!.includes(a.id) && a.hostId === s.mid)
+    .filter((a) => s.host!.includes(a.id) && isHost(a, s.mid))
     .flatMap((a) => {
       const cfg = readConfig(a.config);
       const ev = events.find((e) => e.id === a.eventId);

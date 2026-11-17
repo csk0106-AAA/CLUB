@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { liveView, preStatus, readConfig } from "@/lib/activities";
 import { attendanceState, rosterSet } from "@/lib/participants";
+import { readHosts } from "@/lib/hosts";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -37,8 +38,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       endsAt: a.endsAt,
       rosterCount: rosterCounts[i],
       attendanceConfirmed: states[i].confirmed,
-      hostId: a.hostId ?? "",
-      hostCode: a.hostCode ?? "",
+      hosts: readHosts(a), // 진행자 여러 명 [{memberId, code}]
     }];
   });
   return NextResponse.json({ activities });

@@ -26,8 +26,7 @@ type Act = {
   endsAt: string;
   rosterCount: number;
   attendanceConfirmed: boolean;
-  hostId: string;
-  hostCode: string;
+  hosts: { memberId: string; code: string }[]; // 진행자(사회자) 여러 명, 사람마다 접속번호
 };
 type Tpl = TplRow;
 type Att = {
@@ -50,73 +49,92 @@ const PRE_TEXT: Record<string, string> = {
 function HostSetting({ eventId, a, canEdit, members, onChange }: {
   eventId: string; a: Act; canEdit: boolean; members: { id: string; name: string }[]; onChange: () => void;
 }) {
-  const [hostId, setHostId] = useState(a.hostId);
-  const [code, setCode] = useState(a.hostCode);
+  // 진행자 여러 명: 줄마다 [회원 고르기] [접속번호] [자동 생성] [빼기]
+  const [rows, setRows] = useState(a.hosts.map((h) => ({ ...h })));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
-  const dirty = hostId !== a.hostId || code !== a.hostCode;
-  const hostName = members.find((m) => m.id === a.hostId)?.name ?? "";
+  const dirty = JSON.stringify(rows) !== JSON.stringify(a.hosts);
+  const nameOf = (id: string) => members.find((m) => m.id === id)?.name ?? "";
+  const newCode = () => String(Math.floor(100000 + Math.random() * 900000));
+  const upd = (i: number, patch: Partial<{ memberId: string; code: string }>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const incomplete = rows.some((r) => !r.memberId || r.code.length < 4);
 
-  async function save(clear = false) {
+  async function save(next = rows) {
     setBusy(true);
     setMsg(null);
-    const body = clear ? { hostId: "", hostCode: "" } : { hostId, hostCode: code };
-    const r = await api<{ hostId: string; hostCode: string }>(`/api/admin/events/${eventId}/activities/${a.id}/host`, { method: "PUT", body });
+    const r = await api<{ hosts: { memberId: string; code: string }[] }>(`/api/admin/events/${eventId}/activities/${a.id}/host`, { method: "PUT", body: { hosts: next } });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setHostId(r.data.hostId);
-    setCode(r.data.hostCode);
-    setMsg({ tone: "info", text: clear ? "진행자 지정을 풀었어요." : "진행자를 저장했어요. 진행자에게 접속번호를 알려 주세요." });
+    setRows(r.data.hosts);
+    setMsg({ tone: "info", text: next.length ? `진행자 ${next.length}명을 저장했어요. 각자에게 접속번호를 알려 주세요.` : "진행자 지정을 모두 풀었어요." });
     onChange();
   }
 
-  function suggest() {
-    setCode(String(Math.floor(100000 + Math.random() * 900000)));
-  }
-
   const required = !!a.config.host?.required;
+  const has = a.hosts.length > 0;
   return (
-    <details open={required || !!a.hostId || undefined} style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+    <details open={required || has || undefined} style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
       <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <b style={{ font: `700 ${fs(16)} var(--display)` }}>진행자</b>
-        {required && !a.hostId && <span className="pill warn">진행자 필요</span>}
-        {a.hostId && <span className="pill ok">{hostName || "지정됨"}</span>}
-        {!required && !a.hostId && <span className="pill gray">선택</span>}
+        {required && !has && <span className="pill warn">진행자 필요</span>}
+        {has && <span className="pill ok">{a.hosts.map((h) => nameOf(h.memberId) || "지정됨").join(", ")}</span>}
+        {!required && !has && <span className="pill gray">선택</span>}
       </summary>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-      {required && !a.hostId && <div className="msg info" role="status">이 활동은 진행자가 있어야 해요(템플릿 설정). 진행자를 정해야 현장 진행을 시작할 수 있어요. 관리자가 직접 진행하는 것은 돼요.</div>}
+      {required && !has && <div className="msg info" role="status">이 활동은 진행자가 있어야 해요(템플릿 설정). 진행자를 정해야 현장 진행을 시작할 수 있어요. 관리자가 직접 진행하는 것은 돼요.</div>}
       {a.config.host?.note && <span className="small"><b>진행자 안내:</b> {a.config.host.note}</span>}
-      <span className="small">
-        진행자가 로그인 화면에서 자기 이름을 고르고 <b>진행자 접속번호</b>를 넣으면 이 활동의 진행 화면만 보여요.
+      <span className="small" style={{ fontSize: fs(12) }}>
+        진행자는 여러 명 둘 수 있고, 사람마다 <b>진행자 접속번호</b>를 따로 정해요. 진행자가 로그인 화면에서 자기 이름을 고르고 자기 접속번호를 넣으면 이 활동의 진행 화면만 보여요.
         평소 초대코드(연락처 뒷자리)로 들어오면 일반 회원으로 활동에 참여해요.
       </span>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      <div className="grid2">
-        <div>
-          <label className="l" htmlFor={`hs-${a.id}`}>진행자 (회원 중 선택)</label>
-          <select id={`hs-${a.id}`} className="field" value={hostId} disabled={!canEdit || busy} onChange={(e) => setHostId(e.target.value)}>
-            <option value="">정하지 않음</option>
-            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="l" htmlFor={`hc-${a.id}`}>진행자 접속번호 (숫자 4~8자리)</label>
-          <div className="row">
-            <input id={`hc-${a.id}`} className="field" inputMode="numeric" maxLength={8} value={code} disabled={!canEdit || busy || !hostId}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))} />
-            {canEdit && <button className="mini" type="button" disabled={busy || !hostId} style={{ minHeight: 46, whiteSpace: "nowrap" }} onClick={suggest}>자동 생성</button>}
-          </div>
-        </div>
-      </div>
       {canEdit && (
-        <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn" type="button" disabled={busy || !dirty || (Boolean(hostId) && code.length < 4)} style={{ width: "auto", minWidth: 140, minHeight: 46, fontSize: fs(15) }} onClick={() => save()}>
-            {busy ? "저장 중…" : "진행자 저장"}
-          </button>
-          {a.hostId && <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={() => save(true)}>지정 풀기</button>}
+        <div className="row" style={{ justifyContent: "flex-end" }}>
+          <button className="btn" type="button" disabled={busy || rows.length >= 20} style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }}
+            onClick={() => setRows([...rows, { memberId: "", code: newCode() }])}>+ 진행자 추가</button>
         </div>
       )}
-      {a.hostId && !dirty && <span className="small">지금 진행자: {hostName} · 접속번호 {a.hostCode}</span>}
+      {rows.length === 0 && <span className="small">아직 진행자가 없어요.{canEdit ? " “+ 진행자 추가”로 넣어 주세요." : ""}</span>}
+      {rows.length > 0 && (
+        <div className="tblw">
+          <table className="tbl compact stack" style={{ minWidth: 460 }}>
+            <thead><tr><th>진행자 (회원)</th><th>접속번호 (숫자 4~8자리)</th><th><span className="sr-only">버튼</span></th></tr></thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td data-label="진행자">
+                    <select className="field" aria-label={`${i + 1}번째 진행자`} value={r.memberId} disabled={!canEdit || busy} onChange={(e) => upd(i, { memberId: e.target.value })}>
+                      <option value="">회원 고르기</option>
+                      {members.filter((m) => m.id === r.memberId || !rows.some((x) => x.memberId === m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </td>
+                  <td data-label="접속번호">
+                    <input className="field num" inputMode="numeric" maxLength={8} aria-label={`${i + 1}번째 진행자 접속번호`} value={r.code} disabled={!canEdit || busy}
+                      onChange={(e) => upd(i, { code: e.target.value.replace(/\D/g, "").slice(0, 8) })} />
+                  </td>
+                  <td className="act" data-label="" style={{ whiteSpace: "nowrap" }}>
+                    {canEdit && (
+                      <>
+                        <button className="mini" type="button" disabled={busy} style={{ minHeight: 32, fontSize: fs(12) }} onClick={() => upd(i, { code: newCode() })}>자동 생성</button>{" "}
+                        <button className="mini danger" type="button" disabled={busy} style={{ minHeight: 32, fontSize: fs(12) }} onClick={() => setRows(rows.filter((_, j) => j !== i))}>빼기</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {canEdit && (dirty || rows.length > 0) && (
+        <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+          <button className="btn" type="button" disabled={busy || !dirty || incomplete} style={{ width: "auto", minWidth: 120, minHeight: 40, fontSize: fs(14) }} onClick={() => save()}>
+            {busy ? "저장 중…" : "진행자 저장"}
+          </button>
+          {incomplete && <span className="small" style={{ color: "var(--red-t)", fontSize: fs(12) }}>진행자를 고르고 접속번호를 4자리 이상 넣어 주세요.</span>}
+          {!dirty && has && <span className="small" style={{ fontSize: fs(12) }}>저장됨 · {a.hosts.map((h) => `${nameOf(h.memberId)} ${h.code}`).join(" · ")}</span>}
+        </div>
+      )}
       </div>
     </details>
   );
@@ -448,7 +466,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
 
           <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
             <b style={{ font: `700 ${fs(16)} var(--display)` }}>진행자 컨트롤</b>
-            {a.config.host?.required && !a.hostId && <span className="small">진행자가 아직 없어요. 관리자는 여기서 직접 진행할 수 있어요.</span>}
+            {a.config.host?.required && !a.hosts.length && <span className="small">진행자가 아직 없어요. 관리자는 여기서 직접 진행할 수 있어요.</span>}
             <div className="row" style={{ flexWrap: "wrap" }}>
               {a.config.onsite.steps.filter((s) => s.hostButton).map((s) => (
                 <button key={s.key} className={`btn ${a.live.stepKey === s.key && a.live.unlocked ? "blue" : ""}`} type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: s.key })}>
@@ -469,7 +487,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                 ? `현재 단계: ${a.live.stepLabel} · 회원 화면: ${a.live.unlocked ? `켜짐 (${SCREEN_LABELS[a.live.memberScreen] ?? a.live.memberScreen})` : "잠김 (대기 화면)"}`
                 : "현장 진행 전이에요. 버튼을 누르면 회원 화면이 템플릿 설정대로 바뀌어요."}
             </div>
-            <span className="small" style={{ fontSize: fs(12) }}>잠그기: 회원 화면을 대기 화면으로 잠가요(다시 열기로 지금 단계를 다시 켜요) · 처음으로: 현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로). 진행자 전체화면으로 진행할 때는 전체화면 위쪽에서 같은 버튼을 바로 누를 수 있어요.</span>
+            <span className="small" style={{ fontSize: fs(12) }}>잠그기: 회원 화면을 대기 화면으로 잠가요(다시 열기로 지금 단계를 다시 켜요) · 처음으로: 현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로). 진행자 전체화면으로 진행할 때는 전체화면 위쪽에서 잠그기·다시 열기를 바로 누를 수 있어요(처음으로는 리허설 뒤 정리용이라 여기에만 있어요).</span>
           </div>
         </div>
       ))}

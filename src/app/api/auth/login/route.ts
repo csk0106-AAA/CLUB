@@ -3,6 +3,7 @@ import { z } from "zod";
 import { clearFails, createSession, lockedFor, recordFail } from "@/lib/auth";
 import { loginCode } from "@/lib/login-code";
 import { isWithdrawn } from "@/lib/member-kind";
+import { hostCodeMatches } from "@/lib/hosts";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 
@@ -38,7 +39,8 @@ async function login(memberId: string, code: string) {
   const expected = member ? await loginCode(member) : "";
   // 진행자 접속번호: 이 회원이 진행자로 지정된 활동 중 번호가 맞는 것. 맞으면 활동 진행 화면만 쓰는 세션을 만든다.
   if (member && code.trim() !== expected) {
-    const hosting = (await s.list("EventActivities")).filter((a) => a.hostId === member.id && a.hostCode && a.hostCode === code.trim());
+    // 진행자 여러 명: 이 회원에게 정한 접속번호가 맞는 활동들
+    const hosting = (await s.list("EventActivities")).filter((a) => hostCodeMatches(a, member.id, code));
     if (hosting.length > 0) {
       clearFails(memberId);
       await createSession({ mid: member.id, name: member.name, perms: [], admin: false, host: hosting.map((a) => a.id) });
