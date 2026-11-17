@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fmtSize, isClosed, resultsToOf, type FeeSnap, type FileMeta, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
 import { agendaTone } from "./FormFields";
@@ -91,6 +91,50 @@ function dueLabel(d: FeeSnap): string {
   return d.deadline ? `${fmtDate(d.deadline)}까지` : "";
 }
 
+// 모임 회비 입금 확인 요청(일정 회비의 "입금했어요"와 같은 방식). 관리자가 회비입금에서 확인하면 "입금 확인됨".
+function DuesPayNotice() {
+  const [s, setS] = useState<{ periodLabel: string; amount: string; paid: boolean; paidAt: string; notice: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const load = useCallback(async () => {
+    const r = await api<{ periodLabel: string; amount: string; paid: boolean; paidAt: string; notice: string }>("/api/dues/pay-notice");
+    if (r.ok) setS(r.data);
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+  async function send(sent: boolean) {
+    if (sent && !window.confirm("입금했다고 관리자에게 알릴까요?\n관리자가 통장을 확인한 뒤 입금 확인을 해요.")) return;
+    setBusy(true);
+    setErr("");
+    const r = await api("/api/dues/pay-notice", { body: { sent } });
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    load();
+  }
+  if (!s || !(Number(s.amount) > 0)) return null;
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span className="small">{s.periodLabel} 입금</span>
+      {s.paid ? (
+        <b style={{ color: "var(--green-t)" }}>입금 확인됐어요 ✓ <span className="small">({fmtDate(s.paidAt)})</span></b>
+      ) : s.notice ? (
+        <>
+          <b style={{ color: "var(--blue-t)" }}>입금 확인 기다리는 중</b>
+          <span className="small">{fmtDate(s.notice)}에 입금했다고 알렸어요. 관리자가 확인하면 바뀌어요.</span>
+          <button className="mini" type="button" disabled={busy} style={{ alignSelf: "flex-start" }} onClick={() => send(false)}>알림 취소</button>
+        </>
+      ) : (
+        <>
+          <span className="small">입금한 뒤 아래 버튼을 누르면 관리자에게 입금 확인을 요청해요.</span>
+          <button className="btn" type="button" disabled={busy} style={{ alignSelf: "flex-start", width: "auto", minHeight: 42, fontSize: fs(14) }} onClick={() => send(true)}>입금했어요 (입금 확인 요청)</button>
+        </>
+      )}
+      {err && <div className="msg bad" role="alert">{err}</div>}
+    </div>
+  );
+}
+
 export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap; myFee: NonNullable<PostDetail["myFee"]>; full: boolean; clubJoin?: PostDetail["clubJoin"] }) {
   // 회비관리에서 올린 글(v:2)은 period(연회비/월회비)·입금 기간·메모를 함께 담고 있다. 예전 글은 연회비 + 납부기한.
   const label = data.club ? "회비" : data.period === "monthly" ? "월회비" : "연회비";
@@ -130,7 +174,9 @@ export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap;
         </div>
       )}
       {data.note && <div className="card"><span className="small">안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.note}</div></div>}
-      {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 모임설정 › 회비관리에서 바꿀 수 있어요.</span>}
+      {/* 모임 회비(소모임 회비 아님): 입금한 뒤 "입금했어요"로 관리자에게 입금 확인 요청 */}
+      {has && !data.club && <DuesPayNotice />}
+      {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 모임설정 › 회비설정에서 바꿀 수 있어요. 입금 확인은 회비입금에서 해요.</span>}
       {full && (
         <details className="card">
           <summary style={{ fontWeight: 700, cursor: "pointer" }}>전체 금액표 (담당 관리자만 보여요)</summary>

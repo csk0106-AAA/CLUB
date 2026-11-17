@@ -55,6 +55,11 @@ export const TABS = {
   EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner", "memo", "order", "spentBase"],
   // category: 비용 항목 이름(같은 이름의 비용 항목에 완료된 준비물 가격 합계가 집행으로 들어간다), price: 가격
   EventPrep: ["id", "eventId", "item", "owner", "done", "category", "price"],
+  // 모임 회비 입금(관리자 › 모임설정 › 회비입금). period: 연회비 "2026" / 월회비 "2026-11"
+  //  amount: 낼 금액(확인할 때의 금액), paid: "true", paidAt, notice: 회원이 "입금했어요"를 누른 시각, memo, checkedBy: 확인한 관리자
+  DuesPayments: ["id", "period", "memberId", "amount", "paid", "paidAt", "notice", "memo", "checkedBy"],
+  // 모임 회비 장부(관리자 › 모임설정 › 회비사용). kind: in(기타 수입·이월금) | out(지출). date: YYYY-MM-DD
+  DuesLedger: ["id", "date", "kind", "item", "amount", "memo", "createdBy", "createdAt"],
   // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.
   EventFiles: ["id", "eventId", "name", "type", "size", "data", "uploadedBy", "createdAt"],
   // place: 위치(주소·장소 이름), memo: 메모(준비물·안내). 일정마다 아이콘으로 보이고 누르면 팝업으로 본다.

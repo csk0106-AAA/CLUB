@@ -5,6 +5,7 @@ import { handlersOf, isAttend, reqLabel } from "@/lib/club-requests";
 import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
+import { isDuesHandler, pendingDuesNotices, periodLabel } from "@/lib/dues-ledger";
 import { commentAlertsOf, countsOf, isAppHandler, markCommentsSeen, markSeen, newPostsOf, payNoticesFor } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
@@ -55,9 +56,16 @@ export async function GET() {
       const ev = events.find((e) => e.id === a.eventId);
       return { id: a.id, eventId: a.eventId, eventName: ev?.name ?? "", club: ev?.club ?? "", memberName: name(a.memberId), at: a.payNotice };
     });
+  // 모임 회비 입금 알림(확인 전) — 회비를 관리하는 관리자에게만
+  const duesNotices = isDuesHandler(members.find((m) => m.id === mid), groups)
+    ? pendingDuesNotices(await s.list("DuesPayments"))
+      .sort((a, b) => (b.notice ?? "").localeCompare(a.notice ?? ""))
+      .map((p) => ({ id: p.id, period: p.period, periodLabel: periodLabel(p.period), memberName: name(p.memberId), at: p.notice }))
+    : [];
   return NextResponse.json({
     memberApps,
     payNotices,
+    duesNotices,
     // 종 아이콘 숫자에 센 글 전부(홈 목록의 "새 글"/"수정됨" 표시와 같은 글)
     posts: posts.map((p) => ({ id: p.id, title: p.title, at: p.updatedAt || p.createdAt, fresh: p.fresh })),
     toHandle,

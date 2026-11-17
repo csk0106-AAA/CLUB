@@ -33,9 +33,9 @@ export async function adminIssues(me: Row, perms: string[], now = Date.now()): P
         out.push({
           id: "dues-year",
           title: "새해 연회비를 정해 주세요",
-          detail: `${year}년이 됐어요. 회비관리에서 올해 입금 기간과 금액을 확인하고 저장한 뒤 회비 글을 다시 올려 주세요.`,
+          detail: `${year}년이 됐어요. 회비설정에서 올해 입금 기간과 금액을 확인하고 저장한 뒤 회비 글을 다시 올려 주세요.`,
           href: "/admin/dues",
-          action: "회비관리로",
+          action: "회비설정으로",
         });
       }
     }

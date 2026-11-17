@@ -4,6 +4,7 @@ import { readPrefs } from "./prefs";
 import { countIn } from "./club-requests";
 import { effectivePerms, getPermGroups } from "./perms";
 import { readEditors } from "./editors";
+import { isDuesHandler, pendingDuesNotices } from "./dues-ledger";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 
@@ -158,11 +159,13 @@ export async function markCommentsSeen(mid: string): Promise<void> {
 // 여러 회원의 숫자를 한 번에 센다(알림 보낼 때 표를 한 번만 읽도록).
 export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
   const s = await getStore();
-  const [members, events, posts, profiles, stamps, first, requests, groups, comments, applies] = await Promise.all([
+  const [members, events, posts, profiles, stamps, first, requests, groups, comments, applies, duesPays] = await Promise.all([
     s.list("Members"), s.list("Events"), s.list("Posts"), s.list("Profiles"),
     getSetting<Stamps>("eventStamps", {}), getSetting<Stamps>("eventFirstPublished", {}), s.list("ClubRequests"), getPermGroups(),
-    s.list("PostComments"), s.list("EventApplies"),
+    s.list("PostComments"), s.list("EventApplies"), s.list("DuesPayments"),
   ]);
+  // 모임 회비 입금 알림(확인 전): 회비를 관리하는 관리자(모임설정·모든 권한)의 종 숫자에 더한다
+  const duesNotices = pendingDuesNotices(duesPays).length;
   // 승인 전 회원 신청(회원정보·모든 권한 관리자의 종 숫자에 더한다. 알림 창에서 누르면 회원신청관리로)
   const apps = mids.some((mid) => isAppHandler(members.find((m) => m.id === mid), groups)) ? (await s.list("MemberApps")).filter((a) => a.status === "pending").length : 0;
   const out = new Map<string, Counts>();
@@ -184,7 +187,8 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
       // 소모임·참관 신청(처리할 것 + 안 본 결과) + 내 글에 새로 달린 댓글 + (관리자) 승인 전 회원 신청
       // + (일정 관리자·작성자·편집자) 확인 전 입금 알림
       alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)) + co + (isAppHandler(me, groups) ? apps : 0)
-        + payNoticesFor(me, events, applies, groups).length,
+        + payNoticesFor(me, events, applies, groups).length
+        + (isDuesHandler(me, groups) ? duesNotices : 0),
     });
   }
   return out;

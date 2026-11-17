@@ -22,6 +22,8 @@ export type AlertsData = {
   memberApps?: number; // 승인 전 회원 신청(관리자에게만)
   // 확인 전 입금 알림(회원이 "입금했어요"를 누름) — 그 일정을 관리하는 사람에게만
   payNotices?: { id: string; eventId: string; eventName: string; club: string; memberName: string; at: string }[];
+  // 모임 회비 입금 알림(회비를 관리하는 관리자에게만)
+  duesNotices?: { id: string; period: string; periodLabel: string; memberName: string; at: string }[];
 };
 
 const STATUS: Record<string, { text: string; tone: string }> = {
@@ -90,7 +92,8 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   const comments = d.comments ?? [];
   const apps = d.memberApps ?? 0;
   const pays = d.payNotices ?? [];
-  const empty = apps === 0 && pays.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
+  const duesN = d.duesNotices ?? [];
+  const empty = apps === 0 && pays.length === 0 && duesN.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -103,6 +106,18 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
           <span className="ic" aria-hidden="true">!</span>
           <span className="grow"><b>승인 전 회원 신청 {apps}건</b><span className="t">회원관리 › 회원신청관리에서 확인하기 ›</span></span>
         </Link>
+      )}
+
+      {duesN.length > 0 && (
+        <section aria-labelledby="al-dues" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 id="al-dues" style={sectionTitle}>확인할 모임 회비 입금 알림 {duesN.length}건</h3>
+          {duesN.map((p) => (
+            <Link key={p.id} href={`/admin/dues/payments?period=${encodeURIComponent(p.period)}`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+              <span className="ic" aria-hidden="true">₩</span>
+              <span className="grow"><b>{p.memberName} 님이 모임 회비를 입금했다고 알렸어요</b><span className="t">{p.periodLabel} · {fmtDate(p.at)} · 회비입금에서 확인하기 ›</span></span>
+            </Link>
+          ))}
+        </section>
       )}
 
       {pays.length > 0 && (
