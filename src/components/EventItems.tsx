@@ -37,12 +37,19 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const [fee, setFee] = useState("");
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState("");
+  // 준비목록·비용을 회원의 일정 화면에도 보일지(일정의 showPrep / showCosts)
+  const flag = kind === "prep" ? "showPrep" : "showCosts";
+  const [shown, setShown] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     const r = await api<{ items: Item[] }>(base);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setItems(r.data.items);
     setDraft(Object.fromEntries(r.data.items.map((i) => [i.id, { ...i }])));
+    if (kind !== "schedule") {
+      const ev = await api<{ event: Record<string, unknown> }>(`/api/admin/events/${eventId}`);
+      if (ev.ok) setShown(ev.data.event[kind === "prep" ? "showPrep" : "showCosts"] === "true");
+    }
     if (kind === "costs") {
       const e = await api<{ event: { fee: string; feeRules?: { days: string; kind: string; position: string; amount: string }[] }; rows: { answer: string }[] }>(`/api/admin/events/${eventId}`);
       if (e.ok) {
@@ -84,6 +91,16 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
     if (!r.ok) setNote({ tone: "bad", text: r.error });
     load();
   }
+  async function setVisible(v: boolean) {
+    const prev = shown;
+    setShown(v);
+    const r = await api(`/api/admin/events/${eventId}`, { method: "PATCH", body: { [flag]: v } });
+    if (!r.ok) {
+      setShown(prev);
+      return setNote({ tone: "bad", text: r.error });
+    }
+    setNote({ tone: "info", text: v ? `${TITLE[kind]}을 회원의 일정 화면에도 보여 줘요(회원은 읽기만 해요).` : `${TITLE[kind]}을 회원에게 감췄어요(관리자만 봐요).` });
+  }
   async function remove(id: string) {
     if (!window.confirm("지울까요?")) return;
     const r = await api(`${base}/${id}`, { method: "DELETE" });
@@ -116,8 +133,19 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 일정 화면에도 보여요.</span>}
-      {kind === "prep" && <span className="small">준비 목록은 관리자만 볼 수 있어요. 끝낸 것은 체크해 주세요.</span>}
-      {kind === "costs" && <span className="small">비용은 “회비·비용” 권한이 있는 관리자만 볼 수 있어요.</span>}
+      {kind !== "schedule" && shown !== null && (
+        <div className="card switchrow">
+          <span className="grow">
+            <b id={`vis-${kind}-l`}>회원에게 {TITLE[kind]} 보이기</b>
+            <span className="small" style={{ display: "block" }} id={`vis-${kind}-d`}>
+              {shown ? `회원의 일정 화면에 ${TITLE[kind]}이 보여요(읽기만).` : `지금은 관리자(작성자·편집자 포함)만 봐요.`} 누르면 바로 저장돼요.
+            </span>
+          </span>
+          <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} aria-describedby={`vis-${kind}-d`}
+            disabled={!canEdit} onClick={() => setVisible(!shown)} />
+        </div>
+      )}
+      {kind === "prep" && <span className="small">끝낸 것은 체크해 주세요.</span>}
 
       {kind === "costs" && (
         <div className="cards">

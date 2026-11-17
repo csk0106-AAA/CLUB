@@ -27,6 +27,9 @@ type Detail = {
     guest?: boolean; // 대기회원·참관회원: 참석하려면 참관 신청(관리자 승인)
   };
   activities: { id: string; name: string }[];
+  // 관리자가 회원에게 보이기를 켠 준비목록·비용(null = 안 보임)
+  prep?: { id: string; item: string; owner: string; done: boolean }[] | null;
+  costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
   feeDue: boolean;
 };
@@ -214,6 +217,41 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {schedule.length > 0 && (
         <Fold title="일정" summary={`세부 일정 ${schedule.length}개`}>
           <ScheduleView items={schedule} dayPlaces={dayPlaces} />
+        </Fold>
+      )}
+      {/* 관리자가 "회원에게 보이기"를 켠 준비목록·비용(읽기만) */}
+      {d.prep && d.prep.length > 0 && (
+        <Fold title="준비목록" summary={`${d.prep.filter((x) => x.done).length}/${d.prep.length} 준비됨`}>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+            {d.prep.map((x) => (
+              <li key={x.id} className="row" style={{ gap: 8 }}>
+                <span aria-hidden="true" style={{ width: 20, textAlign: "center", color: x.done ? "var(--green-t)" : "var(--sub)" }}>{x.done ? "✓" : "○"}</span>
+                <span className="grow" style={{ overflowWrap: "anywhere", textDecoration: x.done ? "line-through" : undefined, color: x.done ? "var(--sub)" : undefined }}>
+                  {x.item}<span className="sr-only">{x.done ? " (준비됨)" : " (준비 전)"}</span>
+                </span>
+                {x.owner && <span className="small">담당 {x.owner}</span>}
+              </li>
+            ))}
+          </ul>
+        </Fold>
+      )}
+      {d.costs && d.costs.length > 0 && (
+        <Fold title="비용" summary={`예산 ${won(d.costs.reduce((n, x) => n + x.budget, 0))} · 집행 ${won(d.costs.reduce((n, x) => n + x.spent, 0))}`}>
+          <div className="tblw">
+            <table className="tbl" style={{ minWidth: 0, width: "100%" }}>
+              <thead><tr><th>항목</th><th style={{ textAlign: "right" }}>예산</th><th style={{ textAlign: "right" }}>집행</th><th>상태</th></tr></thead>
+              <tbody>
+                {d.costs.map((x) => (
+                  <tr key={x.id}>
+                    <td style={{ overflowWrap: "anywhere" }}>{x.item}{x.owner && <span className="small" style={{ display: "block" }}>담당 {x.owner}</span>}</td>
+                    <td className="num" style={{ textAlign: "right" }}>{won(x.budget)}</td>
+                    <td className="num" style={{ textAlign: "right" }}>{won(x.spent)}</td>
+                    <td className="small">{x.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Fold>
       )}
 

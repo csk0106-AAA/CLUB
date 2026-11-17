@@ -105,6 +105,8 @@ const patch = z.object({
   audience: audienceInput.optional(), // 공개 대상(비우면 전체 회원)
   club: z.string().trim().max(40).optional(), // 소모임 일정의 소모임(""= 없음)
   pinned: z.boolean().optional(), // 회원 일정 목록 맨 위에 고정
+  showPrep: z.boolean().optional(), // 준비목록을 회원에게 보이기
+  showCosts: z.boolean().optional(), // 비용을 회원에게 보이기
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -113,7 +115,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const parsed = patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 회비는 숫자만 넣어 주세요.");
-  const { published, pinned, feeRules: rules, audience, ...rest } = parsed.data;
+  const { published, pinned, feeRules: rules, audience, showPrep, showCosts, ...rest } = parsed.data;
   const s = await getStore();
   const before = (await s.list("Events")).find((e) => e.id === id);
   if (!before) return bad("일정을 찾을 수 없어요.", 404);
@@ -127,12 +129,15 @@ export async function PATCH(req: Request, ctx: Ctx) {
     // 상태값은 공개 여부와 같은 뜻: 공개 / 초안
     ...(published === undefined ? {} : { published: String(published), status: published ? "공개" : "초안" }),
     ...(pinned === undefined ? {} : { pinned: String(pinned) }),
+    ...(showPrep === undefined ? {} : { showPrep: showPrep ? "true" : "" }),
+    ...(showCosts === undefined ? {} : { showCosts: showCosts ? "true" : "" }),
     ...(audience === undefined ? {} : { audience: audience.mode === "all" ? "" : JSON.stringify(audience) }),
   });
   if (!row) return bad("일정을 찾을 수 없어요.", 404);
   // 회원에게 공개된 일정이 새로 공개되거나 내용이 바뀌면 알림(배지·휴대폰)
   // (진행 상태·맨 위 고정만 바꾼 것은 알리지 않는다)
-  const changed = Object.keys(parsed.data).some((k) => k !== "status" && k !== "pinned");
+  // (회원에게 보이기 설정만 바꾼 것도 알리지 않는다)
+  const changed = Object.keys(parsed.data).some((k) => !["status", "pinned", "showPrep", "showCosts"].includes(k));
   if (row.published === "true" && changed) {
     await notifyEvent(id, before.published === "true" ? "update" : "new");
   }

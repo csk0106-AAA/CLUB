@@ -7,6 +7,7 @@ import { isAttend, joinView, latestJoin } from "@/lib/club-requests";
 import { memberClubs } from "@/lib/lists";
 import { fixLegacyTypes } from "@/lib/event-migrate";
 import { isGuest } from "@/lib/member-kind";
+import { ITEMS } from "@/lib/items";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const observers = readObservers(e.observers);
   const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
   const fee = mf.known && payable(mf.amount) ? mf.amount : "";
+  // 관리자가 "회원에게 보이기"를 켠 준비목록·비용(읽기만)
+  const showPrep = e.showPrep === "true";
+  const showCosts = e.showCosts === "true";
+  const [prepRows, costRows] = await Promise.all([showPrep ? s.list("EventPrep") : [], showCosts ? s.list("EventCosts") : []]);
+  const prep = showPrep
+    ? prepRows.filter((r) => r.eventId === id).map((r) => ITEMS.prep.view(r)).sort((a, b) => Number(a.done) - Number(b.done))
+    : null;
+  const costs = showCosts ? costRows.filter((r) => r.eventId === id).map((r) => ITEMS.costs.view(r)) : null;
   const activities = acts
     .filter((x) => x.eventId === id)
     .sort((p, q) => Number(p.order) - Number(q.order))
@@ -79,6 +88,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       clubJoin: club && !isGuest(me?.kind) && !(me && memberClubs(me).some((c) => c.name === club)) ? joinView(latestJoin(requests, g.s.mid, club)) : null,
     },
     activities,
+    prep, // null = 회원에게 안 보임
+    costs,
     apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "" } : null,
     feeDue: attending && fee !== "" && a?.paid !== "true",
   });
