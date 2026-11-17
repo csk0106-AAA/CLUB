@@ -92,9 +92,9 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
           <ScheduleView items={d.schedule} dayPlaces={d.dayPlaces} />
         </section>
       )}
+      {/* 방 배정: 한 줄 요약(날짜 방이름 · 같은 방 N명), 메모·명단은 펼쳐서 보기 */}
       {d.rooms?.published && d.rooms.mine.length > 0 && (
-        <section className="card" aria-label="내 숙소" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>방 배정</b>
+        <Fold title="방 배정" summary={d.rooms.mine.map((r) => `${fmtDate(r.date)} ${r.name} · 같은 방 ${r.people?.length ?? r.mates.length + 1}명`).join(" / ")}>
           {d.rooms.mine.map((r, i) => (
             <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
               <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{fmtDate(r.date)} 숙박</span><b>{r.name}</b></div>
@@ -102,11 +102,11 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
               {r.people ? <People label="같은 방" names={r.people} /> : <div className="small">같은 방: {r.mates.length ? r.mates.join(", ") : "혼자 써요"}</div>}
             </div>
           ))}
-        </section>
+        </Fold>
       )}
+      {/* 카풀: 한 줄 요약(갈 때 차 이름 · 운전/탑승 · 출발 시각), 장소·명단은 펼쳐서 보기 */}
       {d.carpool.published && d.carpool.mine.length > 0 && (
-        <section className="card" aria-label="내 카풀" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>내 카풀</b>
+        <Fold title="카풀" summary={d.carpool.mine.map((c) => `${c.leg} ${c.name}${c.iDrive ? " · 내가 운전" : c.driver ? ` · 운전 ${c.driver}` : ""}${c.departAt ? ` · ${when(c.departAt)} 출발` : ""}`).join(" / ")}>
           {/* 갈 때 / 올 때 구간별로 내가 탄(운전하는) 차 */}
           {d.carpool.mine.map((c, i) => (
             <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
@@ -117,7 +117,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
               {c.people ? <People label="같은 차" names={c.people} /> : <div className="small">동승자: {c.riders.length ? c.riders.join(", ") : "없음"}</div>}
             </div>
           ))}
-        </section>
+        </Fold>
       )}
     </>
   );
