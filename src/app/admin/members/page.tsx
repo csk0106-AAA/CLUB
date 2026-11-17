@@ -13,6 +13,7 @@ import { downloadXlsx, excelDate, readXlsx } from "@/lib/xlsx";
 import { DragHandle, useDragSort } from "@/components/DragSort";
 import { phoneKey } from "@/lib/phone";
 import { ageGroupOf, normBirth } from "@/lib/age-group";
+import { inBook } from "@/lib/member-kind";
 import { typePhone } from "@/lib/phone";
 import { fs } from "@/lib/fs";
 
@@ -642,6 +643,8 @@ function Members() {
         <p className="small" role="group" aria-label="회원 요약" style={{ margin: "0 0 -6px", fontSize: fs(13) }}>
           <Link href="/admin/admins">권한자 {admins.length}</Link>
           <span>, 남 {list.filter((m) => m.gender === "남").length}, 여 {list.filter((m) => m.gender === "여").length}</span>
+          {/* 프로필 북에 실제로 나오는 회원(대기회원·참관회원 제외, 노출을 끈 회원 제외) */}
+          <span title="대기회원·참관회원과 프로필 북 노출을 끈 회원은 빼고 세요">, 프로필북공개 {list.filter((m) => inBook(m)).length}</span>
         </p>
       )}
       {/* 회원구분 보기: 한 줄, "전체" 외에는 여러 개를 함께 고를 수 있다(아무것도 안 고르면 전체) */}
