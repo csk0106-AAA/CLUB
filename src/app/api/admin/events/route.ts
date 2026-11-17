@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guard } from "@/lib/api";
+import { bad, canDeleteEvent, guard } from "@/lib/api";
 import { creatableTypes } from "@/lib/perm-keys";
 import { audienceInput, inClubOrObserver } from "@/lib/audience";
 import { readClubInfo } from "@/lib/clubs";
@@ -32,6 +32,7 @@ export async function GET() {
     const a = applies.filter((x) => x.eventId === e.id && ids.has(x.memberId));
     return {
       ...e,
+      canDelete: canDeleteEvent(g.s, e),
       total: target.length,
       attend: a.filter((x) => x.answer === "참석").length,
       absent: a.filter((x) => x.answer === "불참").length,

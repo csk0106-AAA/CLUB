@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { EventCreate } from "@/components/EventCreate";
+import { EventRowActions } from "@/components/EventRowActions";
 import { IconPin } from "@/components/Icons";
 import { api, fmtWhen, TYPE_TONE } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
-  published: string; pinned?: string; club?: string;
+  published: string; pinned?: string; club?: string; status?: string; canDelete?: boolean;
   total: number; attend: number; absent: number; paid: number;
 };
 
@@ -59,9 +60,9 @@ function EventsAdmin() {
   const item = (e: Ev) => {
     const pub = e.published === "true";
     return (
-      <li key={e.id}>
-        <Link href={`/admin/events/${e.id}`} className="card" aria-label={`${e.name} 일정 관리`}
-          style={{ display: "flex", flexDirection: "column", gap: 6, color: "inherit", textDecoration: "none" }}>
+      <li key={e.id} className="card" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <Link href={`/admin/events/${e.id}`} aria-label={`${e.name} 일정 관리`}
+          style={{ display: "flex", flexDirection: "column", gap: 6, color: "inherit", textDecoration: "none", flex: 1, minWidth: 0 }}>
           <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
             {e.pinned === "true" && <span className="chip red"><IconPin size={12} />고정</span>}
             <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
@@ -78,6 +79,9 @@ function EventsAdmin() {
             </span>
           )}
         </Link>
+        <EventRowActions ev={e} href={`/admin/events/${e.id}`}
+          onDeleted={(id) => setEvents((l) => (l ?? []).filter((x) => x.id !== id))}
+          onUnpublished={(id) => setEvents((l) => (l ?? []).map((x) => (x.id === id ? { ...x, published: "false", status: "초안" } : x)))} />
       </li>
     );
   };

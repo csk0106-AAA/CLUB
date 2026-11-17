@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { bad, guardEv } from "@/lib/api";
+import { bad, canDeleteEvent, guardEv } from "@/lib/api";
+import { deleteEventCascade } from "@/lib/event-delete";
 import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
 import { audienceInput, inClubOrObserver, readObservers } from "@/lib/audience";
 import { clubLeaders, readAllClubInfo } from "@/lib/clubs";
@@ -77,6 +78,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   }));
   return NextResponse.json({
     event: { ...event, club, observers, feeRules: readRules(event.feeRules) },
+    canDelete: canDeleteEvent(g.s, event),
     rows,
     options: { kinds, positions, clubs, dues: { account: duesAccount(dues), holder: dues.holder } },
   });
@@ -130,4 +132,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
     await notifyEvent(id, before.published === "true" ? "update" : "new");
   }
   return NextResponse.json({ event: row });
+}
+
+// 일정 삭제: 일정관리 권한자, 소모임관리 권한자(소모임 일정), 만든 사람만. 딸린 기록도 함께 지운다.
+export async function DELETE(_req: Request, ctx: Ctx) {
+  const g = await guardEv(ctx, "events");
+  if ("err" in g) return g.err;
+  const { id } = await ctx.params;
+  const ev = (await (await getStore()).list("Events")).find((e) => e.id === id);
+  if (!ev) return bad("일정을 찾을 수 없어요.", 404);
+  if (!canDeleteEvent(g.s, ev)) return bad("일정은 일정관리 권한자나 만든 사람만 지울 수 있어요.", 403);
+  await deleteEventCascade(id);
+  return NextResponse.json({ ok: true });
 }

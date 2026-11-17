@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { CarpoolPanel } from "@/components/CarpoolPanel";
@@ -80,6 +81,8 @@ function Detail({ id }: { id: string }) {
   const [schedule, setSchedule] = useState<SchedItem[]>([]); // 세부 일정(미리보기용)
   const [opts, setOpts] = useState<Opts>({ kinds: [], positions: [], clubs: [], dues: { account: "", holder: "" } });
   const [prefilled, setPrefilled] = useState("");
+  const [canDelete, setCanDelete] = useState(false); // 일정관리 권한자·만든 사람만 삭제
+  const router = useRouter();
 
   useEffect(() => {
     api<{ perms: string[] }>("/api/me").then((r) => {
@@ -89,7 +92,7 @@ function Detail({ id }: { id: string }) {
 
   const load = useCallback(async () => {
     const [r, a, sc] = await Promise.all([
-      api<{ event: Ev; rows: Row[]; options: Opts }>(`/api/admin/events/${id}`),
+      api<{ event: Ev; rows: Row[]; options: Opts; canDelete?: boolean }>(`/api/admin/events/${id}`),
       api<{ activities: { config: { name: string } }[] }>(`/api/admin/events/${id}/activities`),
       api<{ items: SchedItem[] }>(`/api/admin/events/${id}/items/schedule`),
     ]);
@@ -111,6 +114,7 @@ function Detail({ id }: { id: string }) {
         }
       }
       setEv(e);
+      setCanDelete(!!r.data.canDelete);
       setRows(r.data.rows);
       setOpts(r.data.options);
     } else setMsg({ tone: "bad", text: r.error });
@@ -167,6 +171,16 @@ function Detail({ id }: { id: string }) {
   }
 
   // 회원 일정 목록 맨 위 고정: 누르면 바로 저장(회원 알림은 보내지 않는다)
+  async function removeEvent() {
+    if (!ev) return;
+    if (!window.confirm(`“${ev.name}” 일정을 지울까요?\n참석 신청·회비·세부일정·활동 기록도 함께 지워지고 되돌릴 수 없어요.`)) return;
+    setBusy(true);
+    const r = await api(`/api/admin/events/${id}`, { method: "DELETE" });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    router.replace(ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events");
+  }
+
   async function togglePin(next: boolean) {
     if (!ev) return;
     setBusy(true);
@@ -341,6 +355,12 @@ function Detail({ id }: { id: string }) {
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
           </div>
           <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회원마다 회비가 다르면 금액과 계좌 대신 “앱 접속 후 내 회비 확인”으로 나가요.</span>
+          {canDelete && (
+            <div className="row" style={{ flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 4 }}>
+              <span className="small grow" style={{ minWidth: 200 }}>일정을 지우면 참석 신청·회비·세부일정·활동 기록도 함께 지워지고 되돌릴 수 없어요. 회원에게만 감추려면 “공개 취소”를 쓰세요.</span>
+              <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minWidth: 160 }} onClick={removeEvent}>일정 삭제</button>
+            </div>
+          )}
         </form>
       )}
 

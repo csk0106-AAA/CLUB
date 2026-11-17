@@ -7,6 +7,7 @@ import { MemberSearch } from "@/app/events/[id]/MemberSearch";
 import { ClubDuesEditor } from "@/components/ClubDuesEditor";
 import { ClubRequestsAdmin } from "@/components/ClubRequestsAdmin";
 import { EventCreate } from "@/components/EventCreate";
+import { EventRowActions } from "@/components/EventRowActions";
 import { useRouter } from "next/navigation";
 import { api, fmtWhen } from "@/lib/client";
 import { removeClub, renameClub } from "@/lib/club-list-client";
@@ -178,7 +179,7 @@ function NameBox({ name, count }: { name: string; count: number }) {
 }
 
 /* ───── 3. 소모임일정관리: 이 소모임 일정 만들기 + 만든 일정 목록 ───── */
-type Ev = { id: string; name: string; startsAt: string; endsAt: string; place: string; published: string; pinned?: string; club?: string; total: number; attend: number; absent: number; paid: number };
+type Ev = { id: string; name: string; startsAt: string; endsAt: string; place: string; published: string; pinned?: string; club?: string; canDelete?: boolean; total: number; attend: number; absent: number; paid: number };
 const todayKst = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 
 function ClubEvents({ club }: { club: string }) {
@@ -210,9 +211,9 @@ function ClubEvents({ club }: { club: string }) {
   const item = (e: Ev) => {
     const pub = e.published === "true";
     return (
-      <li key={e.id}>
-        <Link href={`/admin/events/${e.id}?club=${encodeURIComponent(club)}`} className="card" aria-label={`${e.name} 일정 관리`}
-          style={{ display: "flex", flexDirection: "column", gap: 6, color: "inherit", textDecoration: "none" }}>
+      <li key={e.id} className="card" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <Link href={`/admin/events/${e.id}?club=${encodeURIComponent(club)}`} aria-label={`${e.name} 일정 관리`}
+          style={{ display: "flex", flexDirection: "column", gap: 6, color: "inherit", textDecoration: "none", flex: 1, minWidth: 0 }}>
           <span className="row" style={{ gap: 6 }}>
             <span className={`chip ${pub ? "violet" : "gray"}`}>{pub ? "공개" : "초안"}</span>
           </span>
@@ -220,6 +221,9 @@ function ClubEvents({ club }: { club: string }) {
           <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place) || "일시·장소를 아직 정하지 않았어요"}</span>
           {pub && <span className="small">참석 {e.attend} · 불참 {e.absent} · 미응답 {Math.max(0, e.total - e.attend - e.absent)}{e.attend > 0 ? ` · 입금 ${e.paid}/${e.attend}` : ""}</span>}
         </Link>
+        <EventRowActions ev={e} href={`/admin/events/${e.id}?club=${encodeURIComponent(club)}`}
+          onDeleted={(id) => setEvents((l) => (l ?? []).filter((x) => x.id !== id))}
+          onUnpublished={(id) => setEvents((l) => (l ?? []).map((x) => (x.id === id ? { ...x, published: "false" } : x)))} />
       </li>
     );
   };

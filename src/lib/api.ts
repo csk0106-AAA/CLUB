@@ -47,6 +47,17 @@ export async function guardEv(ctx: { params: Promise<{ id: string }> }, perm: st
   return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
 }
 
+// 일정 삭제: 일정관리 권한, 소모임관리 권한(소모임 일정), 또는 만든 사람(그 일정 종류를 만들 권한이 지금도 있을 때).
+// 편집자는 고칠 수만 있고 지울 수는 없다.
+export function canDeleteEvent(s: Session, ev: { type?: string; club?: string; createdBy?: string }): boolean {
+  if (s.host) return false;
+  if (can(s, "events")) return true;
+  if (can(s, "clubs") && (ev.club ?? "").trim()) return true;
+  if (ev.createdBy !== s.mid || !(can(s, "evMain") || can(s, "evClub"))) return false;
+  const types = s.admin ? creatableTypes(s.perms) : [];
+  return !types || types.includes(ev.type ?? "");
+}
+
 // 관리자(perm, 2차 비밀번호 통과) 또는 소모임 직책자(관리자 비밀번호 없이) 통과.
 //  adminOk: 관리자 권한으로 통과했는지(모든 소모임·삭제 등), officerOf: 내가 직책을 맡은 소모임 이름들(지금 DB 기준)
 export type OfficerGuard = { s: Session; adminOk: boolean; officerOf: string[] } | { err: NextResponse };
