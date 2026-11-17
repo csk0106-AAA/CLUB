@@ -14,7 +14,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 
 const BLANK: Record<Kind, Record<string, string | number | boolean>> = {
   schedule: { at: "", title: "" },
-  prep: { item: "", owner: "", done: false },
+  prep: { item: "", owner: "", done: false, category: "", price: 0 },
   costs: { item: "", budget: 0, spent: 0, status: "예정", owner: "", memo: "" },
 };
 const STATUS = ["예정", "집행 완료", "보류"];
@@ -134,6 +134,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   // 준비목록·비용을 회원의 일정 화면에도 보일지(일정의 showPrep / showCosts)
   const flag = kind === "prep" ? "showPrep" : "showCosts";
   const [shown, setShown] = useState<boolean | null>(null);
+  // 준비목록의 "비용 항목" 고르기용: 이 일정의 비용 항목 이름
+  const [costNames, setCostNames] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     const r = await api<{ items: Item[] }>(base);
@@ -143,6 +145,10 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
     if (kind !== "schedule") {
       const ev = await api<{ event: Record<string, unknown> }>(`/api/admin/events/${eventId}`);
       if (ev.ok) setShown(ev.data.event[kind === "prep" ? "showPrep" : "showCosts"] === "true");
+    }
+    if (kind === "prep") {
+      const c = await api<{ items: { item: string }[] }>(`/api/admin/events/${eventId}/items/costs`);
+      if (c.ok) setCostNames([...new Set(c.data.items.map((x) => x.item.trim()).filter(Boolean))]);
     }
     if (kind === "costs") {
       const e = await api<{ event: { fee: string; feeRules?: { days: string; kind: string; position: string; amount: string }[]; supports?: { amount: string }[] }; rows: { answer: string; fee: string }[] }>(`/api/admin/events/${eventId}`);
@@ -252,7 +258,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           {kind !== "costs" && <span className="small" style={{ fontSize: fs(12), minWidth: 28, color: shown ? "var(--blue-t)" : "var(--sub)" }}>{shown ? "켜짐" : "꺼짐"}</span>}
         </div>
       )}
-      {kind === "prep" && <span className="small">끝낸 것은 체크해 주세요.</span>}
+      {kind === "prep" && <span className="small" style={{ fontSize: fs(12) }}>끝낸 것은 체크해 주세요. “비용 항목”을 고르면 완료된 준비물 가격의 합계가 같은 이름의 비용 항목 집행으로 들어가요.</span>}
 
       {kind === "costs" && (
         // 요약: 한 카드에 작게. 1줄 예산 합계 · 집행 합계 / 2줄 총회비-예산합계 · 총회비-집행합계
@@ -286,13 +292,17 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
         </div>
       )}
 
+      {/* 준비목록: 목록 바로 위 오른쪽에 작은 빨간 "+ 준비 목록 추가"(비용과 같은 모양) */}
+      {kind === "prep" && canEdit && (
+        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-end", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 준비 목록 추가</button>
+      )}
       {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. “+ {TITLE[kind]} 추가”로 넣어 주세요.</div>}
       <div className="tblw">
-        <table className="tbl" style={{ minWidth: kind === "costs" ? 760 : 560 }}>
+        <table className="tbl" style={{ minWidth: kind === "costs" ? 760 : kind === "prep" ? 640 : 560 }}>
           <thead>
             <tr>
               {kind === "schedule" && <><th>일시</th><th>내용</th></>}
-              {kind === "prep" && <><th>완료</th><th>준비물</th><th>담당</th></>}
+              {kind === "prep" && <><th>완료</th><th>비용 항목</th><th>준비물</th><th>가격(원)</th><th>담당</th></>}
               {kind === "costs" && <>{dragCosts && <th style={{ width: 44 }}><span className="sr-only">순서</span></th>}<th>항목</th><th>예산(원)</th><th>집행(원)</th><th>상태</th><th>담당</th><th>메모</th></>}
               <th></th>
             </tr>
@@ -312,16 +322,28 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                   )}
                   {kind === "prep" && (
                     <>
-                      <td><input aria-label="완료" type="checkbox" style={{ width: 24, height: 24 }} checked={Boolean(i.done)} disabled={!canEdit} onChange={(e) => toggle(i.id, e.target.checked)} /></td>
-                      <td><input aria-label="준비물" className="field" style={{ minHeight: 42, textDecoration: i.done ? "line-through" : undefined }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} /></td>
-                      <td><input aria-label="담당" className="field" style={{ minHeight: 42 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} /></td>
+                      <td className="center"><input aria-label="완료" type="checkbox" style={{ width: 20, height: 20 }} checked={Boolean(i.done)} disabled={!canEdit} onChange={(e) => toggle(i.id, e.target.checked)} /></td>
+                      <td>
+                        <select aria-label="비용 항목" className="field" style={{ ...cs, width: 110 }} value={String(d.category ?? "")} disabled={!canEdit} onChange={(e) => set(i.id, "category", e.target.value)}>
+                          <option value="">(없음)</option>
+                          {[...new Set([...costNames, ...(d.category ? [String(d.category)] : [])])].map((n) => <option key={n} value={n}>{n}{costNames.includes(n) ? "" : " (비용에 없음)"}</option>)}
+                        </select>
+                      </td>
+                      <td><input aria-label="준비물" className="field" style={{ ...cs, minWidth: 120, textDecoration: i.done ? "line-through" : undefined }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} /></td>
+                      <td><input aria-label="가격" className="field num" inputMode="numeric" style={{ ...cs, width: 100 }} value={String(d.price ?? 0)} disabled={!canEdit} onChange={(e) => set(i.id, "price", Number(e.target.value.replace(/\D/g, "")))} /></td>
+                      <td><input aria-label="담당" className="field" style={{ ...cs, width: 80 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} /></td>
                     </>
                   )}
                   {kind === "costs" && (
                     <>
                       <td><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} /></td>
                       <td><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} /></td>
-                      <td><input aria-label="집행" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.spent)} disabled={!canEdit} onChange={(e) => set(i.id, "spent", Number(e.target.value.replace(/\D/g, "")))} /></td>
+                      <td>
+                        {/* 준비목록과 연동된 항목은 집행이 자동(완료된 준비물 가격 합계) */}
+                        <input aria-label="집행" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.spent)} disabled={!canEdit || Number(i.linked) > 0}
+                          title={Number(i.linked) > 0 ? `준비목록 ${i.linked}개 연동: 완료된 준비물 가격 합계` : undefined} onChange={(e) => set(i.id, "spent", Number(e.target.value.replace(/\D/g, "")))} />
+                        {Number(i.linked) > 0 && <span className="small" style={{ display: "block", fontSize: fs(11) }}>준비목록 {String(i.linked)}개 연동</span>}
+                      </td>
                       <td>
                         <select aria-label="상태" className="field" style={{ ...cs, width: 100 }} value={String(d.status)} disabled={!canEdit} onChange={(e) => set(i.id, "status", e.target.value)}>
                           {STATUS.map((s) => <option key={s}>{s}</option>)}
@@ -353,8 +375,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
 
       {canEdit && (
         <>
-        {/* 비용은 위 요약 카드 안에 "+ 비용 추가"가 있다 */}
-        {kind !== "costs" && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setErr(""); setOpen(true); }}>+ {TITLE[kind]} 추가</button>}
+        {/* "+ 비용 추가"·"+ 준비 목록 추가"는 목록 바로 위 오른쪽에 있다 */}
         <Popup id={`item-new-${kind}`} title={`${TITLE[kind]} 추가`} open={open} onClose={() => setOpen(false)} dirty={JSON.stringify(add) !== JSON.stringify(BLANK[kind])}>
         <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {err && <div className="msg bad" role="alert">{err}</div>}
@@ -367,7 +388,15 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
             )}
             {kind === "prep" && (
               <>
+                <div>
+                  <label className="l" htmlFor="n-cat">비용 항목 (선택)</label>
+                  <select id="n-cat" className="field" value={String(add.category ?? "")} onChange={(e) => setAdd({ ...add, category: e.target.value })}>
+                    <option value="">(없음)</option>
+                    {costNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
                 <div><label className="l" htmlFor="n-item">준비물</label><input id="n-item" className="field" value={String(add.item)} onChange={(e) => setAdd({ ...add, item: e.target.value })} /></div>
+                <div><label className="l" htmlFor="n-price">가격(원)</label><input id="n-price" className="field" inputMode="numeric" value={String(add.price ?? 0)} onChange={(e) => setAdd({ ...add, price: Number(e.target.value.replace(/\D/g, "")) })} /></div>
                 <div><label className="l" htmlFor="n-owner">담당</label><input id="n-owner" className="field" value={String(add.owner)} onChange={(e) => setAdd({ ...add, owner: e.target.value })} /></div>
               </>
             )}

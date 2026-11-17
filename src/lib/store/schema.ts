@@ -52,7 +52,8 @@ export const TABS = {
   ],
   // memo: 비용 메모(목록에서는 메모 아이콘을 눌러 본다), order: 목록 순서(끌어서 바꾼다)
   EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner", "memo", "order"],
-  EventPrep: ["id", "eventId", "item", "owner", "done"],
+  // category: 비용 항목 이름(같은 이름의 비용 항목에 완료된 준비물 가격 합계가 집행으로 들어간다), price: 가격
+  EventPrep: ["id", "eventId", "item", "owner", "done", "category", "price"],
   // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.
   EventFiles: ["id", "eventId", "name", "type", "size", "data", "uploadedBy", "createdAt"],
   // place: 위치(주소·장소 이름), memo: 메모(준비물·안내). 일정마다 아이콘으로 보이고 누르면 팝업으로 본다.

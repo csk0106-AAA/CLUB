@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
-import { ITEMS, isKind } from "@/lib/items";
+import { ITEMS, isKind, prepLinks, syncPrepToCosts } from "@/lib/items";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,11 @@ export async function GET(_req: Request, ctx: Ctx) {
   const s = await getStore();
   if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
   const rows = (await s.list(def.tab)).filter((r) => r.eventId === id).sort(def.sort);
+  if (kind === "costs") {
+    // 준비목록과 연동된 비용 항목: 집행은 완료된 준비물 가격 합계로 자동(linked: 연동된 준비물 수)
+    const links = prepLinks(await s.list("EventPrep"), id);
+    return NextResponse.json({ items: rows.map((r) => ({ ...def.view(r), linked: links.get((r.item ?? "").trim()) ?? 0 })) });
+  }
   return NextResponse.json({ items: rows.map(def.view) });
 }
 
@@ -33,6 +38,7 @@ export async function POST(req: Request, ctx: Ctx) {
   // 비용은 새 항목을 목록 맨 뒤에 둔다(끌어서 정한 순서 다음)
   const order = kind === "costs" ? { order: String((await s.list(def.tab)).filter((r) => r.eventId === id).reduce((n, r) => Math.max(n, Number(r.order) || 0), 0) + 1) } : {};
   const row = await s.insert(def.tab, { ...parsed.data, ...order, eventId: id });
+  if (kind === "prep" || kind === "costs") await syncPrepToCosts(id);
   return NextResponse.json({ item: def.view(row) });
 }
 

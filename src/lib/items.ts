@@ -30,10 +30,10 @@ export const ITEMS: Record<ItemKind, Def> = {
     tab: "EventPrep",
     perm: ["events"],
     schema: z
-      .object({ item: str(100).min(1), owner: str(40).default(""), done: z.boolean().default(false) })
-      .transform((v) => ({ item: v.item, owner: v.owner, done: String(v.done) })),
+      .object({ item: str(100).min(1), owner: str(40).default(""), done: z.boolean().default(false), category: str(100).default(""), price: money.default(0) })
+      .transform((v) => ({ item: v.item, owner: v.owner, done: String(v.done), category: v.category, price: String(v.price) })),
     sort: (a, b) => Number(a.done === "true") - Number(b.done === "true") || a.item.localeCompare(b.item, "ko"),
-    view: (r) => ({ id: r.id, item: r.item, owner: r.owner, done: r.done === "true" }),
+    view: (r) => ({ id: r.id, item: r.item, owner: r.owner, done: r.done === "true", category: r.category ?? "", price: Number(r.price) || 0 }),
   },
   costs: {
     tab: "EventCosts",
@@ -49,4 +49,29 @@ export const ITEMS: Record<ItemKind, Def> = {
 
 export function isKind(k: string): k is ItemKind {
   return k in ITEMS;
+}
+
+// 준비목록 → 비용 연동: 준비물의 "비용 항목"과 이름이 같은 비용 항목의 집행 = 완료된 준비물 가격 합계.
+// 연동된 준비물이 하나도 없는 비용 항목은 손대지 않는다(직접 적은 집행 금액 그대로).
+export async function syncPrepToCosts(eventId: string): Promise<void> {
+  const { getStore } = await import("./store");
+  const s = await getStore();
+  const [prep, costs] = await Promise.all([s.list("EventPrep"), s.list("EventCosts")]);
+  const mine = prep.filter((p) => p.eventId === eventId && (p.category ?? "").trim());
+  for (const c of costs.filter((x) => x.eventId === eventId)) {
+    const linked = mine.filter((p) => p.category.trim() === (c.item ?? "").trim());
+    if (!linked.length) continue;
+    const spent = String(linked.filter((p) => p.done === "true").reduce((n, p) => n + (Number(p.price) || 0), 0));
+    if (spent !== c.spent) await s.update("EventCosts", c.id, { spent });
+  }
+}
+
+// 비용 항목별 연동된 준비물 수(비용 화면에서 집행 칸을 자동으로 보여 줄 때)
+export function prepLinks(prep: Row[], eventId: string): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const p of prep) {
+    const c = (p.category ?? "").trim();
+    if (p.eventId === eventId && c) m.set(c, (m.get(c) ?? 0) + 1);
+  }
+  return m;
 }
