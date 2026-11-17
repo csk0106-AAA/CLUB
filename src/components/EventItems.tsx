@@ -340,14 +340,16 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                       <td><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} /></td>
                       <td><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} /></td>
                       <td>
-                        {/* 집행 = 직접 적은 집행(이 칸) + 준비목록에서 완료된 같은 항목 가격 합계 */}
-                        <input aria-label={Number(i.linked) > 0 ? "직접 적은 집행" : "집행"} className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.spent)} disabled={!canEdit}
-                          title={Number(i.linked) > 0 ? "직접 적은 집행. 준비목록에서 완료된 가격이 여기에 더해져요" : undefined} onChange={(e) => set(i.id, "spent", Number(e.target.value.replace(/\D/g, "")))} />
-                        {Number(i.linked) > 0 && (
-                          <span className="small" style={{ display: "block", fontSize: fs(11), whiteSpace: "nowrap" }}>
-                            + 준비 {won(Number(i.prepSum) || 0)} = <b>{won(Number(i.spent) || 0)}</b>
-                          </span>
-                        )}
+                        {/* 집행 칸에는 합계(직접 적은 집행 + 준비목록에서 완료된 같은 항목 가격)를 보여 준다.
+                            고치면 준비목록 합계를 뺀 나머지를 "직접 적은 집행"으로 저장한다. */}
+                        {(() => {
+                          const ps = Number(i.prepSum) || 0;
+                          return (
+                            <input aria-label="집행" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String((Number(d.spent) || 0) + ps)} disabled={!canEdit}
+                              title={ps ? `준비목록에서 넘어온 ${won(ps)} 포함` : undefined}
+                              onChange={(e) => set(i.id, "spent", Math.max(0, Number(e.target.value.replace(/\D/g, "")) - ps))} />
+                          );
+                        })()}
                       </td>
                       <td>
                         <select aria-label="상태" className="field" style={{ ...cs, width: 100 }} value={String(d.status)} disabled={!canEdit} onChange={(e) => set(i.id, "status", e.target.value)}>
