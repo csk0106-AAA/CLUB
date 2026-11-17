@@ -490,7 +490,11 @@ function Detail({ id }: { id: string }) {
           </div>
           {/* 회비: 회원구분 / 직책 / 참석일 조건별 (회의·미팅은 없음) */}
           {!light && <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: `700 ${fs(17)} var(--display)` }}>회비</b>
+            {/* 제목 줄: 왼쪽 "회비" · 오른쪽 + 회비 줄 추가 */}
+            <div className="row" style={{ gap: 6 }}>
+              <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>회비</b>
+              <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>+ 회비 줄 추가</button>
+            </div>
             <span className="small">
               회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
               회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
@@ -541,16 +545,17 @@ function Detail({ id }: { id: string }) {
                 </table>
               </div>
             )}
-            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }}
-              onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>
-              + 회비 줄 추가
-            </button>
             {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
             {dist.length > 0 && <span className="small">현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
           </section>}
           {/* 지원금: 연(월)회비에서 지원 / 회원이 지원금을 냄. 총 예산에 더한다. 아래 "회비 저장"으로 함께 저장. */}
           <section className="card" aria-label="지원금" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: `700 ${fs(17)} var(--display)` }}>지원금</b>
+            {/* 제목 줄: 왼쪽 "지원금" · 오른쪽 + 연(월)회비 지원 / + 회원 지원 */}
+            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+              <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>지원금</b>
+              <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "dues", name: "", amount: "", memo: "" }])}>+ 연(월)회비 지원</button>
+              <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "member", name: "", amount: "", memo: "" }])}>+ 회원 지원</button>
+            </div>
             <span className="small">
               <b>연(월)회비 지원</b>: 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 연·월회비에서 이 일정에 쓰는 돈. <b>회원 지원</b>: 회원이 따로 내는 지원금(지원한 회원 이름을 적어요). 지원금은 총 예산에 더해져요.
             </span>
@@ -585,10 +590,6 @@ function Detail({ id }: { id: string }) {
                 <datalist id="sup-members">{rows.map((r) => <option key={r.memberId} value={r.name} />)}</datalist>
               </div>
             )}
-            <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-              <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={() => setSupports([...supports, { kind: "dues", name: "", amount: "", memo: "" }])}>+ 연(월)회비 지원</button>
-              <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={() => setSupports([...supports, { kind: "member", name: "", amount: "", memo: "" }])}>+ 회원 지원</button>
-            </div>
             {supports.some((x) => !x.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 지원금이 있어요. 금액을 넣거나 삭제해 주세요.</span>}
           </section>
           {/* 총 예산 */}
