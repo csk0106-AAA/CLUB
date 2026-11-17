@@ -8,7 +8,7 @@ import { Avatar, type AvatarView } from "@/components/Avatars";
 import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
 import { api, fmtDate } from "@/lib/client";
-import { parseMembers } from "@/lib/member-import";
+import { norm, parseMembers, splitTable } from "@/lib/member-import";
 import { ageGroupOf } from "@/lib/age-group";
 import { typePhone } from "@/lib/phone";
 import { fs } from "@/lib/fs";
@@ -68,29 +68,15 @@ function ListSelect({ id, value, options, onChange, label }: { id?: string; valu
 // (기본 항목은 member-import 가 읽고, 추가 항목만 여기서 따로 읽는다)
 function customFromImport(text: string, fields: string[]): Map<string, Record<string, string>> {
   const out = new Map<string, Record<string, string>>();
-  const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim());
-  if (lines.length < 2 || fields.length === 0) return out;
-  const sep = lines[0].includes("\t") ? "\t" : ",";
-  const split = (line: string) => {
-    const cells: string[] = [];
-    let cur = "";
-    let q = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (q) {
-        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c;
-      } else if (c === '"') q = true;
-      else if (c === sep) { cells.push(cur.trim()); cur = ""; } else cur += c;
-    }
-    cells.push(cur.trim());
-    return cells;
-  };
-  const head = split(lines[0]).map((h) => h.replace(/\s/g, ""));
-  const nameCol = head.findIndex((h) => h === "성명" || h === "이름");
-  const cols = fields.map((f) => [f, head.indexOf(f.replace(/\s/g, ""))] as const).filter(([, i]) => i >= 0);
+  if (!text.trim() || fields.length === 0) return out;
+  const first = text.replace(/\r/g, "").split("\n").find((l) => l.trim()) ?? "";
+  const table = splitTable(text, first.includes("\t") ? "\t" : ",");
+  if (table.length < 2) return out;
+  const head = table[0].cells.map(norm);
+  const nameCol = head.findIndex((h) => ["성명", "이름", "성함", "회원명", "회원이름", "name"].includes(h));
+  const cols = fields.map((f) => [f, head.indexOf(norm(f))] as const).filter(([, i]) => i >= 0);
   if (nameCol < 0 || cols.length === 0) return out;
-  for (const line of lines.slice(1)) {
-    const cells = split(line);
+  for (const { cells } of table.slice(1)) {
     const name = cells[nameCol];
     if (!name) continue;
     const v: Record<string, string> = {};
@@ -135,7 +121,7 @@ function Members() {
   async function importAll() {
     setBusy(true);
     setMsg(null);
-    const rows = preview.rows.map((r) => ({ ...r, fields: importCustom.get(r.name) ?? {} }));
+    const rows = preview.rows.map(({ line: _line, ...r }) => ({ ...r, fields: importCustom.get(r.name) ?? {} }));
     const r = await api<{ added: number; skipped: string[]; renamed?: { from: string; to: string }[] }>("/api/admin/members/bulk", { body: { rows } });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
@@ -301,20 +287,25 @@ function Members() {
           {preview.rows.length > 0 && (
             <>
               {importCustom.size > 0 && <span className="small">추가 항목({custom.filter((c) => [...importCustom.values()].some((v) => c in v)).join(", ")}) 값도 함께 넣어요.</span>}
-              <span className="small">{preview.rows.length}명을 읽었어요{preview.rows.filter((r) => list?.some((m) => m.name === r.name)).length ? ` · 그중 ${preview.rows.filter((r) => list?.some((m) => m.name === r.name)).length}명은 이미 있어서 건너뛰어요` : ""}. 앞의 5명:</span>
-              <div className="tblw">
-                <table className="tbl" style={{ minWidth: 760 }}>
-                  <thead><tr><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th></tr></thead>
+              <span className="small">{preview.rows.length}명을 읽었어요{preview.rows.filter((r) => list?.some((m) => m.name === r.name)).length ? ` · 그중 ${preview.rows.filter((r) => list?.some((m) => m.name === r.name)).length}명은 이미 있어서 건너뛰어요` : ""}. 아래 표를 위아래로 넘겨 모두 확인해 보세요.</span>
+              {/* 읽은 명단 전체: 세로 스크롤(머리글 고정), 맨 앞은 순서와 붙여 넣은 글의 줄 번호 */}
+              <div className="tblw" style={{ maxHeight: 360, overflowY: "auto" }}>
+                <table className="tbl" style={{ minWidth: 820 }}>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--card, #fff)" }}><tr><th>#</th><th>줄</th><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th></tr></thead>
                   <tbody>
-                    {preview.rows.slice(0, 5).map((r, i) => (
-                      <tr key={i}><td><b>{r.name}</b></td><td>{r.kind}</td><td>{r.position}</td><td>{r.gender}</td><td>{r.company}</td><td>{r.title}</td><td className="num">{fmtDate(r.birth)}</td><td className="num">{r.phone}</td></tr>
+                    {preview.rows.map((r, i) => (
+                      <tr key={i}><td className="num">{i + 1}</td><td className="num small">{r.line}</td><td><b>{r.name}</b></td><td>{r.kind}</td><td>{r.position}</td><td>{r.gender}</td><td>{r.company}</td><td>{r.title}</td><td className="num">{fmtDate(r.birth)}</td><td className="num">{r.phone}</td></tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </>
           )}
-          {preview.problems.length > 0 && <div className="msg info">{preview.problems.slice(0, 5).join(" ")}{preview.problems.length > 5 ? ` 외 ${preview.problems.length - 5}건` : ""}</div>}
+          {preview.problems.length > 0 && (
+            <div className="msg info" style={{ maxHeight: 160, overflowY: "auto" }}>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>{preview.problems.map((p, i) => <li key={i}>{p}</li>)}</ul>
+            </div>
+          )}
           <button className="btn" type="button" style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }} disabled={busy || preview.rows.length === 0} onClick={importAll}>
             {preview.rows.length ? `${preview.rows.length}명 추가하기` : "추가하기"}
           </button>
