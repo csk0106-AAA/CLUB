@@ -1,6 +1,7 @@
 "use client";
 
 import { HostBack, HostDenied } from "@/components/HostBack";
+import { HostLiveControls } from "@/components/HostLiveControls";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 
@@ -40,6 +41,7 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
         {teams && teams.length > 0 && <span className={`pill ${published ? "ok" : "warn"}`}>{published ? "배포됨" : "배포 전 초안"}</span>}
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : wrap.current?.requestFullscreen?.())}>전체화면 ⛶</button>
+        <HostLiveControls eventId={id} aid={aid} />
         <HostBack eventId={id} />
       </header>
       {error && <div className="msg bad" role="alert">{error}</div>}

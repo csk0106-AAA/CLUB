@@ -1,6 +1,7 @@
 "use client";
 
 import { HostBack, HostDenied } from "@/components/HostBack";
+import { HostLiveControls } from "@/components/HostLiveControls";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 
@@ -126,6 +127,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
         <span className="sub">{st.event.name} · 진행 {st.counts.drawn}개 · 남은 고민 {st.counts.remaining}개{st.activity.participants === "selected" ? " · 선택된 회원의 고민만" : ""}</span>
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
+        <HostLiveControls eventId={id} aid={aid} />
         <HostBack eventId={id} />
       </header>
 

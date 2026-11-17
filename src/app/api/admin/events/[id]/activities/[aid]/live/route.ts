@@ -12,6 +12,20 @@ const body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("reset") }), // 현장 진행 처음으로
 ]);
 
+// 지금 회원 화면 상태(진행자 전체화면 위쪽의 잠그기·다시 열기·처음으로 칸이 읽는다)
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
+  const g = await hostGuard((await ctx.params).aid);
+  if ("err" in g) return g.err;
+  const { id, aid } = await ctx.params;
+  const s = await getStore();
+  const act = (await s.list("EventActivities")).find((a) => a.id === aid && a.eventId === id);
+  if (!act) return bad("활동을 찾을 수 없어요.", 404);
+  const cfg = readConfig(act.config);
+  if (!cfg) return bad("활동 설정을 읽을 수 없어요.", 500);
+  const cur = (await s.list("LiveState")).find((l) => l.eventActivityId === aid);
+  return NextResponse.json({ live: liveView(cfg, cur) });
+}
+
 // 진행자 컨트롤. 어떤 버튼이 있는지, 누르면 회원 화면이 무엇으로 바뀌는지는 모두 템플릿 설정이 정한다.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
   const g = await hostGuard((await ctx.params).aid);

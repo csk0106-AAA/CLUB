@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { HostBack, HostDenied } from "@/components/HostBack";
+import { HostLiveControls } from "@/components/HostLiveControls";
 import { api } from "@/lib/client";
 
 type Stage = {
@@ -104,6 +105,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => setBoard(!board)}>{board ? "진행 화면" : "점수판"}</button>
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
+        <HostLiveControls eventId={id} aid={aid} />
         <HostBack eventId={id} />
       </header>
 
