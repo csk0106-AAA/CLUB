@@ -17,7 +17,6 @@ const BLANK: Record<Kind, Record<string, string | number | boolean>> = {
   prep: { item: "", owner: "", done: false, category: "", price: 0 },
   costs: { item: "", budget: 0, spent: 0, status: "예정", owner: "", memo: "" },
 };
-const STATUS = ["예정", "집행 완료", "보류"];
 const TITLE: Record<Kind, string> = { schedule: "일정", prep: "준비 목록", costs: "비용" };
 
 type FileMeta = { id: string; name: string; type: string; size: number; uploadedBy: string; createdAt: string };
@@ -320,7 +319,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
             <tr>
               {kind === "schedule" && <><th>일시</th><th>내용</th></>}
               {kind === "prep" && <><th>완료</th><th>비용 항목</th><th>준비물</th><th>가격(원)</th><th>담당</th></>}
-              {kind === "costs" && <>{dragCosts && <th style={{ width: 44 }}><span className="sr-only">순서</span></th>}<th>항목</th><th>예산(원)</th><th>집행(원)</th><th>상태</th><th>담당</th><th>메모</th></>}
+              {kind === "costs" && <>{dragCosts && <th style={{ width: 44 }}><span className="sr-only">순서</span></th>}<th>항목</th><th>예산(원)</th><th>집행(원)</th><th>담당</th><th>메모</th></>}
               <th></th>
             </tr>
           </thead>
@@ -366,11 +365,6 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                               onChange={(e) => set(i.id, "spent", Math.max(0, Number(e.target.value.replace(/\D/g, "")) - ps))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />
                           );
                         })()}
-                      </td>
-                      <td>
-                        <select aria-label="상태" className="field" style={{ ...cs, width: 100 }} value={String(d.status)} disabled={!canEdit} onChange={(e) => save(i.id, { status: e.target.value })}>
-                          {STATUS.map((s) => <option key={s}>{s}</option>)}
-                        </select>
                       </td>
                       <td><input aria-label="담당" className="field" style={{ ...cs, width: 90 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
                       <td className="center">

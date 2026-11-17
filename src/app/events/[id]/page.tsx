@@ -252,14 +252,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <Fold title="비용" summary={`예산 ${won(d.costs.reduce((n, x) => n + x.budget, 0))} · 집행 ${won(d.costs.reduce((n, x) => n + x.spent, 0))}`}>
           <div className="tblw">
             <table className="tbl" style={{ minWidth: 0, width: "100%" }}>
-              <thead><tr><th>항목</th><th style={{ textAlign: "right" }}>예산</th><th style={{ textAlign: "right" }}>집행</th><th>상태</th></tr></thead>
+              <thead><tr><th>항목</th><th style={{ textAlign: "right" }}>예산</th><th style={{ textAlign: "right" }}>집행</th></tr></thead>
               <tbody>
                 {d.costs.map((x) => (
                   <tr key={x.id}>
                     <td style={{ overflowWrap: "anywhere" }}>{x.item}{x.owner && <span className="small" style={{ display: "block" }}>담당 {x.owner}</span>}</td>
                     <td className="num" style={{ textAlign: "right" }}>{won(x.budget)}</td>
                     <td className="num" style={{ textAlign: "right" }}>{won(x.spent)}</td>
-                    <td className="small">{x.status}</td>
                   </tr>
                 ))}
               </tbody>
