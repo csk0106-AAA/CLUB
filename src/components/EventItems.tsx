@@ -245,13 +245,6 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       {kind !== "schedule" && shown !== null && (
         // 한 줄로 작게: (비용) 왼쪽 1인 회비 제안 + 기본 회비로 정하기 · 오른쪽 "회원 공개 [스위치] 켜짐/꺼짐"
         <div className="row" style={{ gap: 6, justifyContent: "flex-end", fontSize: fs(13), flexWrap: "nowrap" }}>
-          {kind === "costs" && (
-            <span className="row grow" style={{ gap: 4, flexWrap: "nowrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
-              <span className="small" style={{ fontSize: fs(12) }}>1인 회비 제안</span>
-              <b className="num" style={{ color: "var(--blue-t)", fontSize: fs(13) }}>{suggest ? won(suggest) : "-"}</b>
-              {canEdit && suggest > 0 && <button className="mini" type="button" style={{ minHeight: 28, padding: "0 6px", fontSize: fs(11), whiteSpace: "nowrap" }} onClick={() => applyFee(suggest)}>기본 회비로 정하기</button>}
-            </span>
-          )}
           <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>{kind === "costs" ? "공개" : "회원 공개"}</span>
           <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} title={shown ? "회원 일정 화면에 보여요(읽기만)" : "관리자만 봐요"}
             aria-label={kind === "costs" ? "회원 공개" : undefined}
@@ -281,9 +274,16 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           </dl>
         </section>
       )}
-      {/* 비용 목록 바로 위 오른쪽: + 비용 추가 */}
-      {kind === "costs" && canEdit && (
-        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-end", minHeight: 36, padding: "0 14px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
+      {/* 비용 목록 바로 위 한 줄: 왼쪽 1인 회비 제안(+ 기본 회비로 정하기) · 오른쪽 + 비용 추가 */}
+      {kind === "costs" && (
+        <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+          <span className="row grow" style={{ gap: 4, flexWrap: "nowrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
+            <span className="small" style={{ fontSize: fs(12) }}>1인 회비 제안</span>
+            <b className="num" style={{ color: "var(--blue-t)", fontSize: fs(13) }}>{suggest ? won(suggest) : "-"}</b>
+            {canEdit && suggest > 0 && <button className="mini" type="button" style={{ minHeight: 28, padding: "0 6px", fontSize: fs(11), whiteSpace: "nowrap" }} onClick={() => applyFee(suggest)}>기본 회비로 정하기</button>}
+          </span>
+          {canEdit && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", flex: "none", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>}
+        </div>
       )}
 
       {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. “+ {TITLE[kind]} 추가”로 넣어 주세요.</div>}
