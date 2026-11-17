@@ -279,6 +279,7 @@ a { color: var(--violet-t); }
   .tbl.stack td:has(.field) { flex: 1 1 130px; }
   .tbl.stack td:has(.field)::before { display: block; margin: 0 0 2px; }
   .tbl.stack td.wide { flex-basis: 100%; }
+  .tbl.stack td.main { flex: 1 1 calc(100% - 60px); }
   .tbl.stack td.act { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   .tbl.stack .field { width: 100% !important; min-width: 0 !important; }
 }

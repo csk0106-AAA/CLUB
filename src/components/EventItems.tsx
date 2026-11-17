@@ -273,9 +273,13 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 일정 화면에도 보여요.</span>}
-      {kind === "costs" && visSwitch && (
-        // 비용: 오른쪽 위 한 줄 "공개 [스위치]"
-        <div className="row" style={{ gap: 6, justifyContent: "flex-end" }}>{visSwitch}</div>
+      {kind === "costs" && (
+        // 비용: 요약 카드 위 한 줄 "1인 회비 제안 ○원 [기본 회비로 정하기]"
+        <span className="row" style={{ gap: 4, flexWrap: "wrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
+          <span className="small" style={{ fontSize: fs(12) }}>1인 회비 제안</span>
+          <b className="num" style={{ color: "var(--blue-t)", fontSize: fs(13) }}>{suggest ? won(suggest) : "-"}</b>
+          {canEdit && suggest > 0 && <button className="mini" type="button" style={{ minHeight: 28, padding: "0 6px", fontSize: fs(11), whiteSpace: "nowrap" }} onClick={() => applyFee(suggest)}>기본 회비로 정하기</button>}
+        </span>
       )}
       {kind === "prep" && <span className="small" style={{ fontSize: fs(12) }}>끝낸 것은 체크해 주세요. “비용 항목”을 고르면 완료 체크된 준비물의 가격이 같은 이름의 비용 항목 집행 금액에 더해져요.</span>}
 
@@ -299,14 +303,10 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           </dl>
         </section>
       )}
-      {/* 비용 목록 바로 위 한 줄: 왼쪽 1인 회비 제안(+ 기본 회비로 정하기) · 오른쪽 + 비용 추가 */}
+      {/* 비용 목록 바로 위 한 줄: 왼쪽 "공개 [스위치]" · 오른쪽 + 비용 추가(준비목록과 같은 배치) */}
       {kind === "costs" && (
-        <div className="row" style={{ gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <span className="row grow" style={{ gap: 4, flexWrap: "wrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
-            <span className="small" style={{ fontSize: fs(12) }}>1인 회비 제안</span>
-            <b className="num" style={{ color: "var(--blue-t)", fontSize: fs(13) }}>{suggest ? won(suggest) : "-"}</b>
-            {canEdit && suggest > 0 && <button className="mini" type="button" style={{ minHeight: 28, padding: "0 6px", fontSize: fs(11), whiteSpace: "nowrap" }} onClick={() => applyFee(suggest)}>기본 회비로 정하기</button>}
-          </span>
+        <div className="row" style={{ gap: 6, justifyContent: "space-between" }}>
+          <span className="row" style={{ gap: 6 }}>{visSwitch}</span>
           {canEdit && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", flex: "none", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>}
         </div>
       )}
@@ -336,7 +336,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
               const row = kind === "costs" ? ds.item(idx) : null;
               return (
                 <tr key={i.id} ref={row?.ref} style={row?.style}>
-                  {dragCosts && <td className="wide" data-label="" style={{ padding: "0 2px" }}><DragHandle plain {...ds.handle(idx, String(i.item))} /></td>}
+                  {dragCosts && <td data-label="" style={{ padding: "0 2px" }}><DragHandle plain {...ds.handle(idx, String(i.item))} /></td>}
                   {kind === "schedule" && (
                     <>
                       <td><DateField mode="datetime" ariaLabel="일시" style={{ minWidth: 230 }} inputStyle={{ minHeight: 44 }} value={String(d.at)} disabled={!canEdit} onChange={(v) => set(i.id, "at", v)} /></td>
@@ -359,7 +359,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                   )}
                   {kind === "costs" && (
                     <>
-                      <td className="wide" data-label="항목"><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td className={dragCosts ? "main" : "wide"} data-label="항목"><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
                       <td data-label="예산(원)"><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
                       <td data-label="집행(원)">
                         {/* 집행 칸에는 합계(직접 적은 집행 + 준비목록에서 완료된 같은 항목 가격)를 보여 준다.
