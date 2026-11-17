@@ -4,7 +4,7 @@ import { removeMemberPhotos } from "@/lib/avatar";
 import { withGenderEdit } from "@/lib/gender-edit";
 import { fieldValues, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
-import { ageGroupOf } from "@/lib/age-group";
+import { ageGroupOf, tidyBirth } from "@/lib/age-group";
 import { tidyPhone } from "@/lib/phone";
 import { checkPermChange, effectivePerms, getPermGroups, isAllNow } from "@/lib/perms";
 import { getStore } from "@/lib/store";
@@ -32,6 +32,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { memo, ...rest } = d;
   const patch: Record<string, string> = { ...rest, name };
   // 연령대는 생년월일이 있으면 자동(생년월일이 없을 때만 적은 값)
+  patch.birth = tidyBirth(rest.birth); // 1970.1.1 · 700101 같은 모양도 1970-01-01 로
   patch.ageGroup = ageGroupOf(rest.birth) || rest.ageGroup;
   patch.phone = tidyPhone(rest.phone); // 숫자만 적어도 010-0000-0000 모양으로
   if (memo !== undefined) patch.memo = memo;

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { fieldValues, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
-import { ageGroupOf } from "@/lib/age-group";
+import { ageGroupOf, tidyBirth } from "@/lib/age-group";
 import { phoneKey, tidyPhone } from "@/lib/phone";
 import { checkPermChange, getPermGroups, isAllNow } from "@/lib/perms";
 import { memberBody } from "@/lib/schemas";
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     taken.add(name);
     known.push({ id: "", name: asked, phone });
     no += 1;
-    rows.push({ ...r, phone: tidyPhone(r.phone), ageGroup: ageGroupOf(r.birth) || r.ageGroup, name, edu: edu ? "true" : "", memo: memo ?? "", no: String(no), perms: "", clubs: "", extra: fields && Object.keys(fields).length ? withFields("", fields) : "" });
+    rows.push({ ...r, birth: tidyBirth(r.birth), phone: tidyPhone(r.phone), ageGroup: ageGroupOf(r.birth) || r.ageGroup, name, edu: edu ? "true" : "", memo: memo ?? "", no: String(no), perms: "", clubs: "", extra: fields && Object.keys(fields).length ? withFields("", fields) : "" });
   }
   // 직책 그룹 권한 때문에 새 회원에게 권한이 생기면 "모든 권한" 관리자만 넣을 수 있다.
   const groups = await getPermGroups();

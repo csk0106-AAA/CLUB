@@ -4,7 +4,7 @@ import { avatarView } from "@/lib/avatar";
 import { readGenderEdit } from "@/lib/gender-edit";
 import { memberClubs } from "@/lib/lists";
 import { appMark } from "@/lib/member-apps";
-import { ageGroupOf, memberAgeGroup } from "@/lib/age-group";
+import { ageGroupOf, memberAgeGroup, tidyBirth } from "@/lib/age-group";
 import { tidyPhone } from "@/lib/phone";
 import { fieldValues, readFields, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
@@ -33,6 +33,7 @@ export async function GET() {
     fields: readFields({ extra: _extra }),
     genderEdit: readGenderEdit(_extra), // 회원이 직접 성별을 바꾼 기록(관리자가 확인하면 사라짐)
     edu: m.edu === "true", // 교육 이수
+    birth: tidyBirth(m.birth), // 예전에 700101·1970.1.1 처럼 넣은 생년월일도 1970-01-01 로 보여 준다
     ageGroup: memberAgeGroup(m), // 생년월일이 있으면 생년월일로 계산
     app: appMark(apps, m.id), // 회원 신청 "승인 전" / "반려"(사유)
   }));
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
   const all = await s.list("Members");
   // 같은 이름이 있으면 뒤에 알파벳을 붙여 저장하고(김하늘 → 김하늘B) 화면에 알린다
   const name = uniqueName(d.name, all.map((m) => m.name ?? ""));
-  const row = { ...d, phone: tidyPhone(d.phone), ageGroup: ageGroupOf(d.birth) || d.ageGroup, memo: d.memo ?? "", edu: edu ? "true" : "", name, perms: (perms ?? []).join("|"), clubs: clubsJson(clubs ?? []), extra: fields ? withFields("", fields) : "" };
+  const row = { ...d, birth: tidyBirth(d.birth), phone: tidyPhone(d.phone), ageGroup: ageGroupOf(d.birth) || d.ageGroup, memo: d.memo ?? "", edu: edu ? "true" : "", name, perms: (perms ?? []).join("|"), clubs: clubsJson(clubs ?? []), extra: fields ? withFields("", fields) : "" };
   // 새 회원의 직책·소모임 직책 때문에 권한이 생기면 "모든 권한" 관리자만 추가할 수 있다.
   const groups = await getPermGroups();
   const err = checkPermChange(all, groups, [...all, { ...row, id: "__new__" }], groups, await isAllNow(g.s.mid));
