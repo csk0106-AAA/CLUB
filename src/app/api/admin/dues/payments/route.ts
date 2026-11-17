@@ -12,7 +12,37 @@ export async function GET(req: Request) {
   const g = await guard("group");
   if ("err" in g) return g.err;
   const { dues, period: cur } = await duesNow();
-  const want = new URL(req.url).searchParams.get("period") ?? "";
+  const sp = new URL(req.url).searchParams;
+  // 누적 현황: 회원 × 기간(연회비는 기록이 있는 해부터 올해까지 최대 6년, 월회비는 최근 12개월)
+  if (sp.get("view") === "grid") {
+    const s = await getStore();
+    const [members, payments] = await Promise.all([s.list("Members"), s.list("DuesPayments")]);
+    let periods: string[];
+    if (dues.period === "monthly") {
+      const [y, m] = cur.split("-").map(Number);
+      periods = Array.from({ length: 12 }, (_, i) => {
+        const d = new Date(Date.UTC(y, m - 1 - i, 1));
+        return d.toISOString().slice(0, 7);
+      });
+    } else {
+      const years = payments.map((p) => Number(p.period.slice(0, 4))).filter((n) => n > 2000);
+      const from = Math.max(Math.min(Number(cur), ...years), Number(cur) - 5);
+      periods = Array.from({ length: Number(cur) - from + 1 }, (_, i) => String(Number(cur) - i));
+    }
+    const targets = duesTargets(members, dues);
+    const ids = new Set(targets.map((t) => t.member.id));
+    const extra = members.filter((m) => !ids.has(m.id) && payments.some((p) => p.memberId === m.id && periods.includes(p.period) && (p.paid === "true" || p.notice)));
+    const rows = [...targets.map((t) => ({ m: t.member, amount: t.amount, target: true })), ...extra.map((m) => ({ m, amount: "", target: false }))]
+      .map(({ m, amount, target }) => ({
+        memberId: m.id, name: m.name, kind: m.kind ?? "", amount, target,
+        cells: periods.map((p) => {
+          const x = payments.find((q) => q.period === p && q.memberId === m.id);
+          return { period: p, status: x?.paid === "true" ? "paid" : x?.notice ? "notice" : "none", amount: x?.paid === "true" ? x.amount : "", at: x?.paid === "true" ? x.paidAt : x?.notice ?? "" };
+        }),
+      }));
+    return NextResponse.json({ periods: periods.map((p) => ({ value: p, label: periodLabel(p) })), current: cur, duesPeriod: dues.period, rows });
+  }
+  const want = sp.get("period") ?? "";
   const period = /^\d{4}(-\d{2})?$/.test(want) ? want : cur;
   const s = await getStore();
   const [members, payments] = await Promise.all([s.list("Members"), s.list("DuesPayments")]);
