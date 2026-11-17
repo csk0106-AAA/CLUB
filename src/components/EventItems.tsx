@@ -279,10 +279,11 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
               </div>
             ))}
           </dl>
-          {canEdit && (
-            <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 36, padding: "0 14px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
-          )}
         </section>
+      )}
+      {/* 비용 목록 바로 위 오른쪽: + 비용 추가 */}
+      {kind === "costs" && canEdit && (
+        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-end", minHeight: 36, padding: "0 14px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>
       )}
 
       {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. “+ {TITLE[kind]} 추가”로 넣어 주세요.</div>}
