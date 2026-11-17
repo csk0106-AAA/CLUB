@@ -23,6 +23,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const ev = events.find((e) => e.id === id && eventVisible(e, me ?? g.s.mid));
   if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   const nm = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
+  // 같은 조·차·방 명단: 나도 넣고 "(나)"로 표시
+  const nmMe = (mid: string) => (mid === g.s.mid ? `${nm(mid)}(나)` : nm(mid));
 
   // 배포된 조편성: 내 조와 전체 조 구성(조에 없는 사람도 전체를 볼 수 있게). 배포 전 조편성은 개수만 알려 준다.
   const evGroups = groups.filter((x) => x.eventId === id);
@@ -32,8 +34,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       const teams = gTeams(x);
       const t = teams.find((y) => y.memberIds.includes(g.s.mid));
       return {
-        title: x.title, team: t?.name ?? "", members: t ? t.memberIds.map(nm) : [],
-        teams: teams.map((y) => ({ name: y.name, members: y.memberIds.map(nm), mine: y.memberIds.includes(g.s.mid) })),
+        title: x.title, team: t?.name ?? "", members: t ? t.memberIds.map(nmMe) : [],
+        teams: teams.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid) })),
       };
     });
   const groupsPending = evGroups.filter((x) => x.published !== "true").length;
@@ -46,6 +48,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
           .map((c) => ({
             dir: d, leg: DIR_LABEL[d], name: c.name, plate: c.plate, from: c[d].from, to: c[d].to, departAt: c[d].departAt, arriveAt: c[d].arriveAt,
             driver: nm(c.driverId), iDrive: !!c.driverId && c.driverId === g.s.mid, riders: c[d].riders.filter((x) => x !== g.s.mid).map(nm), seats: c.seats,
+            // 이 차에 타는 모든 사람(운전자 먼저, 나 포함)
+            people: [...(c.driverId ? [`${nmMe(c.driverId)} · 운전`] : []), ...c[d].riders.filter((x) => x !== c.driverId).map(nmMe)],
           })),
       )
     : [];
@@ -55,7 +59,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     ? allRooms
         .filter((r) => r.guests.includes(g.s.mid))
         .sort((a, b) => a.date.localeCompare(b.date))
-        .map((r) => ({ date: r.date, name: r.name, memo: r.memo, mates: r.guests.filter((x) => x !== g.s.mid).map(nm) }))
+        .map((r) => ({ date: r.date, name: r.name, memo: r.memo, mates: r.guests.filter((x) => x !== g.s.mid).map(nm), people: r.guests.map(nmMe) }))
     : [];
 
   return NextResponse.json({

@@ -10,11 +10,23 @@ type Data = {
   dayPlaces?: Record<string, string>;
   groups: { title: string; team: string; members: string[]; teams?: { name: string; members: string[]; mine: boolean }[] }[];
   groupsPending?: number;
-  rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[] }[] };
-  carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number }[] };
+  rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[]; people?: string[] }[] };
+  carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number; people?: string[] }[] };
 };
 
 const when = (at: string) => fmtDateTime(at); // "2026/12/11 14:00"
+
+// 같은 조·차·방 명단: "조원 5명" + 이름 칩(나는 파란색)
+function People({ label, names }: { label: string; names: string[] }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span className="small">{label} {names.length}명</span>
+      <div className="row" style={{ flexWrap: "wrap", gap: 4 }}>
+        {names.map((n, i) => <span key={i} className={`pill ${n.includes("(나)") ? "blue" : "gray"}`}>{n}</span>)}
+      </div>
+    </div>
+  );
+}
 
 // 회원이 보는 일정 정보: 일정, 내 조편성(배포된 것), 내 카풀(배포된 것)
 // placeholder: 조편성·카풀이 아직 배포되지 않았을 때 "조 편성 후 알려 드려요" 카드를 보여 준다.
@@ -49,7 +61,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
           {g.team ? (
             <>
               <div className="row" style={{ flexWrap: "wrap" }}><span className="small">내 조</span><span className="pill blue">{g.team}</span></div>
-              <div className="small">{g.members.join(", ")}</div>
+              <People label="조원" names={g.members} />
             </>
           ) : (
             <div className="small">내가 들어간 조는 없어요.</div>
@@ -87,7 +99,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
             <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
               <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{fmtDate(r.date)} 숙박</span><b>{r.name}</b></div>
               {r.memo && <div className="small">{r.memo}</div>}
-              <div className="small">같은 방: {r.mates.length ? r.mates.join(", ") : "혼자 써요"}</div>
+              {r.people ? <People label="같은 방" names={r.people} /> : <div className="small">같은 방: {r.mates.length ? r.mates.join(", ") : "혼자 써요"}</div>}
             </div>
           ))}
         </section>
@@ -102,7 +114,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
               <div>운전자: <b>{c.driver || "미정"}</b>{c.plate ? ` · 차량번호 ${c.plate}` : ""}</div>
               <div className="small">출발: {c.from || "장소 미정"}{c.departAt ? ` · ${when(c.departAt)}` : ""}</div>
               <div className="small">도착: {c.to || "장소 미정"}{c.arriveAt ? ` · ${when(c.arriveAt)} 예상` : ""}</div>
-              <div className="small">동승자: {c.riders.length ? c.riders.join(", ") : "없음"}</div>
+              {c.people ? <People label="같은 차" names={c.people} /> : <div className="small">동승자: {c.riders.length ? c.riders.join(", ") : "없음"}</div>}
             </div>
           ))}
         </section>
