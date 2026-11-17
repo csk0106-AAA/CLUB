@@ -299,7 +299,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       )}
       {items.length === 0 && <div className="msg info">아직 {TITLE[kind]} 항목이 없어요. “+ {TITLE[kind]} 추가”로 넣어 주세요.</div>}
       <div className="tblw">
-        <table className="tbl" style={{ minWidth: kind === "costs" ? 760 : kind === "prep" ? 640 : 560 }}>
+        <table className="tbl compact" style={{ minWidth: kind === "costs" ? 680 : kind === "prep" ? 560 : 520 }}>
           <thead>
             <tr>
               {kind === "schedule" && <><th>일시</th><th>내용</th></>}

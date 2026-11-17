@@ -257,6 +257,12 @@ a { color: var(--violet-t); }
   padding: 0 12px; font: 400 calc(16px * var(--fs, 1)) var(--body); color: var(--ink);
 }
 .field:focus { border-color: var(--red); }
+/* 작은 표·입력(일정관리 회비·지원금·비용·준비목록 등): 칸 높이·글자·여백을 줄인다 */
+.tbl.compact td { padding: 4px 6px; font-size: calc(13px * var(--fs, 1)); }
+.tbl.compact th { padding: 6px 6px; font-size: calc(11px * var(--fs, 1)); }
+.tbl.compact .field, .compact-form .field { min-height: 34px; font-size: calc(13px * var(--fs, 1)); padding: 0 8px; }
+.compact-form .l { font-size: calc(12px * var(--fs, 1)); margin-bottom: 4px; }
+.compact-form .df button { min-height: 34px; width: 34px; }
 textarea.field { padding: 10px 12px; line-height: 1.55; }
 .field::placeholder { color: var(--muted); }
 .field:disabled { background: var(--soft); opacity: 0.7; cursor: not-allowed; }

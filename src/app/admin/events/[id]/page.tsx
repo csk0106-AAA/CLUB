@@ -501,32 +501,32 @@ function Detail({ id }: { id: string }) {
         <>
           {/* 회비 설정(개요에서 옮겨 옴): 입금 기한·계좌·예금주와 조건별 회비 줄. 아래 "회비 저장"으로 저장해요. */}
           <div className="grid2">
-            {!light && <><div><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
-            <div><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div></>}
+            {!light && <><div className="compact-form"><label className="l" htmlFor="o-dl">입금 기한</label><DateField id="o-dl" mode="date" value={ev.feeDeadline} onChange={(v) => set("feeDeadline", v)} /></div>
+            <div className="compact-form"><label className="l" htmlFor="o-acc">입금 계좌</label><input id="o-acc" className="field" value={ev.account} onChange={(e) => set("account", e.target.value)} /></div>
+            <div className="compact-form"><label className="l" htmlFor="o-holder">예금주</label><input id="o-holder" className="field" value={ev.accountHolder ?? ""} onChange={(e) => set("accountHolder", e.target.value)} /></div></>}
           </div>
           {/* 회비: 회원구분 / 직책 / 참석일 조건별 (회의·미팅은 없음) */}
           {!light && <section className="card" aria-label="회비" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {/* 제목 줄: 왼쪽 "회비" · 오른쪽 + 회비 줄 추가 */}
             <div className="row" style={{ gap: 6 }}>
-              <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>회비</b>
+              <b className="grow" style={{ font: `700 ${fs(15)} var(--display)` }}>회비</b>
               <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>+ 회비 줄 추가</button>
             </div>
-            <span className="small">
+            <span className="small" style={{ fontSize: fs(12) }}>
               회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
               회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
             </span>
-            {rules.length === 0 && <span className="small">아직 회비가 없어요. 회비를 받는 일정이라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
+            {rules.length === 0 && <span className="small" style={{ fontSize: fs(12) }}>아직 회비가 없어요. 회비를 받는 일정이라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
             {rules.length > 0 && (
               <div className="tblw">
-                <table className="tbl" style={{ minWidth: 620 }}>
+                <table className="tbl compact" style={{ minWidth: 520 }}>
                   <thead>
                     <tr><th>회원구분</th><th>직책</th><th>참석일</th><th>금액(원)</th><th style={{ width: 70 }}><span className="sr-only">삭제</span></th></tr>
                   </thead>
                   <tbody>
                     {rules.map((r, i) => {
                       const upd = (patch: Partial<FeeRule>) => setRules(rules.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-                      const sel = { minHeight: 36, padding: "0 8px", fontSize: fs(13) } as const;
+                      const sel = {} as const;
                       return (
                         <tr key={i}>
                           <td>
@@ -563,27 +563,27 @@ function Detail({ id }: { id: string }) {
               </div>
             )}
             {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
-            {dist.length > 0 && <span className="small">현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
+            {dist.length > 0 && <span className="small" style={{ fontSize: fs(12) }}>현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
           </section>}
           {/* 지원금: 연(월)회비에서 지원 / 회원이 지원금을 냄. 총 예산에 더한다. 아래 "회비 저장"으로 함께 저장. */}
           <section className="card" aria-label="지원금" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {/* 제목 줄: 왼쪽 "지원금" · 오른쪽 + 연(월)회비 지원 / + 회원 지원 */}
             <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-              <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>지원금</b>
+              <b className="grow" style={{ font: `700 ${fs(15)} var(--display)` }}>지원금</b>
               <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "dues", name: "", amount: "", memo: "" }])}>+ 연(월)회비 지원</button>
               <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "member", name: "", amount: "", memo: "" }])}>+ 회원 지원</button>
             </div>
-            <span className="small">
+            <span className="small" style={{ fontSize: fs(12) }}>
               <b>연(월)회비 지원</b>: 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 연·월회비에서 이 일정에 쓰는 돈. <b>회원 지원</b>: 회원이 따로 내는 지원금(지원한 회원 이름을 적어요). 지원금은 총 예산에 더해져요.
             </span>
             {supports.length > 0 && (
               <div className="tblw">
-                <table className="tbl" style={{ minWidth: 620 }}>
+                <table className="tbl compact" style={{ minWidth: 520 }}>
                   <thead><tr><th>구분</th><th>지원한 분·내용</th><th>금액(원)</th><th>메모</th><th style={{ width: 70 }}><span className="sr-only">삭제</span></th></tr></thead>
                   <tbody>
                     {supports.map((x, i) => {
                       const upd = (patch: Partial<Support>) => setSupports(supports.map((y, j) => (j === i ? { ...y, ...patch } : y)));
-                      const sel = { minHeight: 36, padding: "0 8px", fontSize: fs(13) } as const;
+                      const sel = {} as const;
                       return (
                         <tr key={i}>
                           <td>
@@ -617,19 +617,19 @@ function Detail({ id }: { id: string }) {
           ]} />
           {!light && (
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <button className="btn" type="button" disabled={busy || supports.some((x) => !x.amount)} style={{ width: "auto", minWidth: 160 }} onClick={() => save()}>회비 저장</button>
-              <span className="small">회비 설정과 지원금을 저장해요. 공개 상태는 그대로예요.</span>
+              <button className="btn" type="button" disabled={busy || supports.some((x) => !x.amount)} style={{ width: "auto", minWidth: 120, minHeight: 40, fontSize: fs(14) }} onClick={() => save()}>회비 저장</button>
+              <span className="small" style={{ fontSize: fs(12) }}>회비 설정과 지원금을 저장해요. 공개 상태는 그대로예요.</span>
             </div>
           )}
           <MiniStats items={[
             ["입금 완료", `${paid.length}명 · ${won(totalPaid)} / ${won(totalOwed)}`, undefined, "var(--green-t)"],
             ["미입금", `${attend.length - paid.length}명`, undefined, "var(--red-t)"],
           ]} />
-          <span className="small">“입금 확인”을 누르면 그 회원 화면의 회비 알림이 바로 사라져요. 미입금 회원에게는 알림이 계속 보여요.</span>
+          <span className="small" style={{ fontSize: fs(12) }}>“입금 확인”을 누르면 그 회원 화면의 회비 알림이 바로 사라져요. 미입금 회원에게는 알림이 계속 보여요.</span>
           {attend.length === 0 && <div className="msg info">아직 참석을 신청한 회원이 없어요.</div>}
           {attend.length > 0 && (
             <div className="tblw">
-              <table className="tbl" style={{ minWidth: 520, fontSize: fs(13) }}>
+              <table className="tbl compact" style={{ minWidth: 460 }}>
                 <thead><tr><th>이름</th><th>금액</th><th>입금 상태</th><th>확인일</th><th></th></tr></thead>
                 <tbody>
                   {attend.map((r) => (
