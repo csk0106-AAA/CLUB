@@ -254,7 +254,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
               </div>
             ))}
           </dl>
-          {canEdit && suggest > 0 && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => applyFee(suggest)}>{won(suggest)}을 기본 회비로 정하기</button>}
+          {canEdit && suggest > 0 && <button className="mini" type="button" style={{ alignSelf: "flex-end" }} onClick={() => applyFee(suggest)}>{won(suggest)}을 기본 회비로 정하기</button>}
         </section>
       )}
 
