@@ -39,10 +39,10 @@ export const ITEMS: Record<ItemKind, Def> = {
     tab: "EventCosts",
     perm: ["events"],
     schema: z
-      .object({ item: str(100).min(1), budget: money.default(0), spent: money.default(0), status: str(20).default("예정"), owner: str(40).default("") })
-      .transform((v) => ({ item: v.item, budget: String(v.budget), spent: String(v.spent), status: v.status, owner: v.owner })),
+      .object({ item: str(100).min(1), budget: money.default(0), spent: money.default(0), status: str(20).default("예정"), owner: str(40).default(""), memo: str(1000).default("") })
+      .transform((v) => ({ item: v.item, budget: String(v.budget), spent: String(v.spent), status: v.status, owner: v.owner, memo: v.memo })),
     sort: (a, b) => a.item.localeCompare(b.item, "ko"),
-    view: (r) => ({ id: r.id, item: r.item, budget: Number(r.budget) || 0, spent: Number(r.spent) || 0, status: r.status, owner: r.owner }),
+    view: (r) => ({ id: r.id, item: r.item, budget: Number(r.budget) || 0, spent: Number(r.spent) || 0, status: r.status, owner: r.owner, memo: r.memo ?? "" }),
   },
 };
 

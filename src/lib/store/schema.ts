@@ -50,7 +50,8 @@ export const TABS = {
     // checkedBy/checkedAt: 관리자(일정 작성자·편집자 포함)가 신청현황에서 대신 체크한 경우 그 사람 id·시각. 회원이 직접 답하면 지운다.
     "checkedBy", "checkedAt",
   ],
-  EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner"],
+  // memo: 비용 메모(목록에서는 메모 아이콘을 눌러 본다)
+  EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner", "memo"],
   EventPrep: ["id", "eventId", "item", "owner", "done"],
   // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.
   EventFiles: ["id", "eventId", "name", "type", "size", "data", "uploadedBy", "createdAt"],
