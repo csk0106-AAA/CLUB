@@ -262,8 +262,19 @@ function Members() {
 
   // 프로필 북 노출·교육 이수 바꾸기(한 명 또는 여러 명)
   async function setFlags(ids: string[], flags: { bookShown?: boolean; edu?: boolean }, ok: (n: number) => string) {
+    // 누르자마자 화면에 반영하고, 저장에 실패하면 되돌린 뒤 알림 창으로 알린다(위쪽 안내는 스크롤하면 안 보여서)
+    const before = list;
+    setList((l) => (l ?? []).map((m) => (ids.includes(m.id) ? {
+      ...m,
+      ...(flags.bookShown !== undefined ? { bookHidden: flags.bookShown ? "" : "true" } : {}),
+      ...(flags.edu !== undefined ? { edu: flags.edu } : {}),
+    } : m)));
     const r = await api<{ changed: number }>("/api/admin/members/flags", { body: { ids, ...flags } });
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) {
+      setList(before);
+      window.alert(`저장하지 못했어요.\n${r.error}`);
+      return setMsg({ tone: "bad", text: r.error });
+    }
     setMsg({ tone: "info", text: ok(r.data.changed) });
     load();
   }
@@ -365,8 +376,8 @@ function Members() {
         {list && (
           <p className="small" role="group" aria-label="회원 요약" style={{ margin: 0, flex: "1 1 200px", fontSize: fs(13) }}>
             {/* 구분별 명수는 아래 필터 버튼에 보인다 */}
-            <span>남 {list.filter((m) => m.gender === "남").length} · 여 {list.filter((m) => m.gender === "여").length}</span>
-            {" · "}<Link href="/admin/admins">권한자 {admins.length}</Link>
+            <Link href="/admin/admins">권한자 {admins.length}</Link>
+            <span>, 남 {list.filter((m) => m.gender === "남").length}, 여 {list.filter((m) => m.gender === "여").length}</span>
           </p>
         )}
         <div className="row" style={{ gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
