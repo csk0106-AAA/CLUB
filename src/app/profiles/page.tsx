@@ -113,7 +113,7 @@ export default function ProfilesPage() {
                   <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                     {p.mine && <span className="chip violet">나</span>}
                     {p.mine && p.hiddenMine && <span className="chip gray" title="설정 › 프로필 북에서 바꿀 수 있어요">다른 회원에게 숨김</span>}
-                    {p.masked && <span className="chip line">별칭 · 내가 누굴까요?</span>}
+                    {p.masked && <span className="chip line">내가 누굴까요?</span>}
                     {!p.hasIntro && <span className="chip gray">{p.mine && !p.masked ? "소개 작성하기" : "소개 준비 중"}</span>}
                   </span>
                 </span>
