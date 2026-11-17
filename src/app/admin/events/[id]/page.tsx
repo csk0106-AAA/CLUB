@@ -565,16 +565,16 @@ function Detail({ id }: { id: string }) {
             {rules.some((r) => !r.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 줄이 있어요. 금액을 넣거나 줄을 삭제해 주세요.</span>}
             {dist.length > 0 && <span className="small" style={{ fontSize: fs(12) }}>현재 참석자 회비(저장 기준): {dist.map(([k, n]) => `${k} ${n}명`).join(" · ")}</span>}
           </section>}
-          {/* 지원금: 연(월)회비에서 지원 / 회원이 지원금을 냄. 총 예산에 더한다. 아래 "회비 저장"으로 함께 저장. */}
+          {/* 지원금: 모임회비에서 지원 / 회원이 지원금을 냄. 총 예산에 더한다. 아래 "회비 저장"으로 함께 저장. */}
           <section className="card" aria-label="지원금" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {/* 제목 줄: 왼쪽 "지원금" · 오른쪽 + 연(월)회비 지원 / + 회원 지원 */}
+            {/* 제목 줄: 왼쪽 "지원금" · 오른쪽 + 모임회비 지원 / + 회원 지원 */}
             <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
               <b className="grow" style={{ font: `700 ${fs(15)} var(--display)` }}>지원금</b>
-              <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "dues", name: "", amount: "", memo: "" }])}>+ 연(월)회비 지원</button>
+              <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "dues", name: "", amount: "", memo: "" }])}>+ 모임회비 지원</button>
               <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "member", name: "", amount: "", memo: "" }])}>+ 회원 지원금</button>
             </div>
             <span className="small" style={{ fontSize: fs(12) }}>
-              <b>연(월)회비 지원</b>: 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 연·월회비에서 이 일정에 쓰는 돈. <b>회원 지원금</b>: 회원이 따로 내는 지원금(지원한 회원 이름을 적어요). 지원금은 총 예산에 더해져요.
+              <b>모임회비 지원</b>: 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 연·월회비에서 이 일정에 쓰는 돈. <b>회원 지원금</b>: 회원이 따로 내는 지원금(지원한 회원 이름을 적어요). 지원금은 총 예산에 더해져요.
             </span>
             {supports.length > 0 && (
               <div className="tblw">
@@ -612,7 +612,7 @@ function Detail({ id }: { id: string }) {
           {/* 총 예산 */}
           <MiniStats items={[
             ["참석자 회비 합계", `${won(totalOwed)} (${attend.length}명)`],
-            ["지원금", won(supDues + supMember), `연(월)회비 지원 ${won(supDues)} · 회원 지원금 ${won(supMember)}`],
+            ["지원금", won(supDues + supMember), `모임회비 지원 ${won(supDues)} · 회원 지원금 ${won(supMember)}`],
             ["총 예산", won(totalBudget), "회비 + 지원금 (저장 기준)", "var(--blue-t)"],
           ]} />
           {!light && (

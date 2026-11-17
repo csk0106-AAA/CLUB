@@ -4,7 +4,7 @@ import { z } from "zod";
 //  dues: 모임(또는 소모임)의 연·월회비에서 지원 / member: 회원이 지원금을 냄(지원한 회원 이름)
 export type SupportKind = "dues" | "member";
 export type Support = { kind: SupportKind; name: string; amount: string; memo: string };
-export const SUPPORT_LABEL: Record<SupportKind, string> = { dues: "연(월)회비 지원", member: "회원 지원금" };
+export const SUPPORT_LABEL: Record<SupportKind, string> = { dues: "모임회비 지원", member: "회원 지원금" };
 
 export const supportsInput = z.array(z.object({
   kind: z.enum(["dues", "member"]),
