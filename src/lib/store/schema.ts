@@ -43,6 +43,8 @@ export const TABS = {
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
     "id", "eventId", "memberId", "answer", "days", "paid", "paidAt", "memo", "payNotice",
+    // checkedBy/checkedAt: 관리자(일정 작성자·편집자 포함)가 신청현황에서 대신 체크한 경우 그 사람 id·시각. 회원이 직접 답하면 지운다.
+    "checkedBy", "checkedAt",
   ],
   EventCosts: ["id", "eventId", "item", "budget", "spent", "status", "owner"],
   EventPrep: ["id", "eventId", "item", "owner", "done"],

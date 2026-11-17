@@ -47,16 +47,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   const a = applies.find((x) => x.eventId === id && x.memberId === memberId);
+  // 참석 여부를 관리자가 바꾸면 "관리자 체크" 표시(누가·언제)를 남긴다. 미응답으로 되돌리면 지운다.
+  const changed = (a?.answer ?? "") !== answer;
+  const mark = !changed ? {} : answer ? { checkedBy: g.s.mid, checkedAt: new Date().toISOString() } : { checkedBy: "", checkedAt: "" };
   if (a) {
     // 참석이 아니게 되면 날짜와 입금 확인은 의미가 없으므로 비운다.
     const keep = answer === "참석";
     await s.update("EventApplies", a.id, {
       answer,
       memo,
+      ...mark,
       ...(keep ? (dayValue === undefined ? {} : { days: dayValue }) : { days: "", paid: "false", paidAt: "" }),
     });
   } else if (answer || memo) {
-    await s.insert("EventApplies", { eventId: id, memberId, answer, memo, days: dayValue ?? "", paid: "false", paidAt: "" });
+    await s.insert("EventApplies", { eventId: id, memberId, answer, memo, days: dayValue ?? "", paid: "false", paidAt: "", ...mark });
   }
   return NextResponse.json({ ok: true });
 }

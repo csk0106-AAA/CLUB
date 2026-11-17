@@ -53,6 +53,9 @@ export async function GET(_req: Request, ctx: Ctx) {
         paidAt: a?.paidAt ?? "",
         memo: a?.memo ?? "",
         payNotice: a?.payNotice ?? "",
+        // 관리자가 대신 체크한 경우: 체크한 사람 이름·시각
+        checkedBy: a?.checkedBy ? members.find((x) => x.id === a.checkedBy)?.name ?? "관리자" : "",
+        checkedAt: a?.checkedAt ?? "",
         fee: mf.known ? mf.amount : "",
         feePending: !mf.known,
         clubRole: seat?.role ?? "", // 소모임 직책(회장 등)

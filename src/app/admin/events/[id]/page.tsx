@@ -17,7 +17,7 @@ import type { SchedItem } from "@/components/ScheduleBoard";
 import { readDayPlaces } from "@/lib/day-places";
 import { EditorsBox } from "@/components/EditorsBox";
 import { EventAudience } from "./EventAudience";
-import { api, fmtDate, fmtDateDow, fmtDays, TYPE_TONE, won } from "@/lib/client";
+import { api, fmtDate, fmtDateDow, fmtDateTime, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
 import type { FeeRule } from "@/lib/fee";
 import { clubLabel } from "@/lib/club-label";
@@ -35,6 +35,7 @@ type Row = {
   memberId: string; name: string; kind: string; position: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string;
   fee: string; feePending: boolean; // 이 회원이 낼 회비(조건 반영), 날짜를 골라야 정해지면 feePending
   clubRole?: string; observer?: boolean; // 소모임 일정: 소모임 직책, 참관자
+  checkedBy?: string; checkedAt?: string; // 관리자가 대신 체크한 경우 체크한 사람 이름·시각
 };
 type ClubOpt = { name: string; account: string; holder: string; leaders: { name: string; role: string }[] };
 type Opts = { kinds: string[]; positions: string[]; clubs: ClubOpt[]; dues: { account: string; holder: string } };
@@ -195,6 +196,19 @@ function Detail({ id }: { id: string }) {
     const r = await api(`/api/admin/events/${id}/pay`, { body: { memberId, paid } });
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setMsg({ tone: "info", text: paid ? "입금을 확인했어요. 회원 화면의 회비 알림이 사라져요." : "입금 확인을 취소했어요." });
+    load();
+  }
+
+  // 신청현황의 "참석" 체크: 관리자(작성자·편집자 포함)가 바로 참석/미응답으로 바꾼다(여러 날 일정은 모든 날 참석으로)
+  async function quickAttend(r: Row, on: boolean) {
+    if (!on && !window.confirm(`${r.name} 님의 참석 체크를 풀까요?\n미응답으로 돌아가고, 참석 날짜·입금 확인이 지워져요.`)) return;
+    setBusy(true);
+    const r2 = await api(`/api/admin/events/${id}/apply`, {
+      body: { memberId: r.memberId, answer: on ? "참석" : "", memo: r.memo, ...(on && evDays.length > 1 ? { days: evDays } : {}) },
+    });
+    setBusy(false);
+    if (!r2.ok) return setMsg({ tone: "bad", text: r2.error });
+    setMsg({ tone: "info", text: on ? `${r.name} 님을 참석으로 체크했어요(관리자 체크).` : `${r.name} 님의 참석 체크를 풀었어요.` });
     load();
   }
 
@@ -388,11 +402,12 @@ function Detail({ id }: { id: string }) {
           )}
           <div className="tblw">
             <table className="tbl" style={{ minWidth: 640 }}>
-              <thead><tr><th>이름</th><th>신청</th><th>참석 날짜</th><th>메모</th><th></th></tr></thead>
+              <thead><tr><th>참석</th><th>이름</th><th>신청</th><th>참석 날짜</th><th>메모</th><th></th></tr></thead>
               <tbody>
                 {rows.map((r) =>
                   editRow?.memberId === r.memberId ? (
                     <tr key={r.memberId}>
+                      <td className="center"><span className="small">-</span></td>
                       <td><b>{r.name}</b>{tags(r)}</td>
                       <td>
                         <select className="field" style={{ minHeight: 44, minWidth: 110 }} aria-label={`${r.name} 신청`} value={editRow.answer}
@@ -421,8 +436,18 @@ function Detail({ id }: { id: string }) {
                     </tr>
                   ) : (
                     <tr key={r.memberId}>
+                      <td className="center">
+                        <input type="checkbox" checked={r.answer === "참석"} disabled={busy} onChange={(e) => quickAttend(r, e.target.checked)}
+                          style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`} />
+                      </td>
                       <td><b>{r.name}</b>{tags(r)}</td>
-                      <td><span className={`pill ${r.answer === "참석" ? "ok" : r.answer === "불참" ? "gray" : "warn"}`}>{r.answer || "미응답"}</span></td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <span className={`pill ${r.answer === "참석" ? "ok" : r.answer === "불참" ? "gray" : "warn"}`}>{r.answer || "미응답"}</span>
+                        {r.checkedBy && r.answer && (
+                          <span className="pill blue" style={{ marginLeft: 4 }} title={`${r.checkedBy} 님이 ${fmtDateTime(r.checkedAt ?? "")}에 체크했어요`}>✓ 관리자 체크</span>
+                        )}
+                        {r.checkedBy && r.answer && <span className="small" style={{ display: "block", marginTop: 2 }}>{r.checkedBy} · {fmtDate(r.checkedAt ?? "")}</span>}
+                      </td>
                       <td className="num">{dayText(r.days)}</td>
                       <td>{r.memo || <span className="small">-</span>}</td>
                       <td><button className="mini" type="button" onClick={() => setEditRow({ memberId: r.memberId, answer: r.answer, memo: r.memo, days: r.days ? r.days.split(",").filter(Boolean) : [] })}>수정</button></td>
@@ -432,7 +457,7 @@ function Detail({ id }: { id: string }) {
               </tbody>
             </table>
           </div>
-          <span className="small">전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
+          <span className="small">맨 앞 “참석” 칸을 체크하면 바로 참석으로 바뀌어요(여러 날 일정은 모든 날 참석, 날짜는 “수정”에서 고쳐요). 전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 관리자가 바꾼 답에는 “✓ 관리자 체크”(체크한 사람·날짜)가 붙고, 회원이 직접 다시 답하면 사라져요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
           {ev.club && (
             <>
               <span className="small">소모임 일정이라 참석 신청 명단에는 {clubLabel(ev.club)} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>

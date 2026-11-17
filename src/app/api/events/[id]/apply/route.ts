@@ -43,7 +43,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const nextDays = answer === "불참" ? "" : days ? [...days].sort().join(",") : cur?.days ?? "";
 
   if (cur) {
-    await s.update("EventApplies", cur.id, { answer, days: nextDays });
+    // 회원이 직접 답하면 관리자 체크 표시는 지운다
+    await s.update("EventApplies", cur.id, { answer, days: nextDays, checkedBy: "", checkedAt: "" });
   } else {
     await s.insert("EventApplies", { eventId: id, memberId: g.s.mid, answer, days: nextDays, paid: "false" });
   }
