@@ -240,7 +240,8 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       {kind === "costs" && (
         // 요약: 한 카드에 작게(예산·집행·잔액·1인 회비 제안)
         <section className="card" aria-label="비용 요약" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>
-          <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "6px 12px", fontSize: fs(13) }}>
+          {/* 늘 2줄: 예산 합계 · 집행 합계 / 잔액 · 1인 회비 제안 */}
+          <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 12px", fontSize: fs(13) }}>
             {[
               ["예산 합계", won(totalBudget), undefined],
               ["집행 합계", won(totalSpent), undefined],
@@ -253,9 +254,6 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
               </div>
             ))}
           </dl>
-          <span className="small" style={{ fontSize: fs(12) }}>
-            1인 회비 제안 = {support ? `(예산 - 지원금 ${won(support)})` : "예산"} ÷ 참석 {attend}명, 천 원 단위 올림 · 현재 기본 회비(“전체” 줄) {fee ? won(fee) : "없음"}
-          </span>
           {canEdit && suggest > 0 && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => applyFee(suggest)}>{won(suggest)}을 기본 회비로 정하기</button>}
         </section>
       )}
