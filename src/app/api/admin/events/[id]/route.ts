@@ -9,6 +9,7 @@ import { clubPayAccount, duesAccount, readDues } from "@/lib/dues";
 import { getLists, memberClubs } from "@/lib/lists";
 import { notifyEvent } from "@/lib/push";
 import { fixLegacyTypes } from "@/lib/event-migrate";
+import { isWithdrawn } from "@/lib/member-kind";
 import { getSetting, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +34,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   // 소모임 일정: 그 소모임 회원 + 참관자만 보여 준다(참관자·회장 표시).
   const club = (event.club ?? "").trim();
   const observers = readObservers(event.observers);
+  // 탈퇴회원도 이 일정에 참석 신청한 기록이 있으면 남겨 보여 준다(회원구분에 "탈퇴회원")
   const rows = members
-    .filter((m) => inClubOrObserver(event, m))
+    .filter((m) => inClubOrObserver(event, m) || (isWithdrawn(m.kind) && applies.some((x) => x.eventId === id && x.memberId === m.id)))
     .map((m) => {
       const seat = club ? memberClubs(m).find((c) => c.name === club) : undefined;
       const a = applies.find((x) => x.eventId === id && x.memberId === m.id);

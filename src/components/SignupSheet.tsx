@@ -27,7 +27,8 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ name: string; renamed: boolean; type: Type } | null>(null);
+  // rejoin: 탈퇴한 회원의 재가입 신청(관리자가 확인한 뒤에 로그인할 수 있다)
+  const [result, setResult] = useState<{ name: string; renamed: boolean; type: Type; rejoin?: boolean } | null>(null);
 
   function close() {
     onClose();
@@ -51,7 +52,7 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) return setError(d.error ?? "신청하지 못했어요. 잠시 후 다시 해 주세요.");
-      setResult({ name: d.name, renamed: !!d.renamed, type });
+      setResult({ name: d.name, renamed: !!d.renamed, type, rejoin: !!d.rejoin });
       setStep("done");
     } catch {
       setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
@@ -67,7 +68,9 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
       <button className="btn white" type="button" disabled={busy} style={{ flex: 1 }} onClick={() => send("observe")}>참관요청</button>
     </div>
   ) : step === "done" && result ? (
-    <button className="btn" type="button" onClick={() => { onDone(result.name); close(); }}>로그인하러 가기</button>
+    result.rejoin
+      ? <button className="btn" type="button" onClick={close}>닫기</button>
+      : <button className="btn" type="button" onClick={() => { onDone(result.name); close(); }}>로그인하러 가기</button>
   ) : null;
 
   return (
@@ -117,7 +120,13 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
         </div>
       )}
 
-      {step === "done" && result && (
+      {step === "done" && result?.rejoin && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }} role="status">
+          <p style={{ margin: 0, font: `700 ${fs(18)}/1.45 var(--display)` }}>재가입 신청을 보냈어요 ✓</p>
+          <span>예전에 탈퇴한 기록이 있어요. 관리자가 확인하고 탈퇴를 해지하면 “{result.name}” 이름으로 다시 로그인할 수 있어요(초대코드: 전화번호 뒷자리 4자리).</span>
+        </div>
+      )}
+      {step === "done" && result && !result.rejoin && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }} role="status">
           <p style={{ margin: 0, font: `700 ${fs(18)}/1.45 var(--display)` }}>{result.type === "member" ? "회원요청" : "참관요청"}을 보냈어요 ✓</p>
           <span>관리자가 확인하면 알려 드려요. 지금도 로그인할 수 있어요.</span>

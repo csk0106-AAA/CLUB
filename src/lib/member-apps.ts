@@ -17,10 +17,22 @@ import type { Row } from "./store/types";
 //    - 비이수(아니요) + 참관요청 → 참관회원 → 승인: 참관회원 유지
 //    반려: 회원구분은 그대로, 명단에 "반려" 표시(사유 확인), 신청자는 로그인 후 안내에서 사유를 본다.
 //    로그인 자체를 막으려면 관리자가 회원 명단에서 지운다.
-export type AppType = "member" | "observe";
-export type AppStatus = "pending" | "approved" | "rejected";
-export const TYPE_LABEL: Record<AppType, string> = { member: "회원 요청", observe: "참관 요청" };
-export const SOURCE_LABEL: Record<string, string> = { signup: "로그인 화면 신청", settings: "설정에서 정회원 신청" };
+// 3) 설정 › 회원 권한 수정(type change, 신청할 때 바뀔 구분 toKind 를 정해 둔다)
+//    정회원·준회원 → 대기회원 / 대기회원 → 정회원 / 참관회원 → 준회원. 승인하면 바로 바뀌고 프로필 북 공개도 맞춘다.
+// 4) 탈퇴회원 재가입(type rejoin): 로그인 화면 신청에서 탈퇴회원과 전화번호가 같으면 새 회원을 만들지 않고 이 신청을 남긴다.
+//    승인하면 탈퇴 해지(탈퇴 전 구분으로).
+export type AppType = "member" | "observe" | "change" | "rejoin";
+export type AppStatus = "pending" | "approved" | "rejected" | "canceled";
+export const TYPE_LABEL: Record<AppType, string> = { member: "회원 요청", observe: "참관 요청", change: "구분 변경 요청", rejoin: "탈퇴회원 재가입" };
+export const SOURCE_LABEL: Record<string, string> = { signup: "로그인 화면 신청", settings: "설정에서 정회원 신청", change: "설정 › 회원 권한 수정", rejoin: "로그인 화면 재가입 신청" };
+
+// 설정 › 회원 권한 수정에서 지금 구분으로 요청할 수 있는 변경(없으면 null)
+export function changeOption(kind?: string): { to: string; label: string } | null {
+  if (kind === FULL || kind === ASSOCIATE) return { to: WAITING, label: "대기회원으로 변경" };
+  if (isWaiting(kind)) return { to: FULL, label: "정회원 신청" };
+  if (isObserverKind(kind)) return { to: ASSOCIATE, label: "준회원 신청" };
+  return null;
+}
 
 // 정회원 필수 조건(관리자 › 모임설정 › 모임개요). 로그인 화면 신청에서 "○○ 하셨나요?"로 묻는다.
 export const REQ_KEY = "fullMemberRequirement";
@@ -37,7 +49,8 @@ export function startKind(edu: boolean, type: AppType): string {
 }
 
 // 승인하면 바뀔 회원구분(""이면 그대로 둔다)
-export function targetKind(app: { type?: string; edu?: string }): string {
+export function targetKind(app: { type?: string; edu?: string; toKind?: string }): string {
+  if (app.type === "change") return app.toKind ?? "";
   if (app.type !== "member") return "";
   return app.edu === "yes" ? FULL : ASSOCIATE;
 }
@@ -76,6 +89,7 @@ export type MyApply = {
   // 최근 신청: 대기 중·반려·승인(안 본 결과)
   app: { id: string; type: string; status: string; reason: string; toKind: string; createdAt: string; handledAt: string; unseen: boolean } | null;
   canApply: boolean; // 설정에서 정회원(준회원) 신청을 보낼 수 있는지
+  change: { to: string; label: string } | null; // 설정 › 회원 권한 수정에서 요청할 수 있는 변경
   needProfile: boolean; // 로그인 화면으로 신청한 회원이 아직 성별·회사명·직책을 안 적었는지
 };
 export function myApply(me: Row, apps: Row[]): MyApply {
@@ -94,6 +108,7 @@ export function myApply(me: Row, apps: Row[]): MyApply {
     } : null,
     // 대기회원이고 처리 중인 신청이 없을 때(반려 뒤 다시 신청 가능). 참관회원(비이수자)도 회원(준회원) 신청을 할 수 있다.
     canApply: (waiting || isObserverKind(me.kind)) && !pending,
+    change: pending ? null : changeOption(me.kind),
     // 승인 전·반려 때는 띄우지 않는다(승인되어 회원구분이 확정된 뒤 안내)
     needProfile: fromSignup && a?.status === "approved" && (!me.gender || !me.company || !me.title),
   };

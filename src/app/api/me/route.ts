@@ -7,11 +7,12 @@ import { getLists, memberClubs } from "@/lib/lists";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { mergePrefs, prefsInput, readPrefs } from "@/lib/prefs";
 import { headClubsOf } from "@/lib/published";
+import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-type Member = { id?: string; perms?: string; position?: string; avatar?: string; gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string; bookHidden?: string };
+type Member = { id?: string; kind?: string; perms?: string; position?: string; avatar?: string; gender?: string; company?: string; title?: string; phone?: string; clubs?: string; prefs?: string; extra?: string; bookHidden?: string };
 type Sess = { name: string; perms: string[]; admin: boolean };
 
 async function view(s: Sess, me: Member) {
@@ -36,7 +37,8 @@ async function view(s: Sess, me: Member) {
     clubOptions: clubs,
     prefs: readPrefs(me.prefs),
     avatar: avatarView(me),
-    bookShown: me.bookHidden !== "true", // 프로필 북에 내가 보이는지
+    bookShown: me.bookHidden !== "true", // 프로필 북 노출을 켰는지(대기회원·참관회원은 켜도 안 보인다)
+    kind: me.kind ?? "",
   };
 }
 
@@ -132,7 +134,12 @@ export async function PATCH(req: Request) {
     const next = JSON.stringify(mergePrefs(readPrefs(me.prefs), d.prefs));
     if (next !== me.prefs) upd.prefs = next;
   }
-  if (d.bookShown !== undefined) upd.bookHidden = d.bookShown ? "" : "true";
+  if (d.bookShown !== undefined) {
+    if (d.bookShown && isGuest(me.kind)) {
+      return bad(`${me.kind || "대기회원"}은 프로필북에 공개되지 않습니다. “설정”에서 관리자에게 회원 업데이트를 요청하세요.`, 409);
+    }
+    upd.bookHidden = d.bookShown ? "" : "true";
+  }
 
   if (edits.length) extra = withSelfEdits(extra, edits);
   if (extra !== me.extra) upd.extra = extra ?? "";

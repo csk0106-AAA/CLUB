@@ -136,6 +136,9 @@ export const TABS = {
   MemberApps: [
     "id", "memberId", "name", "phone", "type", "edu", "recommenders", "message", "source", "status", "reason",
     "createdAt", "handledBy", "handledAt", "fromKind", "toKind", "resultSeen",
+    // type change(회원 권한 수정: 신청할 때 toKind 를 정해 둔다) | rejoin(탈퇴회원 재가입), status 에 canceled(탈퇴로 취소) 추가
+    // note: 관리자에게 보일 안내(예: 탈퇴회원과 이름·전화번호가 같아요)
+    "note",
   ],
   DevRequests: ["id", "templateId", "eventId", "title", "detail", "why", "requestedBy", "status", "createdAt", "updatedAt"],
 } as const;

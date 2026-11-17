@@ -40,9 +40,11 @@ export async function createSession(s: Session): Promise<void> {
 }
 
 // 회원 명단의 지금 이름(못 찾거나 읽지 못하면 토큰의 이름)
-async function currentName(mid: string, fallback: string): Promise<string> {
+// 지금 회원 명단의 이름. 탈퇴한 회원이면 null(다른 기기에 남은 로그인도 끝낸다).
+async function currentName(mid: string, fallback: string): Promise<string | null> {
   try {
     const m = (await (await getStore()).list("Members")).find((x) => x.id === mid);
+    if (m?.kind === "탈퇴회원") return null;
     return m?.name || fallback;
   } catch {
     return fallback;
@@ -56,11 +58,13 @@ export async function getSession(): Promise<Session | null> {
   try {
     const { payload } = await jwtVerify(token, secret());
     const mid = String(payload.mid);
+    const name = await currentName(mid, String(payload.name));
+    if (name === null) return null; // 탈퇴한 회원
     return {
       mid,
       // 이름은 로그인할 때 토큰에 넣은 값이 아니라 지금 회원 명단의 이름(관리자가 회원 명단에서 이름을 바꾸면 바로 반영).
       // 회원은 id 로 찾으므로 이름을 바꿔도 로그인·권한·기록은 그대로다.
-      name: await currentName(mid, String(payload.name)),
+      name,
       // 예전 권한 이름(fees·minutes·activities·board)은 지금 이름으로 바꿔 읽는다
       perms: Array.isArray(payload.perms) ? normPerms((payload.perms as unknown[]).map(String)) : [],
       admin: payload.admin === true,

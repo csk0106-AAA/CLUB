@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
+import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 
 // 회원 여러 명의 표시 값을 한 번에 바꾼다(회원명단에서).
@@ -20,6 +21,10 @@ export async function POST(req: Request) {
   const { ids, bookShown, edu } = parsed.data;
   const s = await getStore();
   const want = new Set(ids);
+  // 대기회원·참관회원·탈퇴회원은 프로필 북에 공개할 수 없다(회원구분을 먼저 바꾼다)
+  if (bookShown === true && (await s.list("Members")).some((m) => want.has(m.id) && isGuest(m.kind))) {
+    return bad("회원정보를 수정해야 합니다. 대기회원·참관회원은 프로필 북에 공개되지 않아요.", 409);
+  }
   let changed = 0;
   for (const m of await s.list("Members")) {
     if (!want.has(m.id)) continue;

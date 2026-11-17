@@ -10,9 +10,10 @@ import { fs } from "@/lib/fs";
 
 type App = {
   id: string; memberId: string; name: string; removed: boolean; phone: string; kind: string;
-  type: "member" | "observe"; typeLabel: string; edu: string; recommenders: string; message: string;
-  source: string; sourceLabel: string; status: "pending" | "approved" | "rejected"; reason: string;
+  type: "member" | "observe" | "change" | "rejoin"; typeLabel: string; edu: string; recommenders: string; message: string;
+  source: string; sourceLabel: string; status: "pending" | "approved" | "rejected" | "canceled"; reason: string;
   createdAt: string; handledAt: string; handledByName: string; toKind: string; fromKind: string;
+  note?: string; // 관리자에게 보일 안내(탈퇴회원과 이름·전화번호 대조 결과 등)
 };
 type Note = { tone: "bad" | "info"; text: string } | null;
 type View = "pending" | "done";
@@ -21,10 +22,13 @@ const STATUS: Record<string, { text: string; tone: string }> = {
   pending: { text: "승인 전", tone: "warn" },
   approved: { text: "승인", tone: "ok" },
   rejected: { text: "반려", tone: "bad" },
+  canceled: { text: "취소(탈퇴)", tone: "gray" },
 };
 
 // 승인하면 어떻게 되는지 한 줄
 function outcome(a: App): string {
+  if (a.type === "rejoin") return "승인하면 탈퇴를 해지해요. 탈퇴 전 회원구분으로 돌아가고 다시 로그인할 수 있어요.";
+  if (a.type === "change") return `승인하면 ${a.kind || "지금 구분"} → ${a.toKind}으로 바로 바뀌고, 프로필 북 공개도 ${a.toKind === "대기회원" ? "해제돼요" : "켜져요"}.`;
   if (a.type === "observe") return `승인하면 ${a.kind || "지금 구분"}을 유지하고 “승인 전” 표시만 사라져요. 일정은 참관 신청으로 참석해요.`;
   return `승인하면 ${a.toKind}으로 바뀌어요.`;
 }
@@ -85,6 +89,8 @@ function MemberApps() {
             </ul>
           </li>
           <li><b>반려</b>: 사유를 적으면 회원 명단에 “반려” 표시가 붙고(누르면 사유), 신청한 분은 로그인 뒤 안내에서 사유를 봐요. 로그인까지 막으려면 <Link href="/admin/members">회원 명단</Link>에서 지워 주세요.</li>
+          <li><b>회원 권한 수정</b>(설정): 정회원·준회원 → <b>대기회원으로 변경</b>, 대기회원 → <b>정회원 신청</b>, 참관회원 → <b>준회원 신청</b>. 승인하면 바로 바뀌고 프로필 북 공개도 맞춰져요(대기회원은 해제, 정회원·준회원은 공개).</li>
+          <li><b>회원 탈퇴</b>(설정): 회원구분이 “탈퇴회원”이 되고 로그인할 수 없어요. 명단과 활동 기록은 남아요. 로그인 화면에서 <b>재가입</b>을 신청하면 이름·전화번호를 탈퇴회원과 대조해 여기에 알려 줘요(승인 = 탈퇴 해지). 회원 수정의 “탈퇴 해지”로도 되돌릴 수 있어요.</li>
           <li><b>명예회원</b>은 신청 없이 관리자가 회원 명단에서 등록하고, 메모에 등록 사유를 적어요.</li>
         </ol>
       </details>
@@ -118,6 +124,7 @@ function MemberApps() {
                   <><dt>처리</dt><dd style={{ margin: 0 }}>{fmtDate(a.handledAt)}{a.handledByName ? ` · ${a.handledByName} 님` : ""}{a.status === "approved" && a.fromKind !== a.toKind ? ` · ${a.fromKind} → ${a.toKind}` : ""}</dd></>
                 )}
               </dl>
+              {a.note && <div className="msg info" role="note" style={{ margin: 0, fontSize: fs(13) }}>⚠ {a.note}</div>}
               {a.message && <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: fs(14) }}>“{a.message}”</span>}
               {a.status === "rejected" && <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: fs(14) }}>반려 사유: {a.reason || "(적지 않음)"}</span>}
               {a.status === "pending" && (

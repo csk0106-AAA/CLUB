@@ -7,13 +7,13 @@ import { AdminIssues } from "@/components/AdminIssues";
 import { Avatar, type AvatarView } from "@/components/Avatars";
 import { DateField } from "@/components/DateField";
 import { Popup } from "@/components/Popup";
-import { api, fmtDate } from "@/lib/client";
+import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { eduYes, norm, parseMembers, splitTable } from "@/lib/member-import";
 import { downloadXlsx, excelDate, readXlsx } from "@/lib/xlsx";
 import { DragHandle, useDragSort } from "@/components/DragSort";
 import { phoneKey } from "@/lib/phone";
 import { ageGroupOf, normBirth } from "@/lib/age-group";
-import { inBook } from "@/lib/member-kind";
+import { inBook, isGuest, isWithdrawn } from "@/lib/member-kind";
 import { typePhone } from "@/lib/phone";
 import { fs } from "@/lib/fs";
 
@@ -28,7 +28,8 @@ type M = {
   edu?: boolean; // 교육 이수
   memo?: string; // 관리자 메모(명예회원 등록 사유 등)
   bookHidden?: string; // "true"면 프로필 북에 안 나옴
-  app?: AppMark; // 회원 신청 "승인 전" / "반려"
+  app?: AppMark;
+  history?: { at: string; what: string; from?: string; to?: string; by?: string; note?: string }[]; // 가입·탈퇴 이력 // 회원 신청 "승인 전" / "반려"
 };
 type AppMark = { id: string; status: "pending" | "rejected"; type: string; reason: string; at: string } | null;
 type Seat = { name: string; role: string };
@@ -292,6 +293,18 @@ function Members() {
     load();
   }
 
+  // 탈퇴 해지: 탈퇴 전 회원구분으로 되돌려 다시 로그인·활동할 수 있게
+  async function restore(m: M) {
+    if (!window.confirm(`${m.name} 님의 탈퇴를 해지할까요?\n탈퇴 전 회원구분으로 돌아가고 다시 로그인할 수 있어요.`)) return;
+    setBusy(true);
+    const r = await api<{ kind: string }>(`/api/admin/members/${m.id}/restore`, { body: {} });
+    setBusy(false);
+    if (!r.ok) return setFormErr(r.error);
+    reset();
+    setMsg({ tone: "info", text: `${m.name} 님의 탈퇴를 해지했어요. 회원구분: ${r.data.kind}` });
+    load();
+  }
+
   async function remove(m: M) {
     if (!window.confirm(`${m.name} 님을 명단에서 지울까요?\n지우면 되돌릴 수 없고, 이 회원은 더 이상 로그인할 수 없어요.`)) return;
     const r = await api(`/api/admin/members/${m.id}`, { method: "DELETE" });
@@ -338,6 +351,8 @@ function Members() {
     load();
   }
   const toggleBook = (m: M) => {
+    // 대기회원·참관회원·탈퇴회원은 프로필 북에 공개할 수 없다(체크는 꺼진 모양)
+    if (isGuest(m.kind)) return void window.alert("회원정보를 수정해야 합니다.\n대기회원·참관회원은 프로필 북에 공개되지 않아요. 회원구분을 먼저 바꿔 주세요.");
     const show = m.bookHidden === "true";
     setFlags([m.id], { bookShown: show }, () => `${m.name} 님을 프로필 북${show ? "에 보이게 했어요" : "에서 뺐어요"}.`);
   };
@@ -605,8 +620,12 @@ function Members() {
             {/* 프로필 북 노출: 회원이 설정에서도 바꿀 수 있다 */}
             <span className="l" id="f-book-l">프로필 북 노출</span>
             <label className="row" style={{ gap: 8, minHeight: 46, cursor: "pointer" }}>
-              <input type="checkbox" checked={form.bookShown} onChange={(e) => set("bookShown", e.target.checked)} style={{ width: 20, height: 20 }} aria-labelledby="f-book-l" />
-              <span>{form.bookShown ? "프로필 북에 보여요" : "프로필 북에서 빠져요"}</span>
+              <input type="checkbox" checked={form.bookShown && !isGuest(form.kind)} style={{ width: 20, height: 20 }} aria-labelledby="f-book-l"
+                onChange={(e) => {
+                  if (e.target.checked && isGuest(form.kind)) return void window.alert("회원정보를 수정해야 합니다.\n대기회원·참관회원은 프로필 북에 공개되지 않아요. 회원구분을 먼저 바꿔 주세요.");
+                  set("bookShown", e.target.checked);
+                }} />
+              <span>{isGuest(form.kind) ? `${form.kind}은 프로필 북에 안 나와요` : form.bookShown ? "프로필 북에 보여요" : "프로필 북에서 빠져요"}</span>
             </label>
           </div>
           {custom.map((c, i) => (
@@ -627,6 +646,39 @@ function Members() {
           </span>
         </div>
         <span className="small">관리자 권한은 직책·소모임 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
+        {editId && (() => {
+          const m = list?.find((x) => x.id === editId);
+          if (!m) return null;
+          const h = m.history ?? [];
+          return (
+            <>
+              {/* 탈퇴회원: 탈퇴 해지(다시 로그인·활동) */}
+              {isWithdrawn(m.kind) && (
+                <div className="msg bad" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span>탈퇴한 회원이에요. 로그인할 수 없고 프로필 북에서 빠져 있어요. 활동 기록(투표·설문·퀴즈·댓글·일정·활동)은 남아 있어요.</span>
+                  <button className="btn" type="button" disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 44 }} onClick={() => restore(m)}>탈퇴 해지</button>
+                </div>
+              )}
+              {/* 가입·탈퇴 이력 */}
+              <details open={isWithdrawn(m.kind) || undefined}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>가입·탈퇴 이력 ({h.length})</summary>
+                {h.length === 0 ? (
+                  <span className="small" style={{ display: "block", marginTop: 6 }}>남은 기록이 없어요(관리자가 명단에 직접 넣은 회원은 신청 기록이 없어요).</span>
+                ) : (
+                  <ol style={{ margin: "6px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+                    {h.map((x, i) => (
+                      <li key={i} className="small" style={{ overflowWrap: "anywhere" }}>
+                        <b style={{ color: "var(--ink)" }}>{x.what}</b> · {fmtDateTime(x.at)}
+                        {x.from && x.to ? ` · ${x.from} → ${x.to}` : x.from ? ` · 이전 구분: ${x.from}` : x.to ? ` · ${x.to}` : ""}
+                        {x.by ? ` · 처리: ${x.by}` : ""}{x.note ? ` · ${x.note}` : ""}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </details>
+            </>
+          );
+        })()}
         <div className="row">
           <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "auto", minWidth: 160 }}>{editId ? "저장" : "추가"}</button>
           <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>
@@ -682,9 +734,9 @@ function Members() {
                 {m.app && <span style={{ marginTop: 2 }}><AppLabel app={m.app} /></span>}
               </span>
               {/* 한 줄: 회원구분 · 프로필 북 체크 · 수정 · 삭제 */}
-              <span className="chip line" style={{ flex: "none", whiteSpace: "nowrap" }}>{m.kind || "미지정"}</span>
+              <span className={`chip ${isWithdrawn(m.kind) ? "red" : "line"}`} style={{ flex: "none", whiteSpace: "nowrap" }}>{m.kind || "미지정"}</span>
               <label className="small" title="프로필 북 노출" style={{ display: "inline-flex", alignItems: "center", gap: 2, cursor: "pointer", whiteSpace: "nowrap", fontSize: fs(11), flex: "none" }}>
-                <input type="checkbox" checked={m.bookHidden !== "true"} onChange={() => toggleBook(m)} style={{ width: 16, height: 16 }} aria-label={`${m.name} 프로필 북 노출`} />북
+                <input type="checkbox" checked={inBook(m)} onChange={() => toggleBook(m)} style={{ width: 16, height: 16 }} aria-label={`${m.name} 프로필 북 노출`} />북
               </label>
               <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" style={{ width: 36, marginRight: -8 }} onClick={() => startEdit(m)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
@@ -709,10 +761,10 @@ function Members() {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><DragHandle plain {...dsWide.handle(i, m.name)} />{m.no}</span>
                   </td>
                   <td><b>{m.name}</b></td>
-                  <td>{m.kind}{m.kind && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}{m.app && <> {m.app && <AppLabel app={m.app} />}</>}</td>
+                  <td>{isWithdrawn(m.kind) ? <span className="chip red">탈퇴회원</span> : m.kind}{m.kind && !isWithdrawn(m.kind) && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}{m.app && <> {m.app && <AppLabel app={m.app} />}</>}</td>
                   <td className="center">{m.edu ? "YES" : "NO"}</td>
                   <td className="center">
-                    <input type="checkbox" checked={m.bookHidden !== "true"} onChange={() => toggleBook(m)} style={{ width: 18, height: 18, cursor: "pointer" }}
+                    <input type="checkbox" checked={inBook(m)} onChange={() => toggleBook(m)} style={{ width: 18, height: 18, cursor: "pointer" }}
                       aria-label={`${m.name} 프로필 북 노출`} title={m.bookHidden === "true" ? "프로필 북에서 빠져 있어요" : "프로필 북에 보여요"} />
                   </td>
                   <td>{m.position}{m.position && !lists.positions.includes(m.position) && <span className="small">{OFF}</span>}</td>

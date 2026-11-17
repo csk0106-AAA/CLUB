@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clearFails, createSession, lockedFor, recordFail } from "@/lib/auth";
 import { loginCode } from "@/lib/login-code";
+import { isWithdrawn } from "@/lib/member-kind";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 
@@ -50,6 +51,10 @@ async function login(memberId: string, code: string) {
   }
 
   clearFails(memberId);
+  // 탈퇴한 회원은 로그인할 수 없다(재가입 신청 → 관리자가 승인하거나 회원 수정에서 탈퇴 해지)
+  if (isWithdrawn(member.kind)) {
+    return NextResponse.json({ error: "탈퇴한 회원이에요. 다시 활동하려면 로그인 화면 아래 ‘회원 또는 참관 신청’으로 재가입을 신청해 주세요. 관리자가 확인하면 다시 로그인할 수 있어요.", withdrawn: true }, { status: 403 });
+  }
   // 최종 권한 = 직책·소모임 직책 그룹 권한 ∪ 개인 권한 (lib/perms.ts)
   const perms = effectivePerms(member, await getPermGroups());
   await createSession({ mid: member.id, name: member.name, perms, admin: false });

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { type AvatarView } from "@/components/Avatars";
 import { MainHeader } from "@/components/MainHeader";
 import { AvatarPicker } from "@/components/AvatarPicker";
-import { ApplyBox } from "@/components/ApplyBox";
+import { MemberStatusBox } from "@/components/MemberStatusBox";
 import { MemberTabs } from "@/components/MemberTabs";
 import { applyScale, applyTheme, readScale, SCALE_DEFAULT, SCALE_LEVELS, SCALE_NARROW_MAX } from "@/components/ThemeBoot";
 import { api } from "@/lib/client";
@@ -22,6 +22,7 @@ type Me = {
   prefs: Prefs;
   avatar: AvatarView;
   bookShown?: boolean; // 프로필 북에 내가 보이는지
+  kind?: string; // 회원구분(대기회원·참관회원은 프로필 북에 안 나온다)
 };
 
 const THEME_OPTS: { v: Prefs["theme"]; label: string; sub: string }[] = [
@@ -228,8 +229,8 @@ export default function SettingsPage() {
             {note && <div className={`msg ${note.tone === "bad" ? "bad" : "ok"}`}>{note.text}</div>}
           </div>
 
-          {/* 회원 신청(대기회원·참관회원, 신청 대기·반려일 때만 보임) */}
-          <ApplyBox />
+          {/* 회원 정보: 회원구분·신청 상태, 회원 권한 수정(승인 요청), 회원 탈퇴 */}
+          <MemberStatusBox />
 
           {/* 1. 내 정보 */}
           <section className="sect" aria-labelledby="s-me">
@@ -394,9 +395,19 @@ export default function SettingsPage() {
           {/* 프로필 북 노출 */}
           <section className="sect" aria-labelledby="s-book">
             <h2 id="s-book">프로필 북</h2>
-            <Switch id="sw-book" label="프로필 북에 나를 보이기" on={me.bookShown !== false} disabled={saving}
-              sub={me.bookShown !== false ? "다른 회원이 프로필 북에서 내 이름·소개를 볼 수 있어요." : "프로필 북에서 빠져 있어요. 다른 회원에게 내 이름·소개가 보이지 않아요(나에게만 보여요)."}
-              onChange={(v) => patch({ bookShown: v }, v ? "프로필 북에 보이게 했어요." : "프로필 북에서 뺐어요.")} />
+            {(() => {
+              // 대기회원·참관회원은 프로필 북에 나오지 않는다: 스위치는 꺼진 모양, 켜려고 하면 알림만
+              const guest = ["대기회원", "회원대기", "참관회원", "행사참관"].includes(me.kind ?? "");
+              const on = !guest && me.bookShown !== false;
+              return (
+                <Switch id="sw-book" label="프로필 북에 나를 보이기" on={on} disabled={saving}
+                  sub={guest ? `${me.kind}은 프로필 북에 공개되지 않아요. 위 “회원 권한 수정”으로 관리자에게 회원 업데이트를 요청하세요.` : on ? "다른 회원이 프로필 북에서 내 이름·소개를 볼 수 있어요." : "프로필 북에서 빠져 있어요. 다른 회원에게 내 이름·소개가 보이지 않아요(나에게만 보여요)."}
+                  onChange={(v) => {
+                    if (guest && v) return window.alert(`${me.kind}은 프로필북에 공개되지 않습니다. “설정”에서 관리자에게 회원 업데이트를 요청하세요.`);
+                    patch({ bookShown: v }, v ? "프로필 북에 보이게 했어요." : "프로필 북에서 뺐어요.");
+                  }} />
+              );
+            })()}
           </section>
 
           {/* 3. 받을 알림 */}

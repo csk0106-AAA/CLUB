@@ -9,6 +9,8 @@ import { tidyPhone } from "@/lib/phone";
 import { fieldValues, readFields, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
 import { sortByNo } from "@/lib/member-order";
+import { ensureWithdrawnKind, timelineOf } from "@/lib/member-history";
+import { isWithdrawn } from "@/lib/member-kind";
 import { checkPermChange, effectivePerms, getPermGroups, groupKeysOf, isAllNow, isPermsCustom, ownPerms } from "@/lib/perms";
 import { clubsJson, memberBody } from "@/lib/schemas";
 import { getStore } from "@/lib/store";
@@ -23,8 +25,12 @@ export async function GET() {
   const s = await getStore();
   const groups = await getPermGroups();
   const apps = await s.list("MemberApps");
+  const all = await s.list("Members");
+  const nameOf = (id: string) => all.find((x) => x.id === id)?.name ?? "";
+  // 탈퇴회원이 있으면 회원구분 목록에 "탈퇴회원"을 더해 둔다(필터·회원구분 화면에 보이게)
+  if (all.some((m) => isWithdrawn(m.kind))) await ensureWithdrawnKind();
   // 관리자가 끌어서 정한 순서(NO)대로
-  const members = sortByNo(await s.list("Members")).map(({ extra: _extra, prefs: _prefs, ...m }) => (void _prefs, {
+  const members = sortByNo(all).map(({ extra: _extra, prefs: _prefs, ...m }) => (void _prefs, {
     ...m,
     avatar: avatarView(m),
     perms: ownPerms(m), // 개인 권한(예전 권한 이름은 지금 이름으로)
@@ -38,6 +44,7 @@ export async function GET() {
     birth: tidyBirth(m.birth), // 예전에 700101·1970.1.1 처럼 넣은 생년월일도 1970-01-01 로 보여 준다
     ageGroup: memberAgeGroup(m), // 생년월일이 있으면 생년월일로 계산
     app: appMark(apps, m.id), // 회원 신청 "승인 전" / "반려"(사유)
+    history: timelineOf({ ...m, extra: _extra ?? "" }, apps, nameOf), // 가입·탈퇴 이력(회원 수정 화면)
   }));
   return NextResponse.json({ members });
 }

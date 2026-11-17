@@ -7,11 +7,15 @@ export const OBSERVER = "참관회원";
 export const FULL = "정회원";
 export const ASSOCIATE = "준회원";
 
+// 탈퇴회원: 회원이 설정에서 직접 탈퇴한 분. 로그인할 수 없고(재가입 신청), 관리자 명단에는 남는다(기록 보존).
+export const WITHDRAWN = "탈퇴회원";
+
 export const isWaiting = (kind?: string) => kind === WAITING || kind === "회원대기";
 export const isObserverKind = (kind?: string) => kind === OBSERVER || kind === "행사참관";
-// 아직 활동 회원이 아닌 분(대기회원·참관회원): 회원 명단 기반 목록(프로필 북·회비·공개 대상 고르기 등)에서 빠지고,
+export const isWithdrawn = (kind?: string) => kind === WITHDRAWN;
+// 아직 활동 회원이 아닌 분(대기회원·참관회원)과 탈퇴회원: 회원 명단 기반 목록(프로필 북·회비·공개 대상 고르기 등)에서 빠지고,
 // 일정에는 참관 신청이 승인된 일정(그 일정의 참관자)에만 참석할 수 있다.
-export const isGuest = (kind?: string) => isWaiting(kind) || isObserverKind(kind);
+export const isGuest = (kind?: string) => isWaiting(kind) || isObserverKind(kind) || isWithdrawn(kind);
 
 // 프로필 북에 나오는 회원: 대기회원·참관회원이 아니고, 프로필 북 노출을 끄지 않은 회원
 export const bookHidden = (m: { bookHidden?: string }) => m.bookHidden === "true";

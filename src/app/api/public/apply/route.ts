@@ -3,6 +3,8 @@ import { z } from "zod";
 import { bad } from "@/lib/api";
 import { lockedFor, recordFail } from "@/lib/auth";
 import { appHandlers, startKind, type AppType } from "@/lib/member-apps";
+import { withHistory } from "@/lib/member-history";
+import { isWithdrawn } from "@/lib/member-kind";
 import { uniqueName } from "@/lib/member-name";
 import { formatPhone, phoneDigits } from "@/lib/phone";
 import { pushTo } from "@/lib/push";
@@ -44,6 +46,31 @@ export async function POST(req: Request) {
   const s = await getStore();
   const members = await s.list("Members");
   const digits = phoneDigits(phone);
+  const now = new Date().toISOString();
+  // 탈퇴회원 재가입: 전화번호가 같은 탈퇴회원이 있으면 새 회원을 만들지 않고 재가입 신청을 남긴다(관리자가 승인하면 탈퇴 해지)
+  const gone = members.find((m) => isWithdrawn(m.kind) && phoneDigits(m.phone) === digits);
+  if (gone) {
+    const apps = await s.list("MemberApps");
+    if (apps.some((a) => a.memberId === gone.id && a.type === "rejoin" && a.status === "pending")) {
+      return bad("이미 재가입을 신청했어요. 관리자가 확인하면 다시 로그인할 수 있어요.", 409);
+    }
+    const sameName = (gone.name ?? "").trim() === d.name.trim();
+    await s.insert("MemberApps", {
+      memberId: gone.id, name: d.name, phone, type: "rejoin", edu: d.edu ? "yes" : "no", recommenders: d.edu ? "" : d.recommenders,
+      message: d.message, source: "rejoin", status: "pending", reason: "", createdAt: now,
+      handledBy: "", handledAt: "", fromKind: gone.kind ?? "", toKind: "", resultSeen: "",
+      note: sameName
+        ? `탈퇴회원 “${gone.name}” 님과 이름·전화번호가 모두 같아요. 승인하면 탈퇴가 해지돼요.`
+        : `탈퇴회원 “${gone.name}” 님과 전화번호가 같아요(신청 이름: “${d.name}”). 같은 분인지 확인해 주세요.`,
+    });
+    await s.update("Members", gone.id, { extra: withHistory(gone.extra, { at: now, what: "재가입 신청", note: sameName ? "" : `신청 이름: ${d.name}` }) });
+    try {
+      await pushTo(await appHandlers(members), "alerts");
+    } catch (e) {
+      console.error("[push] 재가입 신청 알림 실패", e);
+    }
+    return NextResponse.json({ ok: true, name: gone.name, rejoin: true });
+  }
   // 이미 등록된 전화번호면 새로 만들지 않는다(같은 사람이 두 번 신청하거나 명단에 이미 있는 경우)
   // (누구의 번호인지는 알려 주지 않는다)
   if (members.some((m) => phoneDigits(m.phone) === digits)) {
@@ -56,10 +83,13 @@ export async function POST(req: Request) {
   const member = await s.insert("Members", {
     no, name, kind: startKind(d.edu, type), phone, edu: d.edu ? "true" : "", perms: "", clubs: "", extra: "",
   });
+  // 이름이 같은 탈퇴회원이 있으면(전화번호는 다름) 관리자가 알 수 있게 적어 둔다
+  const gName = members.find((m) => isWithdrawn(m.kind) && (m.name ?? "").trim() === d.name.trim());
   await s.insert("MemberApps", {
     memberId: member.id, name, phone, type, edu: d.edu ? "yes" : "no", recommenders: d.edu ? "" : d.recommenders,
-    message: d.message, source: "signup", status: "pending", reason: "", createdAt: new Date().toISOString(),
+    message: d.message, source: "signup", status: "pending", reason: "", createdAt: now,
     handledBy: "", handledAt: "", fromKind: "", toKind: "", resultSeen: "",
+    note: gName ? `탈퇴회원 “${gName.name}” 님과 이름이 같아요(전화번호는 달라요). 같은 분이면 이 신청은 반려하고 그 회원을 회원 수정에서 ‘탈퇴 해지’해 주세요.` : "",
   });
   try {
     await pushTo(await appHandlers(members), "alerts");

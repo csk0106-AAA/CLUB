@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { targetKind } from "@/lib/member-apps";
+import { targetKind, TYPE_LABEL, type AppType } from "@/lib/member-apps";
+import { restorePatch, withHistory } from "@/lib/member-history";
+import { isGuest, isWithdrawn } from "@/lib/member-kind";
 import { checkPermChange, getPermGroups, isAllNow } from "@/lib/perms";
 import { pushTo } from "@/lib/push";
 import { getStore } from "@/lib/store";
@@ -32,8 +34,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!who) return bad("신청한 회원이 명단에 없어요(지운 회원). 반려로 처리해 주세요.", decision === "approve" ? 404 : 400);
 
   const now = new Date().toISOString();
+  const byName = members.find((m) => m.id === g.s.mid)?.name ?? "";
   let toKind = "";
-  if (decision === "approve") {
+  if (decision === "approve" && a.type === "rejoin") {
+    // 탈퇴회원 재가입: 탈퇴 해지(탈퇴 전 구분·프로필 북 노출로)
+    if (!isWithdrawn(who.kind)) return bad("이미 탈퇴회원이 아니에요. 반려로 처리해 주세요.", 409);
+    const p = restorePatch(who, now, byName, "재가입 신청 승인");
+    toKind = p.kind;
+    await s.update("Members", who.id, p);
+  } else if (decision === "approve") {
     toKind = targetKind(a);
     if (toKind && toKind !== who.kind) {
       // 회원구분 그룹에 권한이 걸려 있으면 "모든 권한" 관리자만 바꿀 수 있다(회원 명단 수정과 같은 규칙)
@@ -41,7 +50,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       const after = members.map((m) => (m.id === who.id ? { ...m, kind: toKind } : m));
       const err = checkPermChange(members, groups, after, groups, await isAllNow(g.s.mid));
       if (err) return bad(err[0], err[1]);
-      await s.update("Members", who.id, { kind: toKind });
+      const patch: Record<string, string> = { kind: toKind, extra: withHistory(who.extra, { at: now, what: "구분 변경", from: who.kind ?? "", to: toKind, by: byName, note: TYPE_LABEL[a.type as AppType] ?? "" }) };
+      // 회원 권한 수정: 대기회원이 되면 프로필 북에서 빼고, 정회원·준회원이 되면 프로필 북에 공개한다
+      if (a.type === "change") patch.bookHidden = isGuest(toKind) ? "true" : "";
+      await s.update("Members", who.id, patch);
     }
   }
   await s.update("MemberApps", id, {

@@ -39,7 +39,8 @@ export async function GET() {
         handledByName: a.handledBy ? name(a.handledBy) : "",
         // 승인하면 바뀔 회원구분(대기 중) / 승인 때 바뀐 회원구분(처리됨)
         toKind: a.status === "approved" ? a.toKind ?? "" : targetKind(a),
-        fromKind: a.fromKind ?? "",
+        fromKind: a.status === "pending" ? m?.kind ?? "" : a.fromKind ?? "",
+        note: a.note ?? "", // 예: 탈퇴회원과 이름·전화번호가 같아요
       };
     });
   return NextResponse.json({ apps: list });
