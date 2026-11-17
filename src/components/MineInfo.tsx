@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ScheduleView, type SchedItem } from "./ScheduleBoard";
+import { Fold } from "./EventInfoCard";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -55,21 +56,20 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
   return (
     <>
       {d.groups.length === 0 && waitCard("조편성", (d.groupsPending ?? 0) > 0 ? "조편성을 준비하고 있어요. 확정되면 여기에 보여요." : "조 편성 전이에요. 정해지면 여기에 보여요.")}
+      {/* 조편성: 한 줄 요약(내 조 2팀 · 조원 5명), 조원 명단·전체 조는 펼쳐서 보기 */}
       {d.groups.map((g, i) => (
-        <section key={i} className="card" aria-label={`조편성 ${g.title}`} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {head(`조편성 · ${g.title}`)}
-          {g.team ? (
+        <Fold key={i} title={`조편성 · ${g.title}`}
+          summary={g.team ? `내 조 ${g.team} · 조원 ${g.members.length}명` : `내가 들어간 조는 없어요 · 전체 ${g.teams?.length ?? 0}개 조`}>
+          {g.team && (
             <>
               <div className="row" style={{ flexWrap: "wrap" }}><span className="small">내 조</span><span className="pill blue">{g.team}</span></div>
               <People label="조원" names={g.members} />
             </>
-          ) : (
-            <div className="small">내가 들어간 조는 없어요.</div>
           )}
           {(g.teams?.length ?? 0) > 0 && (
-            <details open={!g.team}>
-              <summary className="small" style={{ cursor: "pointer" }}>전체 조 보기 ({g.teams!.length}개 조)</summary>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: g.team ? "1px solid var(--line)" : undefined, paddingTop: g.team ? 8 : 0 }}>
+              <span className="small">전체 조 ({g.teams!.length}개 조)</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {g.teams!.map((t, j) => (
                   <div key={j} style={{ borderTop: j ? "1px solid var(--line)" : undefined, paddingTop: j ? 6 : 0 }}>
                     <span className={`pill ${t.mine ? "blue" : "gray"}`}>{t.name}</span>{" "}
@@ -77,9 +77,9 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
                   </div>
                 ))}
               </div>
-            </details>
+            </div>
           )}
-        </section>
+        </Fold>
       ))}
       {!d.carpool.published && waitCard("카풀", "카풀 배정 전이에요. 정해지면 여기에 보여요.")}
       {d.carpool.published && d.carpool.mine.length === 0 && waitCard("카풀", "배정된 카풀이 없어요.")}
