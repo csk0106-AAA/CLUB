@@ -455,14 +455,21 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                   {s.hostButton}
                 </button>
               ))}
-              <button className="btn red" type="button" disabled={!a.live.active || !a.live.unlocked} style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "lock" })}>잠그기</button>
-              <button className="btn white" type="button" disabled={!a.live.active} style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "reset" })}>처음으로</button>
+              {/* 잠그기 ↔ 다시 열기: 잠그면 회원 화면이 대기 화면, 다시 열면 지금 단계의 회원 화면이 다시 켜진다 */}
+              {a.live.active && a.live.unlocked ? (
+                <button className="btn red" type="button" title="회원 휴대폰 화면을 대기 화면으로 잠가요(투표 마감 등). 단계는 그대로예요." style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "lock" })}>잠그기</button>
+              ) : (
+                <button className="btn" type="button" disabled={!a.live.active} title="잠근 회원 화면을 지금 단계로 다시 켜요" style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: a.live.stepKey })}>다시 열기</button>
+              )}
+              <button className="btn white" type="button" disabled={!a.live.active} title="현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로)" style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }}
+                onClick={() => window.confirm("현장 진행을 처음으로 되돌릴까요?\n진행 중인 단계가 비워지고 회원 화면이 잠겨요. 이미 받은 투표·답은 지우지 않아요.") && live(a, { action: "reset" })}>처음으로</button>
             </div>
             <div className="msg info" role="status">
               {a.live.active
                 ? `현재 단계: ${a.live.stepLabel} · 회원 화면: ${a.live.unlocked ? `켜짐 (${SCREEN_LABELS[a.live.memberScreen] ?? a.live.memberScreen})` : "잠김 (대기 화면)"}`
                 : "현장 진행 전이에요. 버튼을 누르면 회원 화면이 템플릿 설정대로 바뀌어요."}
             </div>
+            <span className="small" style={{ fontSize: fs(12) }}>잠그기: 회원 화면을 대기 화면으로 잠가요(다시 열기로 지금 단계를 다시 켜요) · 처음으로: 현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로).</span>
           </div>
         </div>
       ))}

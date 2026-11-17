@@ -95,11 +95,16 @@ export default function HostHome() {
                     {s.label}
                   </button>
                 ))}
-                {it.live.unlocked && (
+                {it.live.unlocked ? (
                   <button type="button" className="btn red" disabled={busy} style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: 17 }} onClick={() => step(it, { action: "lock" })}>
                     회원 화면 잠그기
                   </button>
-                )}
+                ) : it.live.stepKey ? (
+                  // 잠근 뒤: 지금 단계의 회원 화면을 다시 켠다
+                  <button type="button" className="btn" disabled={busy} style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: 17 }} onClick={() => step(it, { action: "activate", step: it.live.stepKey })}>
+                    회원 화면 다시 열기
+                  </button>
+                ) : null}
               </div>
             </div>
           )}
