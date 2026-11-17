@@ -282,15 +282,6 @@ function Members() {
     const show = m.bookHidden === "true";
     setFlags([m.id], { bookShown: show }, () => `${m.name} 님을 프로필 북${show ? "에 보이게 했어요" : "에서 뺐어요"}.`);
   };
-  // 교육 이수 일괄 YES: 지금 보이는 회원 중 명예회원은 빼고
-  function eduAllYes() {
-    const targets = shown.filter((m) => m.kind !== "명예회원");
-    const todo = targets.filter((m) => !m.edu);
-    const honor = shown.length - targets.length;
-    if (!todo.length) return setMsg({ tone: "info", text: "바꿀 회원이 없어요. 보이는 회원(명예회원 제외)은 모두 이미 YES예요." });
-    if (!window.confirm(`“${requirement || "교육과정 수료"}” 하셨나요?\n보이는 회원 ${targets.length}명(명예회원 ${honor}명 제외) 중 NO 인 ${todo.length}명을 모두 YES 로 바꿀까요?`)) return;
-    setFlags(todo.map((m) => m.id), { edu: true }, (n) => `${n}명의 교육 이수를 YES 로 바꿨어요.${honor ? ` 명예회원 ${honor}명은 그대로 두었어요.` : ""}`);
-  }
   const dsNarrow = useDragSort(shown, reorder);
   const dsWide = useDragSort(shown, reorder);
 
@@ -388,7 +379,6 @@ function Members() {
       </div>
       {/* 엑셀: 지금 보이는 명단 내려받기 · 올리기 양식 받기 · 양식에 적은 파일 올리기(미리보기 후 추가) */}
       <div className="row" role="group" aria-label="엑셀" style={{ gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <button className="mini" type="button" disabled={!shown.length} onClick={eduAllYes} style={{ fontSize: fs(12) }} title="지금 보이는 회원 중 명예회원을 뺀 회원의 교육 이수를 YES 로">교육이수 일괄 YES</button>
         <span className="small" style={{ fontSize: fs(12) }}>엑셀</span>
         <button className="mini" type="button" disabled={!shown.length} onClick={downloadMembers} style={{ fontSize: fs(12) }}>⬇ 회원정보 다운로드{filter.length ? `(${shown.length}명)` : ""}</button>
         <button className="mini" type="button" onClick={downloadTemplate} style={{ fontSize: fs(12) }}>⬇ 양식 받기</button>
