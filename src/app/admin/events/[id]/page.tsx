@@ -297,6 +297,12 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const setRules = (next: FeeRule[]) => setEv({ ...ev, feeRules: next });
   const supports = ev.supports ?? [];
   const setSupports = (next: Support[]) => setEv({ ...ev, supports: next });
+  // 지원금은 고치거나 지우면 바로 저장한다(회비사용 장부와 같은 기록이라 저장 버튼을 기다리지 않는다). 금액이 빈 줄은 빼고 저장.
+  async function saveSupports(next: Support[]) {
+    const r = await api(`/api/admin/events/${id}`, { method: "PATCH", body: { supports: next.filter((x) => x.amount) } });
+    if (!r.ok) setMsg({ tone: "bad", text: `지원금을 저장하지 못했어요. ${r.error}` });
+  }
+  const setAndSaveSupports = (next: Support[]) => { setSupports(next); saveSupports(next); };
   // 참석일 선택지: 일정 기간(최대 7일)
   const dayCount = (() => {
     const a = ev.startsAt?.slice(0, 10);
@@ -575,7 +581,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "member", name: "", amount: "", memo: "" }])}>+ 회원 지원</button>
             </div>
             <span className="small" style={{ fontSize: fs(12) }}>
-              <b>모임회비 지원</b>: 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 연·월회비에서 이 일정에 쓰는 돈. <b>회원 지원</b>: 회원이 따로 내는 지원금(지원한 회원 이름을 적어요). 지원금은 총 예산에 더해져요.
+              <b>모임회비 지원</b>(회비사용 장부에 지출로 함께 기록): 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 연·월회비에서 이 일정에 쓰는 돈. <b>회원 지원</b>: 회원이 따로 내는 지원금(지원한 회원 이름을 적어요). 지원금은 총 예산에 더해져요.
             </span>
             {supports.length > 0 && (
               <div className="tblw">
@@ -588,18 +594,18 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                       return (
                         <tr key={i}>
                           <td data-label="구분">
-                            <select className="field" style={sel} aria-label={`${i + 1}번째 지원금 구분`} value={x.kind} onChange={(e) => upd({ kind: e.target.value as Support["kind"] })}>
+                            <select className="field" style={sel} aria-label={`${i + 1}번째 지원금 구분`} value={x.kind} onChange={(e) => setAndSaveSupports(supports.map((y, j) => (j === i ? { ...y, kind: e.target.value as Support["kind"] } : y)))}>
                               <option value="dues">{SUPPORT_LABEL.dues}</option>
                               <option value="member">{SUPPORT_LABEL.member}</option>
                             </select>
                           </td>
                           <td data-label="지원한 분·내용">
                             <input className="field" style={sel} list={x.kind === "member" ? "sup-members" : undefined} maxLength={60} aria-label={`${i + 1}번째 지원한 분·내용`}
-                              placeholder={x.kind === "member" ? "회원 이름" : `예) ${new Date().getFullYear()} 연회비`} value={x.name} onChange={(e) => upd({ name: e.target.value })} />
+                              placeholder={x.kind === "member" ? "회원 이름" : `예) ${new Date().getFullYear()} 연회비`} value={x.name} onChange={(e) => upd({ name: e.target.value })} onBlur={() => saveSupports(supports)} />
                           </td>
-                          <td data-label="금액(원)"><input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 지원금 금액`} value={x.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} /></td>
-                          <td data-label="메모"><input className="field" style={sel} maxLength={200} aria-label={`${i + 1}번째 지원금 메모`} value={x.memo} onChange={(e) => upd({ memo: e.target.value })} /></td>
-                          <td className="act" data-label=""><button className="mini danger" type="button" aria-label={`${i + 1}번째 지원금 삭제`} onClick={() => setSupports(supports.filter((_, j) => j !== i))}>삭제</button></td>
+                          <td data-label="금액(원)"><input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 지원금 금액`} value={x.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} onBlur={() => saveSupports(supports)} /></td>
+                          <td data-label="메모"><input className="field" style={sel} maxLength={200} aria-label={`${i + 1}번째 지원금 메모`} value={x.memo} onChange={(e) => upd({ memo: e.target.value })} onBlur={() => saveSupports(supports)} /></td>
+                          <td className="act" data-label=""><button className="mini danger" type="button" aria-label={`${i + 1}번째 지원금 삭제`} onClick={() => { if (!x.amount || window.confirm(`${x.name || SUPPORT_LABEL[x.kind]} ${won(x.amount)} 지원금을 지울까요?${x.kind === "dues" ? "\n모임설정 › 회비사용 장부에서도 함께 빠져요." : ""}`)) setAndSaveSupports(supports.filter((_, j) => j !== i)); }}>삭제</button></td>
                         </tr>
                       );
                     })}
