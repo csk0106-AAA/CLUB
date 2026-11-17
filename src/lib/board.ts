@@ -130,6 +130,8 @@ export const surveyData = z
       .min(1, "질문을 하나 이상 넣어 주세요.")
       .max(30),
     deadline,
+    // 결과 보기: audience(공개 대상 전체, 답한 뒤나 마감 뒤) | author(작성자·편집자만). 전체권한자는 항상 본다. 예전 설문은 author.
+    resultsTo: z.enum(["audience", "author"]).default("author"),
   })
   .refine((v) => v.questions.every((q) => q.type === "text" || q.options.length >= 2), { message: "고르는 질문에는 보기를 두 개 이상 넣어 주세요." })
   .refine((v) => new Set(v.questions.map((q) => q.id)).size === v.questions.length, { message: "질문 번호가 겹쳐요." });
@@ -140,6 +142,8 @@ export const pollData = z.object({
   multi: z.boolean().default(false),
   deadline,
   anonymous: z.boolean().default(false),
+  // 결과 보기: audience(공개 대상 전체, 투표한 뒤나 마감 뒤) | author(작성자·편집자만). 전체권한자는 항상 본다. 예전 투표는 audience.
+  resultsTo: z.enum(["audience", "author"]).default("audience"),
 });
 export type PollData = z.infer<typeof pollData>;
 
@@ -150,6 +154,12 @@ export const quizData = z.object({
     .max(30),
 });
 export type QuizData = z.infer<typeof quizData>;
+
+export type ResultsTo = "audience" | "author";
+export const RESULTS_TO_LABEL: Record<ResultsTo, string> = { audience: "공개 대상 전체", author: "작성자만" };
+// 예전 글처럼 값이 없으면: 투표는 공개 대상 전체, 설문은 작성자만(지금까지의 방식)
+export const resultsToOf = (form: "poll" | "survey", d: { resultsTo?: string }): ResultsTo =>
+  d.resultsTo === "audience" || d.resultsTo === "author" ? d.resultsTo : form === "poll" ? "audience" : "author";
 
 const empty = z.object({}).strip();
 
@@ -199,12 +209,13 @@ export const DEFAULT_TEMPLATES: Record<Form, Template> = {
         { id: "q2", type: "text", q: "하고 싶은 말을 자유롭게 적어 주세요.", options: [] },
       ],
       deadline: "",
+      resultsTo: "author",
     },
   },
   poll: {
     title: "투표",
     body: "",
-    data: { options: ["찬성", "반대"], multi: false, deadline: "", anonymous: false },
+    data: { options: ["찬성", "반대"], multi: false, deadline: "", anonymous: false, resultsTo: "audience" },
   },
   quiz: {
     title: "OX 퀴즈",

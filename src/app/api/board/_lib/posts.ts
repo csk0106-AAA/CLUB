@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { ALL, audienceInput, audienceLabel, type Audience } from "@/lib/audience";
-import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, talkable, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, resultsToOf, talkable, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { memberClubs } from "@/lib/lists";
@@ -158,10 +158,12 @@ export async function detail(me: Me, p: Row) {
     if (!full) data.rules = [];
   }
 
+  // 결과 보기 범위: full(작성자·편집자·전체권한자)은 항상. "공개 대상 전체"면 다른 회원은 답한 뒤나 마감 뒤에 집계만 본다.
   if (form === "poll") {
     const d = data as unknown as PollData;
     const closed = isClosed(d.deadline ?? "");
-    if (full || mine || closed) {
+    const toAll = resultsToOf("poll", d) === "audience";
+    if (full || (toAll && (mine || closed))) {
       const counts = (d.options ?? []).map(() => 0);
       const voters: { name: string; choices: number[] }[] = [];
       for (const r of responses) {
@@ -173,18 +175,24 @@ export async function detail(me: Me, p: Row) {
     }
   }
 
-  if (form === "survey" && full) {
+  if (form === "survey") {
     const d = data as unknown as SurveyData;
-    const people = responses.map((r) => ({ name: names.get(r.memberId) ?? "", at: r.createdAt, answers: parseJson<SurveyAns>(r.answer, { answers: {} }).answers }));
-    results = {
-      total: responses.length,
-      questions: (d.questions ?? []).map((q) => ({
-        id: q.id,
-        counts: q.type === "text" ? null : q.options.map((_, i) => people.filter((x) => Array.isArray(x.answers[q.id]) && (x.answers[q.id] as number[]).includes(i)).length),
-        texts: q.type === "text" ? people.map((x) => ({ name: x.name, text: String(x.answers[q.id] ?? "") })).filter((x) => x.text) : null,
-      })),
-      people,
-    };
+    const toAll = resultsToOf("survey", d) === "audience";
+    if (full || (toAll && (mine || isClosed(d.deadline ?? "")))) {
+      const people = responses.map((r) => ({ name: names.get(r.memberId) ?? "", at: r.createdAt, answers: parseJson<SurveyAns>(r.answer, { answers: {} }).answers }));
+      results = {
+        total: responses.length,
+        questions: (d.questions ?? []).map((q) => ({
+          id: q.id,
+          counts: q.type === "text" ? null : q.options.map((_, i) => people.filter((x) => Array.isArray(x.answers[q.id]) && (x.answers[q.id] as number[]).includes(i)).length),
+          // 공개 대상 회원에게는 주관식 답을 이름 없이
+          texts: q.type === "text" ? people.map((x) => ({ name: full ? x.name : "", text: String(x.answers[q.id] ?? "") })).filter((x) => x.text) : null,
+        })),
+        // 사람별 답은 작성자·편집자·전체권한자만
+        people: full ? people : [],
+        full,
+      };
+    }
   }
 
   if (form === "quiz") {

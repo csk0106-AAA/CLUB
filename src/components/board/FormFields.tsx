@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { DateField } from "@/components/DateField";
 import { DragHandle, useDragSort } from "@/components/DragSort";
-import { AGENDA_STATUS, DEFAULT_TEMPLATES, type Form, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { AGENDA_STATUS, DEFAULT_TEMPLATES, resultsToOf, type Form, type MinutesData, type PollData, type QuizData, type ResultsTo, type SurveyData } from "@/lib/board";
 import { won } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -177,6 +177,26 @@ function Options({ list, onChange, label }: { list: string[]; onChange: (l: stri
   );
 }
 
+/* ───── 결과 보기 범위(투표·설문) ───── */
+function ResultsTo({ form, value, onChange }: { form: "poll" | "survey"; value: ResultsTo; onChange: (v: ResultsTo) => void }) {
+  const what = form === "poll" ? "투표" : "답";
+  const opts: { k: ResultsTo; l: string; d: string }[] = [
+    { k: "audience", l: "공개 대상 전체", d: `공개 대상 회원은 ${what}한 뒤(또는 마감 뒤)에 집계를 볼 수 있어요.${form === "survey" ? " 주관식 답은 이름 없이 보여요." : ""}` },
+    { k: "author", l: "작성자만", d: "작성자(와 편집자)만 결과를 볼 수 있어요." },
+  ];
+  return (
+    <div className="card" style={{ ...col, gap: 6, background: "var(--soft)" }}>
+      <b>결과 보기</b>
+      <div className="checks" role="radiogroup" aria-label="결과 보기">
+        {opts.map((o) => (
+          <label key={o.k}><input type="radio" name={`results-to-${form}`} checked={value === o.k} onChange={() => onChange(o.k)} />{o.l}</label>
+        ))}
+      </div>
+      <span className="small">{opts.find((o) => o.k === value)?.d} 전체권한자는 언제나 결과를 볼 수 있어요. 누가 무엇을 골랐는지(사람별 답)는 작성자·전체권한자만 봐요.</span>
+    </div>
+  );
+}
+
 /* ───── 설문 ───── */
 const Q_TYPES = [{ k: "single", l: "하나 고르기" }, { k: "multi", l: "여러 개 고르기" }, { k: "text", l: "주관식" }] as const;
 
@@ -215,7 +235,8 @@ function SurveyFields({ data, onChange }: P<SurveyData>) {
         <button className="btn white" type="button" style={addBtn} onClick={() => onChange({ ...data, questions: [...qs, { id: `q${Date.now().toString(36)}`, type: "single", q: "", options: ["", ""] }] })}>+ 질문 추가</button>
       )}
       <Deadline label="마감 일시" value={data.deadline} onChange={(v) => onChange({ ...data, deadline: v })} />
-      <span className="hint">마감 전까지는 회원이 답을 고칠 수 있어요. 결과는 작성자와 관리자만 볼 수 있어요.</span>
+      <ResultsTo form="survey" value={resultsToOf("survey", data)} onChange={(v) => onChange({ ...data, resultsTo: v })} />
+      <span className="hint">마감 전까지는 회원이 답을 고칠 수 있어요.</span>
     </section>
   );
 }
@@ -232,7 +253,8 @@ function PollFields({ data, onChange }: P<PollData>) {
       </div>
       <div className="checks"><label><input type="checkbox" checked={data.anonymous} onChange={(e) => onChange({ ...data, anonymous: e.target.checked })} />익명 투표 (누가 골랐는지 아무도 볼 수 없어요)</label></div>
       <Deadline label="마감 일시" value={data.deadline} onChange={(v) => onChange({ ...data, deadline: v })} />
-      <span className="hint">회원은 투표한 뒤에 결과를 볼 수 있어요. 마감 전까지는 다시 고를 수 있어요.</span>
+      <ResultsTo form="poll" value={resultsToOf("poll", data)} onChange={(v) => onChange({ ...data, resultsTo: v })} />
+      <span className="hint">마감 전까지는 다시 고를 수 있어요.</span>
     </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmtSize, isClosed, type FeeSnap, type FileMeta, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { fmtSize, isClosed, resultsToOf, type FeeSnap, type FileMeta, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
 import { agendaTone } from "./FormFields";
 import { fileUrl, type PostDetail } from "./types";
@@ -190,6 +190,7 @@ export function PollBox({ id, data, mine, results, onDone }: { id: string; data:
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>투표</b>
         <span className="pill gray">{data.multi ? "여러 개 고르기" : "하나만 고르기"}</span>
         {data.anonymous && <span className="pill gray">익명</span>}
+        <span className="pill gray">결과: {resultsToOf("poll", data) === "audience" ? "공개 대상 전체" : "작성자만"}</span>
         {data.deadline && <span className={`pill ${closed ? "bad" : "warn"}`}>{closed ? "마감됨" : `${fmtDateTime(data.deadline)} 마감`}</span>}
       </div>
       {voting ? (
@@ -215,7 +216,7 @@ export function PollBox({ id, data, mine, results, onDone }: { id: string; data:
           <span className="small">{results.total}명이 투표했어요.{data.multi ? " (여러 개를 고를 수 있어서 합이 100%를 넘을 수 있어요)" : ""}</span>
           {results.voters && results.voters.length > 0 && (
             <details>
-              <summary className="small" style={{ cursor: "pointer" }}>누가 무엇을 골랐나요 (작성자·관리자만)</summary>
+              <summary className="small" style={{ cursor: "pointer" }}>누가 무엇을 골랐나요 (작성자·전체권한자만)</summary>
               <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
                 {results.voters.map((v, i) => <li key={i} className="small">{v.name}: {v.choices.map((c) => data.options[c]).join(", ")}</li>)}
               </ul>
@@ -224,7 +225,10 @@ export function PollBox({ id, data, mine, results, onDone }: { id: string; data:
           {mine && !closed && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => setAgain(true)}>다시 고르기</button>}
         </>
       )}
-      {!voting && !results && closed && <span className="small">마감된 투표예요.</span>}
+      {!voting && !results && (
+        <span className="small">{closed ? "마감된 투표예요. " : mine ? "투표했어요 ✓ " : ""}결과는 작성자만 볼 수 있어요.</span>
+      )}
+      {!voting && !results && mine && !closed && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => setAgain(true)}>다시 고르기</button>}
     </section>
   );
 }
@@ -234,6 +238,7 @@ type SurveyResults = {
   total: number;
   questions: { id: string; counts: number[] | null; texts: { name: string; text: string }[] | null }[];
   people: { name: string; at: string; answers: Record<string, string | number[]> }[];
+  full?: boolean; // 작성자·편집자·전체권한자(이름·사람별 답까지)
 } | null;
 export function SurveyBox({ id, data, mine, results, onDone }: { id: string; data: SurveyData; mine: { answers: Record<string, string | number[]> } | null; results: SurveyResults; onDone: () => void }) {
   const closed = isClosed(data.deadline ?? "");
@@ -259,6 +264,7 @@ export function SurveyBox({ id, data, mine, results, onDone }: { id: string; dat
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>{mine && !edit ? "내 답" : "설문"}</b>
           {data.deadline && <span className={`pill ${closed ? "bad" : "warn"}`}>{closed ? "마감됨" : `${fmtDateTime(data.deadline)} 마감`}</span>}
           {mine && <span className="pill ok">답했어요 ✓</span>}
+          <span className="pill gray">결과: {resultsToOf("survey", data) === "audience" ? "공개 대상 전체" : "작성자만"}</span>
         </div>
         {data.questions.map((q, qi) => {
           const a = ans[q.id];
@@ -288,17 +294,19 @@ export function SurveyBox({ id, data, mine, results, onDone }: { id: string; dat
         {edit && !closed && <button className="btn" type="button" disabled={busy} onClick={send}>{busy ? "보내는 중…" : mine ? "답 고치기" : "답 보내기"}</button>}
         {!edit && !closed && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => setEdit(true)}>답 고치기</button>}
         {closed && !mine && <span className="small">마감된 설문이에요.</span>}
+        {!results && (mine || closed) && <span className="small">결과는 작성자만 볼 수 있어요.</span>}
+        {!results && !mine && !closed && resultsToOf("survey", data) === "audience" && <span className="small">답을 보내면 결과를 볼 수 있어요.</span>}
       </section>
       {results && (
         <section className="card" aria-label="설문 결과" style={col}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>결과 · {results.total}명 응답 (작성자·관리자만)</b>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>결과 · {results.total}명 응답{results.full === false ? "" : " (작성자·전체권한자 화면)"}</b>
           {data.questions.map((q, qi) => {
             const r = results.questions.find((x) => x.id === q.id);
             return (
               <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <b>{qi + 1}. {q.q}</b>
                 {r?.counts && r.counts.map((n, i) => <Bar key={i} label={q.options[i]} n={n} total={results.total} />)}
-                {r?.texts && (r.texts.length ? <ul style={{ margin: 0, paddingLeft: 20 }}>{r.texts.map((x, i) => <li key={i} style={{ whiteSpace: "pre-wrap" }}><span className="small">{x.name}:</span> {x.text}</li>)}</ul> : <span className="small">아직 답이 없어요.</span>)}
+                {r?.texts && (r.texts.length ? <ul style={{ margin: 0, paddingLeft: 20 }}>{r.texts.map((x, i) => <li key={i} style={{ whiteSpace: "pre-wrap" }}>{x.name && <span className="small">{x.name}: </span>}{x.text}</li>)}</ul> : <span className="small">아직 답이 없어요.</span>)}
               </div>
             );
           })}
