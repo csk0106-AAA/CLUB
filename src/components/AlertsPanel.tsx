@@ -20,6 +20,8 @@ export type AlertsData = {
   posts: { id: string; title: string; at: string; fresh: "new" | "updated" }[]; toHandle: Handle[]; mine: Mine[];
   comments: CommentAlert[]; count: number;
   memberApps?: number; // 승인 전 회원 신청(관리자에게만)
+  // 확인 전 입금 알림(회원이 "입금했어요"를 누름) — 그 일정을 관리하는 사람에게만
+  payNotices?: { id: string; eventId: string; eventName: string; club: string; memberName: string; at: string }[];
 };
 
 const STATUS: Record<string, { text: string; tone: string }> = {
@@ -87,7 +89,8 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   if (!d) return error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>;
   const comments = d.comments ?? [];
   const apps = d.memberApps ?? 0;
-  const empty = apps === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
+  const pays = d.payNotices ?? [];
+  const empty = apps === 0 && pays.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -100,6 +103,18 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
           <span className="ic" aria-hidden="true">!</span>
           <span className="grow"><b>승인 전 회원 신청 {apps}건</b><span className="t">회원관리 › 회원신청관리에서 확인하기 ›</span></span>
         </Link>
+      )}
+
+      {pays.length > 0 && (
+        <section aria-labelledby="al-pay" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 id="al-pay" style={sectionTitle}>확인할 입금 알림 {pays.length}건</h3>
+          {pays.map((p) => (
+            <Link key={p.id} href={`/admin/events/${p.eventId}?tab=fee${p.club ? `&club=${encodeURIComponent(p.club)}` : ""}`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+              <span className="ic" aria-hidden="true">₩</span>
+              <span className="grow"><b>{p.memberName} 님이 입금했다고 알렸어요</b><span className="t">{p.eventName} · {fmtDate(p.at)} · 회비 탭에서 입금 확인하기 ›</span></span>
+            </Link>
+          ))}
+        </section>
       )}
 
       {d.toHandle.length > 0 && (

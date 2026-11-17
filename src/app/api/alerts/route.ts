@@ -5,7 +5,7 @@ import { handlersOf, isAttend, reqLabel } from "@/lib/club-requests";
 import { getPermGroups } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
-import { commentAlertsOf, countsOf, isAppHandler, markCommentsSeen, markSeen, newPostsOf } from "@/lib/unread";
+import { commentAlertsOf, countsOf, isAppHandler, markCommentsSeen, markSeen, newPostsOf, payNoticesFor } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +48,16 @@ export async function GET() {
   const memberApps = isAppHandler(members.find((m) => m.id === mid), groups)
     ? (await s.list("MemberApps")).filter((a) => a.status === "pending").length
     : 0;
+  // 확인 전 입금 알림(회원이 "입금했어요"를 누름) — 이 사람이 확인할 수 있는 일정만
+  const payNotices = payNoticesFor(members.find((m) => m.id === mid), events, await s.list("EventApplies"), groups)
+    .sort((a, b) => (b.payNotice ?? "").localeCompare(a.payNotice ?? ""))
+    .map((a) => {
+      const ev = events.find((e) => e.id === a.eventId);
+      return { id: a.id, eventId: a.eventId, eventName: ev?.name ?? "", club: ev?.club ?? "", memberName: name(a.memberId), at: a.payNotice };
+    });
   return NextResponse.json({
     memberApps,
+    payNotices,
     // 종 아이콘 숫자에 센 글 전부(홈 목록의 "새 글"/"수정됨" 표시와 같은 글)
     posts: posts.map((p) => ({ id: p.id, title: p.title, at: p.updatedAt || p.createdAt, fresh: p.fresh })),
     toHandle,

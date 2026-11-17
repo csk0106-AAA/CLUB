@@ -4,6 +4,9 @@ import { bad, guard } from "@/lib/api";
 import { memberFee, payable } from "@/lib/fee";
 import { eventJoinable, eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
+import { getPermGroups } from "@/lib/perms";
+import { pushTo } from "@/lib/push";
+import { payNoticesFor } from "@/lib/unread";
 
 const body = z.object({ sent: z.boolean() });
 
@@ -27,6 +30,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!a || a.answer !== "참석" || !mf.known || !payable(mf.amount)) return bad("참석을 신청한 일정의 회비만 알릴 수 있어요.");
   if (a.paid === "true") return bad("이미 입금이 확인됐어요.");
 
-  await s.update("EventApplies", a.id, { payNotice: parsed.data.sent ? new Date().toISOString() : "" });
+  const at = parsed.data.sent ? new Date().toISOString() : "";
+  await s.update("EventApplies", a.id, { payNotice: at });
+  // 입금 알림을 보내면: 이 일정의 회비를 확인할 사람(일정 관리자·작성자·편집자)에게 종·휴대폰 알림
+  if (at) {
+    try {
+      const groups = await getPermGroups();
+      const handlers = members.filter((m) => m.id !== g.s.mid && payNoticesFor(m, [e], [{ ...a, payNotice: at }], groups).length > 0).map((m) => m.id);
+      if (handlers.length) await pushTo(handlers, "alerts", g.s.mid);
+    } catch (err) {
+      console.error("[push] 입금 알림 실패", err);
+    }
+  }
   return NextResponse.json({ ok: true });
 }

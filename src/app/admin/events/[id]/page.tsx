@@ -87,10 +87,10 @@ function MiniStats({ items }: { items: [string, string, string?, string?][] }) {
   );
 }
 
-function Detail({ id }: { id: string }) {
+function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const [ev, setEv] = useState<Ev | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
-  const [tab, setTab] = useState("over");
+  const [tab, setTab] = useState(initialTab && TABS.some((t) => t.key === initialTab) ? initialTab : "over");
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [canEditActs, setCanEditActs] = useState(false);
@@ -656,8 +656,9 @@ function Detail({ id }: { id: string }) {
 }
 
 // 소모임관리에서 열면(?club=소모임) 위쪽 메뉴도 소모임관리로 둔다.
-export default function EventDetailAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ club?: string }> }) {
+// ?tab=fee 처럼 열 탭을 정할 수 있다(종 알림의 입금 알림에서 회비 탭으로 바로).
+export default function EventDetailAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ club?: string; tab?: string }> }) {
   const { id } = use(params);
-  const { club } = use(searchParams);
-  return <AdminGate mode={club ? "clubs" : "events"} active={club ? "/admin/clubs" : undefined} need={["events", "evMain", "evClub", "clubs"]}><Detail id={id} /></AdminGate>;
+  const { club, tab } = use(searchParams);
+  return <AdminGate mode={club ? "clubs" : "events"} active={club ? "/admin/clubs" : undefined} need={["events", "evMain", "evClub", "clubs"]}><Detail id={id} initialTab={tab} /></AdminGate>;
 }
