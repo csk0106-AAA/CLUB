@@ -40,6 +40,6 @@ export function families(rows: TplRow[]): Family[] {
 export function sourceLabel(t: Pick<TplRow, "origin" | "config">): string {
   if (t.config.sourceEvent) return `${t.config.sourceEvent.name}_${t.config.sourceEvent.date}에서 수정`;
   if (t.origin === "version") return "템플릿 화면에서 수정";
-  if (t.origin === "default") return "기본 템플릿";
+  if (t.origin === "default") return "템플릿";
   return "새로 만든 템플릿";
 }

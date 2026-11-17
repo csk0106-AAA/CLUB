@@ -111,7 +111,7 @@ function Templates() {
               {fam && fam.latest.id === t.id && count > 1 && <span className="pill warn">최신</span>}
             </>
           ) : (
-            <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "기본 템플릿" : "내가 만든 템플릿"} v1</span>
+            <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "템플릿" : "내가 만든 템플릿"} v1</span>
           )}
           <span className="grow" />
           {!inVersions && fam && count >= 2 && (

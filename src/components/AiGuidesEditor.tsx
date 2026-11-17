@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
+import { DragHandle, useDragSort } from "./DragSort";
 import { SaveChoices, type SaveMode } from "./SaveChoices";
 
 type Point = { key: string; label: string; hint: string };
@@ -38,6 +39,8 @@ export function AiGuidesEditor(props: {
   const [common, setCommon] = useState(initial.aiCommon ?? "");
   const hasInterview = keys.includes("followup");
   const [questions, setQuestions] = useState<string[]>(initial.interview?.questions ?? []);
+  // 인터뷰 질문 순서: ⠿ 손잡이를 끌어서(또는 손잡이에서 위·아래 방향키로) 바꾼다
+  const qds = useDragSort(questions, setQuestions);
   const [followUpMax, setFollowUpMax] = useState<number>(initial.interview?.followUpMax ?? 6);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -88,9 +91,11 @@ export function AiGuidesEditor(props: {
       {info && hasInterview && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <b style={{ font: `700 ${fs(16)} var(--display)` }}>AI 인터뷰 질문</b>
-          <span className="small">회원에게 차례로 묻는 필수 질문이에요. 다 답하면 AI가 후속 질문을 최대 개수만큼 이어서 물어요.</span>
+          <span className="small">회원에게 차례로 묻는 필수 질문이에요. 다 답하면 AI가 후속 질문을 최대 개수만큼 이어서 물어요.{questions.length > 1 ? " 왼쪽 ⠿ 손잡이를 끌어서 묻는 순서를 바꿔요." : ""}</span>
           {questions.map((q, i) => (
-            <div key={i} className="row">
+            <div key={i} ref={qds.item(i).ref} className="row" style={qds.item(i).style}>
+              {questions.length > 1 && <DragHandle {...qds.handle(i, `질문 ${i + 1}`)} />}
+              <span className="num small" aria-hidden="true" style={{ minWidth: 18, textAlign: "right" }}>{i + 1}</span>
               <input className="field" aria-label={`질문 ${i + 1}`} maxLength={300} value={q} onChange={(e) => setQuestions(questions.map((x, j) => (j === i ? e.target.value : x)))} />
               <button className="mini danger" type="button" disabled={questions.length <= 1} style={{ minHeight: 46 }} onClick={() => setQuestions(questions.filter((_, j) => j !== i))}>삭제</button>
             </div>
