@@ -1,5 +1,6 @@
 "use client";
 
+import { CoverPicker } from "@/components/CoverPicker";
 import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
@@ -94,6 +95,7 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
         <span className="small">입금계좌는 “회비관리” 탭에서 정해요.</span>
         <button className="btn" type="submit" disabled={busy || !infoDirty} style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14), alignSelf: "flex-end" }}>{busy ? "저장 중…" : infoDirty ? "개요 저장" : "저장됨"}</button>
       </form>}
+      {part === "info" && <CoverPicker scope="club" club={name} title="클럽 대표사진" help={`이 클럽 일정에 회원이 올린 사진이 한 장도 없을 때 홈의 다가오는 일정·타임라인 카드에 이 사진이 보여요(없으면 모임 대표사진). 사진을 고르면 바로 저장돼요.`} />}
       {part === "info" && data.canEditRoles && <NameBox name={name} count={data.roster.length} />}
 
       {part === "members" && <section className="card" aria-label="클럽 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>

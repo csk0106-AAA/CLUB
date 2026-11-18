@@ -7,7 +7,7 @@ import { ApplyNotice } from "@/components/ApplyNotice";
 import { ConsentSheet } from "@/components/ConsentSheet";
 import { EventRail } from "@/components/EventRail";
 import { FreshChip } from "@/components/FreshChip";
-import { IconClip, IconMegaphone, IconPin } from "@/components/Icons";
+import { IconMegaphone, IconPin } from "@/components/Icons";
 import { type AvatarView } from "@/components/Avatars";
 import { MainHeader } from "@/components/MainHeader";
 import { MemberTabs } from "@/components/MemberTabs";
@@ -21,7 +21,7 @@ import { fs } from "@/lib/fs";
 
 type Me = { name: string; consent: boolean; avatar: AvatarView };
 
-// 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 예정된 일정 카드(롤링), 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
+// 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 다가오는 일정 카드(가까운 순 3개, 롤링), 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
 export default function BoardPage() {
   const router = useRouter();
   const [who, setWho] = useState<Me | null>(null);
@@ -75,7 +75,7 @@ export default function BoardPage() {
     <main className="app with-tabs" style={{ gap: 8 }}>
       {/* 윗줄: 홈·일정·프로필 북 공통(프로필 + 모임 이름·회원 이름 + 알림·조직도·로그아웃) */}
       <MainHeader openAlerts={alertsOpen} onAlertsClosed={() => { setAlertsOpen(false); load(); }} />
-      {/* 예정된 일정 카드(옆으로 넘기기·자동 넘김). 일정이 없으면 그리지 않는다 */}
+      {/* 다가오는 일정 카드(가까운 순 3개, 옆으로 넘기기·자동 넘김). 일정이 없으면 그리지 않는다 */}
       <EventRail />
       <div className="row" style={{ marginTop: 4 }}>
         <h1 className="title grow">게시글</h1>
@@ -115,7 +115,7 @@ export default function BoardPage() {
           ))}
         </ul>
       )}
-      {/* 최근 글: 글쓴이·시각 → 제목 → 요약 → 첨부 */}
+      {/* 최근 글: 글쓴이·시각 → 제목 → 공개 대상(전체 회원이 아닐 때) */}
       {rest.length > 0 && (
         <ul className="rows bleed" aria-label="게시글 목록">
           {rest.map((p) => (
@@ -134,20 +134,14 @@ export default function BoardPage() {
                 <span style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
                     <h2>{p.title}</h2>
-                    {p.excerpt && <p>{p.excerpt}</p>}
                   </span>
                   {p.thumb && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={fileUrl(p.thumb)} alt="" loading="lazy" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, flex: "none", border: "1px solid var(--line)" }} />
                   )}
                 </span>
-                {(p.fileCount > 0 || p.audienceText !== "전체 회원" || p.reactions > 0 || p.comments > 0) && (
-                  <span className="meta">
-                    {talkCounts(p)}
-                    {p.fileCount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconClip size={13} />첨부 {p.fileCount}</span>}
-                    {p.audienceText !== "전체 회원" && <span>{p.audienceText}</span>}
-                  </span>
-                )}
+                {/* 제목 아래에는 공개 대상만(전체 회원 공개 글은 줄 없음). 내용 요약·반응·댓글·첨부 수는 목록에서 보이지 않는다 */}
+                {p.audienceText !== "전체 회원" && <span className="meta"><span>{p.audienceText}</span></span>}
               </Link>
             </li>
           ))}

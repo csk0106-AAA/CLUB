@@ -4,16 +4,27 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
 
-// 홈 맨 위 "예정된 일정" 카드(옆으로 넘기기 + 5초마다 자동으로 다음 카드).
+// 홈 맨 위 "다가오는 일정" 카드: 한 달 안에 시작하는 일정 중 날짜가 가장 가까운 3개까지(옆으로 넘기기 + 5초마다 자동으로 다음 카드).
 // 자동 넘김은 손가락·마우스를 올리거나 포커스가 있으면 멈추고, 기기의 "동작 줄이기"가 켜져 있으면 하지 않는다.
-// 카드: 대표 사진(없으면 일정 유형 색 바탕) 위에 D-day · 이름 · 날짜 · 참석 인원. 누르면 일정 화면.
+// 카드: 사진(회원 사진 → 클럽·모임 대표사진, 없으면 바탕색) 위에 D-day · 이름 · 날짜 · 참석 인원. 누르면 일정 화면.
 type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; club?: string;
-  past: boolean; draft?: boolean; outside?: boolean; pinned: boolean; cover?: string; going?: number; myAnswer: string; needsAnswer: boolean;
+  past: boolean; draft?: boolean; outside?: boolean; pinned: boolean; coverUrl?: string; going?: number; myAnswer: string; needsAnswer: boolean;
 };
 
-const MAX = 8;
+const MAX = 3; // 가장 가까운 순으로 3개까지
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+const pad = (n: number) => String(n).padStart(2, "0");
+// 시작일(한국 시간) "YYYY-MM-DD"
+const startDay = (startsAt: string) => fmtDate(startsAt).replace(/\//g, "-");
+// 한 달 뒤 같은 날 "YYYY-MM-DD"(다음 달에 그날이 없으면 그달 말일: 1/31 → 2/28). 이날보다 늦게 시작하는 일정은 홈에 안 보인다.
+function monthLater(): string {
+  const t = new Date();
+  const y = t.getFullYear(), m = t.getMonth() + 1;
+  const last = new Date(y, m + 1, 0).getDate();
+  const d = new Date(y, m, Math.min(t.getDate(), last));
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 function when(startsAt: string): string {
   const x = /^(\d{4})\/(\d{2})\/(\d{2})$/.exec(fmtDate(startsAt));
   if (!x) return "날짜 미정";
@@ -42,9 +53,11 @@ export function EventRail() {
   useEffect(() => {
     api<{ events: Ev[] }>("/api/events").then((r) => {
       if (!r.ok) return setList([]);
+      const limit = monthLater();
       const up = r.data.events
-        .filter((e) => !e.past && !e.draft && !e.outside && e.startsAt)
-        .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.startsAt.localeCompare(b.startsAt))
+        // 지나지 않은 공개 일정 중 시작일이 한 달 안(오늘 ~ 다음 달 같은 날)인 것만. 진행 중인 일정도 포함.
+        .filter((e) => !e.past && !e.draft && !e.outside && e.startsAt && startDay(e.startsAt) <= limit)
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
         .slice(0, MAX);
       setList(up);
     });
@@ -88,9 +101,9 @@ export function EventRail() {
   const resume = () => { hold.current = false; };
 
   return (
-    <section className="rail" aria-label="예정된 일정" aria-roledescription="carousel">
+    <section className="rail" aria-label="다가오는 일정" aria-roledescription="carousel">
       <div className="rail-head">
-        <h2 className="title" style={{ margin: 0 }}>예정된 일정</h2>
+        <h2 className="title" style={{ margin: 0 }}>다가오는 일정</h2>
         <Link href="/events" className="rail-more">타임라인 ›</Link>
       </div>
       <div ref={track} className="rail-track" onScroll={onScroll}
@@ -98,11 +111,11 @@ export function EventRail() {
         {list.map((e, i) => {
           const dd = dday(e.startsAt, e.endsAt);
           return (
-            <Link key={e.id} href={`/events/${e.id}`} className={`rail-card${e.cover ? " photo" : ""}`} aria-roledescription="slide"
+            <Link key={e.id} href={`/events/${e.id}`} className={`rail-card${e.coverUrl ? " photo" : ""}`} aria-roledescription="slide"
               aria-label={`${i + 1}/${list.length}: ${e.name}, ${when(e.startsAt)}${dd ? `, ${dd}` : ""}${e.going ? `, ${e.going}명 참석` : ""}${e.needsAnswer ? ", 참석 여부 체크 필요" : ""}`}>
-              {e.cover && (
+              {e.coverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/events/${e.id}/photos/${e.cover}?size=thumb`} alt="" loading={i < 2 ? "eager" : "lazy"} />
+                <img src={e.coverUrl} alt="" loading={i < 2 ? "eager" : "lazy"} />
               )}
               <span className="rail-badges" aria-hidden="true">
                 {dd && <span className="rail-dday">{dd}</span>}

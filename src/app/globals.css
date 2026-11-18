@@ -1,99 +1,68 @@
-/* 디자인 토큰: 차분한 업무용 앱 스타일. 색은 모두 여기서만 정한다(밝은 화면 + 다크 모드).
-   팔레트(안 C 수정): 주색 빨강(#C81616 — 주 버튼·고른 하단 탭·관리자 탭 밑줄·알림 숫자·포커스)
-   + 보조색 보라(#5B4DE8 — 참석·성공·켜짐·내 클럽·고른 하위 메뉴·보기 전환·링크) + 먹색 글자(#222222) + 회색.
-   예전 이름(--blue*, --green*, --orange*)은 그대로 두고 새 색으로 연결했다:
-   파랑(선택) → 보라, 초록(참석·성공·켜짐) → 보라, 주황(주의) → 회색 칩. */
+/* 디자인 토큰: 그래파이트 & 레몬(2026-11 리디자인, 스톤 그레이에서 눈부심을 줄이려 한 단계 진하게, 목업 https://claude.ai/artifact/TYpesZStFi9xKFxn68gLTk). 색은 모두 여기서만 정한다.
+   화면 모드는 하나(밝은/어두운 고르기 없음): 연필심 같은 회색 그라데이션 바탕(--page-grad) + 흰 글자 + 반투명 유리 카드.
+   주색 레몬(#E9F25C — 주 버튼·고른 하단 탭·참석·켜짐·선택·포커스, 위 글자는 진한 올리브 #1A1C08)
+   + 경고 빨강(공지·고정·회비 미입금·참석 체크 필요·위험). 글자 대비: 바탕 위 흰 글자 5:1 이상, 보조 글자 4.5:1 이상.
+   예전 이름(--violet*, --blue*, --green*, --orange*)은 그대로 두고 새 색으로 연결했다: 보라·파랑·초록 → 레몬. */
 :root {
-  /* 회색(구조) */
-  --page: #f4f5f7;          /* 화면 바탕 */
-  --bg: #ffffff;            /* 윗줄·하단 탭·시트 바탕 */
-  --card: #ffffff;          /* 카드·버튼·입력칸 바탕 */
-  --soft: #f7f8fa;          /* 표 머리줄·약한 바탕 */
-  --line: #e6e8ec;          /* 테두리 */
-  --line2: #f0f1f4;         /* 목록 줄 사이 얇은 선 */
-  --ink: #222222;           /* 본문 글자·제목 */
-  --ink2: #3a3f47;          /* 보조 진한 글자 */
-  --sub: #5f6672;           /* 보조 글자 */
-  --icon: #8a8a8a;          /* 아이콘(글자에는 쓰지 않음) */
-  --muted: #8a8a8a;
-  --dis: #a0a6b0;           /* 비활성 */
-  --chip: #ededed;          /* 중립 칩 바탕(참석·내 클럽·불참 등) */
-  --switch-off: #d5d8de;    /* 꺼진 스위치 */
-  --switch-on: #5b4de8;     /* 켜진 스위치 막대(보라) */
-  --switch-knob: #ffffff;   /* 스위치 동그라미: 켜짐·꺼짐 모두 흰색 */
-  --scrim: rgba(17, 17, 17, 0.5);
-  --shadow: rgba(17, 17, 17, 0.2);
-  /* 빨강(주색): 주 버튼·고른 하단 탭·관리자 탭 밑줄·알림 숫자 바탕·포커스·고정 칩 바탕 */
-  --red: #c81616;
-  --red-d: #a61e22;
-  --on-red: #ffffff;        /* 빨강 바탕 위 글자 */
-  --red-t: #a61e22;         /* 밝은 바탕 위 빨간 글자(공지·고정·참석 체크 필요·위험) */
-  --red-bg: #fbecec;        /* 빨간 칩 바탕 */
-  --red-line: #f0bcbc;
-  /* 주 동작 = 빨강 */
-  --brand: var(--red);      /* 주 버튼 바탕 */
-  --brand-h: var(--red-d);
-  --on-brand: var(--on-red);
-  /* 보라(보조색): 참석·성공·켜짐·내 클럽·고른 하위 메뉴·보기 전환·링크 */
-  --violet: #5b4de8;        /* 보라 바탕·테두리(흰 바탕 위 글자로도 4.5:1 이상) */
-  --violet-d: #4a3cd0;
-  --on-violet: #ffffff;     /* 보라 바탕 위 글자 */
-  --violet-t: #5b4de8;      /* 밝은 바탕 위 보라 글자 */
-  --violet-bg: #efedfd;     /* 보라 칩·고른 줄 바탕 */
-  --violet-line: #c9c3f7;
-  /* 예전 "초록"(참석·성공·켜짐) → 보라 */
+  /* 바탕·구조 */
+  --page-grad: linear-gradient(165deg, #5A5C61 0%, #4A4C50 45%, #444649 70%, #5C6050 100%);
+  --page: #4C4E52;          /* 불투명 바탕(팝업 창 등 뒤가 비치면 안 되는 곳) */
+  --bg: #47494D;            /* 윗줄·시트·팝업 머리줄 바탕(불투명) */
+  --card: rgba(20, 21, 24, 0.16);   /* 유리 카드·버튼·입력칸 바탕(바탕보다 살짝 어둡게 — 흰 글자가 잘 읽힌다) */
+  --soft: rgba(255, 255, 255, 0.07);/* 표 머리줄·약한 바탕·눌렀을 때 */
+  --line: rgba(255, 255, 255, 0.2); /* 테두리 */
+  --line2: rgba(255, 255, 255, 0.1);/* 목록 줄 사이 얇은 선 */
+  --ink: #ffffff;           /* 본문 글자·제목 */
+  --ink2: #f1f2f3;          /* 보조 진한 글자 */
+  --sub: #e3e4e6;           /* 보조 글자 */
+  --icon: #d6d8db;          /* 아이콘 */
+  --muted: #d0d2d5;
+  --dis: #b4b6ba;           /* 비활성 */
+  --chip: rgba(255, 255, 255, 0.14);/* 중립 칩 바탕 */
+  --switch-off: rgba(255, 255, 255, 0.28);
+  --switch-on: #e9f25c;
+  --switch-knob: #ffffff;
+  --scrim: rgba(18, 19, 21, 0.55);
+  --shadow: rgba(0, 0, 0, 0.28);
+  /* 빨강(경고): 공지·고정·알림 숫자·회비 미입금·참석 체크 필요·위험 */
+  --red: #d93a3a;
+  --red-d: #c22f2f;
+  --on-red: #ffffff;
+  --red-t: #ffc9c4;         /* 회색 바탕 위 빨간 글자(밝은 분홍빛 빨강) */
+  --red-bg: rgba(217, 58, 58, 0.28);
+  --red-line: rgba(255, 150, 140, 0.6);
+  /* 주 동작 = 레몬 */
+  --brand: #e9f25c;
+  --brand-h: #dde84a;
+  --on-brand: #1a1c08;
+  /* 예전 보라(보조색: 참석·성공·켜짐·내 클럽·고른 하위 메뉴·보기 전환·링크) → 레몬 */
+  --violet: #e9f25c;
+  --violet-d: #dde84a;
+  --on-violet: #1a1c08;
+  --violet-t: #eff59a;      /* 회색 바탕 위 레몬 글자 */
+  --violet-bg: rgba(233, 242, 92, 0.18);
+  --violet-line: rgba(233, 242, 92, 0.55);
   --green: var(--violet);
   --green-d: var(--violet-d);
   --green-ink: var(--on-violet);
   --green-bg: var(--violet-bg);
   --green-t: var(--violet-t);
   --green-line: var(--violet-line);
-  --ok-bg: #f1f1f1;         /* 중립 안내 바탕(msg.info) */
-  /* 예전 "파랑"(선택·강조) → 보라 */
+  --ok-bg: rgba(255, 255, 255, 0.1);  /* 중립 안내 바탕(msg.info) */
   --blue: var(--violet);
   --blue-d: var(--violet-d);
   --blue-bg: var(--violet-bg);
   --blue-t: var(--violet-t);
   --blue-line: var(--violet-line);
-  /* 예전 "주황"(주의) → 회색 칩 */
-  --orange-bg: #ededed;
-  --orange-t: #3a3f47;
-  --off-bg: #f0f1f4;        /* 비활성 버튼 */
-  --off-line: #e6e8ec;
-  --off-ink: #6b7280;
-  --ic-ink: #ffffff;        /* 진한 색 동그라미 위 글자 */
-  --focus: #c81616;
+  --orange-bg: rgba(255, 255, 255, 0.14);
+  --orange-t: #f1f2f3;
+  --off-bg: rgba(255, 255, 255, 0.08);/* 비활성 버튼 */
+  --off-line: rgba(255, 255, 255, 0.14);
+  --off-ink: #c4c6ca;
+  --ic-ink: #1a1c08;        /* 레몬 동그라미 위 글자 */
+  --focus: #e9f25c;
   --display: "Noto Sans KR", system-ui, sans-serif;
   --body: "Noto Sans KR", system-ui, sans-serif;
-  color-scheme: light;
-}
-
-/* 다크 모드: 기기 설정(시스템)이 다크이고 회원이 "기본(밝은)"을 고르지 않았을 때, 또는 회원이 "다크"를 골랐을 때.
-   두 블록의 값은 같게 유지한다. 진행자 화면(.host)은 원래 어두운 무대라 따로 둔다. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --page: #0f1113; --bg: #181b1e; --card: #181b1e; --soft: #22262a; --line: #2c3136; --line2: #22262a;
-    --ink: #eceef0; --ink2: #ced3d8; --sub: #a6adb5; --icon: #8f969e; --muted: #8f969e; --dis: #5f666e;
-    --chip: #2a2e33; --switch-off: #3a4046; --switch-on: #7d70f0; --switch-knob: #eceef0; --scrim: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.5);
-    --red: #ff5a52; --red-d: #ff7a73; --on-red: #111111; --red-t: #ff5a52; --red-bg: #3a1c1c; --red-line: #6a2a2a;
-    --violet: #a79cff; --violet-d: #bdb5ff; --on-violet: #111111; --violet-t: #a79cff; --violet-bg: #262247; --violet-line: #4a4290;
-    --ok-bg: #2a2e33;
-    --orange-bg: #2a2e33; --orange-t: #ced3d8;
-    --off-bg: #22262a; --off-line: #2c3136; --off-ink: #8f969e;
-    --ic-ink: #111111; --focus: #ff5a52;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --page: #0f1113; --bg: #181b1e; --card: #181b1e; --soft: #22262a; --line: #2c3136; --line2: #22262a;
-  --ink: #eceef0; --ink2: #ced3d8; --sub: #a6adb5; --icon: #8f969e; --muted: #8f969e; --dis: #5f666e;
-  --chip: #2a2e33; --switch-off: #3a4046; --switch-on: #7d70f0; --switch-knob: #eceef0; --scrim: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.5);
-  --red: #ff5a52; --red-d: #ff7a73; --on-red: #111111; --red-t: #ff5a52; --red-bg: #3a1c1c; --red-line: #6a2a2a;
-  --violet: #a79cff; --violet-d: #bdb5ff; --on-violet: #111111; --violet-t: #a79cff; --violet-bg: #262247; --violet-line: #4a4290;
-  --ok-bg: #2a2e33;
-  --orange-bg: #2a2e33; --orange-t: #ced3d8;
-  --off-bg: #22262a; --off-line: #2c3136; --off-ink: #8f969e;
-  --ic-ink: #111111; --focus: #ff5a52;
   color-scheme: dark;
 }
 
@@ -101,7 +70,7 @@
 html, body { height: 100%; }
 body {
   margin: 0;
-  background: var(--page);
+  background: var(--page-grad) fixed, var(--page);
   color: var(--ink);
   font-family: var(--body);
   font-weight: 400;
@@ -120,7 +89,7 @@ a { color: var(--violet-t); }
   min-height: 100%;
   max-width: 560px;
   margin: 0 auto;
-  background: var(--page);
+  background: transparent;
   display: flex;
   flex-direction: column;
   padding: var(--pt) var(--pr) max(18px, env(safe-area-inset-bottom)) var(--pl);
@@ -334,20 +303,22 @@ a.opt:hover, button.opt:hover:not(:disabled) { background: var(--soft); }
 .row { display: flex; gap: 10px; align-items: center; }
 .footer-actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
 
-/* 하단 탭 (회원 화면): 흰 바탕, 위 1px 선, 선 아이콘. 고른 탭은 빨강, 나머지는 회색 */
-.app.with-tabs { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+/* 하단 탭 (회원 화면): 화면 위에 떠 있는 유리 알약. 고른 탭은 레몬 알약, 나머지는 흰 글자 */
+.app.with-tabs { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 .tabs {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0 auto; max-width: 560px;
-  display: flex; gap: 2px; border-top: 1px solid var(--line); background: var(--bg);
-  padding: 2px 4px max(6px, env(safe-area-inset-bottom));
+  position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 40; margin: 0 auto; max-width: calc(560px - 24px);
+  display: flex; gap: 2px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(50, 52, 56, 0.8); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: 0 10px 28px var(--shadow); padding: 5px;
 }
-@media (min-width: 900px) { .tabs { max-width: var(--app-w, 720px); } .app.admin > .tabs { max-width: var(--admin-w, 1120px); } }
-@media (max-width: 899px) { .app.admin > .tabs { max-width: 1120px; } }
+@media (min-width: 900px) { .tabs { max-width: calc(var(--app-w, 720px) - 24px); } .app.admin > .tabs { max-width: calc(var(--admin-w, 1120px) - 24px); } }
+@media (max-width: 899px) { .app.admin > .tabs { max-width: calc(1120px - 24px); } }
 .tab {
   flex: 1; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   font-size: calc(12px * min(var(--fs, 1), 1.2)); font-weight: 500; color: var(--sub); text-decoration: none; border-radius: 8px;
 }
-.tab.on { color: var(--red); font-weight: 700; }
+.tab { border-radius: 999px; color: var(--ink2); }
+.tab.on { color: var(--on-brand); background: var(--brand); font-weight: 800; }
 /* 탭 막대 높이는 그대로: 탭 글자·아이콘은 글자 크기 설정을 120%까지만 따른다 */
 .tab svg { width: calc(22px * min(var(--fs, 1), 1.2)); height: calc(22px * min(var(--fs, 1), 1.2)); }
 .tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
@@ -460,27 +431,37 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .opt[aria-pressed="true"] .tick::after { content: "✓"; }
 
 /* 진행자 전체화면: 프로젝터용 어두운 무대(글자 크기 설정을 따르지 않는다) */
-.host { min-height: 100vh; background: #0f1113; color: #f1f3f5; display: flex; flex-direction: column; gap: 16px; padding: max(16px, env(safe-area-inset-top)) 24px max(16px, env(safe-area-inset-bottom)); font-size: 22px; }
+/* 진행자 화면(프로젝터·큰 화면): 따뜻한 올리브·호박색 그라데이션 무대 + 반투명 유리 패널 + 흰 알약 버튼.
+   회원 화면(그래파이트)과 따로 정한다. 안에서 쓰는 공통 부품(버튼·입력칸·안내)도 이 색을 따르게 토큰을 덮어쓴다. */
+.host {
+  --page: #2c2b25; --bg: #34322b; --card: rgba(255, 255, 255, 0.09); --soft: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.16); --line2: rgba(255, 255, 255, 0.08);
+  --ink: #ffffff; --ink2: #f3efe6; --sub: #d8d1c1; --brand: #ffffff; --brand-h: #f1ece0; --on-brand: #1a1a1a; --focus: #ffffff;
+  --violet: #f2d58a; --violet-t: #f2d58a; --violet-bg: rgba(242, 213, 138, 0.16); --on-violet: #1a1a1a;
+}
+.host { min-height: 100vh; background: linear-gradient(165deg, #45443a 0%, #2c2b25 42%, #2a2620 68%, #5a4526 100%) fixed, #2c2b25; color: #ffffff; display: flex; flex-direction: column; gap: 16px; padding: max(16px, env(safe-area-inset-top)) 24px max(16px, env(safe-area-inset-bottom)); font-size: 22px; }
 .host h1, .host h2, .host h3 { margin: 0; font-family: var(--display); font-weight: 700; }
-.host .sub { color: #a3abb4; font-size: 18px; }
+.host .sub { color: #d8d1c1; font-size: 18px; }
 .host .stage { flex: 1; display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; min-height: 0; }
 @media (max-width: 800px) { .host .stage { grid-template-columns: 1fr; } }
-.host .panel { background: #181b1e; border: 1px solid #2c3136; border-radius: 14px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.host .panel { background: rgba(255, 255, 255, 0.09); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 22px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .host .alias { font: 700 clamp(32px, 5vw, 56px)/1.2 var(--display); color: #e5c9a3; }
 .host .intro { font-size: clamp(19px, 2.2vw, 26px); line-height: 1.7; white-space: pre-wrap; overflow: auto; max-height: 52vh; }
-.host .stmt { display: flex; gap: 14px; align-items: center; background: #181b1e; border: 1px solid #2c3136; border-radius: 14px; padding: 14px 18px; font: 700 clamp(20px, 2.6vw, 30px)/1.4 var(--body); }
+.host .stmt { display: flex; gap: 14px; align-items: center; background: rgba(255, 255, 255, 0.09); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 18px; padding: 14px 18px; font: 700 clamp(20px, 2.6vw, 30px)/1.4 var(--body); }
 .host .stmt .no { width: 48px; height: 48px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #c81616; color: #ffffff; font: 700 24px var(--display); }
 .host .stmt.lie { border-color: #ff5a52; background: #3a1c1c; }
-.host .stmt.truth { border-color: #eceef0; background: #2a2e33; }
-.host .bar { height: 20px; border-radius: 10px; background: #2c3136; overflow: hidden; }
+.host .stmt.truth { border-color: #ffffff; background: rgba(255, 255, 255, 0.18); }
+.host .bar { height: 20px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
 .host .bar i { display: block; height: 100%; border-radius: 10px; background: #ff5a52; transition: width 0.4s; }
-.host .namebox { font: 700 clamp(36px, 5vw, 60px)/1.2 var(--display); text-align: center; padding: 20px 8px; border: 2px dashed #4a535c; border-radius: 14px; min-height: 120px; display: grid; place-items: center; }
-.host .namebox.on { border: 2px solid #eceef0; color: #ffffff; }
-.host .controls { display: flex; gap: 12px; flex-wrap: wrap; border-top: 1px solid #2c3136; padding-top: 14px; }
+.host .namebox { font: 700 clamp(36px, 5vw, 60px)/1.2 var(--display); text-align: center; padding: 20px 8px; border: 2px dashed rgba(255, 255, 255, 0.32); border-radius: 22px; min-height: 120px; display: grid; place-items: center; }
+.host .namebox.on { border: 2px solid #ffffff; color: #ffffff; }
+.host .controls { display: flex; gap: 12px; flex-wrap: wrap; border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 14px; }
 .host .controls .btn { width: auto; flex: 1 1 180px; min-height: 64px; font-size: 22px; }
-.host .btn.white { background: #181b1e; color: #f1f3f5; border-color: #4a535c; }
-.host .btn.red { background: #181b1e; color: #ff7a73; border-color: #ff5a52; }
-.host select.field { background: #181b1e; color: #f1f3f5; border-color: #4a535c; }
+.host .btn { border-radius: 999px; }
+.host .btn.white { background: rgba(255, 255, 255, 0.08); color: #ffffff; border-color: rgba(255, 255, 255, 0.28); }
+.host .btn.white:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.4); }
+.host .btn.red { background: rgba(255, 255, 255, 0.06); color: #ffb4a8; border-color: #ff7a73; }
+.host select.field { background: rgba(0, 0, 0, 0.25); color: #ffffff; border-color: rgba(255, 255, 255, 0.28); }
 .host .roulette { font: 700 clamp(36px, 6vw, 72px)/1.2 var(--display); text-align: center; padding: 18px 8px; border: 3px solid #ff5a52; border-radius: 16px; min-height: 130px; display: grid; place-items: center; color: #ff7a73; }
 .host .roulette.spin { animation: rflash 0.15s linear infinite; }
 @keyframes rflash { 50% { opacity: 0.55; } }
@@ -588,7 +569,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .quick { display: flex; gap: 8px; flex-wrap: wrap; }
 .quick .btn { flex: 1 1 120px; width: auto; min-height: 44px; font-size: calc(14px * var(--fs, 1)); }
 /* 진행자 화면 상태 카드 */
-.host .hostcard { background: #0f1113; border: 1px solid #2c3136; border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.host .hostcard { background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 18px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
 .host .hostcard b { font: 700 clamp(22px, 2.6vw, 30px)/1.2 var(--display); }
 
 /* 화면 읽기 프로그램에만 읽히는 글 */
@@ -737,15 +718,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .df-hint { font-size: calc(13px * var(--fs, 1)); font-weight: 500; color: var(--red-t); min-height: 0; }
 .df-hint:not(:empty) { margin-top: 4px; }
 
-/* 다크 모드에서 화면 코드에 직접 적힌 흰 바탕(style="background: #fff")도 어두운 카드 색으로 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) [style*="background: #fff"],
-  :root:not([data-theme="light"]) [style*="background:#fff"],
-  :root:not([data-theme="light"]) [style*="background: rgb(255, 255, 255)"] { background: var(--card) !important; }
-}
-:root[data-theme="dark"] [style*="background: #fff"],
-:root[data-theme="dark"] [style*="background:#fff"],
-:root[data-theme="dark"] [style*="background: rgb(255, 255, 255)"] { background: var(--card) !important; }
+/* 화면 코드에 직접 적힌 흰 바탕(style="background: #fff")도 유리 카드 색으로(바탕이 회색이라 흰 글자가 보이게) */
+[style*="background: #fff"],
+[style*="background:#fff"],
+[style*="background: rgb(255, 255, 255)"] { background: var(--card) !important; }
 
 /* 켜기·끄기 스위치 (button role="switch" aria-checked): iOS 처럼 작고 둥글게, 켜면 보라 */
 .switchrow { display: flex; align-items: center; gap: 12px; min-height: 48px; }
@@ -839,11 +815,7 @@ body.app-resizing { cursor: ew-resize; user-select: none; }
 .topbar .icons svg { color: var(--ink2); }
 
 /* 사주 오행 색(뜻이 있는 색이라 브랜드 색과 따로 둔다). 밝은 바탕·어두운 바탕 모두 글자 대비 4.5:1 이상 */
-:root { --wx-wood: #2B7A00; --wx-fire: #B3261E; --wx-earth: #8F5200; --wx-metal: #5A6B74; --wx-water: #0F6EA3; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --wx-wood: #7ACB6A; --wx-fire: #FF7B72; --wx-earth: #E2AA5E; --wx-metal: #B5C2CA; --wx-water: #6CB6F0; }
-}
-:root[data-theme="dark"] { --wx-wood: #7ACB6A; --wx-fire: #FF7B72; --wx-earth: #E2AA5E; --wx-metal: #B5C2CA; --wx-water: #6CB6F0; }
+:root { --wx-wood: #9BE08C; --wx-fire: #FFC2BC; --wx-earth: #F2C88A; --wx-metal: #DCE4E9; --wx-water: #A9D6FA; }
 
 /* 한국어 줄바꿈: 낱말 중간("반갑습니/다")에서 끊지 않고 띄어쓰기에서 바꾼다. 아주 긴 낱말만 필요할 때 끊는다. */
 body { word-break: keep-all; overflow-wrap: anywhere; }
@@ -902,11 +874,24 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .tl-sep { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; color: var(--sub); font-size: calc(13px * var(--fs, 1)); }
 .tl-sep::before, .tl-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .evcard.tl { border-radius: 16px; }
-.evcard.tl .body { align-items: flex-start; }
-.evcard.tl .info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.evcard.tl .top { margin-bottom: 2px; }
-.evcard.tl .st { margin-left: 0; }
-.tl-thumb { width: calc(76px * min(var(--fs, 1), 1.2)); height: calc(76px * min(var(--fs, 1), 1.2)); flex: none; border-radius: 12px; object-fit: cover; background: var(--soft); }
+/* 4줄(유형 칩 · 제목 · 일시 · 상태)을 한 줄씩 넘치지 않게 자르고, 왼쪽 사진은 4줄 높이에 꽉 맞춘다 */
+.evcard.tl .body { align-items: stretch; }
+.evcard.tl .info { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; flex: 1; }
+.evcard.tl .top { flex-wrap: nowrap; overflow: hidden; margin-bottom: 1px; }
+.evcard.tl .top > * { flex: none; }
+.evcard.tl .n, .evcard.tl .s { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-meta { color: var(--sub); }
+/* 날짜 줄: 왼쪽 날짜(+D-day), 오른쪽 끝 "일정 관리" 링크(관리할 수 있는 일정만) */
+.tl-hrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.tl-hrow .tl-h { margin: 0 2px; min-width: 0; }
+.tl-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; min-width: 0; }
+.tl-links a { min-height: 32px; display: inline-flex; align-items: center; gap: 2px; padding: 0 8px; border-radius: 999px; font: 600 calc(12px * var(--fs, 1)) var(--body); color: var(--violet-t); text-decoration: none; white-space: nowrap; }
+.tl-links a:hover { background: var(--soft); }
+.tl-links a:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.tl-lname { max-width: 8em; overflow: hidden; text-overflow: ellipsis; }
+/* 사진이 하나도 없을 때(회원 사진·대표사진 모두 없음): 일정 유형 이름 칸 */
+.tl-none { display: flex; align-items: center; justify-content: center; padding: 6px; text-align: center; color: var(--ink2); font: 700 calc(12px * var(--fs, 1))/1.3 var(--body); border: 1px solid var(--line); overflow-wrap: anywhere; }
+.tl-thumb { width: calc(84px * min(var(--fs, 1), 1.2)); min-height: calc(84px * min(var(--fs, 1), 1.2)); align-self: stretch; height: auto; flex: none; border-radius: 12px; object-fit: cover; object-position: center; background: var(--soft); }
 .tl-date { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--sub); font-size: calc(11px * var(--fs, 1)); line-height: 1.35; border: 1px solid var(--line2); }
 .tl-date b { display: block; font: 700 calc(22px * min(var(--fs, 1), 1.3))/1.1 var(--display); color: var(--ink); }
 
@@ -918,7 +903,7 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 /* 양 끝 빈 칸: 첫 카드·마지막 카드도 화면 가운데에 오도록(카드 84% + 양쪽 8% - 간격) */
 .rail-track::before, .rail-track::after { content: ""; flex: 0 0 calc(8% - 12px); }
 .rail-track::-webkit-scrollbar { display: none; }
-.rail-card { position: relative; flex: 0 0 84%; aspect-ratio: 4 / 3.4; scroll-snap-align: center; border-radius: 24px; overflow: hidden; text-decoration: none; color: #fff; background: var(--violet); display: flex; flex-direction: column; justify-content: flex-end; box-shadow: 0 10px 24px var(--shadow); }
+.rail-card { position: relative; flex: 0 0 84%; aspect-ratio: 4 / 3.4; scroll-snap-align: center; border-radius: 28px; overflow: hidden; text-decoration: none; color: #fff; background: #74775c; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: 0 10px 24px var(--shadow); }
 .rail-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .rail-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.6) 100%); }
 .rail-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -947,3 +932,22 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .wk.month .wk-mark { height: 18px; }
 .wk.month .wk-mark img { width: 18px; height: 18px; border-radius: 5px; }
 .wk-day.out { opacity: .4; }
+/* 대표사진 미리보기(components/CoverPicker.tsx): 카드에 보이는 비율(4:3)로 */
+.cover-box { width: 200px; max-width: 100%; aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--soft); display: flex; align-items: center; justify-content: center; }
+.cover-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 달력: 박스 밖 윗줄(왼쪽 연도, 오른쪽 주·월 + 오늘) + 박스 안 가운데 "‹ 11월 3주 ›" */
+.wk-wrap { display: flex; flex-direction: column; gap: 8px; }
+.wk-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wk-top .wk-year { margin: 0 2px; }
+.wk-top .wk-navs { gap: 6px; }
+.wk-title { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.wk-title .wk-month { margin: 0; min-width: 6.5em; text-align: center; white-space: nowrap; font: 700 calc(17px * var(--fs, 1)) var(--display); }
+/* "오늘": 연도 바로 옆, 테두리 없는 강조색 글자 */
+.wk-yrow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.wk-yrow .wk-today { min-height: 36px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: var(--violet-t); font: 700 calc(14px * var(--fs, 1)) var(--body); cursor: pointer; }
+.wk-yrow .wk-today:hover { text-decoration: underline; }
+.wk-yrow .wk-today:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.wk-top .wk-mode { margin-right: 0; }
+/* 주·월 전환: 작게(누르는 칸은 28px 이상 유지) */
+.wk-top .wk-mode { padding: 2px; }
+.wk-top .wk-mode button { min-width: 30px; min-height: 28px; padding: 0 8px; font-size: calc(12px * min(var(--fs, 1), 1.2)); }

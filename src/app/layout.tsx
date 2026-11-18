@@ -25,10 +25,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#181b1e" },
-  ],
+  themeColor: "#5a5c61", // 그래파이트 바탕 맨 위 색(주소창·상태 표시줄)
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

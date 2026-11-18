@@ -67,6 +67,9 @@ export const TABS = {
   EventPhotos: ["id", "eventId", "memberId", "caption", "w", "h", "size", "likes", "createdAt"],
   // 사진 내용(base64). data: 긴 변 1600px JPEG, thumb: 긴 변 400px JPEG. 화면에서 줄여 올린다(EXIF 위치 정보 없이).
   EventPhotoData: ["id", "type", "data", "thumb"],
+  // 대표사진(lib/covers.ts): id "org"(모임) | "club:<클럽 이름>". 회원이 올린 일정 사진이 없을 때 일정 카드에 보인다.
+  //  data: 긴 변 1600px JPEG, thumb: 400px JPEG(base64). 등록 여부·바뀐 시각은 Settings "covers" 에 따로 둔다(목록을 가볍게).
+  CoverData: ["id", "type", "data", "thumb", "updatedAt"],
   // place: 위치(주소·장소 이름), memo: 메모(준비물·안내). 일정마다 아이콘으로 보이고 누르면 팝업으로 본다.
   EventSchedule: ["id", "eventId", "at", "title", "place", "memo"],
   // 템플릿 버전: 처음 만든 행이 v1(origin default/custom)이고, 고칠 때마다 새 행이 v2, v3…으로 생긴다(origin "version").

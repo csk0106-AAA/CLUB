@@ -25,11 +25,6 @@ type Me = {
   kind?: string; // 회원구분(대기회원·참관회원은 프로필 북에 안 나온다)
 };
 
-const THEME_OPTS: { v: Prefs["theme"]; label: string; sub: string }[] = [
-  { v: "system", label: "시스템", sub: "휴대폰 설정을 따라요" },
-  { v: "light", label: "기본", sub: "밝은 화면" },
-  { v: "dark", label: "다크", sub: "어두운 화면" },
-];
 const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string }[] = [
   { k: "events", label: "일정" },
   { k: "posts", label: "공지글" },
@@ -345,27 +340,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* 2. 화면: 화면 모드 + 글자 크기(이 기기만) */}
-          <section className="sect" aria-labelledby="s-screen">
-            <h2 id="s-screen">화면</h2>
-            <div className="sect-body">
-            {/* 작은 선택 칸 3개를 가로로 */}
-            <span id="s-theme" className="sr-only">화면 모드</span>
-            <div className="seg" role="group" aria-labelledby="s-theme">
-              {THEME_OPTS.map((o) => {
-                const on = pr.theme === o.v;
-                return (
-                  <button key={o.v} type="button" aria-pressed={on} title={o.sub} onClick={() => !on && savePrefs({ theme: o.v })}
-                    style={{ minHeight: 40, fontSize: fs(13) }}>
-                    {o.label}
-                  </button>
-                );
-              })}
-            </div>
-            <span className="small" style={{ fontSize: fs(12), marginTop: -4 }}>{THEME_OPTS.find((o) => o.v === pr.theme)?.sub}</span>
-            </div>
-          </section>
-
+          {/* 2. 화면: 글자 크기(이 기기만). 화면 모드는 하나(그래파이트)라 고르는 칸이 없다 */}
           <section className="sect" aria-labelledby="s-scale">
             <h2 id="s-scale">글자 크기</h2>
             <div className="sect-body" style={{ gap: 6 }}>

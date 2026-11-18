@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Popup } from "./Popup";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
+import { MAX_SOURCE, shrink } from "@/lib/image-shrink";
 
 // 일정 사진첩: 참석한 회원이 사진을 올리고 함께 본다(회원 일정 화면, 일정관리·클럽관리 › 일정 › 사진첩 탭).
 // 사진은 이 기기에서 긴 변 1600px(원본)·400px(미리보기) JPEG 로 다시 그려 올린다(위치 정보 같은 EXIF 는 따라가지 않는다).
@@ -15,56 +16,7 @@ type Photo = {
 };
 type List = { photos: Photo[]; canUpload: boolean; manager: boolean; attending: boolean; max: number };
 
-const FULL = 1600;
-const THUMB = 400;
-const MAX_FULL_BYTES = 1_500_000;
-const MAX_SOURCE = 30 * 1024 * 1024; // 고르는 원본 한 장
 const PREVIEW = 9; // 처음 보여 줄 사진 수(더 보기로 펼친다)
-
-async function decode(file: File): Promise<CanvasImageSource & { width: number; height: number }> {
-  try {
-    return await createImageBitmap(file, { imageOrientation: "from-image" });
-  } catch {
-    const url = URL.createObjectURL(file);
-    try {
-      const img = new Image();
-      img.src = url;
-      await img.decode();
-      return img;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
-}
-
-function draw(src: CanvasImageSource & { width: number; height: number }, max: number, quality: number): Promise<{ blob: Blob; w: number; h: number }> {
-  const scale = Math.min(1, max / Math.max(src.width, src.height));
-  const w = Math.max(1, Math.round(src.width * scale));
-  const h = Math.max(1, Math.round(src.height * scale));
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  const ctx = c.getContext("2d");
-  if (!ctx) throw new Error("canvas");
-  ctx.fillStyle = "#ffffff"; // 투명한 PNG 는 흰 바탕으로
-  ctx.fillRect(0, 0, w, h);
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(src, 0, 0, w, h);
-  return new Promise((ok, no) => c.toBlob((b) => (b ? ok({ blob: b, w, h }) : no(new Error("encode"))), "image/jpeg", quality));
-}
-
-async function shrink(file: File) {
-  const src = await decode(file);
-  try {
-    let full = await draw(src, FULL, 0.85);
-    if (full.blob.size > MAX_FULL_BYTES) full = await draw(src, FULL, 0.7);
-    if (full.blob.size > MAX_FULL_BYTES) full = await draw(src, 1200, 0.7);
-    const thumb = await draw(src, THUMB, 0.75);
-    return { full, thumb };
-  } finally {
-    if ("close" in src && typeof src.close === "function") src.close();
-  }
-}
 
 const when = (iso: string) => {
   const d = new Date(iso);

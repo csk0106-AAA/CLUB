@@ -1,3 +1,4 @@
+import { syncClubCovers } from "@/lib/covers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
@@ -121,6 +122,8 @@ export async function PUT(req: Request) {
       nextCd[renames.get(k) ?? k] = v;
     }
     if (JSON.stringify(nextCd) !== JSON.stringify(cd ?? {})) await setSetting("clubDues", nextCd);
+    // 클럽 대표사진(lib/covers.ts)도 이름을 따라 옮기고, 삭제하면 지운다
+    await syncClubCovers(renames, deleted);
     if (renames.size) {
       for (const e of await s.list("Events")) {
         const to = e.club ? renames.get(e.club) : undefined;

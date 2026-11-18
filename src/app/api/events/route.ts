@@ -6,6 +6,7 @@ import { parseJson } from "@/lib/api";
 import { fixLegacyTypes, migrateMinutesPosts } from "@/lib/event-migrate";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { readEditors } from "@/lib/editors";
+import { defaultCoverUrl, readCovers } from "@/lib/covers";
 import { getStore } from "@/lib/store";
 import { eventFreshness } from "@/lib/unread";
 
@@ -33,7 +34,9 @@ export async function GET() {
   await migrateMinutesPosts().catch(() => 0);
   const s = await getStore();
   const [events, applies, members, photos] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members"), s.list("EventPhotos")]);
-  // 일정별 대표 사진(좋아요가 가장 많은 사진, 같으면 먼저 올린 사진)과 사진 수. 사진 내용은 읽지 않는다(목록 행만).
+  // 일정 카드 사진: 회원이 올린 사진 중 좋아요가 가장 많은 사진(좋아요가 같거나 없으면 가장 먼저 올린 사진).
+  //  회원 사진이 없으면 대표사진(클럽 일정은 클럽 대표사진 → 모임 대표사진, lib/covers.ts). 사진 내용은 읽지 않는다(목록 행만).
+  const covers = await readCovers();
   const coverOf = new Map<string, { id: string; likes: number; at: string; n: number }>();
   for (const p of photos) {
     const likes = parseJson<string[]>(p.likes, []).length;
@@ -101,8 +104,15 @@ export async function GET() {
         feePaid: attending && hasFee && a?.paid === "true",
         payNotice: attending && hasFee && a?.paid !== "true" && Boolean(a?.payNotice),
         going: goingOf.get(e.id) ?? 0, // 참석 인원
-        // 대표 사진(사진첩을 볼 수 있는 회원에게만: /api/events/[id]/photos/[pid]?size=thumb — lib/event-photos.ts 와 같은 기준)
-        cover: eventJoinable(e, me ?? session.mid) ? coverOf.get(e.id)?.id ?? "" : "",
+        // 카드 사진 주소: 회원 사진(사진첩을 볼 수 있는 사람에게만) → 대표사진 → 없음("")
+        coverUrl: (() => {
+          const c = coverOf.get(e.id);
+          // 사진첩을 볼 수 있는 사람(lib/event-photos.ts photoAccess 와 같은 기준): 참석 대상 회원, 또는 관리자 2차 인증을 마친
+          // 일정관리 권한자·만든 사람·편집자·(클럽 일정이면) 클럽관리 권한자
+          const canSee = eventJoinable(e, me ?? session.mid) || (session.admin && (manager || perms.includes("clubs") && !!(e.club ?? "").trim() || ownEv(e)));
+          if (c && canSee) return `/api/events/${e.id}/photos/${c.id}?size=thumb`;
+          return defaultCoverUrl(covers, e.club);
+        })(),
         photoCount: coverOf.get(e.id)?.n ?? 0,
       };
     })

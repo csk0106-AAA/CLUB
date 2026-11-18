@@ -149,7 +149,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
               <span className="sub">{c.orderNo}번째 고민 · {c.category}</span>
               <div className="intro" style={{ fontSize: "clamp(26px, 3.4vw, 44px)", lineHeight: 1.6, maxHeight: "none" }}>{c.body}</div>
               {c.tips.length > 0 && (
-                <div style={{ borderTop: "1px solid #2c3136", paddingTop: 10 }}>
+                <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.14)", paddingTop: 10 }}>
                   <b className="sub">대화를 시작하는 관점</b>
                   <ol style={{ margin: "6px 0 0", paddingLeft: 24, fontSize: 24, lineHeight: 1.6 }}>{c.tips.map((t, i) => <li key={i}>{t}</li>)}</ol>
                 </div>

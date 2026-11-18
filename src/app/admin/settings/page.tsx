@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
+import { CoverPicker } from "@/components/CoverPicker";
 import { PasswordField } from "@/components/PasswordField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
@@ -88,6 +89,9 @@ function Settings() {
           신청은 <Link href="/admin/member-apps">회원관리 › 회원신청관리</Link>에서 승인해요.
         </span>
       </div>
+
+      {/* 대표사진은 저장 버튼과 상관없이 고르면 바로 저장된다 */}
+      <CoverPicker scope="org" title="모임 대표사진" help="일정에 회원이 올린 사진이 한 장도 없을 때 홈의 다가오는 일정·타임라인 카드에 이 사진이 보여요. 클럽 일정은 클럽 대표사진이 먼저예요. 사진을 고르면 바로 저장돼요." />
 
       <span className="small">회원구분·직책·클럽 목록은 <Link href="/admin/kinds">회원 구분</Link> 메뉴에서 정해요.</span>
 
