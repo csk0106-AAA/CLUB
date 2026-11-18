@@ -1111,3 +1111,7 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .room-memo { display: block; line-height: 34px; }
 .room-memo-ro { display: block; }
 .room-memo:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* 신원이 드러나는 말 표시(내 소개 최종 배포가 막혔을 때) */
+.id-hit { background: rgba(255, 92, 92, .28); color: inherit; border-bottom: 2px solid var(--red); border-radius: 3px; padding: 0 2px; font-weight: 700; }
+.id-hit-box { border: 1px solid var(--red); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.id-hit-box p { margin: 0; white-space: pre-wrap; line-height: 1.65; font-size: calc(14px * var(--fs, 1)); }

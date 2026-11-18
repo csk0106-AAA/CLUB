@@ -1,7 +1,7 @@
 "use client";
 
 // 화면에서 서버를 부르는 공통 함수. 실패해도 예외 대신 { ok:false, error } 로 돌려준다.
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string; hits?: string[] }; // hits: 신원 검사에 걸린 말
 
 export async function api<T = unknown>(path: string, init?: { method?: string; body?: unknown }): Promise<ApiResult<T>> {
   try {
@@ -16,7 +16,7 @@ export async function api<T = unknown>(path: string, init?: { method?: string; b
     if (r.status === 403 && (data as { hostOnly?: boolean }).hostOnly && !window.location.pathname.startsWith("/host")) {
       window.location.href = "/host";
     }
-    if (!r.ok) return { ok: false, status: r.status, error: (data as { error?: string }).error ?? "처리하지 못했어요." };
+    if (!r.ok) return { ok: false, status: r.status, error: (data as { error?: string }).error ?? "처리하지 못했어요.", hits: (data as { hits?: string[] }).hits };
     return { ok: true, data: data as T };
   } catch {
     return { ok: false, status: 0, error: "연결이 불안정해요. 잠시 후 다시 눌러 주세요." };

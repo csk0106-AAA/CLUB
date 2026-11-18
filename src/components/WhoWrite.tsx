@@ -41,6 +41,19 @@ const WHEN: Record<string, string> = {
 const RESET_ASK = "기존 내소개 내용은 삭제 됩니다. 새로 진행하시겠습니까?";
 
 // 인터뷰 답변 하나 고치기(타이핑 또는 음성)
+// 신원 검사에 걸린 말을 글 안에서 찾아 <mark>로 표시한다(띄어쓰기·대소문자는 무시하고 찾는다)
+function hitRegex(hits: string[]): RegExp | null {
+  const parts = hits.map((h) => h.replace(/\s+/g, "")).filter(Boolean)
+    .map((h) => [...h].map((ch) => ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*"));
+  return parts.length ? new RegExp(`(${parts.join("|")})`, "gi") : null;
+}
+function Marked({ text, hits }: { text: string; hits: string[] }) {
+  const re = hitRegex(hits);
+  if (!re) return <>{text}</>;
+  return <>{text.split(re).map((p, i) => (i % 2 === 1 ? <mark key={i} className="id-hit">{p}</mark> : p))}</>;
+}
+const hasHit = (text: string, hits: string[]) => { const re = hitRegex(hits); return !!re && re.test(text); };
+
 function AnswerEdit({ idx, q, value, skipped, onChange }: { idx: number; q: string; value: string; skipped?: boolean; onChange: (v: string) => void }) {
   const voice = useVoice(() => value, onChange);
   return (
@@ -80,6 +93,8 @@ export function WhoWrite(props: {
   const [reviseText, setReviseText] = useState("");
   const [lastReq, setLastReq] = useState(""); // 마지막 수정 요청(말풍선으로 보여 줌)
   const [refusal, setRefusal] = useState(""); // 지침 때문에 반영하지 못한 이유
+  const [approveErr, setApproveErr] = useState(""); // 최종 배포가 막힌 이유(버튼 위에 보여 줌)
+  const [hits, setHits] = useState<string[]>([]); // 신원 검사에 걸린 말(글 안에 표시)
   const [answer, setAnswer] = useState("");
   const [editAlias, setEditAlias] = useState(false);
   // 기존 인터뷰 수정하기: 질문별 답변 고치기
@@ -187,8 +202,15 @@ export function WhoWrite(props: {
   });
 
   const approve = () => run(async () => {
+    setApproveErr("");
+    setHits([]);
     const r = await api(`/api/who/${aid}/approve`, { body: { introMd: intro, ...(inAct ? { statements: stmts, lieIndex: lie } : {}) } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    // 배포가 막히면 이유를 버튼 바로 위에도 보여 준다(맨 위 안내는 화면 밖이라 안 보일 수 있다)
+    if (!r.ok) {
+      setApproveErr(r.error);
+      setHits(r.hits ?? []);
+      return setNote({ tone: "bad", text: r.error });
+    }
     setNote({
       tone: "info",
       text: inAct
@@ -403,6 +425,12 @@ export function WhoWrite(props: {
           ))}
           <label className="l" htmlFor="intro">{approved ? "소개 글 (고치려면 아래 “승인 취소하고 다시 고치기”를 눌러 주세요)" : "소개 글 (직접 고칠 수 있어요)"}</label>
           <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} disabled={approved} onChange={(e) => setIntro(e.target.value)} />
+          {!approved && hits.length > 0 && hasHit(intro, hits) && (
+            <div className="id-hit-box" role="note" aria-label="신원이 드러나는 말 표시">
+              <span className="small"><b>빨갛게 표시한 말</b>을 지우거나 일반적인 표현으로 바꿔 주세요.</span>
+              <p><Marked text={intro} hits={hits} /></p>
+            </div>
+          )}
 
           {!approved && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -451,6 +479,7 @@ export function WhoWrite(props: {
                       {lie === i && <span className="chip red">거짓</span>}
                     </div>
                     <input id={`st-${i}`} className="field" style={{ minHeight: 44, fontSize: fs(15) }} value={t} disabled={approved} onChange={(e) => setStmts(stmts.map((x, j) => (j === i ? e.target.value : x)))} />
+                    {!approved && hits.length > 0 && hasHit(t, hits) && <div className="id-hit-box"><p><Marked text={t} hits={hits} /></p></div>}
                     <label className="row" style={{ gap: 8, minHeight: 32, fontSize: fs(13), cursor: approved ? "default" : "pointer" }}>
                       <input type="radio" name="lie" checked={lie === i} disabled={approved} onChange={() => setLie(i)} style={{ width: 18, height: 18 }} />
                       <span>이 문장이 거짓이에요</span>
@@ -464,13 +493,21 @@ export function WhoWrite(props: {
           {/* 명리학: 성격·성향(소개 페이지 맨 끝에 공개, 뺄 수 있음) + 생애주기 풀이(나만) */}
           {st.aiEnabled && <SajuPanel aid={aid} r={reading} canWrite={open} published={approved} onChanged={reload} />}
 
+          {approveErr && !approved && (
+            <div className="msg bad" role="alert">
+              {hits.length > 0 ? <>신원이 드러나는 말이 있어 배포할 수 없어요: {hits.map((h, i) => <span key={h}>{i ? ", " : ""}<mark className="id-hit">{h}</mark></span>)}. 위 글에 빨갛게 표시했어요.</> : approveErr}
+            </div>
+          )}
           <div className="footer-actions">
             {approved ? (
               <button className="btn white" type="button" disabled={busy} onClick={unapprove}>승인 취소하고 다시 고치기</button>
             ) : (
               <>
-                <button className="btn white" type="button" disabled={busy} onClick={() => saveDraft()}>임시 저장</button>
-                <button className="btn" type="button" disabled={busy || (inAct && !hasAlias) || intro.trim().length < 20 || (inAct && stmts.some((s) => s.trim().length < 2))} onClick={approve}>최종 배포하겠습니다</button>
+                {/* 임시 저장 · 최종 배포를 한 줄로 같은 크기(1:1) */}
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn white" type="button" disabled={busy} style={{ flex: "1 1 0", minWidth: 0 }} onClick={() => saveDraft()}>임시 저장</button>
+                  <button className="btn" type="button" disabled={busy || (inAct && !hasAlias) || intro.trim().length < 20 || (inAct && stmts.some((s) => s.trim().length < 2))} style={{ flex: "1 1 0", minWidth: 0 }} onClick={approve}>최종 배포</button>
+                </div>
                 <p className="hint center">승인하기 전에는 다른 회원과 관리자에게 보이지 않아요. 승인 뒤에도 취소하고 다시 고칠 수 있어요.</p>
               </>
             )}
