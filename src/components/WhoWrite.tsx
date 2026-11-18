@@ -253,7 +253,7 @@ export function WhoWrite(props: {
   if (!open) {
     return (
       <div className="msg info">
-        {WHEN[st.pre.status] ?? ""}{st.pre.opensAt ? ` 작성 기간은 ${fmtDate(st.pre.opensAt)} ~ ${fmtDate(st.pre.closesAt)} 예요.` : ""}
+        {WHEN[st.pre.status] ?? ""}{st.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(st.pre.opensAt)} ~ ${fmtDateTime(st.pre.closesAt)} 예요.` : ""}
         {approved && " 승인된 소개는 그대로 공개돼 있어요."}
       </div>
     );

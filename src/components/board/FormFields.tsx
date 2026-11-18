@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { RowDelete } from "../RowDelete";
 import { DateField } from "@/components/DateField";
 import { DragHandle, useDragSort } from "@/components/DragSort";
 import { AGENDA_STATUS, DEFAULT_TEMPLATES, resultsToOf, type Form, type MinutesData, type PollData, type QuizData, type ResultsTo, type SurveyData } from "@/lib/board";
@@ -75,7 +76,7 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
               <li key={i}>
                 <div className="rn">
                   <span>{i + 1}번째 조건</span>
-                  <button className="mini danger del-narrow" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={del}>삭제</button>
+                  <RowDelete className="del-narrow" label={`${i + 1}번째 줄 삭제`} onClick={del} />
                 </div>
                 <label className="cell">
                   <span className="cl">회원구분</span>
@@ -96,7 +97,7 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
                   <input className="field num" inputMode="numeric" placeholder="금액" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "").slice(0, 9) })} />
                   {r.amount && <span className="hint num">{won(r.amount)}</span>}
                 </label>
-                <button className="mini danger del-wide" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={del}>삭제</button>
+                <RowDelete className="del-wide" label={`${i + 1}번째 줄 삭제`} onClick={del} />
               </li>
             );
           })}
@@ -169,7 +170,7 @@ function Options({ list, onChange, label }: { list: string[]; onChange: (l: stri
       {list.map((o, i) => (
         <div key={i} className="row">
           <input className="field" style={{ minHeight: 44 }} aria-label={`${label} ${i + 1}`} placeholder={`보기 ${i + 1}`} maxLength={100} value={o} onChange={(e) => onChange(list.map((x, j) => (j === i ? e.target.value : x)))} />
-          <button className="mini danger" type="button" aria-label={`${label} ${i + 1} 지우기`} disabled={list.length <= 2} onClick={() => onChange(list.filter((_, j) => j !== i))}>지우기</button>
+          <RowDelete label={`${label} ${i + 1} 지우기`} disabled={list.length <= 2} onClick={() => onChange(list.filter((_, j) => j !== i))} />
         </div>
       ))}
       {list.length < 20 && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => onChange([...list, ""])}>+ 보기 추가</button>}

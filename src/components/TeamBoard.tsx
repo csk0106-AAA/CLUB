@@ -63,6 +63,11 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
     });
     setDirty(true);
   }
+  // 조(팀) 이름 바꾸기: 고치면 초안이 바뀐 것으로 본다(초안 저장·확인 때 함께 저장)
+  function renameTeam(key: string, name: string) {
+    setCols((cs) => cs.map((c) => (c.key === key ? { ...c, name: name.slice(0, 20) } : c)));
+    setDirty(true);
+  }
   function addTeam() {
     let n = cols.length + 1;
     while (cols.some((c) => c.name === `${n}${unit}`)) n++;
@@ -84,7 +89,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
     load();
   }
   async function saveDraft(): Promise<boolean> {
-    const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c) => ({ name: c.name, memberIds: c.ids })) } });
+    const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c, i) => ({ name: c.name.trim() || `${i + 1}${unit}`, memberIds: c.ids })) } });
     if (!r.ok) setMsg({ tone: "bad", text: r.error });
     return r.ok;
   }
@@ -137,7 +142,12 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
       onDragLeave={() => setOver("")}
       onDrop={(e) => { e.preventDefault(); setOver(""); const id = e.dataTransfer.getData("text/plain"); if (editable && id) move(id, k); }}
       style={{ display: "flex", flexDirection: "column", gap: 6, minHeight: 90, borderColor: over === k ? "var(--blue)" : undefined, background: over === k ? "var(--blue-bg)" : undefined }}>
-      <div className="row"><b>{title}</b><span className="small">{ids.length}명</span><span className="grow" />{removable && editable && ids.length === 0 && <button className="mini danger" type="button" onClick={() => removeTeam(k)}>{unit} 지우기</button>}</div>
+      <div className="row">
+        {removable && editable ? (
+          <input className="field team-name" aria-label={`${typeof title === "string" ? title : ""} 이름`} maxLength={20} value={typeof title === "string" ? title : ""}
+            onChange={(e) => renameTeam(k, e.target.value)} onBlur={(e) => { if (!e.target.value.trim()) renameTeam(k, `${cols.findIndex((c) => c.key === k) + 1}${unit}`); }} />
+        ) : <b>{title}</b>}
+        <span className="small" style={{ flex: "none" }}>{ids.length}명</span><span className="grow" />{removable && editable && ids.length === 0 && <button className="mini danger" type="button" onClick={() => removeTeam(k)}>{unit} 지우기</button>}</div>
       {ids.map((id) => person(id, k))}
       {ids.length === 0 && <span className="hint">{editable ? "여기로 끌어 놓으세요" : "비어 있어요"}</span>}
     </div>

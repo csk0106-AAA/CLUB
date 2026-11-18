@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { RowDelete } from "./RowDelete";
 import { api, fmtDate, won } from "@/lib/client";
 import { DateField } from "./DateField";
 import { Popup } from "./Popup";
@@ -388,7 +389,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
                     </>
                   )}
                   <td className="act" data-label="" style={{ whiteSpace: "nowrap" }}>
-                    {canEdit && <button className="mini danger" type="button" style={{ minHeight: 32, fontSize: fs(12) }} onClick={() => remove(i.id)}>삭제</button>}
+                    {canEdit && <RowDelete label={`${String(i.item ?? i.title ?? "")} 삭제`.trim()} onClick={() => remove(i.id)} />}
                   </td>
                 </tr>
               );

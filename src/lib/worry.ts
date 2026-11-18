@@ -94,7 +94,8 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     if (pool.length === 0) return { ok: false, error: p.category ? `“${p.category}” 고민이 더 없어요.` : "뽑을 고민이 더 없어요.", status: 409 };
     const pick = pool[randomInt(pool.length)];
     const order = rows.reduce((n, w) => Math.max(n, Number(w.orderNo) || 0), 0) + 1;
-    const minutes = p.minutes ?? (await getSetting<number>("worryMinutes", 15));
+    // 대화 타이머: 진행자가 고른 시간 → 템플릿의 대화 시간 → (예전) 설정값 → 15분
+    const minutes = p.minutes ?? ctx.cfg.worry?.talkMinutes ?? (await getSetting<number>("worryMinutes", 15));
     await s.update("Worries", pick.id, { drawnAt: new Date(now).toISOString(), orderNo: String(order), nameRevealed: "false", authorShown: "false" });
     payload.worry = { currentId: pick.id, endsAt: new Date(now + minutes * 60_000).toISOString(), remainingMs: null, minutes, tips: [] };
     await setLive(aid, "talk", true, payload);
@@ -112,7 +113,7 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     cur.endsAt = new Date(now + (cur.remainingMs as number)).toISOString();
     cur.remainingMs = null;
   } else if (action === "extend") {
-    const ms = (p.minutes ?? 5) * 60_000;
+    const ms = (p.minutes ?? ctx.cfg.worry?.extendMinutes ?? 5) * 60_000; // 연장 단위: 템플릿 값(기본 5분)
     if (tv.paused) cur.remainingMs = (cur.remainingMs as number) + ms;
     else cur.endsAt = new Date(Math.max(now, Date.parse(cur.endsAt)) + ms).toISOString();
   } else if (action === "skip") {

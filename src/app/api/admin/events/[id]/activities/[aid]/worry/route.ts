@@ -45,7 +45,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     current: current && tv
       ? {
           id: current.id, body: current.body, category: current.category, orderNo: Number(current.orderNo),
-          paused: tv.paused, remainingMs: tv.remainingMs, timeUp: tv.timeUp, minutes: cur?.minutes ?? 15,
+          paused: tv.paused, remainingMs: tv.remainingMs, timeUp: tv.timeUp, minutes: cur?.minutes ?? w.cfg.worry?.talkMinutes ?? 15, extendMinutes: w.cfg.worry?.extendMinutes ?? 5,
           nameRevealed: current.nameRevealed === "true", displayName: await displayName(current), tips: cur?.tips ?? [],
         }
       : null,

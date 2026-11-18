@@ -53,7 +53,7 @@ export default function GroupsScreen({ params }: { params: Promise<{ id: string;
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
         {teams?.map((t) => (
           <div key={t.id} className="panel">
-            <h2 style={{ color: "#e5c9a3", fontSize: 40 }}>{t.name} <span className="sub">{t.members.length}명</span></h2>
+            <h2 style={{ color: "var(--violet-t)", fontSize: 40 }}>{t.name} <span className="sub">{t.members.length}명</span></h2>
             {t.members.map((m) => <div key={m.id} style={{ fontSize: 30 }}>{m.name}</div>)}
           </div>
         ))}

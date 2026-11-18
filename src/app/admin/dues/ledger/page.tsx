@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RowDelete } from "@/components/RowDelete";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { DateField } from "@/components/DateField";
@@ -132,7 +133,7 @@ function Ledger() {
                   <td data-label={r.memo ? "메모" : ""} className="small" style={{ overflowWrap: "anywhere" }}>{r.memo}{r.by ? <span style={{ display: "block", fontSize: fs(11) }}>{r.by}</span> : null}</td>
                   <td className="act" data-label="">
                     {r.auto && <Link className="mini" href={`/admin/events/${r.eventId}?tab=fee`} style={{ textDecoration: "none", fontSize: fs(12) }}>일정 ›</Link>}
-                    <button className="mini danger" type="button" style={{ minHeight: 32, fontSize: fs(12) }} onClick={() => remove(r)}>삭제</button>
+                    <RowDelete label="이 줄 삭제" onClick={() => remove(r)} />
                   </td>
                 </tr>
               ))}

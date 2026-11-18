@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { RowDelete } from "./RowDelete";
 import { api, fmtDateDow } from "@/lib/client";
 import { readDayPlaces, type DayPlaces } from "@/lib/day-places";
+import { DragHandle, useDragSort } from "./DragSort";
 import { Popup } from "./Popup";
 import { fs } from "@/lib/fs";
 
@@ -139,6 +141,12 @@ export function ScheduleView({ items, dayPlaces = {} }: { items: SchedItem[]; da
 //  - 시간·내용은 고친 줄에서 다른 곳으로 옮기면 자동 저장된다(저장 버튼 없음).
 //  - 일정마다 오른쪽 끝 위치·메모 아이콘 → 팝업에서 적고 저장.
 //  - 날짜마다 "기본 위치": 그날 일정 대부분이 열리는 곳. 위치를 따로 적은 일정만 그곳으로 보인다.
+// 하루 일정 줄 묶음: 끌어서 순서 바꾸기(useDragSort 는 훅이라 날짜마다 따로 부른다)
+function SortableDay<T>({ list, onReorder, children }: { list: T[]; onReorder: (next: T[]) => void; children: (x: T, i: number, ds: ReturnType<typeof useDragSort<T>>) => React.ReactNode }) {
+  const ds = useDragSort(list, onReorder);
+  return <>{list.map((x, i) => children(x, i, ds))}</>;
+}
+
 export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
   const base = `/api/admin/events/${eventId}/items/schedule`;
   const [items, setItems] = useState<Item[] | null>(null);
@@ -153,6 +161,8 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
   const [edit, setEdit] = useState<Edit | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(""); // 자동 저장 중인 줄
+  // 내용 전체 보기·고치기 창(한 줄로 줄여 보이는 내용을 더블클릭·탭하면 연다)
+  const [titleEdit, setTitleEdit] = useState<{ id: string; value: string } | null>(null);
 
   const load = useCallback(async () => {
     const [r, e] = await Promise.all([
@@ -213,6 +223,18 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
     setDraft((cur) => ({ ...cur, [i.id]: { time: d.time, title: body.title, place: body.place, memo: body.memo } }));
     return true;
   }
+  // 끌어서 순서 바꾸기(같은 날 안에서): 시간은 제자리에 두고 내용이 자리를 옮긴다.
+  //  예) 09:00 A · 10:00 B · 11:00 C 에서 C를 맨 위로 → 09:00 C · 10:00 A · 11:00 B (시간순 정렬·회원 화면과 어긋나지 않게)
+  async function reorderDay(list: Item[], next: Item[]) {
+    const slots = list.map((x) => timeOf(x.at)); // list 는 시간순
+    const moves = next.map((it, k) => ({ it, time: slots[k] })).filter((m) => m.time !== timeOf(m.it.at));
+    if (moves.length === 0) return;
+    for (const m of moves) {
+      const ok = await save(m.it, { time: m.time });
+      if (!ok) return;
+    }
+    setNote({ tone: "info", text: "순서를 바꿨어요. 시간은 그대로 두고 내용이 자리를 옮겼어요." });
+  }
   // 줄에서 벗어날 때 자동 저장(바뀐 것이 있을 때만)
   function autoSave(i: Item) {
     const d = draft[i.id];
@@ -269,15 +291,24 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
             )}
           </div>
           {list.length === 0 && <span className="small">이 날의 일정이 아직 없어요.</span>}
-          {list.map((i) => {
+          <SortableDay list={list} onReorder={(next) => reorderDay(list, next)}>{(i, idx, ds) => {
             const d = draft[i.id] ?? { time: timeOf(i.at), title: i.title, place: i.place, memo: i.memo };
             const dp = dayPlaces[dayOf(i.at)] ?? "";
             return (
-              <div key={i.id} className="schedrow">
+              <div key={i.id} className={`schedrow${canEdit ? " sortable" : ""}`} ref={ds.item(idx).ref} style={ds.item(idx).style}>
+                {canEdit && <DragHandle plain {...ds.handle(idx, `${timeOf(i.at)} ${d.title}`)} />}
                 <input className="field num" aria-label="시간" placeholder="14:30" inputMode="numeric" maxLength={5} style={{ width: 76, minHeight: 44, flex: "none" }}
                   value={d.time} disabled={!canEdit} onBlur={() => autoSave(i)}
                   onChange={(e) => setDraft({ ...draft, [i.id]: { ...d, time: e.target.value.replace(/[^\d:]/g, "") } })} />
-                <GrowText label="내용" value={d.title} disabled={!canEdit} onBlur={() => autoSave(i)} onChange={(v) => setDraft({ ...draft, [i.id]: { ...d, title: v } })} />
+                {/* 내용: 한 줄로 보여 주고(길면 …), 더블클릭(휴대폰은 탭·키보드는 Enter)하면 전체를 보고 고치는 창 */}
+                <button type="button" className="sched-title" title={canEdit ? `${d.title}
+(더블클릭하면 전체 보기·고치기)` : d.title}
+                  aria-label={`내용: ${d.title || "(내용 없음)"}${canEdit ? ", 눌러서 전체 보기·고치기" : ""}`} aria-haspopup="dialog"
+                  onDoubleClick={() => setTitleEdit({ id: i.id, value: d.title })}
+                  onPointerUp={(e) => { if (e.pointerType === "touch") setTitleEdit({ id: i.id, value: d.title }); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTitleEdit({ id: i.id, value: d.title }); } }}>
+                  {d.title || <span className="small">(내용 없음)</span>}
+                </button>
                 <span className="sics">
                   <IconBtn field="place" on={!!i.place}
                     label={i.place ? `위치: ${i.place}` : dp ? `위치: 기본 위치(${dp}) · 다른 곳이면 적기` : "위치 적기"}
@@ -286,14 +317,14 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
                     onClick={() => canEdit && setEdit({ kind: "item", id: i.id, field: "memo", value: i.memo })} />
                 </span>
                 {canEdit && (
-                  <span className="row schedacts" style={{ gap: 6 }}>
-                    {saving === i.id && <span className="small">저장 중…</span>}
-                    <button className="mini danger" type="button" onClick={() => remove(i)}>삭제</button>
+                  <span className="schedacts">
+                    {/* 삭제: 마이너스 아이콘 */}
+                    <RowDelete label={`${timeOf(i.at)} 일정 삭제`} onClick={() => remove(i)} />
                   </span>
                 )}
               </div>
             );
-          })}
+          }}</SortableDay>
         </section>
       ))}
 
@@ -335,6 +366,33 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
         </Popup>
         </>
       )}
+
+      <Popup id="schedule-title" width={520} title={(() => { const it = titleEdit && items.find((x) => x.id === titleEdit.id); return it ? `내용 · ${timeOf(it.at)}` : "내용"; })()}
+        open={!!titleEdit} onClose={() => setTitleEdit(null)}
+        dirty={!!titleEdit && titleEdit.value !== (items.find((x) => x.id === titleEdit.id)?.title ?? "")}
+        footer={titleEdit && canEdit && (
+          <div className="row" style={{ gap: 8, width: "100%" }}>
+            <button className="btn" type="button" style={{ flex: 1 }} disabled={busy || !titleEdit.value.trim() || titleEdit.value === (items.find((x) => x.id === titleEdit.id)?.title ?? "")}
+              onClick={async () => {
+                const it = items.find((x) => x.id === titleEdit.id);
+                if (!it) return setTitleEdit(null);
+                setBusy(true);
+                setDraft((cur) => ({ ...cur, [it.id]: { ...(cur[it.id] ?? { time: timeOf(it.at), title: it.title, place: it.place, memo: it.memo }), title: titleEdit.value } }));
+                const ok = await save(it, { title: titleEdit.value });
+                setBusy(false);
+                if (ok) setTitleEdit(null);
+              }}>{busy ? "저장 중…" : "저장"}</button>
+            <button className="btn white" type="button" style={{ flex: 1 }} disabled={busy} onClick={() => setTitleEdit(null)}>닫기</button>
+          </div>
+        )}>
+        {titleEdit && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label className="l" htmlFor="st-v" style={{ margin: 0 }}>내용 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
+            <textarea id="st-v" className="field" rows={6} maxLength={300} autoFocus={canEdit} readOnly={!canEdit} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
+              value={titleEdit.value} onChange={(e) => setTitleEdit({ ...titleEdit, value: e.target.value })} />
+          </div>
+        )}
+      </Popup>
 
       <Popup id="schedule-field" width={440}
         title={!edit ? "" : edit.kind === "day" ? `${fmtDateDow(edit.day)} 기본 위치` : `${editLabel}${editing ? ` · ${timeOf(editing.at)}` : ""}`}

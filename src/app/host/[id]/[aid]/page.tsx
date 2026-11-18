@@ -137,7 +137,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
               )}
               {r && (r.state === "voting" || r.state === "closed" || r.state === "answer") && (
                 <>
-                  <h2 style={{ color: "#e5c9a3", fontSize: 34 }}>두 개의 진실과 한 개의 거짓</h2>
+                  <h2 style={{ color: "var(--violet-t)", fontSize: 34 }}>두 개의 진실과 한 개의 거짓</h2>
                   <p style={{ margin: 0 }}>“{r.alias}” 님의 이야기 중 거짓이라고 생각하는 번호를 내 휴대폰에서 골라 주세요.</p>
                   {r.statements.map((t, i) => (
                     <div key={i} className={`stmt ${r.state === "answer" ? (i === r.lieIndex ? "lie" : "truth") : ""}`}>

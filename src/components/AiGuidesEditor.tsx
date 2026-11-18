@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RowDelete } from "./RowDelete";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 import { DragHandle, useDragSort } from "./DragSort";
@@ -103,7 +104,7 @@ export function AiGuidesEditor(props: {
                 {items.length > 1 && <DragHandle {...qds.handle(i, `질문 ${i + 1}`)} />}
                 <span className="num small" aria-hidden="true" style={{ minWidth: 18, textAlign: "right" }}>{i + 1}</span>
                 <input className="field" aria-label={`질문 ${i + 1}`} maxLength={300} value={it.q} onChange={(e) => setQ(i, { q: e.target.value })} />
-                <button className="mini danger" type="button" disabled={items.length <= 1} style={{ minHeight: 46 }} onClick={() => setItems(items.filter((_, j) => j !== i))}>삭제</button>
+                <RowDelete label={`질문 ${i + 1} 삭제`} disabled={items.length <= 1} onClick={() => setItems(items.filter((_, j) => j !== i))} />
               </div>
               <label className="row" style={{ gap: 8, minHeight: 32, fontSize: fs(13), cursor: "pointer", paddingLeft: items.length > 1 ? 50 : 0 }}>
                 <input type="checkbox" checked={it.skip} onChange={(e) => setQ(i, { skip: e.target.checked })} style={{ width: 18, height: 18 }} />

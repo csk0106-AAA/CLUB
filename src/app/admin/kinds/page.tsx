@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { RowDelete } from "@/components/RowDelete";
 import { AdminGate } from "@/components/AdminGate";
 import { DragHandle, useDragSort } from "@/components/DragSort";
 import { api } from "@/lib/client";
@@ -109,7 +110,7 @@ function ListEditor({ list, data, onSaved }: { list: ListName; data: Data; onSav
                 <input aria-label={`${idx + 1}번째 ${info.one} 이름`} className="field" maxLength={30} value={it.value}
                   placeholder={`새 ${info.one} 이름`} onChange={(e) => set(it.key, { value: e.target.value })} />
                 <span className={`chip ${n ? "violet" : "line"} num`} title="지금 이 값을 쓰는 회원 수" aria-label={`회원 ${n}명`}>{n}명</span>
-                <button className="mini danger" type="button" aria-label={`${it.value || `${idx + 1}번째 ${info.one}`} 삭제`} onClick={() => remove(it)}>삭제</button>
+                <RowDelete label={`${it.value || `${idx + 1}번째 ${info.one}`} 삭제`} onClick={() => remove(it)} />
               </div>
               {list === "memberKinds" && (
                 <input aria-label={`${it.value || `${idx + 1}번째 ${info.one}`} 정의`} className="field sub" maxLength={300} placeholder="정의 (예: 입회비를 낸 졸업 원우)" value={it.definition ?? ""}

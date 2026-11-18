@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { templateConfigSchema, type TemplateConfig, type TemplateStep } from "./template-schema";
+import { preWindowTimes, templateConfigSchema, type PreWindow, type TemplateConfig, type TemplateStep } from "./template-schema";
 // 템플릿 설정(JSON 문자열)을 읽는다. 스키마에 맞지 않으면 null.
 export function readConfig(json: string | undefined): TemplateConfig | null {
   if (!json) return null;
@@ -35,7 +35,7 @@ export type PreStatus = {
   enabled: boolean;
   // none: 사전 작성 없음(현장에서 진행) / unknown: 일정 날짜 미정 / before / open / closed
   status: "none" | "unknown" | "before" | "open" | "closed";
-  opensAt: string; // 안내용 날짜(YYYY-MM-DD)
+  opensAt: string; // 안내용 날짜(YYYY-MM-DD, 시각을 정했으면 YYYY-MM-DD HH:mm)
   closesAt: string;
 };
 
@@ -46,17 +46,18 @@ export const periodText = (p: Pick<PreStatus, "opensAt" | "closesAt">): string =
   p.opensAt ? ` (${p.opensAt.replace(/-/g, "/")} ~ ${p.closesAt.replace(/-/g, "/")})` : "";
 
 // 템플릿의 사전 작성 설정과 일정 날짜로 지금 상태를 계산한다.
-type Win = { enabled: boolean; opensBeforeDays?: number; closesBeforeDays?: number };
+type Win = PreWindow;
 
 // 일정 며칠 전부터 며칠 전까지 열리는 기간의 현재 상태
 export function windowStatus(win: Win | undefined, startsAt: string, now = Date.now()): PreStatus {
   if (!win || !win.enabled) return { enabled: false, status: "none", opensAt: "", closesAt: "" };
-  const start = eventStart(startsAt);
-  if (start == null) return { enabled: true, status: "unknown", opensAt: "", closesAt: "" };
-  const opens = start - (win.opensBeforeDays ?? 14) * DAY;
-  const closes = start - (win.closesBeforeDays ?? 1) * DAY;
-  const status = now < opens ? "before" : now > closes ? "closed" : "open";
-  return { enabled: true, status, opensAt: ymd(opens), closesAt: ymd(closes) };
+  // 시작·마감 시각(lib/template-schema.ts preWindowTimes): 시각을 정했으면 그날 그 시각, 아니면 일정 시작 시각 기준 N일 전
+  const w = preWindowTimes(win, startsAt);
+  if (!w) return { enabled: true, status: "unknown", opensAt: "", closesAt: "" };
+  const status = now < w.opens ? "before" : now > w.closes ? "closed" : "open";
+  // 안내용: 날짜만(YYYY-MM-DD), 시각을 정한 경우 "YYYY-MM-DD HH:mm"
+  const fmt = (t: number) => (w.timed ? new Date(t + 9 * 3600_000).toISOString().slice(0, 16).replace("T", " ") : ymd(t));
+  return { enabled: true, status, opensAt: fmt(w.opens), closesAt: fmt(w.closes) };
 }
 
 export function preStatus(cfg: TemplateConfig, startsAt: string, now = Date.now()): PreStatus {

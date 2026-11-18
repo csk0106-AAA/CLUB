@@ -1,6 +1,6 @@
 "use client";
 
-import type { TemplateConfig } from "@/lib/template-schema";
+import { kstText, preWindowTimes, type PreWindow, type TemplateConfig } from "@/lib/template-schema";
 import { DateField } from "./DateField";
 import { DragHandle, useDragSort } from "./DragSort";
 import { fs } from "@/lib/fs";
@@ -26,7 +26,34 @@ export const UNLOCK_LABELS: Record<string, string> = {
 export const modeOf = (c: Pick<EditableConfig, "mode" | "preEvent" | "onsite">): "all" | "team" =>
   c.mode ?? (!c.preEvent.steps.includes("ai_interview") && !c.preEvent.steps.includes("worry_write") && c.onsite.steps.some((s) => s.memberScreen === "write") ? "team" : "all");
 
-export function TemplateEditor({ value, onChange }: { value: EditableConfig; onChange: (v: EditableConfig) => void }) {
+// 사전 단계 하나의 기간: 시작 = 일정 N일 전 HH:mm, 마감 = 일정 N일 전 HH:mm. 일정 날짜를 알면 실제 날짜·시각도 보여 준다.
+function WindowFields<W extends PreWindow>({ id, win, onChange, eventStartsAt, defaults }: { id: string; win: W; onChange: (w: W) => void; eventStartsAt?: string; defaults: { open: number; close: number } }) {
+  const w = preWindowTimes(win, eventStartsAt ?? "");
+  const day = (v: string) => Math.max(0, Math.min(365, Number(v.replace(/\D/g, "")) || 0));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="win-row">
+        <span className="l" id={`${id}-o`} style={{ margin: 0 }}>시작</span>
+        <span>일정</span>
+        <input className="field num" aria-labelledby={`${id}-o`} aria-label="시작: 일정 며칠 전" inputMode="numeric" value={win.opensBeforeDays ?? defaults.open} onChange={(e) => onChange({ ...win, opensBeforeDays: day(e.target.value) })} />
+        <span>일 전</span>
+        <input className="field num" type="time" aria-label="시작 시각" value={win.opensTime ?? ""} onChange={(e) => onChange({ ...win, opensTime: e.target.value || undefined })} />
+      </div>
+      <div className="win-row">
+        <span className="l" id={`${id}-c`} style={{ margin: 0 }}>마감</span>
+        <span>일정</span>
+        <input className="field num" aria-labelledby={`${id}-c`} aria-label="마감: 일정 며칠 전" inputMode="numeric" value={win.closesBeforeDays ?? defaults.close} onChange={(e) => onChange({ ...win, closesBeforeDays: day(e.target.value) })} />
+        <span>일 전</span>
+        <input className="field num" type="time" aria-label="마감 시각" value={win.closesTime ?? ""} onChange={(e) => onChange({ ...win, closesTime: e.target.value || undefined })} />
+      </div>
+      <span className="small">
+        {w ? `실제 기간: ${kstText(w.opens)} ~ ${kstText(w.closes)}${w.closes <= w.opens ? " · 마감이 시작보다 빨라요" : ""}` : "시각을 비워 두면 일정 시작 시각 기준이에요(예: 일정이 14:00 시작이면 14:00). 0일 전 = 일정 당일이에요."}
+      </span>
+    </div>
+  );
+}
+
+export function TemplateEditor({ value, onChange, eventStartsAt }: { value: EditableConfig; onChange: (v: EditableConfig) => void; eventStartsAt?: string }) {
   const steps = value.onsite.steps;
   const ds = useDragSort(steps, (next) => onChange({ ...value, onsite: { steps: next } }));
   const setStep = (i: number, patch: Partial<(typeof steps)[number]>) =>
@@ -85,13 +112,45 @@ export function TemplateEditor({ value, onChange }: { value: EditableConfig; onC
           </label>
         </div>
         {!pre.enabled && <span className="small">끄면 이 활동은 일정 당일 현장에서만 진행하고, 회원 홈에 “현장에서 진행”으로 표시돼요.</span>}
+        {/* 사전 단계마다 시작·마감(일정 며칠 전 + 시각) */}
         {pre.enabled && (
-          <div className="grid2">
-            <div><label className="l" htmlFor="t-open">작성 시작 (일정 며칠 전)</label><input id="t-open" className="field" type="number" min={0} value={pre.opensBeforeDays ?? 14} onChange={(e) => onChange({ ...value, preEvent: { ...pre, opensBeforeDays: Number(e.target.value) } })} /></div>
-            <div><label className="l" htmlFor="t-close">작성 마감 (일정 며칠 전)</label><input id="t-close" className="field" type="number" min={0} value={pre.closesBeforeDays ?? 1} onChange={(e) => onChange({ ...value, preEvent: { ...pre, closesBeforeDays: Number(e.target.value) } })} /></div>
-          </div>
+          <>
+            <b style={{ fontSize: fs(15) }}>① {pre.steps.includes("ai_interview") ? "사전 작성(별칭 · AI 인터뷰 · 2진실 1거짓)" : pre.steps.includes("worry_write") ? "사전 작성(고민 쓰기)" : "사전 작성"}</b>
+            <WindowFields id="t-pre" win={pre} defaults={{ open: 14, close: 1 }} eventStartsAt={eventStartsAt} onChange={(w) => onChange({ ...value, preEvent: w })} />
+          </>
+        )}
+        {pre.enabled && value.guessPhase && (
+          <>
+            <div className="checks" style={{ marginTop: 6 }}>
+              <label>
+                <input type="checkbox" checked={value.guessPhase.enabled} onChange={(e) => onChange({ ...value, guessPhase: { ...value.guessPhase!, enabled: e.target.checked } })} />
+                <b style={{ fontSize: fs(15) }}>② 사전 맞히기(누구인지 미리 맞혀 보기)</b>
+              </label>
+            </div>
+            {value.guessPhase.enabled && (
+              <WindowFields id="t-guess" win={value.guessPhase} defaults={{ open: 7, close: 1 }} eventStartsAt={eventStartsAt} onChange={(w) => onChange({ ...value, guessPhase: w })} />
+            )}
+          </>
         )}
       </div>
+
+      {/* 나의 고민은?(고민 엔진): 대화 타이머 시간과 연장 단위 */}
+      {pre.steps.includes("worry_write") && (
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <b style={{ font: `700 ${fs(17)} var(--display)` }}>대화 타이머</b>
+          <span className="small">고민을 하나 뽑으면 이 시간만큼 대화 타이머가 돌아가요. 진행 화면의 “+N분” 버튼은 아래 연장 단위만큼 늘려요.</span>
+          <div className="win-row">
+            <label className="l" htmlFor="t-talk" style={{ margin: 0, width: "auto" }}>고민 하나당</label>
+            <input id="t-talk" className="field num" inputMode="numeric" value={value.worry?.talkMinutes ?? 15}
+              onChange={(e) => onChange({ ...value, worry: { ...value.worry, talkMinutes: Math.max(1, Math.min(120, Number(e.target.value.replace(/[^0-9]/g, "")) || 1)) } })} />
+            <span>분</span>
+            <label className="l" htmlFor="t-ext" style={{ margin: "0 0 0 12px", width: "auto" }}>연장 단위</label>
+            <input id="t-ext" className="field num" inputMode="numeric" value={value.worry?.extendMinutes ?? 5}
+              onChange={(e) => onChange({ ...value, worry: { ...value.worry, extendMinutes: Math.max(1, Math.min(60, Number(e.target.value.replace(/[^0-9]/g, "")) || 1)) } })} />
+            <span>분</span>
+          </div>
+        </div>
+      )}
 
       {/* 소개 작성 활동('내가 누굴까요?'): 프로필 북 실명 공개 시점 */}
       {pre.steps.includes("ai_interview") && (

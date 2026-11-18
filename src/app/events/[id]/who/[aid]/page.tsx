@@ -132,14 +132,14 @@ function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) =
   const g = data.guess;
   if (data.notJoin) return <div className="msg info">이 활동의 참여 대상으로 선택되지 않아서 맞히기에는 참여하지 않아요. 프로필 북에서 다른 회원의 소개를 읽어 보세요.</div>;
   if (g.status !== "open" && g.status !== "closed") {
-    return <div className="msg info">{g.status === "before" ? `맞히기는 ${fmtDate(g.opensAt)}부터 열려요.` : g.status === "unknown" ? "일정 날짜가 정해지면 맞히기가 열려요." : "이 활동에는 사전 맞히기가 없어요."}</div>;
+    return <div className="msg info">{g.status === "before" ? `맞히기는 ${fmtDateTime(g.opensAt)}부터 열려요.` : g.status === "unknown" ? "일정 날짜가 정해지면 맞히기가 열려요." : "이 활동에는 사전 맞히기가 없어요."}</div>;
   }
   const done = data.targets.filter((t) => t.myChoice).length;
 
   return (
     <>
       <div className="row" style={{ gap: 8, fontSize: fs(13), color: "var(--sub)" }}>
-        <span className="grow">{g.status === "open" ? `${fmtDate(g.closesAt)}까지 바꿀 수 있어요.` : "맞히기가 마감됐어요."}</span>
+        <span className="grow">{g.status === "open" ? `${fmtDateTime(g.closesAt)}까지 바꿀 수 있어요.` : "맞히기가 마감됐어요."}</span>
         <span className="chip violet num">{done}/{data.targets.length} 완료</span>
       </div>
       {data.targets.length === 0 && <div className="msg info">아직 배포된 소개글이 없어요. 다른 회원이 작성하면 여기에 나타나요.</div>}

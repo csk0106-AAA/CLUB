@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
-import { api, fmtDate } from "@/lib/client";
+import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Mine = { id: string; body: string; category: string; anonymous: boolean; drawn: boolean };
@@ -101,7 +101,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       </div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
-      {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDate(d.pre.opensAt)} ~ ${fmtDate(d.pre.closesAt)} 예요.` : ""}</div>}
+      {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(d.pre.opensAt)} ~ ${fmtDateTime(d.pre.closesAt)} 예요.` : ""}</div>}
 
       {d.mine.length > 0 && (
         <section aria-labelledby="w-mine" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -187,7 +187,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
             <span className="ic" aria-hidden="true">✓</span>
             <div>
               <b>고민 {d.mine.length}개가 저장돼 있어요</b>
-              <span className="t">따로 제출하지 않아도 돼요. {open ? `작성 기간(${fmtDate(d.pre.closesAt)}까지)에는 다시 들어와 고치거나 더 쓸 수 있어요.` : "뽑히기 전까지는 아무에게도 보이지 않아요."}</span>
+              <span className="t">따로 제출하지 않아도 돼요. {open ? `작성 기간(${fmtDateTime(d.pre.closesAt)}까지)에는 다시 들어와 고치거나 더 쓸 수 있어요.` : "뽑히기 전까지는 아무에게도 보이지 않아요."}</span>
             </div>
           </div>
           <button className="btn" type="button" onClick={() => router.push(`/events/${id}`)}>작성 완료 · 일정으로 돌아가기</button>

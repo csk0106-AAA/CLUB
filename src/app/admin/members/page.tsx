@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
 import { AdminIssues } from "@/components/AdminIssues";
 import { Avatar, type AvatarView } from "@/components/Avatars";
@@ -242,6 +242,12 @@ function Members() {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   function startEdit(m: M) {
+    // 같은 회원을 다시 누르면 접는다. 다른 회원을 펼칠 때 고치던 내용이 있으면 한 번 묻는다.
+    if (editId === m.id) {
+      if (JSON.stringify(form) !== formOrig && !window.confirm("저장하지 않은 내용이 있어요. 접을까요?")) return;
+      return reset();
+    }
+    if (editId && JSON.stringify(form) !== formOrig && !window.confirm("저장하지 않은 내용이 있어요. 다른 회원을 펼칠까요?")) return;
     const f: Form = {
       name: m.name, kind: m.kind ?? "", position: m.position ?? "", gender: m.gender ?? "", company: m.company ?? "", title: m.title ?? "",
       birth: m.birth ?? "", phone: m.phone ?? "", ageGroup: m.ageGroup ?? "", clubs: m.clubs ?? [], fields: m.fields ?? {},
@@ -252,7 +258,9 @@ function Members() {
     setFormOrig(JSON.stringify(f));
     setFormErr("");
     setMsg(null);
-    setFormOpen(true);
+    setFormOpen(false); // 회원 수정은 팝업이 아니라 명단에서 펼친다
+    // 펼친 칸이 보이게
+    requestAnimationFrame(() => document.querySelector(`[data-medit="${m.id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   }
   function startAdd() {
     setEditId(null);
@@ -426,6 +434,130 @@ function Members() {
   }
   const kindTabs = [...kinds.map((k) => k.value), ...[...counts.keys()].filter((k) => k !== "미지정" && !kinds.some((x) => x.value === k))];
 
+  // 회원 추가(팝업)와 회원 수정(명단에서 펼침)이 함께 쓰는 입력 양식
+  const memberForm = (
+      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {formErr && <div className="msg bad" role="alert">{formErr}</div>}
+        {/* 한 줄씩: (성명 · 성별 · 연락처) (생년월일 · 연령대) (회원구분 · 모임직책) (회사명 · 직위) */}
+        <div className="mf-row" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+          <div><label className="l" htmlFor="f-name">성명</label><input id="f-name" className="field" value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
+          <div>
+            <label className="l" htmlFor="f-gender">성별</label>
+            <select id="f-gender" className="field" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+              <option value="">선택 안 함</option><option>남</option><option>여</option>
+            </select>
+          </div>
+          <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" placeholder="010-0000-0000" value={form.phone} onChange={(e) => set("phone", typePhone(e.target.value))} /></div>
+        </div>
+        <div className="mf-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+          <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
+          <div>
+            <label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label>
+            {ageGroupOf(form.birth) ? (
+              <input id="f-age" className="field" readOnly value={ageGroupOf(form.birth)} aria-describedby="f-age-d" style={{ background: "var(--soft)" }} />
+            ) : (
+              <input id="f-age" className="field" placeholder="50대" value={form.ageGroup} aria-describedby="f-age-d" onChange={(e) => set("ageGroup", e.target.value)} />
+            )}
+            <span id="f-age-d" className="small" style={{ display: "block", marginTop: 4 }}>{ageGroupOf(form.birth) ? "생년월일로 자동 계산돼요." : "생년월일을 넣으면 자동으로 채워져요."}</span>
+          </div>
+        </div>
+        <div className="mf-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+          <div>
+            <label className="l" htmlFor="f-kind">회원구분</label>
+            <ListSelect id="f-kind" value={form.kind} options={kinds.map((k) => k.value)} onChange={(v) => set("kind", v)} />
+          </div>
+          <div>
+            <label className="l" htmlFor="f-pos">모임 직책</label>
+            <ListSelect id="f-pos" value={form.position} options={lists.positions} onChange={(v) => set("position", v)} />
+          </div>
+        </div>
+        <div className="mf-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+          <div><label className="l" htmlFor="f-co">회사명</label><input id="f-co" className="field" value={form.company} onChange={(e) => set("company", e.target.value)} /></div>
+          <div><label className="l" htmlFor="f-ti">직위</label><input id="f-ti" className="field" value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
+        </div>
+        <div className="grid2">
+          <div>
+            {/* 교육 이수: 로그인 화면 회원 신청처럼 정회원 필수 조건(모임개요)을 "○○ 하셨나요?"로 묻는다 */}
+            <span className="l" id="f-edu-l">“{requirement || "교육과정 수료"}” 하셨나요?</span>
+            <div className="seg" role="group" aria-labelledby="f-edu-l" style={{ width: 160 }}>
+              <button type="button" aria-pressed={form.edu} onClick={() => set("edu", true)} style={{ minHeight: 46 }}>YES</button>
+              <button type="button" aria-pressed={!form.edu} onClick={() => set("edu", false)} style={{ minHeight: 46 }}>NO</button>
+            </div>
+          </div>
+          <div>
+            {/* 프로필 북 노출: 회원이 설정에서도 바꿀 수 있다 */}
+            <span className="l" id="f-book-l">프로필 북 노출</span>
+            <label className="row" style={{ gap: 8, minHeight: 46, cursor: "pointer" }}>
+              <input type="checkbox" checked={form.bookShown && !isGuest(form.kind)} style={{ width: 20, height: 20 }} aria-labelledby="f-book-l"
+                onChange={(e) => {
+                  if (e.target.checked && isGuest(form.kind)) return void window.alert("회원정보를 수정해야 합니다.\n대기회원·참관회원은 프로필 북에 공개되지 않아요. 회원구분을 먼저 바꿔 주세요.");
+                  set("bookShown", e.target.checked);
+                }} />
+              <span>{isGuest(form.kind) ? `${form.kind}은 프로필 북에 안 나와요` : form.bookShown ? "프로필 북에 보여요" : "프로필 북에서 빠져요"}</span>
+            </label>
+          </div>
+          {custom.map((c, i) => (
+            <div key={c}><label className="l" htmlFor={`f-x${i}`}>{c}</label><input id={`f-x${i}`} className="field" maxLength={200} value={form.fields[c] ?? ""} onChange={(e) => set("fields", { ...form.fields, [c]: e.target.value })} /></div>
+          ))}
+        </div>
+        <div>
+          <label className="l" htmlFor="f-memo">메모 (관리자만 보여요{form.kind === "명예회원" ? " · 명예회원 등록 사유" : ""})</label>
+          <textarea id="f-memo" className="field" rows={2} maxLength={500} style={{ padding: 12, lineHeight: 1.5, resize: "vertical" }}
+            placeholder={form.kind === "명예회원" ? "예) 교육과정 주관사 대표로 명예회원 등록" : "관리자 메모"} value={form.memo} onChange={(e) => set("memo", e.target.value)} />
+          {form.kind === "명예회원" && !form.memo.trim() && <span className="small">명예회원은 관리자 등록으로만 정해져요. 등록 사유를 메모로 남겨 주세요.</span>}
+        </div>
+        <div>
+          <span className="l">클럽</span>
+          {/* 클럽 회원과 클럽 직책은 클럽관리에서만 정한다(여기서는 보기만) */}
+          <span className="small" style={{ display: "block" }}>
+            {form.clubs.length ? clubsText(form.clubs) : "들어간 클럽이 없어요."} 클럽 회원과 클럽 직책은 <Link href="/admin/clubs">클럽관리</Link>에서 정해요.
+          </span>
+        </div>
+        <span className="small">관리자 권한은 직책·클럽 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
+        {editId && (() => {
+          const m = list?.find((x) => x.id === editId);
+          if (!m) return null;
+          const h = m.history ?? [];
+          return (
+            <>
+              {/* 탈퇴회원: 탈퇴 해지(다시 로그인·활동) */}
+              {isWithdrawn(m.kind) && (
+                <div className="msg bad" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span>탈퇴한 회원이에요. 로그인할 수 없고 프로필 북에서 빠져 있어요. 활동 기록(투표·설문·퀴즈·댓글·일정·활동)은 남아 있어요.</span>
+                  <button className="btn" type="button" disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 44 }} onClick={() => restore(m)}>탈퇴 해지</button>
+                </div>
+              )}
+              {/* 가입·탈퇴 이력 */}
+              <details open={isWithdrawn(m.kind) || undefined}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>가입·탈퇴 이력 ({h.length})</summary>
+                {h.length === 0 ? (
+                  <span className="small" style={{ display: "block", marginTop: 6 }}>남은 기록이 없어요(관리자가 명단에 직접 넣은 회원은 신청 기록이 없어요).</span>
+                ) : (
+                  <ol style={{ margin: "6px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
+                    {h.map((x, i) => (
+                      <li key={i} className="small" style={{ overflowWrap: "anywhere" }}>
+                        <b style={{ color: "var(--ink)" }}>{x.what}</b> · {fmtDateTime(x.at)}
+                        {x.from && x.to ? ` · ${x.from} → ${x.to}` : x.from ? ` · 이전 구분: ${x.from}` : x.to ? ` · ${x.to}` : ""}
+                        {x.by ? ` · 처리: ${x.by}` : ""}{x.note ? ` · ${x.note}` : ""}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </details>
+            </>
+          );
+        })()}
+        <div className="row">
+          <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "auto", minWidth: 160 }}>{editId ? "저장" : "추가"}</button>
+          <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>
+          {editId && (() => {
+            const m = list?.find((x) => x.id === editId);
+            return m ? <button className="btn red" type="button" style={{ width: "auto", marginLeft: "auto" }} onClick={() => { reset(); remove(m); }}>삭제</button> : null;
+          })()}
+        </div>
+      </form>
+  );
+
   return (
     <>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
@@ -576,118 +708,8 @@ function Members() {
         </section>
       )}
 
-      <Popup id="member-form" width={760} title={editId ? "회원 수정" : "회원 추가"} open={formOpen} onClose={reset} dirty={JSON.stringify(form) !== formOrig}>
-      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {formErr && <div className="msg bad" role="alert">{formErr}</div>}
-        <div className="grid2">
-          <div><label className="l" htmlFor="f-name">성명</label><input id="f-name" className="field" value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
-          <div>
-            <label className="l" htmlFor="f-kind">회원구분</label>
-            <ListSelect id="f-kind" value={form.kind} options={kinds.map((k) => k.value)} onChange={(v) => set("kind", v)} />
-          </div>
-          <div>
-            <label className="l" htmlFor="f-pos">모임 직책</label>
-            <ListSelect id="f-pos" value={form.position} options={lists.positions} onChange={(v) => set("position", v)} />
-          </div>
-          <div>
-            <label className="l" htmlFor="f-gender">성별</label>
-            <select id="f-gender" className="field" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
-              <option value="">선택 안 함</option><option>남</option><option>여</option>
-            </select>
-          </div>
-          <div><label className="l" htmlFor="f-co">회사명</label><input id="f-co" className="field" value={form.company} onChange={(e) => set("company", e.target.value)} /></div>
-          <div><label className="l" htmlFor="f-ti">직위</label><input id="f-ti" className="field" value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
-          <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
-          <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" placeholder="010-0000-0000" value={form.phone} onChange={(e) => set("phone", typePhone(e.target.value))} /></div>
-          <div>
-            <label className="l" htmlFor="f-age">연령대 (팀 구성에 사용)</label>
-            {ageGroupOf(form.birth) ? (
-              <input id="f-age" className="field" readOnly value={ageGroupOf(form.birth)} aria-describedby="f-age-d" style={{ background: "var(--soft)" }} />
-            ) : (
-              <input id="f-age" className="field" placeholder="50대" value={form.ageGroup} aria-describedby="f-age-d" onChange={(e) => set("ageGroup", e.target.value)} />
-            )}
-            <span id="f-age-d" className="small" style={{ display: "block", marginTop: 4 }}>{ageGroupOf(form.birth) ? "생년월일로 자동 계산돼요." : "생년월일을 넣으면 자동으로 채워져요."}</span>
-          </div>
-          <div>
-            {/* 교육 이수: 로그인 화면 회원 신청처럼 정회원 필수 조건(모임개요)을 "○○ 하셨나요?"로 묻는다 */}
-            <span className="l" id="f-edu-l">“{requirement || "교육과정 수료"}” 하셨나요?</span>
-            <div className="seg" role="group" aria-labelledby="f-edu-l" style={{ width: 160 }}>
-              <button type="button" aria-pressed={form.edu} onClick={() => set("edu", true)} style={{ minHeight: 46 }}>YES</button>
-              <button type="button" aria-pressed={!form.edu} onClick={() => set("edu", false)} style={{ minHeight: 46 }}>NO</button>
-            </div>
-          </div>
-          <div>
-            {/* 프로필 북 노출: 회원이 설정에서도 바꿀 수 있다 */}
-            <span className="l" id="f-book-l">프로필 북 노출</span>
-            <label className="row" style={{ gap: 8, minHeight: 46, cursor: "pointer" }}>
-              <input type="checkbox" checked={form.bookShown && !isGuest(form.kind)} style={{ width: 20, height: 20 }} aria-labelledby="f-book-l"
-                onChange={(e) => {
-                  if (e.target.checked && isGuest(form.kind)) return void window.alert("회원정보를 수정해야 합니다.\n대기회원·참관회원은 프로필 북에 공개되지 않아요. 회원구분을 먼저 바꿔 주세요.");
-                  set("bookShown", e.target.checked);
-                }} />
-              <span>{isGuest(form.kind) ? `${form.kind}은 프로필 북에 안 나와요` : form.bookShown ? "프로필 북에 보여요" : "프로필 북에서 빠져요"}</span>
-            </label>
-          </div>
-          {custom.map((c, i) => (
-            <div key={c}><label className="l" htmlFor={`f-x${i}`}>{c}</label><input id={`f-x${i}`} className="field" maxLength={200} value={form.fields[c] ?? ""} onChange={(e) => set("fields", { ...form.fields, [c]: e.target.value })} /></div>
-          ))}
-        </div>
-        <div>
-          <label className="l" htmlFor="f-memo">메모 (관리자만 보여요{form.kind === "명예회원" ? " · 명예회원 등록 사유" : ""})</label>
-          <textarea id="f-memo" className="field" rows={2} maxLength={500} style={{ padding: 12, lineHeight: 1.5, resize: "vertical" }}
-            placeholder={form.kind === "명예회원" ? "예) 교육과정 주관사 대표로 명예회원 등록" : "관리자 메모"} value={form.memo} onChange={(e) => set("memo", e.target.value)} />
-          {form.kind === "명예회원" && !form.memo.trim() && <span className="small">명예회원은 관리자 등록으로만 정해져요. 등록 사유를 메모로 남겨 주세요.</span>}
-        </div>
-        <div>
-          <span className="l">클럽</span>
-          {/* 클럽 회원과 클럽 직책은 클럽관리에서만 정한다(여기서는 보기만) */}
-          <span className="small" style={{ display: "block" }}>
-            {form.clubs.length ? clubsText(form.clubs) : "들어간 클럽이 없어요."} 클럽 회원과 클럽 직책은 <Link href="/admin/clubs">클럽관리</Link>에서 정해요.
-          </span>
-        </div>
-        <span className="small">관리자 권한은 직책·클럽 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
-        {editId && (() => {
-          const m = list?.find((x) => x.id === editId);
-          if (!m) return null;
-          const h = m.history ?? [];
-          return (
-            <>
-              {/* 탈퇴회원: 탈퇴 해지(다시 로그인·활동) */}
-              {isWithdrawn(m.kind) && (
-                <div className="msg bad" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span>탈퇴한 회원이에요. 로그인할 수 없고 프로필 북에서 빠져 있어요. 활동 기록(투표·설문·퀴즈·댓글·일정·활동)은 남아 있어요.</span>
-                  <button className="btn" type="button" disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 44 }} onClick={() => restore(m)}>탈퇴 해지</button>
-                </div>
-              )}
-              {/* 가입·탈퇴 이력 */}
-              <details open={isWithdrawn(m.kind) || undefined}>
-                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>가입·탈퇴 이력 ({h.length})</summary>
-                {h.length === 0 ? (
-                  <span className="small" style={{ display: "block", marginTop: 6 }}>남은 기록이 없어요(관리자가 명단에 직접 넣은 회원은 신청 기록이 없어요).</span>
-                ) : (
-                  <ol style={{ margin: "6px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
-                    {h.map((x, i) => (
-                      <li key={i} className="small" style={{ overflowWrap: "anywhere" }}>
-                        <b style={{ color: "var(--ink)" }}>{x.what}</b> · {fmtDateTime(x.at)}
-                        {x.from && x.to ? ` · ${x.from} → ${x.to}` : x.from ? ` · 이전 구분: ${x.from}` : x.to ? ` · ${x.to}` : ""}
-                        {x.by ? ` · 처리: ${x.by}` : ""}{x.note ? ` · ${x.note}` : ""}
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </details>
-            </>
-          );
-        })()}
-        <div className="row">
-          <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "auto", minWidth: 160 }}>{editId ? "저장" : "추가"}</button>
-          <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>
-          {editId && (() => {
-            const m = list?.find((x) => x.id === editId);
-            return m ? <button className="btn red" type="button" style={{ width: "auto", marginLeft: "auto" }} onClick={() => { reset(); remove(m); }}>삭제</button> : null;
-          })()}
-        </div>
-      </form>
+      <Popup id="member-form" width={760} title="회원 추가" open={formOpen && !editId} onClose={reset} dirty={JSON.stringify(form) !== formOrig}>
+      {memberForm}
       </Popup>
 
       {/* 요약: 권한자·남·여 (구분별 명수는 아래 필터 버튼에) */}
@@ -719,7 +741,8 @@ function Members() {
       {shown.length > 0 && (
         <ul className="rows bleed only-narrow" aria-label="회원 목록">
           {shown.map((m, i) => (
-            <li key={m.id} className="mrow" ref={dsNarrow.item(i).ref} style={{ ...dsNarrow.item(i).style, paddingLeft: 4, gap: 6 }}>
+            <Fragment key={m.id}>
+            <li className={`mrow${editId === m.id ? " open" : ""}`} ref={dsNarrow.item(i).ref} style={{ ...dsNarrow.item(i).style, paddingLeft: 4, gap: 6 }}>
               <DragHandle plain {...dsNarrow.handle(i, m.name)} />
               <Avatar member={m} size={36} />
               <span className="who">
@@ -733,22 +756,25 @@ function Members() {
                 )}
                 {m.app && <span style={{ marginTop: 2 }}><AppLabel app={m.app} /></span>}
               </span>
-              {/* 한 줄: 회원구분 · 프로필 북 체크 · 수정 · 삭제 */}
+              {/* 한 줄: 회원구분 · 프로필 북 체크 · 삭제 · 수정(맨 오른쪽) */}
               <span className={`chip ${isWithdrawn(m.kind) ? "red" : "line"}`} style={{ flex: "none", whiteSpace: "nowrap" }}>{m.kind || "미지정"}</span>
               <label className="small" title="프로필 북 노출" style={{ display: "inline-flex", alignItems: "center", gap: 2, cursor: "pointer", whiteSpace: "nowrap", fontSize: fs(11), flex: "none" }}>
                 <input type="checkbox" checked={inBook(m)} onChange={() => toggleBook(m)} style={{ width: 16, height: 16 }} aria-label={`${m.name} 프로필 북 노출`} />북
               </label>
-              <button className="edit" type="button" aria-label={`${m.name} 수정`} title="수정" style={{ width: 36, marginRight: -8 }} onClick={() => startEdit(m)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
-              </button>
               <button className="edit" type="button" aria-label={`${m.name} 삭제`} title="삭제" style={{ color: "var(--red-t)", width: 36 }} onClick={() => remove(m)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></svg>
               </button>
+              <button className="edit" type="button" aria-label={`${m.name} 수정`} aria-expanded={editId === m.id} title="수정" style={{ width: 36, marginRight: -8 }} onClick={() => startEdit(m)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+              </button>
             </li>
+            {/* 회원 수정: 이 줄 바로 아래로 펼친다 */}
+            {editId === m.id && <li className="medit" data-medit={m.id} aria-label={`${m.name} 회원 수정`}>{memberForm}</li>}
+            </Fragment>
           ))}
         </ul>
       )}
-      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>⠿ 손잡이를 끌어서 순서를 바꾸고(바로 저장돼요), 연필 아이콘으로 수정, 휴지통 아이콘으로 삭제해요. “북” 체크를 끄면 그 회원은 프로필 북에서 빠져요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
+      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>⠿ 손잡이를 끌어서 순서를 바꾸고(바로 저장돼요), 휴지통 아이콘으로 삭제, 맨 오른쪽 연필 아이콘으로 수정해요. “북” 체크를 끄면 그 회원은 프로필 북에서 빠져요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
       {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>NO 옆 ⠿ 손잡이를 끌어서 순서를 바꿔요(바로 저장돼요). “프로필북” 체크를 끄면 그 회원은 프로필 북에서 빠져요(회원도 설정에서 바꿀 수 있어요). 회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
       {shown.length > 0 && (
         <div className="tblw only-wide">
@@ -756,7 +782,8 @@ function Members() {
             <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>클럽</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
             <tbody>
               {shown.map((m, i) => (
-                <tr key={m.id} ref={dsWide.item(i).ref} style={dsWide.item(i).style}>
+                <Fragment key={m.id}>
+                <tr ref={dsWide.item(i).ref} style={dsWide.item(i).style} className={editId === m.id ? "open" : undefined}>
                   <td className="num" style={{ whiteSpace: "nowrap" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><DragHandle plain {...dsWide.handle(i, m.name)} />{m.no}</span>
                   </td>
@@ -785,10 +812,19 @@ function Members() {
                   <td style={{ maxWidth: 220, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }} className="small">{m.memo}</td>
                   <td>{(m.effective ?? []).map((p) => <span key={p} className={`pill ${p === "all" ? "ok" : "blue"}`} style={{ marginRight: 4 }}>{PERM_LABELS[p] ?? p}</span>)}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="mini" type="button" onClick={() => startEdit(m)}>수정</button>{" "}
-                    <button className="mini danger" type="button" onClick={() => remove(m)}>삭제</button>
+                    <button className="mini danger" type="button" onClick={() => remove(m)}>삭제</button>{" "}
+                    <button className="mini" type="button" aria-expanded={editId === m.id} onClick={() => startEdit(m)}>{editId === m.id ? "접기" : "수정"}</button>
                   </td>
                 </tr>
+                {/* 회원 수정: 이 줄 바로 아래로 펼친다(표가 넓어도 화면 왼쪽에 붙어 보이게) */}
+                {editId === m.id && (
+                  <tr className="medit-tr">
+                    <td colSpan={15 + custom.length}>
+                      <div className="medit" data-medit={m.id} aria-label={`${m.name} 회원 수정`}>{memberForm}</div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

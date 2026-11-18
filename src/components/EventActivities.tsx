@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RowDelete } from "./RowDelete";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { families, sourceLabel, type TplRow } from "@/lib/template-families";
@@ -116,7 +117,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
                     {canEdit && (
                       <>
                         <button className="mini" type="button" disabled={busy} style={{ minHeight: 32, fontSize: fs(12) }} onClick={() => upd(i, { code: newCode() })}>자동 생성</button>{" "}
-                        <button className="mini danger" type="button" disabled={busy} style={{ minHeight: 32, fontSize: fs(12) }} onClick={() => setRows(rows.filter((_, j) => j !== i))}>빼기</button>
+                        <RowDelete label={`${i + 1}번째 진행자 빼기`} disabled={busy} onClick={() => setRows(rows.filter((_, j) => j !== i))} />
                       </>
                     )}
                   </td>
@@ -295,6 +296,11 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   useEffect(() => {
     api<{ members: { id: string; name: string }[] }>("/api/public/club").then((r) => r.ok && setMembers(r.data.members));
   }, []);
+  // 일정 시작 일시: 활동 설정의 사전 단계 기간을 실제 날짜·시각으로 미리 보여 주는 데 쓴다
+  const [evStart, setEvStart] = useState("");
+  useEffect(() => {
+    api<{ event: { startsAt: string } }>(`/api/admin/events/${eventId}`).then((r) => r.ok && setEvStart(r.data.event.startsAt ?? ""));
+  }, [eventId]);
   const [pick, setPick] = useState(""); // 고른 템플릿(v1 id)
   const [pickVer, setPickVer] = useState(""); // 고른 버전 id (버전이 2개 이상일 때 두 번째 단계에서)
   const [addStep, setAddStep] = useState<1 | 2>(1);
@@ -445,7 +451,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               </>
             )}
           </div>
-          <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${fmtDate(a.pre.opensAt)} ~ ${fmtDate(a.pre.closesAt)}` : ""}</span>
+          <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${fmtDateTime(a.pre.opensAt)} ~ ${fmtDateTime(a.pre.closesAt)}` : ""}</span>
           {a.config.preEvent.steps.includes("ai_interview") && <Progress eventId={eventId} aid={a.id} />}
           <span className={`pill ${a.config.participants === "selected" ? "warn" : "gray"}`} style={{ alignSelf: "flex-start" }}>
             참여 대상: {a.config.participants === "selected" ? `관리자 선택 회원 (${a.rosterCount}명${a.attendanceConfirmed ? " · 출석 체크 완료" : " · 출석 체크 필요"})` : "전체 회원"}
@@ -609,7 +615,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             </span>
             {editErr && <div className="msg bad" role="alert">{editErr}</div>}
             <AiAssist value={edit.value} eventId={eventId} templateId={acts?.find((x) => x.id === edit.id)?.templateId} onApply={(value) => setEdit({ ...edit, value })} />
-            <TemplateEditor value={edit.value} onChange={(value) => setEdit({ ...edit, value })} />
+            <TemplateEditor value={edit.value} eventStartsAt={evStart} onChange={(value) => setEdit({ ...edit, value })} />
           </>
         )}
       </Popup>

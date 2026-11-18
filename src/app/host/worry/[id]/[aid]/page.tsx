@@ -14,7 +14,7 @@ type Stage = {
   counts: { total: number; drawn: number; remaining: number; byCategory: Record<string, number> };
   current: null | {
     id: string; body: string; category: string; orderNo: number; paused: boolean; remainingMs: number; timeUp: boolean;
-    minutes: number; nameRevealed: boolean; displayName: string; tips: string[];
+    minutes: number; extendMinutes?: number; nameRevealed: boolean; displayName: string; tips: string[];
   };
 };
 type Action = "draw" | "pause" | "resume" | "extend" | "skip" | "reveal" | "tips";
@@ -167,7 +167,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {c.paused ? <button className="btn white" type="button" disabled={busy} style={{ minHeight: 52 }} onClick={() => act("resume")}>계속</button>
                   : <button className="btn white" type="button" disabled={busy || timeUp} style={{ minHeight: 52 }} onClick={() => act("pause")}>일시정지</button>}
-                <button className="btn white" type="button" disabled={busy} style={{ minHeight: 52 }} onClick={() => act("extend", { minutes: 5 })}>+5분</button>
+                <button className="btn white" type="button" disabled={busy} style={{ minHeight: 52 }} onClick={() => act("extend", { minutes: c.extendMinutes ?? 5 })}>+{c.extendMinutes ?? 5}분</button>
                 <button className="btn white" type="button" disabled={busy || timeUp} style={{ minHeight: 52 }} onClick={() => act("skip")}>건너뛰기</button>
               </div>
             )}

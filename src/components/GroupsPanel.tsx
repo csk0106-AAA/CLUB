@@ -17,6 +17,8 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
   const [note, setNote] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState("");
+  // 고른 조편성의 제목 고치기
+  const [rename, setRename] = useState("");
 
   const load = useCallback(async () => {
     const r = await api<{ groups: G[] }>(base);
@@ -39,6 +41,13 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
     await load();
     setSel(r.data.id);
   }
+  async function saveTitle(g: G) {
+    const t = rename.trim();
+    if (!t || t === g.title) return setRename(g.title);
+    const r = await api(`${base}/${g.id}`, { method: "PATCH", body: { title: t } });
+    setNote(r.ok ? { tone: "info", text: "조편성 이름을 바꿨어요." } : { tone: "bad", text: r.error });
+    load();
+  }
   async function remove(g: G) {
     if (!window.confirm(`“${g.title}” 조편성을 지울까요?`)) return;
     const r = await api(`${base}/${g.id}`, { method: "DELETE" });
@@ -48,14 +57,15 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
 
   if (!list) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
   const cur = list.find((g) => g.id === sel);
+  const titleNow = cur && rename === "" ? cur.title : rename;
 
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      <span className="small">활동마다 조를 따로 만들 수 있어요. 배포한 조편성은 해당 회원의 일정 화면에 “내 조”로 나와요.</span>
+      <span className="small">활동마다 조를 따로 만들 수 있어요. 조편성 이름과 조 이름(1조, 2조…)은 칸을 눌러 바로 고칠 수 있어요. 배포한 조편성은 해당 회원의 일정 화면에 “내 조”로 나와요.</span>
       <div className="subnav" role="tablist" aria-label="조편성 목록">
         {list.map((g) => (
-          <a key={g.id} href="#" role="tab" aria-selected={sel === g.id} className={sel === g.id ? "on" : ""} onClick={(e) => { e.preventDefault(); setSel(g.id); }}>
+          <a key={g.id} href="#" role="tab" aria-selected={sel === g.id} className={sel === g.id ? "on" : ""} onClick={(e) => { e.preventDefault(); setSel(g.id); setRename(""); }}>
             {g.title}{g.published ? " ✓" : ""}
           </a>
         ))}
@@ -65,7 +75,12 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
       {cur && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <b style={{ font: `700 ${fs(17)} var(--display)` }}>{cur.title}</b>
+            {canEdit ? (
+              // 조편성 제목: 바로 고치고 Enter 나 다른 곳을 누르면 저장
+              <input className="field" aria-label="조편성 이름" maxLength={60} style={{ flex: "1 1 200px", minHeight: 42, font: `700 ${fs(16)} var(--display)` }}
+                value={titleNow} onChange={(e) => setRename(e.target.value)} onBlur={() => saveTitle(cur)}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur(); }} />
+            ) : <b style={{ font: `700 ${fs(17)} var(--display)` }}>{cur.title}</b>}
             <span className="grow" />
             {canEdit && <button className="mini danger" type="button" onClick={() => remove(cur)}>이 조편성 지우기</button>}
           </div>

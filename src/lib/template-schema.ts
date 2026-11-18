@@ -27,12 +27,38 @@ export const stepSchema = z.object({
   hostButton: z.string().optional(),
 });
 
+// 사전 단계 기간(사전 작성, 사전 맞히기 등 활동 안의 사전 단계마다 하나): 일정 며칠 전 몇 시부터 며칠 전 몇 시까지.
+//  opensTime/closesTime("HH:mm", 한국 시간)을 정하면 그날 그 시각, 정하지 않으면 예전처럼 일정 시작 시각 기준으로 N일 전.
+const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const preEventSchema = z.object({
   enabled: z.boolean(), // false면 일정 전 사전 작성 단계가 없다(현장에서만 진행)
   opensBeforeDays: z.number().int().min(0).optional(),
   closesBeforeDays: z.number().int().min(0).optional(),
+  opensTime: z.string().regex(HM).optional(), // 시작 시각(예: "09:00")
+  closesTime: z.string().regex(HM).optional(), // 마감 시각(예: "23:59")
   steps: z.array(z.string()).default([]),
 });
+
+// 사전 단계가 실제로 열리고 닫히는 시각(밀리초). 일정 날짜가 없으면 null. 화면(편집 미리 보기)과 서버(상태 계산)가 같이 쓴다.
+export type PreWindow = { enabled: boolean; opensBeforeDays?: number; closesBeforeDays?: number; opensTime?: string; closesTime?: string };
+const DAY_MS = 24 * 60 * 60 * 1000;
+const kstDate = (t: number) => new Date(t + 9 * 3600_000).toISOString().slice(0, 10);
+const minutes = (hm: string) => { const [h, m] = hm.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+export function preWindowTimes(win: PreWindow, startsAt: string): { opens: number; closes: number; timed: boolean } | null {
+  if (!startsAt) return null;
+  const start = Date.parse(startsAt.length <= 16 ? `${startsAt.length === 10 ? `${startsAt}T00:00` : startsAt}:00+09:00` : startsAt);
+  if (Number.isNaN(start)) return null;
+  const ob = win.opensBeforeDays ?? 14, cb = win.closesBeforeDays ?? 1;
+  if (!win.opensTime && !win.closesTime) return { opens: start - ob * DAY_MS, closes: start - cb * DAY_MS, timed: false };
+  const base = Date.parse(`${kstDate(start)}T00:00:00+09:00`); // 일정 날짜 0시(한국 시간)
+  return {
+    opens: base - ob * DAY_MS + minutes(win.opensTime ?? "00:00") * 60_000,
+    closes: base - cb * DAY_MS + minutes(win.closesTime ?? "23:59") * 60_000 + 59_999,
+    timed: true,
+  };
+}
+// "2026/11/27 09:00" (한국 시간)
+export const kstText = (t: number) => new Date(t + 9 * 3600_000).toISOString().slice(0, 16).replace("T", " ").replace(/-/g, "/");
 
 export const templateConfigSchema = z.object({
   id: z.string().min(1),
@@ -68,6 +94,8 @@ export const templateConfigSchema = z.object({
   // 프로필 북 실명 공개 시점(소개 작성 활동). 참여 회원은 이 시점까지 프로필 북에 별칭으로만 보이고, 지나면 실명과 소개가 함께 보인다.
   //  end: 일정(활동)이 끝날 때 / after: 끝나고 hours 시간 뒤 / at: 정한 일시(한국 시간 YYYY-MM-DDTHH:mm)
   reveal: z.object({ mode: z.enum(["end", "after", "at"]).default("end"), hours: z.number().int().min(0).max(2000).optional(), at: z.string().max(20).optional() }).optional(),
+  // 나의 고민은?(고민 엔진): 대화 타이머 기본 시간과 "+N분" 연장 단위(분). 비어 있으면 15분 / 5분
+  worry: z.object({ talkMinutes: z.number().int().min(1).max(120).optional(), extendMinutes: z.number().int().min(1).max(60).optional() }).optional(),
   derivedFrom: z.string().optional(), // v1 템플릿 id
   sourceEvent: z.object({ id: z.string(), name: z.string(), date: z.string() }).optional(),
 });

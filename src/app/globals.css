@@ -431,23 +431,17 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .opt[aria-pressed="true"] .tick::after { content: "✓"; }
 
 /* 진행자 전체화면: 프로젝터용 어두운 무대(글자 크기 설정을 따르지 않는다) */
-/* 진행자 화면(프로젝터·큰 화면): 따뜻한 올리브·호박색 그라데이션 무대 + 반투명 유리 패널 + 흰 알약 버튼.
-   회원 화면(그래파이트)과 따로 정한다. 안에서 쓰는 공통 부품(버튼·입력칸·안내)도 이 색을 따르게 토큰을 덮어쓴다. */
-.host {
-  --page: #2c2b25; --bg: #34322b; --card: rgba(255, 255, 255, 0.09); --soft: rgba(255, 255, 255, 0.07);
-  --line: rgba(255, 255, 255, 0.16); --line2: rgba(255, 255, 255, 0.08);
-  --ink: #ffffff; --ink2: #f3efe6; --sub: #d8d1c1; --brand: #ffffff; --brand-h: #f1ece0; --on-brand: #1a1a1a; --focus: #ffffff;
-  --violet: #f2d58a; --violet-t: #f2d58a; --violet-bg: rgba(242, 213, 138, 0.16); --on-violet: #1a1a1a;
-}
-.host { min-height: 100vh; background: linear-gradient(165deg, #45443a 0%, #2c2b25 42%, #2a2620 68%, #5a4526 100%) fixed, #2c2b25; color: #ffffff; display: flex; flex-direction: column; gap: 16px; padding: max(16px, env(safe-area-inset-top)) 24px max(16px, env(safe-area-inset-bottom)); font-size: 22px; }
+/* 진행자 화면(프로젝터·큰 화면): 회원 화면과 같은 그래파이트 그라데이션 무대 + 유리 패널 + 레몬 주 버튼.
+   색은 :root 토큰을 그대로 쓴다(따로 덮어쓰지 않음). 큰 글자·넓은 여백만 진행자 화면용. */
+.host { min-height: 100vh; background: var(--page-grad) fixed, var(--page); color: var(--ink); display: flex; flex-direction: column; gap: 16px; padding: max(16px, env(safe-area-inset-top)) 24px max(16px, env(safe-area-inset-bottom)); font-size: 22px; }
 .host h1, .host h2, .host h3 { margin: 0; font-family: var(--display); font-weight: 700; }
-.host .sub { color: #d8d1c1; font-size: 18px; }
+.host .sub { color: var(--sub); font-size: 18px; }
 .host .stage { flex: 1; display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; min-height: 0; }
 @media (max-width: 800px) { .host .stage { grid-template-columns: 1fr; } }
-.host .panel { background: rgba(255, 255, 255, 0.09); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 22px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.host .alias { font: 700 clamp(32px, 5vw, 56px)/1.2 var(--display); color: #e5c9a3; }
+.host .panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.host .alias { font: 700 clamp(32px, 5vw, 56px)/1.2 var(--display); color: var(--violet-t); }
 .host .intro { font-size: clamp(19px, 2.2vw, 26px); line-height: 1.7; white-space: pre-wrap; overflow: auto; max-height: 52vh; }
-.host .stmt { display: flex; gap: 14px; align-items: center; background: rgba(255, 255, 255, 0.09); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 18px; padding: 14px 18px; font: 700 clamp(20px, 2.6vw, 30px)/1.4 var(--body); }
+.host .stmt { display: flex; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 18px; font: 700 clamp(20px, 2.6vw, 30px)/1.4 var(--body); }
 .host .stmt .no { width: 48px; height: 48px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #c81616; color: #ffffff; font: 700 24px var(--display); }
 .host .stmt.lie { border-color: #ff5a52; background: #3a1c1c; }
 .host .stmt.truth { border-color: #ffffff; background: rgba(255, 255, 255, 0.18); }
@@ -579,14 +573,16 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .tl li { display: flex; gap: 14px; border-left: 2px solid var(--line); padding: 4px 0 4px 12px; }
 .tl b { min-width: 110px; flex: none; font-variant-numeric: tabular-nums; }
 /* 세부일정: 한 줄(시간 · 늘어나는 내용 · 위치·메모 아이콘 · 저장/삭제). 휴대폰에서는 저장/삭제가 아래 줄로 */
-.schedrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: start; gap: 8px; }
-.schedrow .grow-text { width: 100%; min-height: 44px; padding: 10px 12px; line-height: 1.5; resize: none; overflow: hidden; }
-.schedrow .sics { margin-left: 0; }
-@media (max-width: 560px) {
-  .schedrow { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .schedrow .sics { flex-direction: column; }
-  .schedrow .schedacts { grid-column: 2 / 4; justify-self: end; }
-}
+/* 화면 폭과 상관없이 늘 한 줄: 시간 · 내용(한 줄, 길면 …) · 위치·메모 아이콘 · 삭제(⊖) */
+.schedrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 6px; }
+.schedrow .sics { margin-left: 0; align-self: center; flex-direction: row; }
+.sched-title { min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink);
+  font: inherit; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; user-select: none; }
+.sched-title:hover { border-color: var(--violet-line); }
+.sched-title:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.schedacts { display: inline-flex; }
+.sic-del { color: var(--red-t); }
+.sic-del:hover { border-color: var(--red-line); background: var(--red-bg); }
 .sics { display: inline-flex; gap: 2px; flex: none; margin-left: auto; align-self: flex-start; }
 .sic { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--dis); cursor: pointer; }
 .sic.on { color: var(--violet); background: var(--violet-bg); }
@@ -1066,3 +1062,23 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .mini.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 700; }
 .mini.primary:hover:not(:disabled) { background: var(--brand-h); border-color: var(--brand-h); }
 .mini:disabled { opacity: .7; cursor: default; }
+/* 관리자 › 회원명단: 회원 수정 칸(명단 줄 아래로 펼침). 괄호로 묶은 칸은 한 줄에 나란히(.mf-row) */
+.mf-row { display: grid; gap: 10px; }
+.mf-row > div { min-width: 0; }
+.medit { padding: 14px 12px 16px; background: var(--soft); border-top: 1px dashed var(--line); border-bottom: 1px solid var(--line); list-style: none; }
+.rows .medit { padding-left: var(--pl, 16px); padding-right: var(--pr, 16px); }
+.medit-tr > td { padding: 0 !important; }
+.medit-tr .medit { position: sticky; left: 0; max-width: min(960px, calc(100vw - 80px)); border: 0; }
+.mrow.open, tr.open > td { background: var(--violet-bg); }
+/* 세부일정 줄 끌어서 순서 바꾸기: 맨 앞에 ⠿ 손잡이 칸 */
+.schedrow.sortable { grid-template-columns: auto auto minmax(0, 1fr) auto auto; }
+.schedrow.sortable > button:first-child { margin: 0 -6px 0 -8px; }
+/* 줄 지우기 ⊖(components/RowDelete.tsx): 못 쓰는 상태(보기가 2개뿐일 때 등)는 흐리게 */
+.sic:disabled { opacity: .35; cursor: not-allowed; border-color: transparent; background: transparent; }
+/* 조(팀) 보드: 조 이름을 칸에서 바로 고치기 */
+.team-name { flex: 1 1 auto; min-width: 0; max-width: 220px; min-height: 36px; padding: 0 10px; font-weight: 700; }
+/* 활동 템플릿: 사전 단계 기간 한 줄(시작/마감 · 일정 N일 전 · 시각) */
+.win-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.win-row > .l { width: 2.6em; flex: none; }
+.win-row input.num { width: 72px; min-height: 42px; text-align: center; }
+.win-row input[type="time"] { width: 130px; min-height: 42px; }
