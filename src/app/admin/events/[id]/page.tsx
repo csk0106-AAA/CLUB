@@ -17,6 +17,7 @@ import { EventPreview, eventInfoLines } from "@/components/EventInfoCard";
 import type { SchedItem } from "@/components/ScheduleBoard";
 import { readDayPlaces } from "@/lib/day-places";
 import { EditorsBox } from "@/components/EditorsBox";
+import { EventDuplicate } from "@/components/EventDuplicate";
 import { EventAudience } from "./EventAudience";
 import { api, fmtDate, fmtDateDow, fmtDateTime, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
@@ -424,6 +425,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
           </div>
           <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회원마다 회비가 다르면 금액과 계좌 대신 “앱 접속 후 내 회비 확인”으로 나가요.</span>
+          {/* 일정 복제: 같은 설정·준비 내용으로 새 초안 일정 만들기 */}
+          <div className="row" style={{ flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 4 }}>
+            <span className="small grow" style={{ minWidth: 200 }}>같은 설정으로 다음 일정을 만들려면 복제하세요. 세부일정·준비목록·비용 항목·활동까지 새 초안으로 복사돼요.</span>
+            <EventDuplicate variant="page" ev={{ id: ev.id, name: ev.name, startsAt: ev.startsAt, club: ev.club }} />
+          </div>
           {canDelete && (
             <div className="row" style={{ flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 4 }}>
               <span className="small grow" style={{ minWidth: 200 }}>일정을 지우면 참석 신청·회비·세부일정·활동 기록도 함께 지워지고 되돌릴 수 없어요. 회원에게만 감추려면 “공개 취소”를 쓰세요.</span>
