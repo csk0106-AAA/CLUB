@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { IconBack, IconNext } from "./Icons";
 
 // 일정 › 타임라인 위쪽 달력. 주(월~일 한 주) / 월(한 달) 보기를 고른다(고른 보기는 이 기기에 기억).
-// 일정이 있는 날은 점(참석하는 일정이면 보라), 대표 사진이 있으면 작은 사진.
-// 날짜를 누르면 onPick(그날, YYYY-MM-DD) — 아래 일정 피드가 그날(또는 그 뒤 가장 가까운 날)로 이동한다.
-export type StripEvent = { id: string; startsAt: string; endsAt: string; coverUrl?: string; myAnswer?: string };
+// 일정이 있는 날은 날짜 아래에 일정 유형 라벨(참석하는 일정이 있으면 강조색, 여러 개면 "+n").
+// 날짜 칸을 누르면 onPick(그날, YYYY-MM-DD) — 아래 일정 피드가 그날(또는 그 뒤 가장 가까운 날)로 이동한다.
+// 유형 라벨을 누르면 그 일정 화면(hrefOf)으로 간다(라벨은 날짜 버튼 위에 겹친 링크).
+export type StripEvent = { id: string; type: string; startsAt: string; endsAt: string; myAnswer?: string };
 type Mode = "week" | "month";
 
 const WD = ["월", "화", "수", "목", "금", "토", "일"];
@@ -28,10 +30,12 @@ function readMode(): Mode {
   }
 }
 
-export function WeekStrip({ events, selected, onPick }: {
-  events: StripEvent[];
+export function WeekStrip<T extends StripEvent>({ events, selected, onPick, hrefOf, actions }: {
+  events: T[];
   selected: string;
   onPick: (day: string) => void;
+  hrefOf: (e: T) => string; // 라벨을 누르면 갈 일정 화면
+  actions?: React.ReactNode; // 윗줄 오른쪽 끝(주/월 옆)에 둘 버튼(일정 만들기 등)
 }) {
   const [mode, setMode] = useState<Mode>("week");
   useEffect(() => setMode(readMode()), []);
@@ -76,15 +80,18 @@ export function WeekStrip({ events, selected, onPick }: {
 
   return (
     <div className="wk-wrap">
-      {/* 박스 밖 윗줄(일정 피드의 날짜 줄처럼): 왼쪽 연도 + "오늘"(강조색 글자), 오른쪽 주·월 전환 */}
+      {/* 박스 밖 윗줄: 왼쪽 연도, 오른쪽 "오늘"(강조색 글자) + 주·월 전환(사각형 토글) + actions */}
       <div className="wk-top">
         <div className="wk-yrow">
-          <h2 className="tl-h wk-year" aria-live="polite">{shownMonth.getFullYear()}년</h2>
-          <button type="button" className="wk-today" onClick={() => { setAnchor(new Date()); onPick(today); }}>오늘</button>
+          <h2 className="title wk-year" aria-live="polite">{shownMonth.getFullYear()}년</h2>
         </div>
-        <div className="wk-mode" role="group" aria-label="달력 보기">
-          <button type="button" aria-pressed={mode === "week"} onClick={() => choose("week")}>주</button>
-          <button type="button" aria-pressed={mode === "month"} onClick={() => choose("month")}>월</button>
+        <div className="wk-right">
+          <button type="button" className="wk-today" onClick={() => { setAnchor(new Date()); onPick(today); }}>오늘</button>
+          <div className="wk-mode" role="group" aria-label="달력 보기">
+            <button type="button" aria-pressed={mode === "week"} onClick={() => choose("week")}>주</button>
+            <button type="button" aria-pressed={mode === "month"} onClick={() => choose("month")}>월</button>
+          </div>
+          {actions}
         </div>
       </div>
     <section className={`wk${mode === "month" ? " month" : ""}`} aria-label="일정 달력">
@@ -100,22 +107,26 @@ export function WeekStrip({ events, selected, onPick }: {
           const key = ymd(d);
           const i = (d.getDay() + 6) % 7;
           const evs = onDay(key);
-          const cover = evs.find((e) => e.coverUrl);
           const attend = evs.some((e) => e.myAnswer === "참석");
           const out = mode === "month" && d.getMonth() !== anchor.getMonth();
           const label = `${d.getMonth() + 1}월 ${d.getDate()}일 ${WD[i]}요일${key === today ? ", 오늘" : ""}, ${evs.length ? `일정 ${evs.length}개` : "일정 없음"}${attend ? ", 참석하는 일정 있음" : ""}`;
+          // 라벨에 보일 일정: 참석하는 일정 먼저
+          const lead = evs.find((e) => e.myAnswer === "참석") ?? evs[0];
           return (
-            <button key={key} type="button" aria-label={label} aria-pressed={key === selected} aria-current={key === today ? "date" : undefined}
-              className={`wk-day${key === selected ? " on" : ""}${key === today ? " today" : ""}${i >= 5 ? " we" : ""}${out ? " out" : ""}`} onClick={() => onPick(key)}>
+            <div key={key} className={`wk-day${key === selected ? " on" : ""}${key === today ? " today" : ""}${i >= 5 ? " we" : ""}${out ? " out" : ""}`}>
+              {/* 칸 전체를 덮는 날짜 버튼(피드를 그날로) */}
+              <button type="button" className="wk-hit" aria-label={label} aria-pressed={key === selected} aria-current={key === today ? "date" : undefined} onClick={() => onPick(key)} />
               {mode === "week" && <span className="wk-wd" aria-hidden="true">{WD[i]}</span>}
               <span className="wk-num" aria-hidden="true">{d.getDate()}</span>
-              <span className="wk-mark" aria-hidden="true">
-                {cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cover.coverUrl} alt="" loading="lazy" />
-                ) : evs.length > 0 ? <i className={attend ? "go" : ""} /> : null}
+              <span className="wk-mark">
+                {/* 일정 유형 라벨(참석하는 일정이 있으면 강조색, 여러 개면 "+n") — 누르면 그 일정 화면 */}
+                {lead && (
+                  <Link href={hrefOf(lead)} className={`wk-lab${attend ? " go" : ""}`} aria-label={`${lead.type} 일정 열기${evs.length > 1 ? `, 이날 일정 ${evs.length}개 중 하나` : ""}`}>
+                    {lead.type}{evs.length > 1 ? <b>+{evs.length - 1}</b> : null}
+                  </Link>
+                )}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>

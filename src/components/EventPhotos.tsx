@@ -5,6 +5,7 @@ import { Popup } from "./Popup";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 import { MAX_SOURCE, shrink } from "@/lib/image-shrink";
+import { limitMessage } from "@/lib/photo-limit";
 
 // 일정 사진첩: 참석한 회원이 사진을 올리고 함께 본다(회원 일정 화면, 일정관리·클럽관리 › 일정 › 사진첩 탭).
 // 사진은 이 기기에서 긴 변 1600px(원본)·400px(미리보기) JPEG 로 다시 그려 올린다(위치 정보 같은 EXIF 는 따라가지 않는다).
@@ -14,7 +15,8 @@ type Photo = {
   id: string; memberId: string; name: string; caption: string; w: number; h: number;
   likes: number; liked: boolean; mine: boolean; createdAt: string;
 };
-type List = { photos: Photo[]; canUpload: boolean; manager: boolean; attending: boolean; max: number };
+// max: 이 일정의 최대 장수, requested: 내가 이미 장수 늘리기를 요청했는지
+type List = { photos: Photo[]; canUpload: boolean; manager: boolean; attending: boolean; max: number; requested?: boolean };
 
 const PREVIEW = 9; // 처음 보여 줄 사진 수(더 보기로 펼친다)
 
@@ -24,7 +26,7 @@ const when = (iso: string) => {
 };
 const src = (eventId: string, id: string, thumb?: boolean) => `/api/events/${eventId}/photos/${id}${thumb ? "?size=thumb" : ""}`;
 
-export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boolean }) {
+export function EventPhotos({ eventId, admin, carousel }: { eventId: string; admin?: boolean; carousel?: boolean }) {
   const [list, setList] = useState<List | null>(null);
   const [error, setError] = useState("");
   const [sort, setSort] = useState<"new" | "best" | "mine">("new");
@@ -32,6 +34,41 @@ export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boole
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // 장수가 찼을 때 "관리자 요청 / 취소" 창
+  const [full, setFull] = useState(false);
+  const [reqNote, setReqNote] = useState("");
+  // PC 마우스로 사진 줄을 잡고 끌어 넘기기(휴대폰 손가락·터치패드는 브라우저 기본 스크롤 그대로)
+  const drag = useRef<{ x: number; left: number; moved: boolean; el: HTMLElement } | null>(null);
+  const dragged = useRef(false);
+  const onDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    const el = e.currentTarget;
+    drag.current = { x: e.clientX, left: el.scrollLeft, moved: false, el };
+    dragged.current = false;
+  };
+  const onMove = (e: React.PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    if (!d.moved && Math.abs(dx) > 5) {
+      d.moved = true;
+      d.el.classList.add("dragging"); // 끄는 동안은 자석처럼 맞추기(스냅)를 끈다
+      d.el.setPointerCapture(e.pointerId);
+    }
+    if (d.moved) d.el.scrollLeft = d.left - dx;
+  };
+  const onUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d?.moved) return;
+    dragged.current = true; // 끈 뒤 바로 오는 클릭은 크게 보기를 열지 않는다
+    // 가장 가까운 사진에 맞춰 멈춘다
+    const kids = [...d.el.children] as HTMLElement[];
+    const base = d.el.getBoundingClientRect().left;
+    const near = kids.reduce((b, k) => (Math.abs(k.getBoundingClientRect().left - base) < Math.abs(b.getBoundingClientRect().left - base) ? k : b), kids[0]);
+    d.el.classList.remove("dragging");
+    if (near) d.el.scrollTo({ left: d.el.scrollLeft + near.getBoundingClientRect().left - base, behavior: "smooth" });
+  };
 
   const load = useCallback(async () => {
     const r = await api<List>(`/api/events/${eventId}/photos`);
@@ -56,7 +93,13 @@ export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boole
     setError("");
     const pick = [...files].filter((f) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|heic)$/i.test(f.name));
     if (pick.length === 0) return setError("사진 파일을 골라 주세요.");
+    // 이미 가득 찼으면 올리지 않고 "관리자 요청" 창을 연다
+    if (list && list.photos.length >= list.max) {
+      if (fileRef.current) fileRef.current.value = "";
+      return void (carousel ? setFull(true) : setError(`${limitMessage(list?.max ?? 0)} 관리자는 개요 탭의 “사진 최대 장수”에서 늘릴 수 있어요.`));
+    }
     const errs: string[] = [];
+    let hitLimit = false;
     setProgress({ done: 0, total: pick.length });
     for (let i = 0; i < pick.length; i++) {
       const f = pick[i];
@@ -71,7 +114,8 @@ export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boole
         const res = await fetch(`/api/events/${eventId}/photos`, { method: "POST", body: fd, cache: "no-store" }).catch(() => null);
         if (!res) throw new Error("연결이 불안정해요.");
         if (!res.ok) {
-          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          const data = (await res.json().catch(() => ({}))) as { error?: string; limit?: boolean };
+          if (data.limit) { hitLimit = true; break; } // 장수가 차면 멈추고 "관리자 요청" 창
           throw new Error(data.error ?? "올리지 못했어요.");
         }
       } catch (e) {
@@ -85,6 +129,16 @@ export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boole
     if (fileRef.current) fileRef.current.value = "";
     if (errs.length) setError(errs.slice(0, 3).join("\n") + (errs.length > 3 ? `\n외 ${errs.length - 3}장` : ""));
     await load();
+    if (hitLimit) carousel ? setFull(true) : setError(`${limitMessage(list?.max ?? 0)} 관리자는 개요 탭의 “사진 최대 장수”에서 늘릴 수 있어요.`);
+  }
+
+  // 관리자에게 장수 늘리기 요청(그 일정을 관리하는 관리자에게 알림 + 처리할 일)
+  async function askAdmin() {
+    const r = await api<{ already: boolean }>(`/api/events/${eventId}/photos/request`, { method: "POST" });
+    setFull(false);
+    if (!r.ok) return setError(r.error);
+    setList((l) => l && { ...l, requested: true });
+    setReqNote(r.data.already ? "이미 요청했어요. 관리자가 장수를 늘리면 다시 올릴 수 있어요." : "관리자에게 요청했어요. 장수가 늘어나면 다시 올릴 수 있어요.");
   }
 
   async function like(p: Photo) {
@@ -114,6 +168,117 @@ export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boole
     <button key={k} type="button" className={`ph-sort${sort === k ? " on" : ""}`} aria-pressed={sort === k} onClick={() => setSort(k)}>{label}</button>
   );
 
+  // 사진 크게 보기 창(두 모양이 함께 쓴다)
+  const viewer = (
+    <Popup id="event-photo" open={!!cur} onClose={() => setOpen(null)} title={cur ? `${cur.name} 님의 사진` : "사진"} width={720}
+      footer={cur && (
+        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <button type="button" className={`btn ${cur.liked ? "" : "white"}`} style={{ width: "auto", minWidth: 96 }} aria-pressed={cur.liked} onClick={() => like(cur)}>
+            {cur.liked ? "♥" : "♡"} {cur.likes}
+          </button>
+          <a className="btn white" style={{ width: "auto", minWidth: 96, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            href={`${src(eventId, cur.id)}?dl=1`} download>내려받기</a>
+          {(cur.mine || list.manager) && <button type="button" className="btn white" style={{ width: "auto" }} onClick={() => caption(cur)}>설명 {cur.caption ? "고치기" : "쓰기"}</button>}
+          {(cur.mine || list.manager) && <button type="button" className="btn white" style={{ width: "auto", color: "var(--red-t)" }} onClick={() => remove(cur)}>지우기</button>}
+        </div>
+      )}>
+      {cur && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="ph-view">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src(eventId, cur.id)} alt={cur.caption || `${cur.name} 님이 올린 사진`} />
+            {curIdx > 0 && <button type="button" className="ph-nav l" aria-label="이전 사진" onClick={() => setOpen(photos[curIdx - 1].id)}>‹</button>}
+            {curIdx < photos.length - 1 && <button type="button" className="ph-nav r" aria-label="다음 사진" onClick={() => setOpen(photos[curIdx + 1].id)}>›</button>}
+          </div>
+          {cur.caption && <p style={{ margin: 0, overflowWrap: "anywhere" }}>{cur.caption}</p>}
+          <span className="small">{cur.name} · {when(cur.createdAt)} · {curIdx + 1}/{photos.length}</span>
+        </div>
+      )}
+    </Popup>
+  );
+
+  const picker = list.canUpload && <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />;
+
+  // 회원 일정 화면: 세로로 긴 사진을 옆으로 넘겨 보기. 사진마다 ♥ 좋아요·⬇ 내려받기, 오른쪽 위 "+ 사진"으로 올리기
+  if (carousel) {
+    return (
+      <section className="card ph-card ph-carousel" aria-label="사진첩">
+        <div className="row" style={{ gap: 8 }}>
+          <span className="grow" style={{ minWidth: 0 }}>
+            <b style={{ font: `700 ${fs(18)} var(--display)` }}>사진첩</b>
+            {list.photos.length > 0 && <span className="small" style={{ marginLeft: 8 }}>{list.photos.length}/{list.max}장 · {people}명</span>}
+          </span>
+          {picker}
+          {list.canUpload && (
+            <button type="button" className="ph-add" disabled={!!progress} onClick={() => fileRef.current?.click()} aria-label="사진 올리기">
+              {progress ? `올리는 중 ${progress.done}/${progress.total}` : "+ 사진"}
+            </button>
+          )}
+        </div>
+        {progress && (
+          <div className="ph-bar" role="progressbar" aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.done} aria-label="사진 올리는 중">
+            <span style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+          </div>
+        )}
+        {error && <div className="msg bad" role="alert" style={{ whiteSpace: "pre-line" }}>{error}</div>}
+        {reqNote && <div className="msg info" role="status">{reqNote}</div>}
+        {/* 정렬: 최신순 / 베스트(좋아요 많은 순) / 내 사진 */}
+        {list.photos.length > 0 && (
+          <div className="row" style={{ gap: 6, marginRight: 16 }} role="group" aria-label="사진 정렬">
+            {chip("new", "최신순")}
+            {chip("best", "베스트 ♥")}
+            {list.photos.some((x) => x.mine) && chip("mine", "내 사진")}
+          </div>
+        )}
+        {list.photos.length === 0 ? (
+          <div className="ph-empty">
+            <span>{list.canUpload ? "아직 사진이 없어요. “+ 사진”으로 첫 사진을 올려 주세요!" : list.attending ? "아직 사진이 없어요." : "참석 신청한 회원이 사진을 올릴 수 있어요."}</span>
+          </div>
+        ) : (
+          <ul className="ph-track" aria-label="사진 목록(옆으로 넘겨 보기)" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+            onClickCapture={(e) => { if (dragged.current) { e.preventDefault(); e.stopPropagation(); dragged.current = false; } }}
+            onDragStart={(e) => e.preventDefault()}>
+            {photos.map((p, i) => (
+              <li key={p.id} className="ph-slide">
+                <button type="button" className="ph-open" onClick={() => setOpen(p.id)} aria-label={`${i + 1}/${photos.length}: ${p.name} 님의 사진${p.caption ? `, ${p.caption}` : ""} 크게 보기`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src(eventId, p.id)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" />
+                </button>
+                <div className="ph-acts">
+                  <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)}>
+                    <span aria-hidden="true">{p.liked ? "♥" : "♡"}</span>{p.likes > 0 && <span>{p.likes}</span>}
+                  </button>
+                  <a className="ph-act" href={`${src(eventId, p.id)}?dl=1`} download aria-label={`${p.name} 님의 사진 내려받기`}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                  </a>
+                  {/* 내가 올린 사진만: 지우기 */}
+                  {p.mine && (
+                    <button type="button" className="ph-act" aria-label="내 사진 지우기" onClick={() => remove(p)}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!list.canUpload && list.photos.length > 0 && !list.attending && <p className="small" style={{ margin: 0 }}>참석 신청하면 사진을 올릴 수 있어요.</p>}
+        {viewer}
+        {/* 장수가 찼을 때: 관리자 요청 / 취소 */}
+        <Popup id="photo-full" open={full} onClose={() => setFull(false)} title="사진이 가득 찼어요" width={420}
+          footer={
+            <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" className="btn white" style={{ width: "auto", minWidth: 96 }} onClick={() => setFull(false)}>취소</button>
+              {!list.requested && <button type="button" className="btn" style={{ width: "auto", minWidth: 120 }} onClick={askAdmin}>관리자 요청</button>}
+            </div>
+          }>
+          <p style={{ margin: 0 }}>{limitMessage(list.max)}</p>
+          {list.requested && <p className="small" style={{ margin: 0 }}>이미 요청했어요. 관리자가 장수를 늘리면 다시 올릴 수 있어요.</p>}
+        </Popup>
+      </section>
+    );
+  }
+
   return (
     <section className="card ph-card" aria-label="사진첩">
       <div className="row" style={{ gap: 8, alignItems: "flex-start" }}>
@@ -125,7 +290,7 @@ export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boole
         </span>
         {list.canUpload && (
           <>
-            <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />
+            {picker}
             <button type="button" className="btn ph-up" disabled={!!progress} onClick={() => fileRef.current?.click()}>
               {progress ? `올리는 중 ${progress.done}/${progress.total}` : "+ 사진 올리기"}
             </button>
@@ -173,31 +338,7 @@ export function EventPhotos({ eventId, admin }: { eventId: string; admin?: boole
         <p className="small" style={{ margin: 0 }}>참석 신청하면 사진을 올릴 수 있어요.</p>
       )}
 
-      <Popup id="event-photo" open={!!cur} onClose={() => setOpen(null)} title={cur ? `${cur.name} 님의 사진` : "사진"} width={720}
-        footer={cur && (
-          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-            <button type="button" className={`btn ${cur.liked ? "" : "white"}`} style={{ width: "auto", minWidth: 96 }} aria-pressed={cur.liked} onClick={() => like(cur)}>
-              {cur.liked ? "♥" : "♡"} {cur.likes}
-            </button>
-            <a className="btn white" style={{ width: "auto", minWidth: 96, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-              href={`${src(eventId, cur.id)}?dl=1`} download>내려받기</a>
-            {(cur.mine || list.manager) && <button type="button" className="btn white" style={{ width: "auto" }} onClick={() => caption(cur)}>설명 {cur.caption ? "고치기" : "쓰기"}</button>}
-            {(cur.mine || list.manager) && <button type="button" className="btn white" style={{ width: "auto", color: "var(--red-t)" }} onClick={() => remove(cur)}>지우기</button>}
-          </div>
-        )}>
-        {cur && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div className="ph-view">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src(eventId, cur.id)} alt={cur.caption || `${cur.name} 님이 올린 사진`} />
-              {curIdx > 0 && <button type="button" className="ph-nav l" aria-label="이전 사진" onClick={() => setOpen(photos[curIdx - 1].id)}>‹</button>}
-              {curIdx < photos.length - 1 && <button type="button" className="ph-nav r" aria-label="다음 사진" onClick={() => setOpen(photos[curIdx + 1].id)}>›</button>}
-            </div>
-            {cur.caption && <p style={{ margin: 0, overflowWrap: "anywhere" }}>{cur.caption}</p>}
-            <span className="small">{cur.name} · {when(cur.createdAt)} · {curIdx + 1}/{photos.length}</span>
-          </div>
-        )}
-      </Popup>
+      {viewer}
     </section>
   );
 }

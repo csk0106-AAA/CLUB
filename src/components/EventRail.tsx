@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
 
-// 홈 맨 위 "다가오는 일정" 카드: 한 달 안에 시작하는 일정 중 날짜가 가장 가까운 3개까지(옆으로 넘기기 + 5초마다 자동으로 다음 카드).
+// 홈 맨 위 "다가오는 나의 일정" 카드: 내가 참석 신청한 일정 중 한 달 안에 시작하는, 날짜가 가장 가까운 3개까지(옆으로 넘기기 + 5초마다 자동으로 다음 카드).
 // 자동 넘김은 손가락·마우스를 올리거나 포커스가 있으면 멈추고, 기기의 "동작 줄이기"가 켜져 있으면 하지 않는다.
-// 카드: 사진(회원 사진 → 클럽·모임 대표사진, 없으면 바탕색) 위에 D-day · 이름 · 날짜 · 참석 인원. 누르면 일정 화면.
+// 카드: 사진(회원 사진 → 클럽·모임 대표사진, 없으면 바탕색) 위에 라벨 줄(D-day · 유형 · 오른쪽 끝 참석 인원), 오른쪽 아래 "활동 바로가기",
+// 카드를 누르면 일정 화면, "활동 바로가기"를 누르면 지금 할 활동 화면(사전 작성 등, lib/activity-shortcut.ts).
 type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; club?: string;
-  past: boolean; draft?: boolean; outside?: boolean; pinned: boolean; coverUrl?: string; going?: number; myAnswer: string; needsAnswer: boolean;
+  past: boolean; draft?: boolean; outside?: boolean; pinned: boolean; coverUrl?: string; actHref?: string; going?: number; myAnswer: string; needsAnswer: boolean;
 };
 
 const MAX = 3; // 가장 가까운 순으로 3개까지
@@ -55,8 +56,8 @@ export function EventRail() {
       if (!r.ok) return setList([]);
       const limit = monthLater();
       const up = r.data.events
-        // 지나지 않은 공개 일정 중 시작일이 한 달 안(오늘 ~ 다음 달 같은 날)인 것만. 진행 중인 일정도 포함.
-        .filter((e) => !e.past && !e.draft && !e.outside && e.startsAt && startDay(e.startsAt) <= limit)
+        // 내가 참석 신청한, 지나지 않은 공개 일정 중 시작일이 한 달 안(오늘 ~ 다음 달 같은 날)인 것만. 진행 중인 일정도 포함.
+        .filter((e) => e.myAnswer === "참석" && !e.past && !e.draft && !e.outside && e.startsAt && startDay(e.startsAt) <= limit)
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
         .slice(0, MAX);
       setList(up);
@@ -101,9 +102,9 @@ export function EventRail() {
   const resume = () => { hold.current = false; };
 
   return (
-    <section className="rail" aria-label="다가오는 일정" aria-roledescription="carousel">
+    <section className="rail" aria-label="다가오는 나의 일정" aria-roledescription="carousel">
       <div className="rail-head">
-        <h2 className="title" style={{ margin: 0 }}>다가오는 일정</h2>
+        <h2 className="title" style={{ margin: 0 }}>다가오는 나의 일정</h2>
         <Link href="/events" className="rail-more">타임라인 ›</Link>
       </div>
       <div ref={track} className="rail-track" onScroll={onScroll}
@@ -111,24 +112,30 @@ export function EventRail() {
         {list.map((e, i) => {
           const dd = dday(e.startsAt, e.endsAt);
           return (
-            <Link key={e.id} href={`/events/${e.id}`} className={`rail-card${e.coverUrl ? " photo" : ""}`} aria-roledescription="slide"
-              aria-label={`${i + 1}/${list.length}: ${e.name}, ${when(e.startsAt)}${dd ? `, ${dd}` : ""}${e.going ? `, ${e.going}명 참석` : ""}${e.needsAnswer ? ", 참석 여부 체크 필요" : ""}`}>
+            // 카드: 전체를 덮는 일정 상세 링크(.rail-hit) 위에 라벨 줄. 라벨 줄 오른쪽 끝 "활동 바로가기"는 따로 누르는 링크
+            <div key={e.id} className={`rail-card${e.coverUrl ? " photo" : ""}`} aria-roledescription="slide" role="group" aria-label={`${i + 1}/${list.length}`}>
               {e.coverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={e.coverUrl} alt="" loading={i < 2 ? "eager" : "lazy"} />
               )}
-              <span className="rail-badges" aria-hidden="true">
-                {dd && <span className="rail-dday">{dd}</span>}
-                <span className="rail-type">{e.club ? `${e.type} · ${e.club}` : e.type}</span>
+              <Link href={`/events/${e.id}`} className="rail-hit"
+                aria-label={`${e.name}, ${when(e.startsAt)}${dd ? `, ${dd}` : ""}${e.going ? `, ${e.going}명 참석` : ""} — 일정 보기`} />
+              <span className="rail-badges">
+                {dd && <span className="rail-dday" aria-hidden="true">{dd}</span>}
+                <span className="rail-type" aria-hidden="true">{e.club ? `${e.type} · ${e.club}` : e.type}</span>
+                {/* 라벨 줄 오른쪽 끝: 참석 인원(일정 상세 맨 위 카드와 같은 모양) */}
+                {(e.going ?? 0) > 0 && <span className="evhero-going" aria-hidden="true">{e.going}명 참석</span>}
               </span>
+              {/* 오른쪽 아래: 활동 바로가기(지금 할 활동 화면으로) */}
+              {e.actHref && <Link href={e.actHref} className="rail-act rail-act-bottom" aria-label={`${e.name} 활동 바로가기`}>활동 바로가기 ›</Link>}
               <span className="rail-text" aria-hidden="true">
                 <b>{e.name}</b>
                 <span>{when(e.startsAt)}</span>
                 <span className="rail-sub">
-                  {e.needsAnswer ? "참석 여부를 알려 주세요" : e.myAnswer === "참석" ? "참석 신청 완료 ✓" : e.going ? `${e.going}명 참석` : e.place}
+                  {e.place}
                 </span>
               </span>
-            </Link>
+            </div>
           );
         })}
       </div>

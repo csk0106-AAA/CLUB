@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EventHeadCard, FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, type FeeView } from "@/components/EventInfoCard";
+import { EventHero } from "@/components/EventHero";
+import { FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, type FeeView } from "@/components/EventInfoCard";
 import { IconStar } from "@/components/Icons";
 import { LiveActivities } from "@/components/LiveActivities";
 import { EventMinutes } from "@/components/EventMinutes";
@@ -20,6 +21,8 @@ import { fs } from "@/lib/fs";
 type Detail = {
   event: {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
+    coverUrl?: string; // 맨 위 사진(목록 카드와 같은 규칙)
+    going?: number; // 참석 인원
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
     canApply?: boolean; // false: 내가 속하지 않은 클럽 일정(읽기만)
@@ -190,9 +193,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       </div>
       {error && <div className="msg bad" role="alert">{error}</div>}
 
-      <EventHeadCard ev={e}>
+      {/* 맨 위: 큰 사진(유형 라벨) · 제목 · 일시 · 장소(지도 고르기) */}
+      <EventHero ev={e}>
         {e.observer && <div className="small">참관자로 초대받았어요.</div>}
-      </EventHeadCard>
+      </EventHero>
 
       {/* 주요 활동: 펼치면 예전 일정 홈의 활동 길(함께할 활동)과 진행 중 카드. 일정 당일에는 처음부터 펼쳐 둔다. */}
       {actNames.length > 0 && (
@@ -270,7 +274,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {e.type === "회의" && <EventMinutes eventId={id} />}
       {/* 사진첩: 참석한 회원이 올리고 함께 본다(참석 대상이 아니면 그리지 않는다) */}
-      <EventPhotos eventId={id} />
+      <EventPhotos eventId={id} carousel />
       <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />
       {e.canObserve && <ObserversCard eventId={id} />}
 

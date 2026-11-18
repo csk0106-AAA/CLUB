@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MAX_PHOTO_LIMIT } from "@/lib/event-photos";
 import { z } from "zod";
 import { bad, canDeleteEvent, guard } from "@/lib/api";
 import { creatableTypes } from "@/lib/perm-keys";
@@ -53,6 +54,7 @@ const body = z.object({
   endsAt: z.string().regex(/^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?)?$/).optional(),
   place: z.string().trim().max(120).optional(),
   audience: audienceInput.optional(), // 공개 대상(클럽이 아닌 일정, 비우면 전체 회원)
+  photoLimit: z.string().regex(/^(d{1,4})?$/).optional(), // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
 });
 
 // 일정 만들기: 일정관리(모든 종류) 또는 일정 만들기 권한(evMain: 정기모임·워크숍·회의·미팅 / evClub: 클럽·회의·미팅)
@@ -65,6 +67,8 @@ export async function POST(req: Request) {
   const allowed = creatableTypes(g.s.perms);
   if (allowed && !allowed.includes(type)) return bad(`${type} 일정을 만들 권한이 없어요. 만들 수 있는 일정: ${allowed.join(", ")}`, 403);
   if (startsAt && endsAt && endsAt < startsAt) return bad("끝나는 일시가 시작 일시보다 빨라요.");
+  const photoLimit = parsed.data.photoLimit ? String(Number(parsed.data.photoLimit)) : "";
+  if (photoLimit && (Number(photoLimit) < 1 || Number(photoLimit) > MAX_PHOTO_LIMIT)) return bad(`사진 최대 장수는 1~${MAX_PHOTO_LIMIT}장으로 정해 주세요.`);
   const club = type === "클럽" ? parsed.data.club ?? "" : "";
   // 클럽 일정은 클럽이 꼭 있어야 한다(없으면 그 클럽의 일정관리에 안 보이고, 누구나 참석 신청할 수 있게 된다)
   if (type === "클럽" && !club) return bad("어느 클럽 일정인지 골라 주세요.");
@@ -92,7 +96,7 @@ export async function POST(req: Request) {
   }
   // 새 일정은 초안이고 회원에게 공개되지 않는다. 개요를 채운 뒤 '공개 및 회원전달'로 공개한다(상태: 초안 → 공개).
   const ev = await s.insert("Events", {
-    type, name, club, account, accountHolder, startsAt, endsAt, place, audience,
+    type, name, club, account, accountHolder, startsAt, endsAt, place, audience, photoLimit,
     status: "초안", published: "false", pinned: String(parsed.data.pinned === true),
     // 만든 사람: 일정 만들기 권한자는 자기가 만든 일정만 고칠 수 있다(lib/api.ts guardEv)
     createdBy: g.s.mid,

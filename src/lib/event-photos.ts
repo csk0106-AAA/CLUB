@@ -4,6 +4,8 @@ import { eventJoinable } from "./audience";
 import type { Session } from "./auth";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
+import { defaultPhotoLimit, eventDayCount, MAX_PHOTO_LIMIT } from "./photo-limit";
+export { defaultPhotoLimit, eventDayCount, limitMessage, MAX_PHOTO_LIMIT, PHOTOS_MIN, PHOTOS_PER_PERSON_DAY } from "./photo-limit";
 
 // 일정 사진첩: 참석한 회원이 사진을 올리고, 함께 참석한 회원들이 보고 좋아요·내려받기를 한다.
 //  보기: 이 일정에 참석 신청할 수 있는 회원(공개 대상 · 클럽 일정이면 클럽 회원과 참관자) + 일정 관리자
@@ -13,9 +15,23 @@ import type { Row } from "./store/types";
 
 export const MAX_PHOTO_BYTES = 1_500_000; // 줄인 사진 한 장
 export const MAX_THUMB_BYTES = 200_000; // 미리보기 한 장
-export const MAX_EVENT_PHOTOS = 300; // 일정 하나에
 export const MAX_MEMBER_PHOTOS = 60; // 한 회원이 일정 하나에
 export const MAX_CAPTION = 100;
+
+// 이 일정의 사진첩 최대 장수: 관리자가 정한 값이 먼저, 없으면 기본(참석 인원 × 10장 × 일수)
+export function photoLimitOf(e: Row, going: number): number {
+  const n = Math.floor(Number(e.photoLimit));
+  return e.photoLimit && n >= 1 && n <= MAX_PHOTO_LIMIT ? n : defaultPhotoLimit(going, eventDayCount(e.startsAt, e.endsAt));
+}
+// 이 일정에 참석 신청한 인원
+export async function goingOf(eventId: string): Promise<number> {
+  return (await (await getStore()).list("EventApplies")).filter((a) => a.eventId === eventId && a.answer === "참석").length;
+}
+// 장수 늘리기 요청 [{memberId, at}]
+export function readPhotoReqs(text: string | undefined): { memberId: string; at: string }[] {
+  const v = parseJson<unknown>(text, []);
+  return Array.isArray(v) ? v.filter((x): x is { memberId: string; at: string } => !!x && typeof (x as { memberId?: unknown }).memberId === "string") : [];
+}
 
 export type PhotoView = {
   id: string; memberId: string; name: string; caption: string; w: number; h: number;
@@ -61,4 +77,16 @@ export function imageTypeOf(b: Uint8Array): string | null {
   if (at(0, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return "image/png";
   if (at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50)) return "image/webp";
   return null;
+}
+
+// 일정 카드·상세 맨 위 사진으로 쓸 회원 사진: 좋아요가 가장 많은 사진, 같거나 없으면 가장 먼저 올린 사진. 없으면 null.
+// (목록 /api/events 와 상세 /api/events/[id] 가 같은 기준을 쓴다)
+export function bestPhoto(rows: Row[]): Row | null {
+  let best: Row | null = null;
+  let bl = -1;
+  for (const p of rows) {
+    const l = parseJson<string[]>(p.likes, []).length;
+    if (!best || l > bl || (l === bl && (p.createdAt ?? "") < (best.createdAt ?? ""))) { best = p; bl = l; }
+  }
+  return best;
 }

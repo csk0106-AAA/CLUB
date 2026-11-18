@@ -6,6 +6,7 @@ import { parseJson } from "@/lib/api";
 import { fixLegacyTypes, migrateMinutesPosts } from "@/lib/event-migrate";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { readEditors } from "@/lib/editors";
+import { activityShortcut } from "@/lib/activity-shortcut";
 import { defaultCoverUrl, readCovers } from "@/lib/covers";
 import { getStore } from "@/lib/store";
 import { eventFreshness } from "@/lib/unread";
@@ -122,5 +123,15 @@ export async function GET() {
       const c = x.startsAt.localeCompare(y.startsAt);
       return x.group === 3 ? -c : c;
     });
-  return NextResponse.json({ events: list });
+  // "활동 바로가기"(홈 다가오는 나의 일정 카드): 내가 참석 신청한, 지나지 않은 공개 일정에만 붙인다(lib/activity-shortcut.ts)
+  const going = list.filter((x) => x.myAnswer === "참석" && !x.past && !x.draft && !x.outside);
+  const actHref = new Map<string, string>();
+  if (going.length) {
+    const [acts, lives] = await Promise.all([s.list("EventActivities"), s.list("LiveState")]);
+    for (const x of going) {
+      const ev = events.find((e) => e.id === x.id);
+      if (ev && eventJoinable(ev, me ?? session.mid)) actHref.set(x.id, await activityShortcut(ev, acts, lives, session.mid));
+    }
+  }
+  return NextResponse.json({ events: list.map((x) => ({ ...x, actHref: actHref.get(x.id) ?? "" })) });
 }

@@ -20,6 +20,7 @@ import { EditorsBox } from "@/components/EditorsBox";
 import { EventAudience } from "./EventAudience";
 import { api, fmtDate, fmtDateDow, fmtDateTime, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
+import { defaultPhotoLimit, eventDayCount } from "@/lib/photo-limit";
 import type { FeeRule } from "@/lib/fee";
 import { SUPPORT_LABEL, supportTotal, type Support } from "@/lib/supports";
 import { clubLabel } from "@/lib/club-label";
@@ -33,6 +34,8 @@ type Ev = {
   club?: string; // 클럽 일정의 클럽
   audience?: string; // 공개 대상 JSON(클럽이 아닌 일정)
   dayPlaces?: string; // 세부일정 날짜별 기본 위치 JSON
+  photoLimit?: string; // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
+  photoReqs?: string; // 회원들의 장수 늘리기 요청 JSON(장수를 바꿔 저장하면 비워진다)
 };
 type Row = {
   memberId: string; name: string; kind: string; position: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string;
@@ -379,6 +382,24 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           <div className="grid2">
             <div><label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
+            {(() => {
+              // 사진 최대 장수: 비우면 참석 인원 × 10장 × 일정 일수(참석자 없으면 20장, lib/event-photos.ts 와 같은 계산).
+              // 회원 요청이 있으면 강조하고, 장수를 바꿔 저장하면 요청이 처리된다.
+              const going = rows.filter((r) => r.answer === "참석").length;
+              const days = eventDayCount(ev.startsAt, ev.endsAt);
+              const def = defaultPhotoLimit(going, days);
+              const reqs = (() => { try { const v = JSON.parse(ev.photoReqs || "[]"); return Array.isArray(v) ? v.length : 0; } catch { return 0; } })();
+              return (
+                <div>
+                  <label className="l" htmlFor="o-photos">사진 최대 장수</label>
+                  <input id="o-photos" className="field" inputMode="numeric" maxLength={4} placeholder={`비우면 기본값 (지금 ${def}장)`}
+                    value={ev.photoLimit ?? ""} onChange={(e) => set("photoLimit", e.target.value.replace(/[^0-9]/g, ""))} aria-describedby="o-photos-h" />
+                  <span id="o-photos-h" className="small" style={{ display: "block", marginTop: 4, color: reqs ? "var(--red-t)" : undefined, fontWeight: reqs ? 700 : undefined }}>
+                    {reqs ? `회원 ${reqs}명이 장수를 늘려 달라고 요청했어요. 장수를 늘려 저장하면 요청이 처리돼요.` : going > 0 ? `기본: 참석 ${going}명 × 10장 × ${days}일 = ${def}장` : `기본: 참석자가 없어서 ${def}장`}
+                  </span>
+                </div>
+              );
+            })()}
             <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
           </div>

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { bad, guard, parseJson } from "@/lib/api";
 import { memberFee, payable } from "@/lib/fee";
-import { eventVisible, inClubOrObserver, readObservers } from "@/lib/audience";
+import { eventJoinable, eventVisible, inClubOrObserver, readObservers } from "@/lib/audience";
+import { defaultCoverUrl, readCovers } from "@/lib/covers";
+import { bestPhoto } from "@/lib/event-photos";
 import { clubLeaders } from "@/lib/clubs";
 import { isAttend, joinView, latestJoin } from "@/lib/club-requests";
 import { memberClubs } from "@/lib/lists";
@@ -64,9 +66,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .sort((p, q) => Number(p.order) - Number(q.order))
     .map((x) => ({ id: x.id, name: parseJson<{ name?: string }>(x.config, {}).name ?? "활동" }));
 
+  // 맨 위 사진: 목록 카드와 같은 규칙(회원 사진 중 좋아요 많은 것 → 먼저 올린 것 → 클럽·모임 대표사진, lib/covers.ts)
+  const photo = eventJoinable(e, me ?? g.s.mid) ? bestPhoto((await s.list("EventPhotos")).filter((p) => p.eventId === id)) : null;
+  const coverUrl = photo ? `/api/events/${id}/photos/${photo.id}` : defaultCoverUrl(await readCovers(), e.club, false);
+
   return NextResponse.json({
     event: {
       id: e.id,
+      coverUrl, // 맨 위 큰 사진(원본 크기). 없으면 ""
+      going: applies.filter((x) => x.eventId === id && x.answer === "참석").length, // 참석 인원
       type: e.type,
       name: e.name,
       startsAt: e.startsAt,

@@ -26,6 +26,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [place, setPlace] = useState("");
+  const [photoLimit, setPhotoLimit] = useState(""); // 사진첩 최대 장수(비우면 참석 인원 × 10장 × 일정 일수)
   const [pickedClub, setPickedClub] = useState("");
   const club = fixedClub ?? pickedClub;
   const [pinned, setPinned] = useState(false);
@@ -51,7 +52,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
       setNeedPass(false);
     }
     const body = {
-      type, name, pinned, startsAt, endsAt, place,
+      type, name, pinned, startsAt, endsAt, place, photoLimit,
       ...(type === "클럽" ? { club } : { audience }),
     };
     const r = await api<{ event: { id: string } }>("/api/admin/events", { body });
@@ -83,6 +84,10 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
           <div><label className="l" htmlFor="n-start">시작 일시</label><DateField id="n-start" mode="datetime" value={startsAt} onChange={setStartsAt} /></div>
           <div><label className="l" htmlFor="n-end">끝나는 일시 (선택)</label><DateField id="n-end" mode="datetime" value={endsAt} onChange={setEndsAt} /></div>
           <div><label className="l" htmlFor="n-place">장소</label><input id="n-place" className="field" maxLength={120} value={place} onChange={(e) => setPlace(e.target.value)} /></div>
+          <div>
+            <label className="l" htmlFor="n-photos">사진 최대 장수 (선택)</label>
+            <input id="n-photos" className="field" inputMode="numeric" maxLength={4} placeholder="비우면 참석 인원 × 10장 × 일수" value={photoLimit} onChange={(e) => setPhotoLimit(e.target.value.replace(/\D/g, ""))} />
+          </div>
           {!fixedClub && clubs && type === "클럽" && (
             <div>
               <label className="l" htmlFor="n-club">클럽</label>

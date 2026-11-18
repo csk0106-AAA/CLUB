@@ -3,6 +3,8 @@ import { clubLeaders } from "./clubs";
 import { kstYear, readDues } from "./dues";
 import { canDues, postsOf } from "./published";
 import { getPermGroups } from "./perms";
+import { readPhotoReqs } from "./event-photos";
+import { canManagePhotos } from "./photo-requests";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
@@ -10,6 +12,7 @@ import type { Row } from "./store/types";
 //  - dues-year : 연회비 입금 기간의 끝 해가 올해(한국 시간)보다 이전이거나, 마지막으로 올린 회비 글이 올해 전에 올라왔을 때
 //                → "새해 연회비를 정해 주세요" (회비·모든 권한 관리자)
 //  - club-req  : 직책자가 없는 클럽이라 관리자가 대신 처리해야 하는 가입·참관 신청
+//  - photo-req : 회원이 사진첩 장수를 늘려 달라고 요청한 일정(내가 관리할 수 있는 일정만, lib/photo-requests.ts)
 export type AdminIssue = { id: string; title: string; detail: string; href: string; action: string };
 
 const yearOf = (iso: string): number | null => {
@@ -54,6 +57,19 @@ export async function adminIssues(me: Row, perms: string[], now = Date.now()): P
       detail: `${clubs.join(", ")} 클럽에 회장(대표)이 없어서 관리자가 대신 승인·거절해야 해요.`,
       href: "/board?alerts=1",
       action: "알림에서 처리",
+    });
+  }
+  // 사진첩 장수 늘리기 요청: 일정관리 › 개요의 "사진 최대 장수"를 바꿔 저장하면 사라진다
+  const asked = (await s.list("Events")).filter((e) => readPhotoReqs(e.photoReqs).length > 0 && canManagePhotos(e, me.id, perms));
+  if (asked.length > 0) {
+    const n = asked.reduce((t, e) => t + readPhotoReqs(e.photoReqs).length, 0);
+    const first = asked[0];
+    out.push({
+      id: "photo-req",
+      title: `사진 장수 늘리기 요청 ${n}건`,
+      detail: `${asked.map((e) => e.name).join(", ")} — 사진첩이 가득 찼어요. 일정관리 › 개요의 “사진 최대 장수”를 늘려 저장해 주세요.`,
+      href: `/admin/events/${first.id}${first.club ? `?club=${encodeURIComponent(first.club)}` : ""}`,
+      action: "일정관리로",
     });
   }
   return out;

@@ -43,6 +43,9 @@ export const TABS = {
     "showPrep", "showCosts",
     // supports: 지원금 JSON [{kind: dues(연·월회비에서 지원) | member(회원 지원), name, amount, memo}] (lib/supports.ts). 총 예산에 더한다.
     "supports",
+    // photoLimit: 사진첩 최대 장수(비우면 참석 인원 × 10장 × 일정 일수, 참석자 없으면 20장, lib/event-photos.ts photoLimitOf). photoReqs: 장수를 늘려 달라는 회원 요청 [{memberId, at}] JSON
+    //  — 관리자가 일정관리에서 장수를 바꿔 저장하면 비운다(처리할 일에서 사라진다)
+    "photoLimit", "photoReqs",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [

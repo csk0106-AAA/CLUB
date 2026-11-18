@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad } from "@/lib/api";
 import {
-  imageTypeOf, MAX_CAPTION, MAX_EVENT_PHOTOS, MAX_MEMBER_PHOTOS, MAX_PHOTO_BYTES, MAX_THUMB_BYTES, photoAccess, photoView,
+  imageTypeOf, limitMessage, MAX_CAPTION, MAX_MEMBER_PHOTOS, MAX_PHOTO_BYTES, MAX_THUMB_BYTES, goingOf, photoAccess, photoLimitOf, photoView, readPhotoReqs,
 } from "@/lib/event-photos";
 import { getStore } from "@/lib/store";
 
@@ -19,7 +19,9 @@ export async function GET(_req: Request, ctx: Ctx) {
     .filter((r) => r.eventId === a.e.id)
     .sort((p, q) => (q.createdAt ?? "").localeCompare(p.createdAt ?? ""))
     .map((r) => photoView(r, a.s.mid, nameOf));
-  return NextResponse.json({ photos, canUpload: a.canUpload, manager: a.manager, attending: a.attending, max: MAX_EVENT_PHOTOS });
+  // max: 이 일정의 최대 장수, requested: 내가 이미 장수 늘리기를 요청했는지(관리자가 처리하면 비워진다)
+  const requested = readPhotoReqs(a.e.photoReqs).some((r) => r.memberId === a.s.mid);
+  return NextResponse.json({ photos, canUpload: a.canUpload, manager: a.manager, attending: a.attending, max: photoLimitOf(a.e, await goingOf(a.e.id)), requested });
 }
 
 // 사진 한 장 올리기 (multipart/form-data): file(줄인 사진), thumb(미리보기), caption, w, h
@@ -31,7 +33,9 @@ export async function POST(req: Request, ctx: Ctx) {
   if (len > MAX_PHOTO_BYTES + MAX_THUMB_BYTES + 64 * 1024) return bad("사진이 너무 커요.", 413);
   const s = await getStore();
   const mine = (await s.list("EventPhotos")).filter((r) => r.eventId === a.e.id);
-  if (mine.length >= MAX_EVENT_PHOTOS) return bad(`사진은 일정 하나에 ${MAX_EVENT_PHOTOS}장까지 올릴 수 있어요.`);
+  // 일정의 최대 장수(관리자 설정, 없으면 참석 인원 × 10장 × 일수). 넘으면 화면이 "관리자 요청"을 띄우도록 limit: true
+  const limit = photoLimitOf(a.e, await goingOf(a.e.id));
+  if (mine.length >= limit) return NextResponse.json({ error: limitMessage(limit), limit: true, max: limit }, { status: 409 });
   if (!a.manager && mine.filter((r) => r.memberId === a.s.mid).length >= MAX_MEMBER_PHOTOS) return bad(`한 사람이 일정 하나에 ${MAX_MEMBER_PHOTOS}장까지 올릴 수 있어요.`);
 
   const form = await req.formData().catch(() => null);

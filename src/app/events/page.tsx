@@ -184,19 +184,21 @@ export default function EventsPage() {
     <main className="app with-tabs">
       {/* 윗줄: 홈·프로필 북과 같은 공통 머리(프로필 + 이름 + 알림·조직도·로그아웃) */}
       <MainHeader />
-      <div className="row" style={{ marginTop: 4, gap: 8 }}>
-        <h1 className="title grow" style={{ whiteSpace: "nowrap" }}>타임라인</h1>
-        {canCreate && (
-          <button type="button" className="btn" style={{ width: "auto", minHeight: 36, padding: "0 12px", flex: "none", fontSize: fs(13), fontWeight: 500 }} aria-haspopup="dialog" disabled={locked} onClick={() => setCreating(true)}>
-            + 일정 만들기
-          </button>
-        )}
-      </div>
+      {/* 화면 제목은 보이지 않게(화면 낭독기용). 윗줄은 달력 머리: 연도 | 오늘 · 주/월 */}
+      <h1 className="sr-only">일정 타임라인</h1>
+      <WeekStrip events={shown} selected={day} onPick={pick} hrefOf={hrefOf} />
 
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}
 
-      {events && <WeekStrip events={shown} selected={day} onPick={pick} />}
+      {/* 일정 피드 맨 위: 일정 만들기(권한이 있을 때) */}
+      {canCreate && (
+        <div className="tl-create">
+          <button type="button" className="btn wk-create" aria-haspopup="dialog" disabled={locked} onClick={() => setCreating(true)}>
+            + 일정 만들기
+          </button>
+        </div>
+      )}
 
       {pinned.length > 0 && (
         <section aria-label="고정 일정" className="tl-group">

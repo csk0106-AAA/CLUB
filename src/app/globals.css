@@ -19,9 +19,9 @@
   --muted: #d0d2d5;
   --dis: #b4b6ba;           /* 비활성 */
   --chip: rgba(255, 255, 255, 0.14);/* 중립 칩 바탕 */
-  --switch-off: rgba(255, 255, 255, 0.28);
+  --switch-off: rgba(255, 255, 255, 0.22);  /* 꺼진 스위치 막대(연한 반투명) */
   --switch-on: #e9f25c;
-  --switch-knob: #ffffff;
+  --switch-knob: linear-gradient(165deg, #6c6e73 0%, #4a4c50 100%); /* 단추: 바탕과 같은 그래파이트 그라데이션 */
   --scrim: rgba(18, 19, 21, 0.55);
   --shadow: rgba(0, 0, 0, 0.28);
   /* 빨강(경고): 공지·고정·알림 숫자·회비 미입금·참석 체크 필요·위험 */
@@ -173,7 +173,7 @@ a { color: var(--violet-t); }
 .evcard .foot a { min-height: 36px; display: inline-flex; align-items: center; padding: 0 8px; font-size: calc(13px * var(--fs, 1)); font-weight: 500; color: var(--violet-t); text-decoration: none; }
 .evcard .foot a:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .evlist { display: flex; flex-direction: column; gap: 8px; }
-.morebtn { min-height: 44px; border: 1px dashed var(--switch-off); border-radius: 10px; background: transparent; color: var(--sub); font: 500 calc(13px * var(--fs, 1)) var(--body); cursor: pointer; width: 100%; }
+.morebtn { min-height: 44px; border: 1px dashed var(--line); border-radius: 10px; background: transparent; color: var(--sub); font: 500 calc(13px * var(--fs, 1)) var(--body); cursor: pointer; width: 100%; }
 .morebtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* 관리자 회원 명단: 휴대폰은 한 줄 목록, 넓은 화면은 표 */
 .mrow { display: flex; align-items: center; gap: 10px; padding: 10px var(--pr) 10px var(--pl); }
@@ -723,7 +723,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 [style*="background:#fff"],
 [style*="background: rgb(255, 255, 255)"] { background: var(--card) !important; }
 
-/* 켜기·끄기 스위치 (button role="switch" aria-checked): iOS 처럼 작고 둥글게, 켜면 보라 */
+/* 켜기·끄기 스위치 (button role="switch" aria-checked): iOS 처럼 작고 둥글게. 꺼짐 = 연한 막대, 켜짐 = 레몬 막대, 단추는 늘 바탕색(그래파이트) 그라데이션 */
 .switchrow { display: flex; align-items: center; gap: 12px; min-height: 48px; }
 .switchrow .grow { min-width: 0; }
 .switch {
@@ -735,7 +735,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
   content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
   background: var(--switch-knob); box-shadow: 0 1px 2px var(--shadow); transition: transform 0.2s;
 }
-.switch[aria-checked="true"] { background: var(--switch-on); }
+.switch { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
+.switch[aria-checked="true"] { background: var(--switch-on); box-shadow: none; }
+.switch::after { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.75), 0 1px 3px rgba(0, 0, 0, 0.35); }
+.switch[aria-checked="true"]::after { background: var(--switch-knob); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55), 0 1px 3px rgba(0, 0, 0, 0.3); }
 .switch[aria-checked="true"]::after { transform: translateX(18px); }
 .switch:disabled { opacity: 0.45; cursor: not-allowed; }
 .switch:focus-visible { outline: 2px solid var(--focus); }
@@ -854,7 +857,6 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .wk-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .wk-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 6px; min-height: 76px; border: 0; border-radius: 14px; background: transparent; color: var(--ink); cursor: pointer; font-family: var(--body); }
 .wk-day:hover { background: var(--soft); }
-.wk-day:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .wk-wd { font-size: calc(11px * var(--fs, 1)); color: var(--sub); }
 .wk-day.we .wk-wd { color: var(--red-t); }
 .wk-num { font: 600 calc(16px * min(var(--fs, 1), 1.3)) var(--display); width: 30px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; }
@@ -951,3 +953,107 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 /* 주·월 전환: 작게(누르는 칸은 28px 이상 유지) */
 .wk-top .wk-mode { padding: 2px; }
 .wk-top .wk-mode button { min-width: 30px; min-height: 28px; padding: 0 8px; font-size: calc(12px * min(var(--fs, 1), 1.2)); }
+/* 달력 날짜 아래 일정 유형 라벨(components/WeekStrip.tsx) */
+.wk-mark { width: 100%; padding: 0 2px; }
+.wk-lab { display: inline-flex; align-items: center; gap: 1px; max-width: 100%; padding: 1px 5px; border-radius: 999px; background: var(--chip); color: var(--ink); font: 700 calc(10px * min(var(--fs, 1), 1.2))/1.3 var(--body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-lab b { font-weight: 800; opacity: .85; }
+.wk-lab.go { background: var(--brand); color: var(--on-brand); }
+.wk-day.on .wk-lab:not(.go) { background: rgba(255, 255, 255, 0.24); }
+.wk.month .wk-lab { padding: 0 3px; font-size: calc(9px * min(var(--fs, 1), 1.2)); }
+/* 달력 날짜 칸: 칸 전체를 덮는 날짜 버튼(.wk-hit) 위에 유형 라벨 링크를 겹친다 */
+.wk-day { position: relative; }
+.wk-day > span { pointer-events: none; }
+.wk-day > .wk-mark { pointer-events: none; position: relative; z-index: 1; }
+.wk-hit { position: absolute; inset: 0; width: 100%; border: 0; border-radius: inherit; background: transparent; cursor: pointer; padding: 0; }
+.wk-hit:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.wk-lab { pointer-events: auto; text-decoration: none; cursor: pointer; }
+.wk-lab:hover { filter: brightness(1.1); }
+.wk-lab:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* 주·월: 토글 상자 없이 글자만. 고른 쪽만 강조색 글자, 사이에 얇은 구분선 */
+.wk-top .wk-mode { padding: 0; border: 0; border-radius: 0; background: transparent; margin: 0; gap: 0; align-items: center; }
+.wk-top .wk-mode button { min-width: 0; min-height: 32px; padding: 0 8px; border-radius: 6px; background: transparent; box-shadow: none; color: var(--sub); font: 500 calc(13px * min(var(--fs, 1), 1.2)) var(--body); }
+.wk-top .wk-mode button + button { border-left: 1px solid var(--line); border-radius: 0; }
+.wk-top .wk-mode button[aria-pressed="true"] { background: transparent; box-shadow: none; color: var(--violet-t); font-weight: 800; }
+.wk-top .wk-mode button:hover { text-decoration: underline; }
+/* 일정 윗줄 한 줄: [2026년 오늘] ……… [주|월 사각형 토글] [+ 일정 만들기] */
+.wk-top { flex-wrap: wrap; row-gap: 6px; }
+.wk-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.wk-top .wk-mode { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+.wk-top .wk-mode button { min-width: 34px; min-height: 30px; padding: 0 10px; border-radius: 6px; color: var(--sub); font: 600 calc(13px * min(var(--fs, 1), 1.2)) var(--body); }
+.wk-top .wk-mode button + button { border-left: 0; border-radius: 6px; }
+.wk-top .wk-mode button[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); font-weight: 800; box-shadow: none; }
+.wk-top .wk-mode button:hover { text-decoration: none; }
+.wk-top .wk-mode button:not([aria-pressed="true"]):hover { background: var(--soft); }
+.wk-create { width: auto; min-height: 34px; padding: 0 12px; flex: none; font-size: calc(13px * min(var(--fs, 1), 1.2)); font-weight: 700; border-radius: 8px; }
+/* 홈 일정 카드: 카드 전체를 덮는 일정 링크 + 라벨 줄 오른쪽 끝 "활동 바로가기" */
+.rail-hit { position: absolute; inset: 0; z-index: 2; border-radius: inherit; }
+.rail-hit:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.rail-card:focus-within { outline: none; }
+.rail-badges { z-index: 3; align-items: center; pointer-events: none; }
+.rail-act { pointer-events: auto; margin-left: auto; padding: 4px 12px; border-radius: 999px; background: var(--brand); color: var(--on-brand); font: 800 calc(12px * var(--fs, 1)) var(--body); text-decoration: none; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.rail-act:hover { background: var(--brand-h); }
+.rail-act:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.rail-text { pointer-events: none; }
+/* 일정 윗줄: 왼쪽 연도, 오른쪽 "오늘" + 주/월. 일정 만들기는 피드 맨 위 오른쪽 */
+.wk-right .wk-today { min-height: 34px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: var(--violet-t); font: 700 calc(14px * var(--fs, 1)) var(--body); cursor: pointer; }
+.wk-right .wk-today:hover { text-decoration: underline; }
+.wk-right .wk-today:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.tl-create { display: flex; justify-content: flex-end; margin-top: 2px; }
+/* 회원 일정 화면 맨 위(components/EventHero.tsx): 큰 둥근 사진 + 유형 라벨 → 큰 제목 → 일시·장소 줄 */
+.evhero { display: flex; flex-direction: column; gap: 10px; }
+.evhero-photo { position: relative; aspect-ratio: 1 / 1; max-height: 70vh; border-radius: 28px; overflow: hidden; background: var(--soft); box-shadow: 0 12px 30px var(--shadow); }
+.evhero-photo.none { aspect-ratio: 16 / 9; background: linear-gradient(165deg, #6c6f62 0%, #4e5148 100%); }
+.evhero-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.evhero-label { position: absolute; top: 14px; left: 14px; padding: 4px 12px; border-radius: 999px; background: rgba(20, 21, 24, 0.55); color: #fff; font: 700 calc(13px * var(--fs, 1)) var(--body); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.evhero-title { margin: 6px 2px 0; font: 800 calc(26px * min(var(--fs, 1), 1.3))/1.25 var(--display); letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.evhero-info { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.evhero-info li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 2px; }
+.evhero-info li > svg { flex: none; color: var(--sub); }
+.evhero-info b { font-weight: 700; font-size: calc(16px * var(--fs, 1)); }
+.evhero-place { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--ink); font: 500 calc(16px * var(--fs, 1)) var(--body); text-align: left; cursor: pointer; }
+.evhero-place > svg { flex: none; color: var(--sub); }
+.evhero-place:hover .grow { text-decoration: underline; }
+.evhero-place:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 8px; }
+/* 회원 일정 화면 사진첩: 세로로 긴 사진을 옆으로 넘겨 보기(components/EventPhotos.tsx carousel) */
+.ph-carousel { gap: 12px; border-radius: 24px; padding: 16px 0 16px 16px; overflow: hidden; }
+.ph-carousel > .row, .ph-carousel > .msg, .ph-carousel > .ph-bar, .ph-carousel > .ph-empty, .ph-carousel > p { margin-right: 16px; }
+.ph-add { flex: none; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); font: 700 calc(15px * var(--fs, 1)) var(--body); cursor: pointer; }
+.ph-add:hover:not(:disabled) { background: var(--soft); }
+.ph-add:disabled { color: var(--sub); cursor: default; }
+.ph-add:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.ph-track { list-style: none; margin: 0; padding: 0 16px 2px 0; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.ph-track::-webkit-scrollbar { display: none; }
+.ph-slide { position: relative; flex: 0 0 66%; max-width: 320px; aspect-ratio: 3 / 4; scroll-snap-align: start; border-radius: 20px; overflow: hidden; background: var(--soft); }
+.ph-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.ph-open img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ph-open:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.ph-acts { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 6px; }
+.ph-act { min-width: 40px; height: 40px; padding: 0 10px; border: 0; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: rgba(20, 21, 24, 0.55); color: #fff; font: 700 calc(14px * min(var(--fs, 1), 1.2)) var(--body); text-decoration: none; cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ph-act.on { color: #ff8a8a; }
+.ph-act:hover { background: rgba(20, 21, 24, 0.72); }
+.ph-act:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+/* 회원 일정 화면 맨 위 사진 카드: 홈 일정 카드(.rail-card)와 같은 모양, 글은 사진 아래쪽 안에 */
+.evhero-card { position: relative; aspect-ratio: 4 / 3.6; border-radius: 28px; overflow: hidden; background: #74775c; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: 0 10px 24px var(--shadow); }
+.evhero-card.none { background: linear-gradient(165deg, #74775c 0%, #55584a 100%); }
+.evhero-card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.evhero-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.66) 100%); pointer-events: none; }
+.evhero-card .rail-badges { position: absolute; top: 14px; left: 14px; right: 14px; }
+.evhero-text { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 18px 14px; text-shadow: 0 1px 6px rgba(0,0,0,.4); }
+.evhero-card .evhero-title { margin: 0 0 4px; color: #fff; font: 800 calc(24px * min(var(--fs, 1), 1.3))/1.25 var(--display); }
+.evhero-line { display: flex; align-items: center; gap: 8px; min-height: 32px; font: 600 calc(15px * var(--fs, 1)) var(--body); }
+.evhero-line svg, .evhero-card .evhero-place > svg { color: #fff; flex: none; }
+.evhero-card .evhero-place { min-height: 40px; color: #fff; font-size: calc(15px * var(--fs, 1)); gap: 8px; text-shadow: inherit; }
+.evhero-card .evhero-place:focus-visible { outline: 2px solid #fff; }
+.evhero-going { margin-left: auto; padding: 4px 12px; border-radius: 999px; background: rgba(20, 21, 24, 0.55); color: #fff; font: 700 calc(12px * var(--fs, 1)) var(--body); white-space: nowrap; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+/* 홈 일정 카드: "활동 바로가기"는 오른쪽 아래(글 줄 옆), 글은 버튼 자리를 비워 둔다 */
+.rail-act-bottom { position: absolute; right: 14px; bottom: 16px; z-index: 3; margin-left: 0; padding: 8px 14px; font-size: calc(13px * var(--fs, 1)); }
+.rail-card:has(.rail-act-bottom) .rail-text { padding-right: calc(124px * min(var(--fs, 1), 1.2)); }
+/* "활동 바로가기"는 흰 알약(레몬 주 버튼 "+ 글쓰기"와 겹쳐 보이지 않게) */
+.rail-act { background: rgba(255, 255, 255, 0.94); color: #1a1a1a; }
+.rail-act:hover { background: #ffffff; }
+.rail-act:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* 사진첩 줄: 마우스로 잡고 끌기(PC). 끄는 동안 스냅을 끄고, 이미지 끌어 놓기·글자 선택을 막는다 */
+@media (hover: hover) and (pointer: fine) { .ph-track { cursor: grab; } }
+.ph-track.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+.ph-track.dragging .ph-open { cursor: grabbing; }
+.ph-track img { -webkit-user-drag: none; user-select: none; }

@@ -25,10 +25,10 @@ export function coverUrl(c: CoverScope, at: string, thumb = true): string {
 }
 
 // 이 일정의 대표사진 주소(없으면 ""): 클럽 일정은 클럽 대표사진 → 모임 대표사진, 그 밖은 모임 대표사진
-export function defaultCoverUrl(meta: CoverMeta, club: string | undefined): string {
+export function defaultCoverUrl(meta: CoverMeta, club: string | undefined, thumb = true): string {
   const c = (club ?? "").trim();
-  if (c && meta.clubs[c]) return coverUrl({ scope: "club", name: c }, meta.clubs[c]);
-  return meta.org ? coverUrl({ scope: "org" }, meta.org) : "";
+  if (c && meta.clubs[c]) return coverUrl({ scope: "club", name: c }, meta.clubs[c], thumb);
+  return meta.org ? coverUrl({ scope: "org" }, meta.org, thumb) : "";
 }
 
 export async function saveCover(c: CoverScope, type: string, data: Buffer, thumb: Buffer): Promise<string> {
