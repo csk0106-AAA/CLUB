@@ -42,7 +42,7 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : wrap.current?.requestFullscreen?.())}>전체화면 ⛶</button>
         <HostLiveControls eventId={id} aid={aid} />
-        <HostBack eventId={id} />
+        <HostBack eventId={id} activityId={aid} />
       </header>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!teams && !error && <p className="sub">불러오는 중이에요…</p>}

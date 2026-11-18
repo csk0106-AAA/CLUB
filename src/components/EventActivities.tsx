@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { RowDelete } from "./RowDelete";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { families, sourceLabel, type TplRow } from "@/lib/template-families";
 import type { TemplateConfig } from "@/lib/template-schema";
@@ -296,6 +296,19 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   useEffect(() => {
     api<{ members: { id: string; name: string }[] }>("/api/public/club").then((r) => r.ok && setMembers(r.data.members));
   }, []);
+  // 진행자 화면의 "활동으로 돌아가기"(#act-활동id): 활동 목록을 불러온 뒤 그 활동으로 스크롤하고 잠깐 강조한다
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (!acts || scrolled.current) return;
+    const h = window.location.hash;
+    if (!h.startsWith("#act-")) return;
+    scrolled.current = true;
+    const el = document.getElementById(h.slice(1));
+    if (!el) return;
+    el.scrollIntoView({ block: "start", behavior: "smooth" });
+    el.classList.add("act-flash");
+    window.setTimeout(() => el.classList.remove("act-flash"), 1800);
+  }, [acts]);
   // 일정 시작 일시: 활동 설정의 사전 단계 기간을 실제 날짜·시각으로 미리 보여 주는 데 쓴다
   const [evStart, setEvStart] = useState("");
   useEffect(() => {
@@ -430,7 +443,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       {acts && acts.length === 0 && <div className="msg info">아직 넣은 활동이 없어요. “+ 템플릿에서 활동 추가”로 넣어 보세요.</div>}
 
       {acts?.map((a) => (
-        <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div key={a.id} id={`act-${a.id}`} className="card act-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <b style={{ font: `700 ${fs(18)} var(--display)` }}>{a.config.name}</b>
             <span className="pill gray">

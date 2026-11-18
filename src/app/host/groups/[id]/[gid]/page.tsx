@@ -45,7 +45,7 @@ export default function GroupsScreen({ params }: { params: Promise<{ id: string;
         {teams && teams.length > 0 && <span className={`pill ${published ? "ok" : "warn"}`}>{published ? "배포됨" : "배포 전 초안"}</span>}
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : wrap.current?.requestFullscreen?.())}>전체화면 ⛶</button>
-        <Link className="mini" href={`/admin/events/${id}`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>관리자로 돌아가기</Link>
+        <Link className="mini" href={`/admin/events/${id}?tab=group`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>‹ 조편성으로 돌아가기</Link>
       </header>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!teams && !error && <p className="sub">불러오는 중이에요…</p>}

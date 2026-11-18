@@ -4,16 +4,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 
-// 진행자 전체화면 위쪽 "돌아가기": 진행자 접속이면 진행자 첫 화면, 관리자면 일정 관리 화면으로.
-export function HostBack({ eventId }: { eventId: string }) {
+// 진행자 전체화면 위쪽 "돌아가기": 진행자 접속이면 진행자 첫 화면, 관리자면 그 일정의 활동 탭(진행하던 활동 위치)으로.
+// 진행 중에 진행 화면과 활동 관리를 오가기 쉽게. activityId 가 없으면 일정 관리 화면.
+export function HostBack({ eventId, activityId }: { eventId: string; activityId?: string }) {
   const [host, setHost] = useState<boolean | null>(null);
   useEffect(() => {
     api<{ mode: string }>("/api/host").then((r) => setHost(r.ok && r.data.mode === "host"));
   }, []);
   if (host === null) return null;
   return (
-    <Link className="mini" href={host ? "/host" : `/admin/events/${eventId}`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-      {host ? "‹ 진행 목록" : "관리자로 돌아가기"}
+    <Link className="mini" href={host ? "/host" : activityId ? `/admin/events/${eventId}?tab=act#act-${activityId}` : `/admin/events/${eventId}`} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+      {host ? "‹ 진행 목록" : activityId ? "‹ 활동으로 돌아가기" : "관리자로 돌아가기"}
     </Link>
   );
 }

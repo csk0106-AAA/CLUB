@@ -106,7 +106,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
         <button className="mini" type="button" onClick={() => setBoard(!board)}>{board ? "진행 화면" : "점수판"}</button>
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
         <HostLiveControls eventId={id} aid={aid} />
-        <HostBack eventId={id} />
+        <HostBack eventId={id} activityId={aid} />
       </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}

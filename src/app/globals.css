@@ -1082,3 +1082,7 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .win-row > .l { width: 2.6em; flex: none; }
 .win-row input.num { width: 72px; min-height: 42px; text-align: center; }
 .win-row input[type="time"] { width: 130px; min-height: 42px; }
+/* 진행자 화면에서 "활동으로 돌아가기"로 왔을 때 그 활동 카드를 잠깐 강조 */
+.act-card { scroll-margin-top: 12px; transition: box-shadow .4s; }
+.act-card.act-flash { box-shadow: 0 0 0 3px var(--focus); }
+@media (prefers-reduced-motion: reduce) { .act-card { transition: none; } }
