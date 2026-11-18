@@ -58,7 +58,7 @@ const TABS = [
   { key: "cost", label: "비용" },
   { key: "group", label: "조편성" },
   { key: "car", label: "카풀" },
-  { key: "room", label: "숙박·방배정" },
+  { key: "room", label: "숙소배정" },
   { key: "photo", label: "사진첩" },
 ];
 // 회의·미팅은 회비·활동·비용·조편성·카풀·숙박이 필요 없다. 회의록 탭은 회의 일정에만.

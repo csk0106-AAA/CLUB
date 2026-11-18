@@ -36,7 +36,7 @@ function split<T>(list: T[], k: number): T[][] {
   return out;
 }
 
-// 숙박 방배정: 조편성처럼 방을 만들고(관리자 배정 / 성별 나눠 / 랜덤) → 이름을 끌어서 옮기고 → 확인으로 회원에게 배포한다.
+// 숙박 숙소배정: 조편성처럼 방을 만들고(관리자 배정 / 성별 나눠 / 랜덤) → 이름을 끌어서 옮기고 → 확인으로 회원에게 배포한다.
 // 날짜별로 따로 배정하거나, "모든 밤 같은 배정"이면 첫날 밤 구성을 나머지 밤에 그대로 쓴다.
 export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
   const base = `/api/admin/events/${eventId}/rooms`;
@@ -117,7 +117,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
 
   // 방 만들기: 이 날 밤 숙박하는 사람으로 방을 새로 짠다(초안 — 확인을 눌러야 배포)
   function generate() {
-    if (cols.some((c) => c.ids.length) && !window.confirm("지금 방 배정을 지우고 새로 만들까요?")) return;
+    if (cols.some((c) => c.ids.length) && !window.confirm("지금 숙소 배정을 지우고 새로 만들까요?")) return;
     const n = stay.length;
     const cap = by === "size" ? Math.max(1, Number(size) || 4) : Math.max(1, Math.ceil(n / Math.max(1, Number(count) || 1)));
     const rooms = by === "count" ? Math.max(1, Number(count) || 1) : Math.max(1, Math.ceil(n / cap));
@@ -156,7 +156,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
     if (dirty && !(await saveDraft())) return setBusy(false);
     const r = await api(`${base}/publish`, { body: { action: "publish" } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: "방배정을 회원에게 배포했어요. 이제 회원 화면에 보여요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: "숙소배정을 회원에게 배포했어요. 이제 회원 화면에 보여요." } : { tone: "bad", text: r.error });
     load();
   }
   async function onUnpublish() {
@@ -236,7 +236,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
 
       {editable && day && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
-          <div className="pick" role="radiogroup" aria-label="방 배정 방식" style={{ flexDirection: "row", flexWrap: "wrap" }}>
+          <div className="pick" role="radiogroup" aria-label="숙소 배정 방식" style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {(Object.keys(MODE_TEXT) as Mode[]).map((k) => (
               <button key={k} type="button" role="radio" aria-checked={mode === k} aria-pressed={mode === k} className="opt" style={{ width: "auto", flex: "1 1 160px", minHeight: 46 }} onClick={() => setMode(k)}>
                 <span className="name">{mode === k ? "✓ " : ""}{MODE_TEXT[k].label}</span>

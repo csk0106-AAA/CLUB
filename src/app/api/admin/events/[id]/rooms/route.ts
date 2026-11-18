@@ -8,7 +8,7 @@ import { isGuest } from "@/lib/member-kind";
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
-// 숙박 방배정(날짜별). 배포 전에는 회원에게 보이지 않는다.
+// 숙박 숙소배정(날짜별). 배포 전에는 회원에게 보이지 않는다.
 export async function GET(_req: Request, ctx: Ctx) {
   const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;

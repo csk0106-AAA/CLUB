@@ -8,6 +8,7 @@ import { resetTabsCache } from "@/components/MemberTabs";
 import { PasswordField } from "@/components/PasswordField";
 import { SignupSheet } from "@/components/SignupSheet";
 import { fs } from "@/lib/fs";
+import { NameSearch } from "@/components/NameSearch";
 
 type Club = { clubName: string; displayName: string; members: { id: string; name: string }[]; requirement?: string };
 
@@ -27,7 +28,7 @@ export default function LoginPage() {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d: Club) => {
         setClub(d);
-        setMemberId(d.members.find((m) => m.name === pick)?.id ?? d.members[0]?.id ?? "");
+        setMemberId(d.members.find((m) => m.name === pick)?.id ?? ""); // 이름은 검색해서 고른다(회원 신청 직후면 그 이름을 골라 둔다)
       })
       .catch(() => setLoadError(true));
   }
@@ -96,12 +97,8 @@ export default function LoginPage() {
       {club && club.members.length > 0 && (
         <form onSubmit={submit} style={{ display: "contents" }}>
           <div>
-            <label className="l" htmlFor="nm">이름을 골라 주세요</label>
-            <select id="nm" className="field" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-              {club.members.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
+            <label className="l" htmlFor="nm">이름</label>
+            <NameSearch id="nm" members={club.members} value={memberId} onChange={setMemberId} />
           </div>
           <div>
             <label className="l" htmlFor="cd">초대코드 (내 연락처 뒷자리 4자리)</label>
@@ -109,15 +106,16 @@ export default function LoginPage() {
           </div>
           <p className="hint">진행자로 지정되었다면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
           {error && <div className="msg bad" role="alert">{error}</div>}
-          <div className="footer-actions">
-            <button className="btn" type="submit" disabled={busy || !code}>
+          {/* 로그인 화면은 버튼을 화면 맨 아래로 밀지 않는다(회원 신청이 바로 아래, 화면 가운데쯤 오게) */}
+          <div className="footer-actions" style={{ marginTop: 4 }}>
+            <button className="btn" type="submit" disabled={busy || !code || !memberId}>
               {busy ? "확인 중…" : "들어가기"}
             </button>
           </div>
         </form>
       )}
       {club && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", marginTop: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", marginTop: 12, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
           <span className="small">명단에 내 이름이 없나요?</span>
           <button className="btn white" type="button" style={{ width: "auto", minWidth: 220 }} aria-haspopup="dialog" onClick={() => setSignup(true)}>회원 또는 참관 신청</button>
         </div>

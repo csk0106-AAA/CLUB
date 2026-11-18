@@ -2,7 +2,7 @@ import { parseJson } from "./api";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 
-// 숙박 방배정: 날짜별로 방을 만들고 투숙자를 배정한다. 같은 날짜에 한 사람은 한 방에만 들어간다.
+// 숙박 숙소배정: 날짜별로 방을 만들고 투숙자를 배정한다. 같은 날짜에 한 사람은 한 방에만 들어간다.
 export type Room = { id: string; date: string; name: string; capacity: number; memo: string; guests: string[] };
 
 export const toRoom = (r: Row): Room => ({

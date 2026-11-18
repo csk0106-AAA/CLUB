@@ -1115,3 +1115,9 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .id-hit { background: rgba(255, 92, 92, .28); color: inherit; border-bottom: 2px solid var(--red); border-radius: 3px; padding: 0 2px; font-weight: 700; }
 .id-hit-box { border: 1px solid var(--red); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .id-hit-box p { margin: 0; white-space: pre-wrap; line-height: 1.65; font-size: calc(14px * var(--fs, 1)); }
+/* 로그인 이름 검색 */
+.name-search { position: relative; }
+.name-search-list { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 0 12px 30px rgba(0,0,0,.35); max-height: 300px; overflow-y: auto; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.name-search-list li { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: calc(16px * var(--fs, 1)); }
+.name-search-list li.on { background: var(--brand); color: #1a1a1a; }
+.name-search-list li.more { cursor: default; font-weight: 400; font-size: calc(13px * var(--fs, 1)); color: var(--muted, inherit); opacity: .8; }

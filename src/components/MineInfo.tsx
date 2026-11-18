@@ -91,8 +91,8 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
       ))}
       {!d.carpool.published && waitCard("카풀", "카풀 배정 전이에요. 정해지면 여기에 보여요.")}
       {d.carpool.published && d.carpool.mine.length === 0 && waitCard("카풀", "배정된 카풀이 없어요.")}
-      {!d.rooms?.published && waitCard("방 배정", "방 배정 전이에요. 정해지면 여기에 보여요.")}
-      {d.rooms?.published && d.rooms.mine.length === 0 && waitCard("방 배정", "배정된 방이 없어요.")}
+      {!d.rooms?.published && waitCard("숙소 배정", "숙소 배정 전이에요. 정해지면 여기에 보여요.")}
+      {d.rooms?.published && d.rooms.mine.length === 0 && waitCard("숙소 배정", "배정된 방이 없어요.")}
       {!noSchedule && d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>일정</b>
@@ -100,9 +100,9 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
           <ScheduleView items={d.schedule} dayPlaces={d.dayPlaces} />
         </section>
       )}
-      {/* 방 배정: 한 줄 요약(날짜 방이름 · 같은 방 N명), 메모·명단은 펼쳐서 보기 */}
+      {/* 숙소 배정: 한 줄 요약(날짜 방이름 · 같은 방 N명), 메모·명단은 펼쳐서 보기 */}
       {d.rooms?.published && d.rooms.mine.length > 0 && (
-        <Fold title="방 배정" summary={d.rooms.mine.map((r) => `${fmtDate(r.date)} ${r.name} · 같은 방 ${r.people?.length ?? r.mates.length + 1}명`).join(" / ")}>
+        <Fold title="숙소 배정" summary={d.rooms.mine.map((r) => `${fmtDate(r.date)} ${r.name} · 같은 방 ${r.people?.length ?? r.mates.length + 1}명`).join(" / ")}>
           {d.rooms.mine.map((r, i) => (
             <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
               <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{fmtDate(r.date)} 숙박</span><b>{r.name}</b></div>
