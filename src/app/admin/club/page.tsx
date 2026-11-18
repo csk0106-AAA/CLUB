@@ -11,7 +11,7 @@ import { isGuest } from "@/lib/member-kind";
 
 // 관리자 › 회원관리 › 조직도. 회원 구분과 연동된다:
 //  - 모임 직책 체계 = 회원 구분 › 직책 목록(순서 그대로, 일반회원 제외). 직책마다 맡을 회원을 여러 명 고른다(회원 명단의 직책 값).
-//  - 소모임 = 소모임관리의 소모임 목록 + 소모임 직책자·모임 주기.
+//  - 클럽 = 클럽관리의 클럽 목록 + 클럽 직책자·모임 주기.
 // 회원은 홈의 "조직도"에서 같은 그림을 본다.
 type Note = { tone: "bad" | "info"; text: string } | null;
 type Member = { id: string; name: string; kind: string; position: string };
@@ -104,8 +104,8 @@ function OrgAdmin() {
 
       <section className="lcard" aria-labelledby="org-h2">
         <header className="lcard-h">
-          <h2 id="org-h2">소모임</h2>
-          <p><Link href="/admin/clubs">소모임관리</Link>에서 정한 소모임 직책자와 모임 주기를 보여 줘요. 여기서는 확인만 하고, 소모임 회원·직책자는 소모임관리에서 바꿔요. 소모임 직책 이름(리더·총무 등)은 회원 구분 › 소모임 직책에서 더할 수 있어요.</p>
+          <h2 id="org-h2">클럽</h2>
+          <p><Link href="/admin/clubs">클럽관리</Link>에서 정한 클럽 직책자와 모임 주기를 보여 줘요. 여기서는 확인만 하고, 클럽 회원·직책자는 클럽관리에서 바꿔요. 클럽 직책 이름(리더·총무 등)은 회원 구분 › 클럽 직책에서 더할 수 있어요.</p>
         </header>
         <div className="lcard-b"><OrgClubs clubs={org.clubs} href={(n) => `/admin/clubs/${encodeURIComponent(n)}`} /></div>
       </section>

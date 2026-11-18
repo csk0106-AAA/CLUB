@@ -14,14 +14,14 @@ import { EVENT_TYPES, isLight } from "@/lib/event-types";
 const ALL: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
 
 // 일정 페이지의 "+ 일정 만들기" 창. 만들면 그 일정의 관리 화면(/admin/events/[id])으로 가서 내용을 채운다.
-// fixedClub 을 주면(소모임관리 › 소모임 › 소모임일정관리) 그 소모임 일정만 만든다.
-// clubs 를 주면(회원 "일정" 화면) 유형에 "소모임"도 있고 소모임을 고른다. 관리자 › 일정관리는 clubs 없이 써서 소모임 일정을 만들지 않는다.
+// fixedClub 을 주면(클럽관리 › 클럽 › 클럽일정관리) 그 클럽 일정만 만든다.
+// clubs 를 주면(회원 "일정" 화면) 유형에 "클럽"도 있고 클럽을 고른다. 관리자 › 일정관리는 clubs 없이 써서 클럽 일정을 만들지 않는다.
 // 관리자 비밀번호를 아직 확인하지 않았으면(서버가 403) 창 안에서 비밀번호를 받고 다시 만든다.
 // allowed: 만들 수 있는 일정 종류(일정 만들기 권한 evMain·evClub). 주지 않으면 모든 종류.
 export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed }: { open: boolean; onClose: () => void; clubs?: string[]; unlocked: boolean; fixedClub?: string; allowed?: string[] | null }) {
   const router = useRouter();
-  const types = (clubs ? [...EVENT_TYPES] : EVENT_TYPES.filter((t) => t !== "소모임")).filter((t) => !allowed || allowed.includes(t));
-  const [type, setType] = useState<string>(fixedClub ? "소모임" : types[0] ?? "정기모임");
+  const types = (clubs ? [...EVENT_TYPES] : EVENT_TYPES.filter((t) => t !== "클럽")).filter((t) => !allowed || allowed.includes(t));
+  const [type, setType] = useState<string>(fixedClub ? "클럽" : types[0] ?? "정기모임");
   const [name, setName] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
@@ -52,7 +52,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
     }
     const body = {
       type, name, pinned, startsAt, endsAt, place,
-      ...(type === "소모임" ? { club } : { audience }),
+      ...(type === "클럽" ? { club } : { audience }),
     };
     const r = await api<{ event: { id: string } }>("/api/admin/events", { body });
     if (!r.ok) {
@@ -83,18 +83,18 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
           <div><label className="l" htmlFor="n-start">시작 일시</label><DateField id="n-start" mode="datetime" value={startsAt} onChange={setStartsAt} /></div>
           <div><label className="l" htmlFor="n-end">끝나는 일시 (선택)</label><DateField id="n-end" mode="datetime" value={endsAt} onChange={setEndsAt} /></div>
           <div><label className="l" htmlFor="n-place">장소</label><input id="n-place" className="field" maxLength={120} value={place} onChange={(e) => setPlace(e.target.value)} /></div>
-          {!fixedClub && clubs && type === "소모임" && (
+          {!fixedClub && clubs && type === "클럽" && (
             <div>
-              <label className="l" htmlFor="n-club">소모임</label>
+              <label className="l" htmlFor="n-club">클럽</label>
               <select id="n-club" className="field" value={pickedClub} onChange={(e) => setPickedClub(e.target.value)}>
-                <option value="">소모임 고르기</option>
+                <option value="">클럽 고르기</option>
                 {clubs.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
           )}
         </div>
-        {type === "소모임" ? (
-          <span className="hint">모든 회원이 볼 수 있지만, 참석 신청은 {club ? clubLabel(club) : "고른 소모임"} 회원과 참관자만 할 수 있어요. 소모임 회원이 아니면 “{club ? clubLabel(club) : "○○ 모임"} 신청하러 가기”가 보여요. 입금계좌는 {club ? clubLabel(club) : "그 소모임"} 회비관리의 계좌로 먼저 채워져요.</span>
+        {type === "클럽" ? (
+          <span className="hint">모든 회원이 볼 수 있지만, 참석 신청은 {club ? clubLabel(club) : "고른 클럽"} 회원과 참관자만 할 수 있어요. 클럽 회원이 아니면 “{club ? clubLabel(club) : "○○ 모임"} 신청하러 가기”가 보여요. 입금계좌는 {club ? clubLabel(club) : "그 클럽"} 회비관리의 계좌로 먼저 채워져요.</span>
         ) : (
           <AudiencePicker value={audience} onChange={setAudience} legend="누구에게 보일까요?" />
         )}
@@ -106,7 +106,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
         </div>
         <span className="small">
           만들면 초안으로 시작하고 일정 관리 화면으로 이동해요. 내용을 채우고 “공개 및 회원전달”을 눌러야 회원에게 보여요.
-          {type === "회의" ? " 회의 일정에는 회의록을 쓸 수 있어요." : isLight(type) ? "" : type !== "소모임" ? " 입금계좌는 모임회비관리의 계좌로 먼저 채워져요." : ""}
+          {type === "회의" ? " 회의 일정에는 회의록을 쓸 수 있어요." : isLight(type) ? "" : type !== "클럽" ? " 입금계좌는 모임회비관리의 계좌로 먼저 채워져요." : ""}
         </span>
         {needPass && (
           <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--soft)" }}>
@@ -117,7 +117,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
         )}
         {err && <div className="msg bad" role="alert">{err}</div>}
         <button className="btn" type="submit"
-          disabled={busy || !name.trim() || (type === "소모임" && !club) || (needPass && !code) || (audience.mode !== "all" && type !== "소모임" && audience.memberIds.length === 0)}
+          disabled={busy || !name.trim() || (type === "클럽" && !club) || (needPass && !code) || (audience.mode !== "all" && type !== "클럽" && audience.memberIds.length === 0)}
           style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }}>
           {busy ? "만드는 중…" : "만들기"}
         </button>

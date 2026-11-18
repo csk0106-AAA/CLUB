@@ -4,8 +4,8 @@ import { getSetting } from "./store";
 // 관리자 "회원 구분" 화면에서 정하는 목록들. 모두 Settings 에 저장한다.
 //  memberKinds: [{value, definition}] (예전부터 있던 값)
 //  positions:   ["회장", "부회장", …, "일반회원"]   — 모임의 직책
-//  clubs:       ["골프", "등산", …]                 — 소모임 이름
-//  clubRoles:   ["회장", …]                         — 소모임 직책
+//  clubs:       ["골프", "등산", …]                 — 클럽 이름
+//  clubRoles:   ["회장", …]                         — 클럽 직책
 export type Lists = {
   memberKinds: { value: string; definition: string }[];
   positions: string[];
@@ -26,7 +26,7 @@ export async function getLists(): Promise<Lists> {
   return { memberKinds, positions, clubs, clubRoles };
 }
 
-// 회원의 소모임: [{name, role}]. role 이 비어 있으면 일반 소모임 회원.
+// 회원의 클럽: [{name, role}]. role 이 비어 있으면 일반 클럽 회원.
 export type ClubSeat = { name: string; role: string };
 export function memberClubs(m: { clubs?: string }): ClubSeat[] {
   return parseJson<ClubSeat[]>(m.clubs, [])

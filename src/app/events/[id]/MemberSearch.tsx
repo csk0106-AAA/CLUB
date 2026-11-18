@@ -25,7 +25,7 @@ function search<T extends M>(members: T[], q: string): T[] {
   return members.map((m) => [m, hit(m)] as const).filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1] || a[0].name.localeCompare(b[0].name, "ko")).map(([m]) => m);
 }
 
-// 회원 한 명을 고르는 칸(소모임 회원 더하기, 참관자 추가에 같이 쓴다).
+// 회원 한 명을 고르는 칸(클럽 회원 더하기, 참관자 추가에 같이 쓴다).
 // 이름을 치면 맞는 회원이 아래 목록으로 뜨고(초성 "ㄱㅎㄴ"도 됨), ▾ 를 누르면 등록된 회원 전체에서 고를 수 있다.
 // 키보드: ↓↑ 로 고르고 Enter 로 더하기, Esc 로 닫기.
 export function MemberSearch<T extends M>({ label, members, onPick, disabled }: {

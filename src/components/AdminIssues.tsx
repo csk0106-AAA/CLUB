@@ -7,7 +7,7 @@ import { fs } from "@/lib/fs";
 
 type Issue = { id: string; title: string; detail: string; href: string; action: string };
 
-// 관리자가 처리할 일(새해 연회비, 대신 처리할 소모임 신청 …). 없으면 아무것도 보이지 않는다(lib/admin-issues.ts).
+// 관리자가 처리할 일(새해 연회비, 대신 처리할 클럽 신청 …). 없으면 아무것도 보이지 않는다(lib/admin-issues.ts).
 export function AdminIssues() {
   const [items, setItems] = useState<Issue[]>([]);
   useEffect(() => {

@@ -22,7 +22,7 @@ type Note = { tone: "bad" | "info"; text: string } | null;
 
 type Tab = "overview" | "members" | "dues" | "events" | "requests";
 const TABS: { key: Tab; label: string }[] = [
-  { key: "overview", label: "소모임개요" },
+  { key: "overview", label: "클럽개요" },
   { key: "members", label: "회원" },
   { key: "dues", label: "회비" },
   { key: "events", label: "일정관리" },
@@ -31,8 +31,8 @@ const TABS: { key: Tab; label: string }[] = [
 const isTab = (v: string | undefined): v is Tab => TABS.some((t) => t.key === v);
 const head = { font: `700 ${fs(17)} var(--display)` } as const;
 
-/* ───── 1. 소모임개요(part="info"): 소개·모임 주기·주요 장소·운영 정책
-         2. 회원관리(part="members"): 소모임 회원 더하기·빼기, 소모임 직책 ───── */
+/* ───── 1. 클럽개요(part="info"): 소개·모임 주기·주요 장소·운영 정책
+         2. 회원관리(part="members"): 클럽 회원 더하기·빼기, 클럽 직책 ───── */
 function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<void>; part: "info" | "members" }) {
   const name = data.name;
   const [roster, setRoster] = useState<Seat[]>(data.roster);
@@ -58,7 +58,7 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
     });
     setBusy(false);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setNote({ tone: "info", text: `소모임 회원을 저장했어요.${r.data.changed ? ` 회원 ${r.data.changed}명의 명단에 반영했어요.` : ""}` });
+    setNote({ tone: "info", text: `클럽 회원을 저장했어요.${r.data.changed ? ` 회원 ${r.data.changed}명의 명단에 반영했어요.` : ""}` });
     await onSaved();
   }
 
@@ -69,15 +69,15 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
     const r = await api(`/api/admin/clubs/${encodeURIComponent(name)}`, { method: "PUT", body: info });
     setBusy(false);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setNote({ tone: "info", text: "소모임 개요를 저장했어요." });
+    setNote({ tone: "info", text: "클럽 개요를 저장했어요." });
     await onSaved();
   }
 
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      {part === "info" && <form className="card" aria-label="소모임 개요" onSubmit={saveInfo} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <b style={head}>소모임 개요</b>
+      {part === "info" && <form className="card" aria-label="클럽 개요" onSubmit={saveInfo} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <b style={head}>클럽 개요</b>
         <div>
           <label className="l" htmlFor="c-intro">소개</label>
           <textarea id="c-intro" className="field" rows={3} maxLength={1000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }} value={info.intro} onChange={(e) => setI("intro", e.target.value)} />
@@ -96,21 +96,21 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
       </form>}
       {part === "info" && data.canEditRoles && <NameBox name={name} count={data.roster.length} />}
 
-      {part === "members" && <section className="card" aria-label="소모임 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {part === "members" && <section className="card" aria-label="클럽 회원" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="row" style={{ gap: 8 }}>
-          <b className="grow" style={head}>소모임 회원</b>
+          <b className="grow" style={head}>클럽 회원</b>
           <span className="pill gray">{data.roster.length}명</span>
         </div>
         <span className="small">
-          소모임 직책(리더 등)을 정하면 그 회원이 신청을 승인·반려하고, 소모임 일정의 참관자를 정하고, 게시글도 쓸 수 있어요. 첫 번째 직책({data.clubRoles[0] ?? "대표"})은 소모임 회비도 정하고 올릴 수 있어요.
+          클럽 직책(리더 등)을 정하면 그 회원이 신청을 승인·반려하고, 클럽 일정의 참관자를 정하고, 게시글도 쓸 수 있어요. 첫 번째 직책({data.clubRoles[0] ?? "대표"})은 클럽 회비도 정하고 올릴 수 있어요.
           {leaders.length > 0 && <> 지금: {leaders.map((l) => `${l.role} ${l.name}`).join(", ")}</>}
-          {!data.canEditRoles && <> 소모임 직책을 정하거나 바꾸고, 직책자를 빼는 것은 관리자만 할 수 있어요. 일반 회원은 더하거나 뺄 수 있어요.</>}
+          {!data.canEditRoles && <> 클럽 직책을 정하거나 바꾸고, 직책자를 빼는 것은 관리자만 할 수 있어요. 일반 회원은 더하거나 뺄 수 있어요.</>}
         </span>
         {roster.length === 0 && <span className="small">아직 회원이 없어요. 아래에서 더해 주세요.</span>}
         {roster.map((s) => (
           <div key={s.id} className="row" style={{ flexWrap: "wrap", gap: 6 }}>
             <b className="grow" style={{ minWidth: 100 }}>{s.name} <span className="small">{[s.kind, s.position].filter(Boolean).join(" · ")}</span></b>
-            <select className="field" style={{ width: "auto", minWidth: 120, minHeight: 44 }} aria-label={`${s.name} 소모임 직책`} value={s.role} disabled={!data.canEditRoles}
+            <select className="field" style={{ width: "auto", minWidth: 120, minHeight: 44 }} aria-label={`${s.name} 클럽 직책`} value={s.role} disabled={!data.canEditRoles}
               onChange={(e) => setRoster(roster.map((x) => (x.id === s.id ? { ...x, role: e.target.value } : x)))}>
               <option value="">일반 회원</option>
               {[...new Set([...data.clubRoles, ...(s.role ? [s.role] : [])])].map((r) => <option key={r} value={r}>{r}</option>)}
@@ -137,7 +137,7 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
   );
 }
 
-/* 소모임 이름 바꾸기 · 삭제(관리자만). 회원 명단·기본 정보·회비·일정·신청내역에 함께 반영된다. */
+/* 클럽 이름 바꾸기 · 삭제(관리자만). 회원 명단·기본 정보·회비·일정·신청내역에 함께 반영된다. */
 function NameBox({ name, count }: { name: string; count: number }) {
   const router = useRouter();
   const [to, setTo] = useState(name);
@@ -155,7 +155,7 @@ function NameBox({ name, count }: { name: string; count: number }) {
     router.replace(`/admin/clubs/${encodeURIComponent(next)}`);
   }
   async function remove() {
-    if (!window.confirm(`“${name}” 소모임을 삭제할까요?${count ? `\n회원 ${count}명에게서 이 소모임이 빠져요.` : ""}\n소모임 개요와 회비 설정도 지워져요. 이미 만든 소모임 일정은 남아요.`)) return;
+    if (!window.confirm(`“${name}” 클럽을 삭제할까요?${count ? `\n회원 ${count}명에게서 이 클럽이 빠져요.` : ""}\n클럽 개요와 회비 설정도 지워져요. 이미 만든 클럽 일정은 남아요.`)) return;
     setBusy(true);
     setErr("");
     const r = await removeClub(name);
@@ -166,19 +166,19 @@ function NameBox({ name, count }: { name: string; count: number }) {
 
   return (
     <section className="card" aria-labelledby="club-name-h" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b id="club-name-h" style={head}>소모임 이름 · 삭제</b>
+      <b id="club-name-h" style={head}>클럽 이름 · 삭제</b>
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-        <input aria-label="소모임 이름" className="field grow" style={{ minWidth: 160, width: "auto" }} maxLength={30} value={to} onChange={(e) => setTo(e.target.value)} />
+        <input aria-label="클럽 이름" className="field grow" style={{ minWidth: 160, width: "auto" }} maxLength={30} value={to} onChange={(e) => setTo(e.target.value)} />
         <button className="btn white" type="button" disabled={busy || !next || next === name} style={{ width: "auto", minWidth: 110, minHeight: 44, fontSize: fs(14) }} onClick={rename}>이름 바꾸기</button>
       </div>
       <span className="small">이름을 바꾸면 회원 명단·회비·일정·신청내역에도 새 이름으로 반영돼요.</span>
       {err && <div className="msg bad" role="alert">{err}</div>}
-      <button className="mini danger" type="button" disabled={busy} style={{ alignSelf: "flex-start" }} onClick={remove}>이 소모임 삭제</button>
+      <button className="mini danger" type="button" disabled={busy} style={{ alignSelf: "flex-start" }} onClick={remove}>이 클럽 삭제</button>
     </section>
   );
 }
 
-/* ───── 3. 소모임일정관리: 이 소모임 일정 만들기 + 만든 일정 목록 ───── */
+/* ───── 3. 클럽일정관리: 이 클럽 일정 만들기 + 만든 일정 목록 ───── */
 type Ev = { id: string; name: string; startsAt: string; endsAt: string; place: string; published: string; pinned?: string; club?: string; canDelete?: boolean; total: number; attend: number; absent: number; paid: number };
 const todayKst = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 
@@ -197,7 +197,7 @@ function ClubEvents({ club }: { club: string }) {
       setUnlocked(r.data.admin);
     });
     api<{ events: Ev[] }>("/api/admin/events").then((r) => {
-      if (!r.ok) return setError(r.status === 403 ? "소모임 일정은 소모임관리·일정관리 권한이 있는 관리자가 만들고 관리해요." : r.error);
+      if (!r.ok) return setError(r.status === 403 ? "클럽 일정은 클럽관리·일정관리 권한이 있는 관리자가 만들고 관리해요." : r.error);
       setEvents(r.data.events.filter((e) => e.club === club));
     });
   }, [club]);
@@ -234,19 +234,19 @@ function ClubEvents({ club }: { club: string }) {
         <p className="small grow" style={{ margin: 0, fontSize: fs(12) }}>
           {clubLabel(club)} 일정만 여기서 만들고 관리해요(관리자 › 일정관리에는 보이지 않아요). 모든 회원이 볼 수 있고, {clubLabel(club)} 회원과 참관자만 참석 신청해요.
         </p>
-        {canCreate && <button type="button" className="btn" style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14) }} aria-haspopup="dialog" onClick={() => setCreating(true)}>+ 소모임 일정 만들기</button>}
+        {canCreate && <button type="button" className="btn" style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14) }} aria-haspopup="dialog" onClick={() => setCreating(true)}>+ 클럽 일정 만들기</button>}
       </div>
       {error && <div className="msg info" role="status">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}
-      {events && events.length === 0 && <div className="msg info">아직 {clubLabel(club)} 일정이 없어요.{canCreate ? " “+ 소모임 일정 만들기”로 시작해 보세요." : ""}</div>}
+      {events && events.length === 0 && <div className="msg info">아직 {clubLabel(club)} 일정이 없어요.{canCreate ? " “+ 클럽 일정 만들기”로 시작해 보세요." : ""}</div>}
       {upcoming.length > 0 && (
-        <section aria-label="예정된 소모임 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <section aria-label="예정된 클럽 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <b style={{ font: `700 ${fs(15)} var(--display)` }}>예정 {upcoming.length}개</b>
           <ul style={ul}>{upcoming.map(item)}</ul>
         </section>
       )}
       {done.length > 0 && (
-        <section aria-label="지난 소모임 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <section aria-label="지난 클럽 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <button type="button" className="morebtn" aria-expanded={showPast} aria-controls="club-past" onClick={() => setShowPast(!showPast)}>
             {showPast ? "지난 일정 접기 ▴" : `지난 일정 ${done.length}개 보기 ▾`}
           </button>
@@ -258,7 +258,7 @@ function ClubEvents({ club }: { club: string }) {
   );
 }
 
-/* ───── 소모임 화면: 맨 위 소모임 이름(오른쪽 끝 ‹ 소모임 목록) + 탭 4개 ───── */
+/* ───── 클럽 화면: 맨 위 클럽 이름(오른쪽 끝 ‹ 클럽 목록) + 탭 4개 ───── */
 function Club({ name, initialTab }: { name: string; initialTab: Tab }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
@@ -286,7 +286,7 @@ function Club({ name, initialTab }: { name: string; initialTab: Tab }) {
     <>
       <div className="row" style={{ gap: 8, alignItems: "center" }}>
         <h1 className="title grow" style={{ fontSize: fs(22), margin: 0, overflowWrap: "anywhere" }}>{data?.name ?? name}</h1>
-        <Link href="/admin/clubs" className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", flex: "none" }}>‹ 소모임 목록</Link>
+        <Link href="/admin/clubs" className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", flex: "none" }}>‹ 클럽 목록</Link>
       </div>
       <div className="tabsx ctabs" role="tablist" aria-label={`${name} 관리`}>
         {TABS.map((t) => (
@@ -296,7 +296,7 @@ function Club({ name, initialTab }: { name: string; initialTab: Tab }) {
       </div>
       <div role="tabpanel" id={`cp-${tab}`} aria-labelledby={`ct-${tab}`} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {(tab === "overview" || tab === "members") && (data ? <Overview data={data} onSaved={load} part={tab === "overview" ? "info" : "members"} /> : error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>)}
-        {tab === "dues" && <section className="card" aria-label="소모임 회비" style={{ display: "flex", flexDirection: "column", gap: 12 }}><ClubDuesEditor club={name} /></section>}
+        {tab === "dues" && <section className="card" aria-label="클럽 회비" style={{ display: "flex", flexDirection: "column", gap: 12 }}><ClubDuesEditor club={name} /></section>}
         {tab === "events" && <ClubEvents club={name} />}
         {tab === "requests" && <ClubRequestsAdmin club={name} />}
       </div>

@@ -7,7 +7,7 @@ import type { FeeRule } from "@/lib/fee";
 import { fs } from "@/lib/fs";
 
 // 일정 정보 조각: 회원 일정 화면(/events/[id])과 관리자 개요의 "회원에게 보이는 모습"이 같은 코드로 그린다.
-//  - EventHeadCard: 맨 위 카드(유형 · 이름 · 일시·장소 · 소모임)
+//  - EventHeadCard: 맨 위 카드(유형 · 이름 · 일시·장소 · 클럽)
 //  - Fold: "펼쳐서 보기 ▾ / 접기 ▴" 로 여닫는 칸(주요 활동, 내 참가비, 안내, 일정 …)
 //  - FeeDetail / NoticeText: 참가비·안내 칸의 내용
 //  - EventPreview: 관리자 미리보기(위 조각을 모두 펼친 모습)
@@ -66,7 +66,7 @@ export function feeLines(ev: InfoEvent, fee: FeeView): InfoLine[] {
 // 대화방 안내 문구용 정보 줄(한 줄에 하나씩, 아이콘 포함)
 export function eventInfoLines(ev: InfoEvent, fee: FeeView, actNames: string[]): InfoLine[] {
   const out: InfoLine[] = [];
-  if (ev.club) out.push({ icon: "👥", label: "소모임", value: clubText(ev.club, ev.clubLeaders) });
+  if (ev.club) out.push({ icon: "👥", label: "클럽", value: clubText(ev.club, ev.clubLeaders) });
   out.push({ icon: "📅", label: "일시", value: fmtRange(ev.startsAt, ev.endsAt) });
   if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
   if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
@@ -75,7 +75,7 @@ export function eventInfoLines(ev: InfoEvent, fee: FeeView, actNames: string[]):
   return out;
 }
 
-// 맨 위 카드: 유형 · 이름 · 일시·장소 · 소모임(예전 일정 홈의 모습)
+// 맨 위 카드: 유형 · 이름 · 일시·장소 · 클럽(예전 일정 홈의 모습)
 export function EventHeadCard({ ev, titleAs = "h1", children }: { ev: InfoEvent; titleAs?: "h1" | "b"; children?: React.ReactNode }) {
   const Title = titleAs;
   return (
@@ -83,7 +83,7 @@ export function EventHeadCard({ ev, titleAs = "h1", children }: { ev: InfoEvent;
       {ev.type && <span className={`pill ${TYPE_TONE[ev.type] ?? "gray"}`} style={{ alignSelf: "flex-start" }}>{ev.type}</span>}
       <Title style={{ display: "block", margin: 0, font: `700 ${fs(19)} var(--display)`, overflowWrap: "anywhere" }}>{ev.name}</Title>
       <div className="small">{fmtWhen(ev.startsAt, ev.endsAt, ev.place)}</div>
-      {ev.club && <div className="small">소모임: {clubText(ev.club, ev.clubLeaders)}</div>}
+      {ev.club && <div className="small">클럽: {clubText(ev.club, ev.clubLeaders)}</div>}
       {children}
     </section>
   );

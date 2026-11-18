@@ -1,6 +1,6 @@
 /* 디자인 토큰: 차분한 업무용 앱 스타일. 색은 모두 여기서만 정한다(밝은 화면 + 다크 모드).
    팔레트(안 C 수정): 주색 빨강(#C81616 — 주 버튼·고른 하단 탭·관리자 탭 밑줄·알림 숫자·포커스)
-   + 보조색 보라(#5B4DE8 — 참석·성공·켜짐·내 소모임·고른 하위 메뉴·보기 전환·링크) + 먹색 글자(#222222) + 회색.
+   + 보조색 보라(#5B4DE8 — 참석·성공·켜짐·내 클럽·고른 하위 메뉴·보기 전환·링크) + 먹색 글자(#222222) + 회색.
    예전 이름(--blue*, --green*, --orange*)은 그대로 두고 새 색으로 연결했다:
    파랑(선택) → 보라, 초록(참석·성공·켜짐) → 보라, 주황(주의) → 회색 칩. */
 :root {
@@ -17,7 +17,7 @@
   --icon: #8a8a8a;          /* 아이콘(글자에는 쓰지 않음) */
   --muted: #8a8a8a;
   --dis: #a0a6b0;           /* 비활성 */
-  --chip: #ededed;          /* 중립 칩 바탕(참석·내 소모임·불참 등) */
+  --chip: #ededed;          /* 중립 칩 바탕(참석·내 클럽·불참 등) */
   --switch-off: #d5d8de;    /* 꺼진 스위치 */
   --switch-on: #5b4de8;     /* 켜진 스위치 막대(보라) */
   --switch-knob: #ffffff;   /* 스위치 동그라미: 켜짐·꺼짐 모두 흰색 */
@@ -34,7 +34,7 @@
   --brand: var(--red);      /* 주 버튼 바탕 */
   --brand-h: var(--red-d);
   --on-brand: var(--on-red);
-  /* 보라(보조색): 참석·성공·켜짐·내 소모임·고른 하위 메뉴·보기 전환·링크 */
+  /* 보라(보조색): 참석·성공·켜짐·내 클럽·고른 하위 메뉴·보기 전환·링크 */
   --violet: #5b4de8;        /* 보라 바탕·테두리(흰 바탕 위 글자로도 4.5:1 이상) */
   --violet-d: #4a3cd0;
   --on-violet: #ffffff;     /* 보라 바탕 위 글자 */
@@ -489,7 +489,7 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 /* 관리자 화면: PC·노트북에서는 넓게 */
 .app.admin { max-width: 1120px; }
 @media (min-width: 900px) { .app.admin { max-width: var(--admin-w, 1120px); } }
-/* 관리자 윗줄: 이전 페이지 · 제목 · 내보내기, 그 아래 밑줄 탭(회원관리/소모임관리/활동 템플릿) */
+/* 관리자 윗줄: 이전 페이지 · 제목 · 내보내기, 그 아래 밑줄 탭(회원관리/클럽관리/활동 템플릿) */
 .adminbar { padding-bottom: 0; gap: 4px; }
 .adminbar h1 { flex: 1; min-width: 0; margin: 0; font: 700 calc(17px * var(--fs, 1)) var(--display); }
 .adminbar > .row { margin-left: -10px; }
@@ -632,7 +632,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 .orglist { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--line2); }
 .orglist .otrow { padding: 10px 2px; font-size: calc(14px * var(--fs, 1)); }
 .orglist .otrow b { min-width: 84px; flex: none; }
-/* 소모임 화면 탭 5개: 넓으면 한 줄, 휴대폰은 3칸씩 두 줄 */
+/* 클럽 화면 탭 5개: 넓으면 한 줄, 휴대폰은 3칸씩 두 줄 */
 .tabsx.ctabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; }
 .tabsx.ctabs button { justify-content: center; min-height: 38px; padding: 0 4px; white-space: nowrap; }
 /* 휴대폰: 5개를 한 줄에(글자 길이만큼 폭을 나눠 가진다) */
@@ -660,12 +660,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--violet); }
 /* 관리자 조직도: 직책 한 줄(직책 · 회원 · 회원 선택) */
 .otrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line2); }
 .otrow .mini { flex: none; }
-/* 소모임 목록(조직도 아래) */
+/* 클럽 목록(조직도 아래) */
 .otsec { display: flex; flex-direction: column; gap: 8px; }
 /* 묶음 제목: 왼쪽 색 막대 + 굵은 글씨 */
 .otsec h2 { margin: 0; display: flex; align-items: baseline; gap: 6px; padding-left: 10px; border-left: 3px solid var(--violet); font: 700 calc(15px * var(--fs, 1))/1.4 var(--display); }
 .otsec h2 .small { font-weight: 500; }
-/* 모임 직책·소모임 묶음: 같은 모양의 흰 카드. 두 카드 사이는 넉넉히 띄운다 */
+/* 모임 직책·클럽 묶음: 같은 모양의 흰 카드. 두 카드 사이는 넉넉히 띄운다 */
 .otcard { padding: 12px 14px 4px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
 .otsec-clubs { margin-top: 20px; }
 .otcard .otclubs, .otcard .orglist { border-top: 1px solid var(--line2); border-bottom: 0; }
@@ -848,7 +848,26 @@ body.app-resizing { cursor: ew-resize; user-select: none; }
 /* 한국어 줄바꿈: 낱말 중간("반갑습니/다")에서 끊지 않고 띄어쓰기에서 바꾼다. 아주 긴 낱말만 필요할 때 끊는다. */
 body { word-break: keep-all; overflow-wrap: anywhere; }
 
-/* 관리자 위쪽 메뉴 5개(모임설정·회원관리·일정관리·소모임관리·활동 템플릿)가 휴대폰 한 줄에 들어가게 */
+/* 관리자 위쪽 메뉴 5개(모임설정·회원관리·일정관리·클럽관리·활동 템플릿)가 휴대폰 한 줄에 들어가게 */
 @media (max-width: 420px) { .modes { gap: 12px; } .modes a { font-size: calc(14px * min(var(--fs, 1), 1.15)); } }
 /* 더 좁으면 관리자 구분 5개가 한 줄에 다 보이게 더 작게 */
 @media (max-width: 360px) { .modes { gap: 8px; justify-content: space-between; } .modes a { font-size: calc(12.5px * min(var(--fs, 1), 1.1)); letter-spacing: -0.3px; } }
+
+/* 일정 사진첩(components/EventPhotos.tsx): 3칸 정사각 미리보기 + 크게 보기 */
+.ph-card { display: flex; flex-direction: column; gap: 10px; }
+.ph-up { width: auto; min-width: 128px; min-height: 40px; padding: 0 14px; font-size: calc(14px * var(--fs, 1)); flex: none; }
+.ph-bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.ph-bar > span { display: block; height: 100%; background: var(--violet); transition: width .2s; }
+.ph-sort { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink2); font: 500 calc(13px * var(--fs, 1)) var(--body); cursor: pointer; }
+.ph-sort.on { border-color: var(--violet); background: var(--violet-bg); color: var(--violet-t); font-weight: 700; }
+.ph-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.ph-cell { position: relative; display: block; width: 100%; aspect-ratio: 1 / 1; padding: 0; border: 0; border-radius: 8px; overflow: hidden; background: var(--soft); cursor: pointer; }
+.ph-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ph-cell:focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
+.ph-likes { position: absolute; right: 4px; bottom: 4px; padding: 1px 7px; border-radius: 999px; background: rgba(17, 17, 17, .6); color: #fff; font: 700 calc(11px * var(--fs, 1)) var(--body); }
+.ph-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 8px; border: 1px dashed var(--line); border-radius: 12px; color: var(--sub); text-align: center; }
+.ph-view { position: relative; display: flex; justify-content: center; background: #111; border-radius: 10px; overflow: hidden; }
+.ph-view img { max-width: 100%; max-height: 70vh; object-fit: contain; display: block; }
+.ph-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .85); color: #111; font-size: 24px; line-height: 1; cursor: pointer; }
+.ph-nav.l { left: 8px; }
+.ph-nav.r { right: 8px; }

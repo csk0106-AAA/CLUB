@@ -24,7 +24,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const me = members.find((m) => m.id === g.s.mid);
   const e = events.find((x) => x.id === id && eventVisible(x, me ?? g.s.mid));
   if (!e) return bad("일정을 찾을 수 없어요.", 404);
-  if (!eventJoinable(e, me ?? g.s.mid)) return bad("이 소모임 회원만 회비를 알릴 수 있어요.", 403);
+  if (!eventJoinable(e, me ?? g.s.mid)) return bad("이 클럽 회원만 회비를 알릴 수 있어요.", 403);
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);
   const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
   if (!a || a.answer !== "참석" || !mf.known || !payable(mf.amount)) return bad("참석을 신청한 일정의 회비만 알릴 수 있어요.");

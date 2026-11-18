@@ -9,7 +9,7 @@ import type { Row } from "./store/types";
 // 관리자가 처리할 일(설정 화면 관리자 아이콘의 빨간 숫자, 회원관리 화면 위쪽 목록).
 //  - dues-year : 연회비 입금 기간의 끝 해가 올해(한국 시간)보다 이전이거나, 마지막으로 올린 회비 글이 올해 전에 올라왔을 때
 //                → "새해 연회비를 정해 주세요" (회비·모든 권한 관리자)
-//  - club-req  : 직책자가 없는 소모임이라 관리자가 대신 처리해야 하는 가입·참관 신청
+//  - club-req  : 직책자가 없는 클럽이라 관리자가 대신 처리해야 하는 가입·참관 신청
 export type AdminIssue = { id: string; title: string; detail: string; href: string; action: string };
 
 const yearOf = (iso: string): number | null => {
@@ -50,8 +50,8 @@ export async function adminIssues(me: Row, perms: string[], now = Date.now()): P
     const clubs = [...new Set(pending.map((r) => r.club))];
     out.push({
       id: "club-req",
-      title: `처리할 소모임 신청 ${pending.length}건`,
-      detail: `${clubs.join(", ")} 소모임에 회장(대표)이 없어서 관리자가 대신 승인·거절해야 해요.`,
+      title: `처리할 클럽 신청 ${pending.length}건`,
+      detail: `${clubs.join(", ")} 클럽에 회장(대표)이 없어서 관리자가 대신 승인·거절해야 해요.`,
       href: "/board?alerts=1",
       action: "알림에서 처리",
     });

@@ -26,7 +26,7 @@ export async function guard(perm?: string | string[]): Promise<Guard> {
 // 일정 하나를 다루는 관리 API(/api/admin/events/[id]/…) 용.
 //  perm(기본 일정관리) 권한이 있으면 통과. 없으면 "일정 만들기" 권한(evMain·evClub)이 있고
 //  그 일정을 내가 만든 경우(Events.createdBy)에만 통과한다(다른 사람이 만든 일정은 고칠 수 없다).
-//  소모임관리 권한(clubs)은 소모임 일정이면 통과한다.
+//  클럽관리 권한(clubs)은 클럽 일정이면 통과한다.
 export async function guardEv(ctx: { params: Promise<{ id: string }> }, perm: string | string[] = "events"): Promise<Guard> {
   const s = await getSession();
   if (!s) return { err: NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 }) };
@@ -37,7 +37,7 @@ export async function guardEv(ctx: { params: Promise<{ id: string }> }, perm: st
   if (clubs || can(s, "evMain") || can(s, "evClub")) {
     const { id } = await ctx.params;
     const ev = (await (await getStore()).list("Events")).find((e) => e.id === id);
-    // 소모임관리 권한: 소모임 일정은 모두 관리한다
+    // 클럽관리 권한: 클럽 일정은 모두 관리한다
     if (ev && clubs && (ev.club ?? "").trim()) return { s };
     // 내가 만들었거나 만든 사람이 편집자로 추가한 일정 — 그 일정 종류를 만들 권한이 지금도 있어야 한다
     const types = s.admin ? creatableTypes(s.perms) : [];
@@ -48,7 +48,7 @@ export async function guardEv(ctx: { params: Promise<{ id: string }> }, perm: st
   return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
 }
 
-// 일정 삭제: 일정관리 권한, 소모임관리 권한(소모임 일정), 또는 만든 사람(그 일정 종류를 만들 권한이 지금도 있을 때).
+// 일정 삭제: 일정관리 권한, 클럽관리 권한(클럽 일정), 또는 만든 사람(그 일정 종류를 만들 권한이 지금도 있을 때).
 // 편집자는 고칠 수만 있고 지울 수는 없다.
 export function canDeleteEvent(s: Session, ev: { type?: string; club?: string; createdBy?: string }): boolean {
   if (s.host) return false;
@@ -59,8 +59,8 @@ export function canDeleteEvent(s: Session, ev: { type?: string; club?: string; c
   return !types || types.includes(ev.type ?? "");
 }
 
-// 관리자(perm, 2차 비밀번호 통과) 또는 소모임 직책자(관리자 비밀번호 없이) 통과.
-//  adminOk: 관리자 권한으로 통과했는지(모든 소모임·삭제 등), officerOf: 내가 직책을 맡은 소모임 이름들(지금 DB 기준)
+// 관리자(perm, 2차 비밀번호 통과) 또는 클럽 직책자(관리자 비밀번호 없이) 통과.
+//  adminOk: 관리자 권한으로 통과했는지(모든 클럽·삭제 등), officerOf: 내가 직책을 맡은 클럽 이름들(지금 DB 기준)
 export type OfficerGuard = { s: Session; adminOk: boolean; officerOf: string[] } | { err: NextResponse };
 export async function adminOrOfficer(perm: string | string[]): Promise<OfficerGuard> {
   const s = await getSession();
@@ -69,7 +69,7 @@ export async function adminOrOfficer(perm: string | string[]): Promise<OfficerGu
   const list = Array.isArray(perm) ? perm : [perm];
   const adminOk = list.some((p) => can(s, p));
   const me = (await (await getStore()).list("Members")).find((m) => m.id === s.mid);
-  // 소모임 직책자도 관리자 기능을 쓸 때는 관리자 비밀번호(2차 인증)를 거쳐야 한다(session.admin).
+  // 클럽 직책자도 관리자 기능을 쓸 때는 관리자 비밀번호(2차 인증)를 거쳐야 한다(session.admin).
   const officerOf = me && s.admin ? memberClubs(me).filter((c) => c.role).map((c) => c.name) : [];
   if (!adminOk && officerOf.length === 0) {
     const isOfficer = !!me && memberClubs(me).some((c) => c.role);

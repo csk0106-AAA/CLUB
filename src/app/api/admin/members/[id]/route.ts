@@ -44,7 +44,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   // 회원 수정 화면에서 저장(fields 포함)하면 관리자가 성별을 확인한 것으로 보고 "회원 수정" 기록을 지운다.
   if (fields) patch.extra = withGenderEdit(withFields(cur.extra, fields), null);
 
-  // 직책·소모임 직책·개인 권한이 바뀌어 최종 권한이 달라지면 "모든 권한" 관리자만 할 수 있고,
+  // 직책·클럽 직책·개인 권한이 바뀌어 최종 권한이 달라지면 "모든 권한" 관리자만 할 수 있고,
   // 모든 권한 회원이 한 명도 없게 되면 막는다.
   const groups = await getPermGroups();
   const after = all.map((m) => (m.id === id ? { ...m, ...patch } : m));

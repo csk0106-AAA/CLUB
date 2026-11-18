@@ -6,10 +6,10 @@ import { getSetting, getStore } from "./store";
 // 권한 모델
 //  - 그룹 권한: Settings "permGroups" = { "pos:회장": ["all"], "club:회장": ["write"], … }
 //      pos:<모임 직책>  — Members.position 이 이 직책인 회원
-//      club:<소모임 직책> — Members.clubs 중 role 이 이 직책인 소모임이 하나라도 있는 회원
+//      club:<클럽 직책> — Members.clubs 중 role 이 이 직책인 클럽이 하나라도 있는 회원
 //  - 개인 권한: Members.perms ("|" 구분). extra.permsCustom 이 true 면 개인 권한만 쓴다(그룹 권한 무시).
 //    아니면 최종 권한 = 그룹 권한 ∪ 개인 권한.
-//  - "write" 권한(게시글_글쓰기): 게시글 작성(관리자는 양식 템플릿 수정까지). 소모임 직책자는 그룹 권한과 상관없이 작성만 할 수 있다.
+//  - "write" 권한(게시글_글쓰기): 게시글 작성(관리자는 양식 템플릿 수정까지). 클럽 직책자는 그룹 권한과 상관없이 작성만 할 수 있다.
 export type PermGroups = Record<string, string[]>;
 
 export const posKey = (p: string) => `pos:${p}`;
@@ -51,7 +51,7 @@ export function effectivePerms(m: M, groups: PermGroups): string[] {
   return [...set].sort();
 }
 
-// 소모임 직책자(소모임에서 role 이 있는 회원) — 게시글 작성만 할 수 있다.
+// 클럽 직책자(클럽에서 role 이 있는 회원) — 게시글 작성만 할 수 있다.
 export function isClubOfficer(m: M): boolean {
   return memberClubs(m).some((c) => c.role);
 }

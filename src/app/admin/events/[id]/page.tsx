@@ -8,6 +8,7 @@ import { CarpoolPanel } from "@/components/CarpoolPanel";
 import { EventActivities } from "@/components/EventActivities";
 import { EventItems } from "@/components/EventItems";
 import { EventMinutes } from "@/components/EventMinutes";
+import { EventPhotos } from "@/components/EventPhotos";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
 import { DateField } from "@/components/DateField";
@@ -29,14 +30,14 @@ type Ev = {
   status: string; published: string; pinned?: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
   feeRules?: FeeRule[];
   supports?: Support[]; // 지원금(연·월회비 지원, 회원 지원) — 총 예산에 더한다
-  club?: string; // 소모임 일정의 소모임
-  audience?: string; // 공개 대상 JSON(소모임이 아닌 일정)
+  club?: string; // 클럽 일정의 클럽
+  audience?: string; // 공개 대상 JSON(클럽이 아닌 일정)
   dayPlaces?: string; // 세부일정 날짜별 기본 위치 JSON
 };
 type Row = {
   memberId: string; name: string; kind: string; position: string; answer: string; days: string; paid: boolean; paidAt: string; memo: string; payNotice: string;
   fee: string; feePending: boolean; // 이 회원이 낼 회비(조건 반영), 날짜를 골라야 정해지면 feePending
-  clubRole?: string; observer?: boolean; // 소모임 일정: 소모임 직책, 참관자
+  clubRole?: string; observer?: boolean; // 클럽 일정: 클럽 직책, 참관자
   checkedBy?: string; checkedAt?: string; // 관리자가 대신 체크한 경우 체크한 사람 이름·시각
 };
 type ClubOpt = { name: string; account: string; holder: string; leaders: { name: string; role: string }[] };
@@ -54,15 +55,16 @@ const TABS = [
   { key: "group", label: "조편성" },
   { key: "car", label: "카풀" },
   { key: "room", label: "숙박·방배정" },
+  { key: "photo", label: "사진첩" },
 ];
 // 회의·미팅은 회비·활동·비용·조편성·카풀·숙박이 필요 없다. 회의록 탭은 회의 일정에만.
-const LIGHT_TABS = ["over", "minutes", "apply", "sched", "prep"];
+const LIGHT_TABS = ["over", "minutes", "apply", "sched", "prep", "photo"];
 const tabsFor = (type: string) => TABS.filter((t) => (t.key === "minutes" ? type === "회의" : !isLight(type) || LIGHT_TABS.includes(t.key)));
 // 일정 정보 줄과 "회원에게 보이는 모습" 카드는 회원 화면(일정 개요·일정 홈)과 같은 코드(EventInfoCard)를 쓴다.
 // 회비가 "전체·전체·전체" 한 줄뿐(모두 같은 금액)일 때만 금액과 계좌를 보여 주고, 여러 줄이면 "앱 접속 후 내 회비 확인"(회원은 본인 회비만 봐요).
 
 const dayText = (days: string) => (days ? fmtDays(days) : "");
-// 소모임 일정 참석 현황의 이름 옆 표시: 회장(소모임 직책) / 참관자
+// 클럽 일정 참석 현황의 이름 옆 표시: 회장(클럽 직책) / 참관자
 const tags = (r: Row) => (
   <>
     {r.clubRole && <span className="pill ok" style={{ marginLeft: 6 }}>{r.clubRole}</span>}
@@ -122,7 +124,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       const e = r.data.event;
       const rs = e.feeRules ?? [];
       if (e.fee && !rs.some((x) => !x.days && !x.kind && !x.position)) e.feeRules = [...rs, { days: "", kind: "", position: "", amount: e.fee }];
-      // 입금계좌가 비어 있으면 소모임 계좌(소모임 일정) 또는 모임회비관리 계좌를 미리 넣는다(저장해야 반영).
+      // 입금계좌가 비어 있으면 클럽 계좌(클럽 일정) 또는 모임회비관리 계좌를 미리 넣는다(저장해야 반영).
       setPrefilled("");
       if (!e.account && !e.accountHolder) {
         const c = e.club ? r.data.options.clubs.find((x) => x.name === e.club) : undefined;
@@ -130,7 +132,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
         if (src && (src.account || src.holder)) {
           e.account = src.account;
           e.accountHolder = src.holder;
-          setPrefilled(e.club ? `${e.club} 소모임 계좌를 미리 넣었어요. 저장하면 반영돼요.` : "모임회비관리의 입금계좌를 미리 넣었어요. 저장하면 반영돼요.");
+          setPrefilled(e.club ? `${e.club} 클럽 계좌를 미리 넣었어요. 저장하면 반영돼요.` : "모임회비관리의 입금계좌를 미리 넣었어요. 저장하면 반영돼요.");
         }
       }
       setEv(e);
@@ -149,13 +151,13 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const set = (k: keyof Ev, v: string) => setEv({ ...ev, [k]: v });
   const light = isLight(ev.type); // 회의·미팅: 회비·활동 칸 없음
   const curClub = ev.club ? opts.clubs.find((c) => c.name === ev.club) : undefined;
-  // 소모임을 고르면 그 소모임의 입금계좌·예금주를 넣는다(소모임 계좌가 없으면 지금 값을 둔다).
+  // 클럽을 고르면 그 클럽의 입금계좌·예금주를 넣는다(클럽 계좌가 없으면 지금 값을 둔다).
   function pickClub(name: string) {
     if (!ev) return;
     const c = opts.clubs.find((x) => x.name === name);
     if (c && (c.account || c.holder)) {
       setEv({ ...ev, club: name, account: c.account, accountHolder: c.holder });
-      setPrefilled(`${name} 소모임 계좌를 넣었어요. 저장하면 반영돼요.`);
+      setPrefilled(`${name} 클럽 계좌를 넣었어요. 저장하면 반영돼요.`);
     } else {
       setEv({ ...ev, club: name });
       setPrefilled("");
@@ -292,7 +294,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const noAns = rows.filter((r) => r.answer === "");
   const paid = attend.filter((r) => r.paid);
   const rules = ev.feeRules ?? [];
-  // 회원 화면과 같은 정보 카드용(소모임 일정이면 회장 등 직책자도 함께)
+  // 회원 화면과 같은 정보 카드용(클럽 일정이면 회장 등 직책자도 함께)
   const infoEv = { ...ev, clubLeaders: curClub?.leaders };
   const setRules = (next: FeeRule[]) => setEv({ ...ev, feeRules: next });
   const supports = ev.supports ?? [];
@@ -325,7 +327,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
           <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "초안"}</span>
-          {/* 소모임 일정은 소모임관리 › 그 소모임 › 소모임일정관리로 돌아간다 */}
+          {/* 클럽 일정은 클럽관리 › 그 클럽 › 클럽일정관리로 돌아간다 */}
           <Link href={ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events"} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
             {ev.club ? `‹ ${ev.club} 일정 목록` : "‹ 일정 목록"}
           </Link>
@@ -348,11 +350,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
 
       {tab === "over" && (
         <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {ev.type === "소모임" && (
+          {ev.type === "클럽" && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label className="l" htmlFor="o-club" style={{ margin: 0 }}>소모임</label>
+              <label className="l" htmlFor="o-club" style={{ margin: 0 }}>클럽</label>
               <select id="o-club" className="field" value={ev.club ?? ""} onChange={(e) => pickClub(e.target.value)}>
-                <option value="">소모임을 고르지 않음 (전체 회원에게 보임)</option>
+                <option value="">클럽을 고르지 않음 (전체 회원에게 보임)</option>
                 {[...new Set([...opts.clubs.map((c) => c.name), ...(ev.club ? [ev.club] : [])])].map((c) => <option key={c}>{c}</option>)}
               </select>
               {curClub && (
@@ -361,7 +363,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                   {" · "}참석 신청 대상은 {curClub.name} 회원이고, 회장이 참관자를 더할 수 있어요.
                 </span>
               )}
-              {ev.club && !curClub && <span className="small" style={{ color: "var(--red-t)" }}>“{ev.club}” 소모임이 목록에 없어요. 다른 소모임을 골라 주세요.</span>}
+              {ev.club && !curClub && <span className="small" style={{ color: "var(--red-t)" }}>“{ev.club}” 클럽이 목록에 없어요. 다른 클럽을 골라 주세요.</span>}
             </div>
           )}
           <div className="card switchrow">
@@ -418,6 +420,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       {tab === "group" && <GroupsPanel eventId={id} canEdit />}
       {tab === "car" && <CarpoolPanel eventId={id} canEdit />}
       {tab === "room" && <RoomsPanel eventId={id} canEdit />}
+      {tab === "photo" && <EventPhotos eventId={id} admin />}
 
       {tab === "apply" && (
         <>
@@ -496,7 +499,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           <span className="small">맨 앞 “참석” 칸을 체크하면 그 줄이 열려요. 참석일을 고르고(하루 일정은 미리 골라져 있어요) “저장”을 누르면 반영돼요. 체크를 풀고 저장하면 미응답으로 돌아가요. 전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 관리자가 바꾼 답에는 “✓ 관리자 체크”(체크한 사람·날짜)가 붙고, 회원이 직접 다시 답하면 사라져요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
           {ev.club && (
             <>
-              <span className="small">소모임 일정이라 참석 신청 명단에는 {clubLabel(ev.club)} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 소모임을 바꾸면 저장 후 반영돼요.</span>
+              <span className="small">클럽 일정이라 참석 신청 명단에는 {clubLabel(ev.club)} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 클럽을 바꾸면 저장 후 반영돼요.</span>
               <ObserversCard key={ev.club} eventId={id} admin onChange={load} />
             </>
           )}
@@ -661,7 +664,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   );
 }
 
-// 소모임관리에서 열면(?club=소모임) 위쪽 메뉴도 소모임관리로 둔다.
+// 클럽관리에서 열면(?club=클럽) 위쪽 메뉴도 클럽관리로 둔다.
 // ?tab=fee 처럼 열 탭을 정할 수 있다(종 알림의 입금 알림에서 회비 탭으로 바로).
 export default function EventDetailAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ club?: string; tab?: string }> }) {
   const { id } = use(params);

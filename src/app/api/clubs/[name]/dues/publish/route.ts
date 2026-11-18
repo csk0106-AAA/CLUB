@@ -6,7 +6,7 @@ import { clubDuesGuard, currentClubDues, type Ctx } from "../_guard";
 
 export const dynamic = "force-dynamic";
 
-// 저장된 소모임 회비 설정을 게시판 글로 올린다(제목 앞에 [소모임 이름]). 관리자 또는 그 소모임 회장(대표)만.
+// 저장된 클럽 회비 설정을 게시판 글로 올린다(제목 앞에 [클럽 이름]). 관리자 또는 그 클럽 회장(대표)만.
 export async function POST(req: Request, ctx: Ctx) {
   const g = await clubDuesGuard(ctx);
   if ("err" in g) return g.err;

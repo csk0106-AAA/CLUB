@@ -18,11 +18,11 @@ export type Me = {
   perms: string[];
   isAll: boolean; // 전체 관리자(회칙 글)
   manage: boolean; // 관리자(all/board): 모든 글 수정·삭제
-  canWrite: boolean; // 글쓰기: 관리자 + 소모임 직책자
+  canWrite: boolean; // 글쓰기: 관리자 + 클럽 직책자
   tplAdmin: boolean; // 양식 템플릿 저장: 관리자 + 2차 비밀번호 통과
 };
 
-// 로그인 확인 + 세션이 아니라 지금 회원 정보(직책·소모임·권한 그룹)로 권한을 다시 계산한다.
+// 로그인 확인 + 세션이 아니라 지금 회원 정보(직책·클럽·권한 그룹)로 권한을 다시 계산한다.
 export async function getMe(): Promise<{ me: Me } | { err: NextResponse }> {
   const g = await guard();
   if ("err" in g) return { err: g.err };
@@ -44,7 +44,7 @@ export const isEditorOf = (me: Me, p: Row) => me.canWrite && readEditors(p.edito
 export const canSee = (me: Me, p: Row) => inAudience(audienceOf(p), me.row.id, p.authorId) || isEditorOf(me, p);
 // 게시판에서 고치기: 작성자, 작성자가 추가한 편집자, 모든권한.
 // 게시글_글쓰기 권한자도 다른 사람이 쓴 글은 편집자로 추가되어야 고칠 수 있다.
-// 회칙·회비·소모임 회비 글은 게시판에서 고치지 않는다(관리 화면에서 다시 올린다 — lib/published.ts 의 canManage).
+// 회칙·회비·클럽 회비 글은 게시판에서 고치지 않는다(관리 화면에서 다시 올린다 — lib/published.ts 의 canManage).
 export const canEdit = (me: Me, p: Row) => !managedOf(p) && (me.isAll || p.authorId === me.row.id || isEditorOf(me, p));
 // 지우기·편집자 바꾸기: 작성자와 모든권한만
 export const canOwn = (me: Me, p: Row) => !managedOf(p) && (me.isAll || p.authorId === me.row.id);

@@ -9,7 +9,7 @@ import { checkPermChange, getPermGroups, isAllNow } from "@/lib/perms";
 import { memberBody } from "@/lib/schemas";
 import { getStore } from "@/lib/store";
 
-// 붙여넣은 명단을 한 번에 추가한다. 관리자 권한·소모임은 여기서 줄 수 없고, 이미 있는 회원은 건너뛴다(기존 회원은 건드리지 않는다).
+// 붙여넣은 명단을 한 번에 추가한다. 관리자 권한·클럽은 여기서 줄 수 없고, 이미 있는 회원은 건너뛴다(기존 회원은 건드리지 않는다).
 // 같은 이름이지만 연락처가 다른 동명이인은 이름 뒤에 알파벳을 붙여 넣는다(renamed 로 알려 준다).
 // dup: 이름은 같고 연락처가 다른 회원을 어떻게 할지(미리보기에서 관리자가 고른다)
 //  skip: 같은 사람 — 넣지 않음 / update: 같은 사람 — 기존 회원 연락처를 새 번호로 고침 / new: 다른 사람 — 이름 뒤에 알파벳을 붙여 넣음

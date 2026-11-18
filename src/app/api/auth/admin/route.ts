@@ -6,7 +6,7 @@ import { getStore } from "@/lib/store";
 
 const body = z.object({ passcode: z.string().min(1).max(128) });
 
-// 관리자 2차 확인. 관리자 권한이 있거나 소모임 직책자(소모임관리·활동 템플릿용)만 통과할 수 있다.
+// 관리자 2차 확인. 관리자 권한이 있거나 클럽 직책자(클럽관리·활동 템플릿용)만 통과할 수 있다.
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || session.host) return NextResponse.json({ error: "관리자 권한이 없어요." }, { status: 403 });

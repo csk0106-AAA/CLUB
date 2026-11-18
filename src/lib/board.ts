@@ -7,7 +7,7 @@ import { z } from "zod";
 //  rules   : { v:2, rules:[{id, chapter, article, body, version}] } — 관리자 › 회칙에서 올린 그때의 확정 조문(스냅숏)
 //            예전 글 {} 은 Rules 표의 확정 조문을 실시간으로 보여 준다
 //  fee     : { defaultAmount, rules:[{kind, position, amount}], deadline, account, accountHolder }
-//            + 회비관리·소모임 회비에서 올린 글(v:2)은 period, periodStart, periodEnd, monthDay, note, club(소모임) 도 담는다(lib/published.ts)
+//            + 회비관리·클럽 회비에서 올린 글(v:2)은 period, periodStart, periodEnd, monthDay, note, club(클럽) 도 담는다(lib/published.ts)
 //  minutes : { heldAt, place, attendees, agenda:[{title, status, note}], followUp }
 //  general : {}
 //  survey  : { questions:[{id, type:"text"|"single"|"multi", q, options[]}], deadline }
@@ -23,11 +23,11 @@ export type Form = (typeof FORMS)[number];
 export const isForm = (f: string): f is Form => (FORMS as readonly string[]).includes(f);
 // 글쓰기에서 고를 수 있는 양식.
 //  - 회의록(minutes)은 "회의" 일정의 회의록에서 쓴다(예전 회의록 글은 읽기만).
-//  - 회칙(rules)·회비(fee)는 관리 화면(관리자 › 회칙 / 회비관리 / 소모임 회비)에서 만들어 올린다(lib/published.ts).
+//  - 회칙(rules)·회비(fee)는 관리 화면(관리자 › 회칙 / 회비관리 / 클럽 회비)에서 만들어 올린다(lib/published.ts).
 export const WRITE_FORMS: Form[] = FORMS.filter((f) => f !== "minutes" && f !== "rules" && f !== "fee");
 export const isWriteForm = (f: string): f is Form => (WRITE_FORMS as string[]).includes(f);
 
-// 글쓰기 "AI에게 작성 요청하기"에서 참고하게 할 앱 정보(소모임은 따로 고른다). 서버: lib/board-ai-context.ts
+// 글쓰기 "AI에게 작성 요청하기"에서 참고하게 할 앱 정보(클럽은 따로 고른다). 서버: lib/board-ai-context.ts
 export const REF_KEYS = ["group", "dues", "rules", "events"] as const;
 export type RefKey = (typeof REF_KEYS)[number];
 export const REF_LABEL: Record<RefKey, string> = { group: "모임 정보·임원진", dues: "모임 회비", rules: "회칙", events: "다가오는 일정" };
@@ -61,7 +61,7 @@ export const FORM_HINT: Record<Form, string> = {
 export const RESPONSE_FORMS: Form[] = ["survey", "poll", "quiz"];
 
 // 반응·댓글을 받는 글: 글쓰기로 올린 글(일반·설문·투표·퀴즈, 예전 회의록 글 포함).
-// 관리 화면에서 올린 회칙·회비(소모임 회비 포함) 글은 받지 않는다(lib/published.ts managedOf 와 같은 기준).
+// 관리 화면에서 올린 회칙·회비(클럽 회비 포함) 글은 받지 않는다(lib/published.ts managedOf 와 같은 기준).
 export const talkable = (form: string) => form !== "rules" && form !== "fee";
 export const REACTIONS = [
   { key: "like", emoji: "👍", label: "좋아요" },

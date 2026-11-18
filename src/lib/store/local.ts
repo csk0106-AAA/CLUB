@@ -42,6 +42,10 @@ export class LocalStore implements Store {
     return db[tab] ?? [];
   }
 
+  async get(tab: TabName, id: string): Promise<Row | null> {
+    return (await this.list(tab)).find((r) => r.id === id) ?? null;
+  }
+
   insert(tab: TabName, row: Partial<Row>): Promise<Row> {
     return serial(async () => {
       const db = await read();

@@ -30,9 +30,9 @@ async function view(s: Sess, me: Member) {
     title: me.title ?? "",
     phone: me.phone ?? "",
     clubs: memberClubs(me),
-    // 내가 직책(회장·총무 등)을 맡은 소모임: 관리자 화면의 소모임관리·활동 템플릿에 들어갈 수 있다(관리자 비밀번호 없이)
+    // 내가 직책(회장·총무 등)을 맡은 클럽: 관리자 화면의 클럽관리·활동 템플릿에 들어갈 수 있다(관리자 비밀번호 없이)
     clubOfficerOf: memberClubs(me).filter((c) => c.role).map((c) => c.name),
-    // 내가 회장(대표)인 소모임: 설정 › 내 소모임에서 소모임 회비 화면으로 가는 버튼
+    // 내가 회장(대표)인 클럽: 설정 › 내 클럽에서 클럽 회비 화면으로 가는 버튼
     headClubs: await headClubsOf(me),
     clubOptions: clubs,
     prefs: readPrefs(me.prefs),
@@ -59,8 +59,8 @@ function formatPhone(input: string): string | null {
   return d.length === 11 ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}` : `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
-// 내 정보 고치기: 성별, 회사명·직책, 휴대폰 번호(=다음 로그인부터 초대코드가 뒷자리 4자리로 바뀜), 소모임, 개인 설정(prefs).
-// 보낸 항목만 바꾼다. 성별·회사명·직책·연락처·소모임을 바꾸면 관리자에게 보이도록 extra 에 "회원 수정" 기록을 남긴다.
+// 내 정보 고치기: 성별, 회사명·직책, 휴대폰 번호(=다음 로그인부터 초대코드가 뒷자리 4자리로 바뀜), 클럽, 개인 설정(prefs).
+// 보낸 항목만 바꾼다. 성별·회사명·직책·연락처·클럽을 바꾸면 관리자에게 보이도록 extra 에 "회원 수정" 기록을 남긴다.
 const patch = z
   .object({
     gender: z.enum(["남", "여"]),
@@ -117,12 +117,12 @@ export async function PATCH(req: Request) {
     const names = [...new Set(d.clubs)];
     const { clubs: options } = await getLists();
     const unknown = names.filter((n) => !options.includes(n) && !cur.some((c) => c.name === n));
-    if (unknown.length) return bad(`목록에 없는 소모임이에요: ${unknown.join(", ")}`);
-    // 새 소모임 가입은 직접 못 한다: 소모임 임원 승인(가입 신청, /api/club-requests)을 거친다. 여기서는 빼기만.
+    if (unknown.length) return bad(`목록에 없는 클럽이에요: ${unknown.join(", ")}`);
+    // 새 클럽 가입은 직접 못 한다: 클럽 임원 승인(가입 신청, /api/club-requests)을 거친다. 여기서는 빼기만.
     const added = names.filter((n) => !cur.some((c) => c.name === n));
-    if (added.length) return bad("소모임 가입은 ‘+ 소모임 가입 신청’으로 신청하면 소모임 임원이 승인해요.", 403);
+    if (added.length) return bad("클럽 가입은 ‘+ 클럽 가입 신청’으로 신청하면 클럽 임원이 승인해요.", 403);
     const dropped = cur.filter((c) => c.role && !names.includes(c.name));
-    if (dropped.length) return bad("소모임 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요.");
+    if (dropped.length) return bad("클럽 직책이 있는 클럽은 관리자에게 변경을 요청해 주세요.");
     const next = names.map((n) => ({ name: n, role: cur.find((c) => c.name === n)?.role ?? "" }));
     const label = (l: { name: string }[]) => l.map((c) => c.name).join(", ");
     if (JSON.stringify(next) !== JSON.stringify(cur)) {

@@ -34,7 +34,7 @@ export default function EditPostPage({ params }: { params: Promise<{ id: string 
       {!d && !error && <p className="small">불러오는 중이에요…</p>}
       {d && !d.canEdit && (
         <div className="msg bad" role="alert">
-          {managed ? "회칙·회비 글은 담당 관리자(소모임 회비는 소모임 회장)만 관리 화면에서 고칠 수 있어요." : "작성자나 관리자만 수정할 수 있어요."}
+          {managed ? "회칙·회비 글은 담당 관리자(클럽 회비는 클럽 회장)만 관리 화면에서 고칠 수 있어요." : "작성자나 관리자만 수정할 수 있어요."}
         </div>
       )}
       {d && d.canEdit && <PostEditor initial={d.post} />}

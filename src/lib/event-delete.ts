@@ -14,7 +14,12 @@ export async function deleteEventCascade(id: string): Promise<boolean> {
     for (const r of await s.list(tab)) if (!keep(r)) await s.remove(tab, r.id);
   };
   for (const tab of BY_EVENT) await drop(tab, (r) => r.eventId !== id);
-  // 처리 전인 소모임 참관·참석 요청은 일정이 없어지므로 함께 지운다(처리된 요청은 기록으로 둔다)
+  // 사진첩: 내용(EventPhotoData)은 사진 id 로 하나씩 지운다(내용 탭을 통째로 읽지 않는다)
+  for (const p of (await s.list("EventPhotos")).filter((r) => r.eventId === id)) {
+    await s.remove("EventPhotoData", p.id);
+    await s.remove("EventPhotos", p.id);
+  }
+  // 처리 전인 클럽 참관·참석 요청은 일정이 없어지므로 함께 지운다(처리된 요청은 기록으로 둔다)
   await drop("ClubRequests", (r) => r.eventId !== id || (r.status ?? "") !== "pending");
 
   const acts = new Set((await s.list("EventActivities")).filter((a) => a.eventId === id).map((a) => a.id));

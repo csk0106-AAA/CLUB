@@ -8,7 +8,7 @@ import { fs } from "@/lib/fs";
 
 // 일정 달력(월간, 일~토). 구글 캘린더 월 보기와 비슷하게:
 //  - 날짜 칸 안에 일정 칩. 하루 일정은 "14:30 일정명", 여러 날 일정은 주(줄)마다 이어진 막대(줄 첫 칸에 제목).
-//  - 칩 색: 고정(빨강) / 내 소모임 일정(보라) / 참석·미응답(연보라) / 불참·다른 소모임(회색). 참석 체크가 필요하면 빨간 점선 + "!".
+//  - 칩 색: 고정(빨강) / 내 클럽 일정(보라) / 참석·미응답(연보라) / 불참·다른 클럽(회색). 참석 체크가 필요하면 빨간 점선 + "!".
 //  - 내가 참석하는 일정이 있는 날은 칸에 보라 테두리.
 //  - 한 칸에 칩이 3개를 넘으면 "+N개 더". 날짜나 "+N개 더"를 누르면 그날 일정을 아래에 카드로 보여 준다(renderItem).
 // 날짜가 있는 일정만 표시한다. 순서는 서버(/api/events)가 정한 순서를 따른다.
@@ -33,7 +33,7 @@ function tone(e: CalEvent): string {
   return css.cMain;
 }
 const toneText = (e: CalEvent) =>
-  e.pinned ? "고정 일정" : !e.canApply ? "다른 소모임 일정" : e.myAnswer === "불참" ? "불참" : e.myAnswer === "참석" ? "참석" : e.needsAnswer ? "참석 여부 체크 필요" : "";
+  e.pinned ? "고정 일정" : !e.canApply ? "다른 클럽 일정" : e.myAnswer === "불참" ? "불참" : e.myAnswer === "참석" ? "참석" : e.needsAnswer ? "참석 여부 체크 필요" : "";
 
 type Seg = { e: CalEvent; start: number; end: number; lane: number; contL: boolean; contR: boolean };
 
@@ -165,9 +165,9 @@ export function EventCalendar<T extends CalEvent>({ events, renderItem, hrefOf }
 
       <div className={css.legend}>
         <span><i className={`${css.sw} ${css.cPin}`} aria-hidden="true" />고정</span>
-        <span><i className={`${css.sw} ${css.cClub}`} aria-hidden="true" />내 소모임</span>
+        <span><i className={`${css.sw} ${css.cClub}`} aria-hidden="true" />내 클럽</span>
         <span><i className={`${css.sw} ${css.cMain}`} aria-hidden="true" />참석·미응답</span>
-        <span><i className={`${css.sw} ${css.cMute}`} aria-hidden="true" />불참·다른 소모임</span>
+        <span><i className={`${css.sw} ${css.cMute}`} aria-hidden="true" />불참·다른 클럽</span>
         <span><i className={`${css.sw} ${css.need}`} aria-hidden="true" /><b className={css.bang}>!</b> 참석 여부 체크 필요</span>
         <span><i className={css.swAttend} aria-hidden="true" />내가 참석하는 일정이 있는 날</span>
         <span><b className={css.fresh} aria-hidden="true">N</b> 새 일정 · <b className={css.fresh} aria-hidden="true">U</b> 바뀐 일정</span>

@@ -6,7 +6,7 @@ import { FeeRulesFields } from "@/components/board/FormFields";
 import { won } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
-// 회비 설정 입력칸(모임 회비관리·소모임 회비 공통). 모양은 lib/dues.ts 의 Dues 와 같다.
+// 회비 설정 입력칸(모임 회비관리·클럽 회비 공통). 모양은 lib/dues.ts 의 Dues 와 같다.
 export type DuesValue = {
   period: "annual" | "monthly";
   amount: string;
@@ -56,7 +56,7 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
   kinds: string[];
   positions: string[];
   unit?: string;
-  posLabel?: string; // 소모임 회비는 "소모임 직책"(그 소모임에서 맡은 직책으로 금액을 고른다)
+  posLabel?: string; // 클럽 회비는 "클럽 직책"(그 클럽에서 맡은 직책으로 금액을 고른다)
 }) {
   const id = useId();
   const set = <K extends keyof DuesValue>(k: K, v: DuesValue[K]) => onChange({ ...d, [k]: v });
@@ -66,7 +66,7 @@ export function DuesForm({ value: d, onChange, kinds, positions, unit = "회비"
       <section className="lcard" aria-labelledby={`${id}-h1`}>
         <header className="lcard-h">
           <h2 id={`${id}-h1`}>{unit} 종류와 금액</h2>
-          <p>회원구분·{posLabel}마다 금액이 다르면 “조건별 금액”을 더해요. 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>(같으면 위쪽 줄)을 쓰고, 없으면 기본 금액을 써요. {posLabel} “일반회원”은 {posLabel === "직책" ? "직책이 없는 회원" : "이 소모임에서 직책이 없는 회원"}이에요.</p>
+          <p>회원구분·{posLabel}마다 금액이 다르면 “조건별 금액”을 더해요. 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>(같으면 위쪽 줄)을 쓰고, 없으면 기본 금액을 써요. {posLabel} “일반회원”은 {posLabel === "직책" ? "직책이 없는 회원" : "이 클럽에서 직책이 없는 회원"}이에요.</p>
         </header>
         <div className="lcard-b compact-form">
           <div className="row" style={{ gap: 10 }}>

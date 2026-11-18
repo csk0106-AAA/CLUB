@@ -32,7 +32,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const event = events.find((e) => e.id === id);
   if (!event) return bad("일정을 찾을 수 없어요.", 404);
 
-  // 소모임 일정: 그 소모임 회원 + 참관자만 보여 준다(참관자·회장 표시).
+  // 클럽 일정: 그 클럽 회원 + 참관자만 보여 준다(참관자·회장 표시).
   const club = (event.club ?? "").trim();
   const observers = readObservers(event.observers);
   // 탈퇴회원도 이 일정에 참석 신청한 기록이 있으면 남겨 보여 준다(회원구분에 "탈퇴회원")
@@ -59,7 +59,7 @@ export async function GET(_req: Request, ctx: Ctx) {
         checkedAt: a?.checkedAt ?? "",
         fee: mf.known ? mf.amount : "",
         feePending: !mf.known,
-        clubRole: seat?.role ?? "", // 소모임 직책(회장 등)
+        clubRole: seat?.role ?? "", // 클럽 직책(회장 등)
         observer: !!club && !seat && observers.includes(m.id),
       };
     });
@@ -74,10 +74,10 @@ export async function GET(_req: Request, ctx: Ctx) {
       GENERAL_POSITION,
     ]),
   ];
-  // 소모임 선택지와 미리 채울 계좌: 소모임별 계좌·직책자, 모임회비관리 계좌
+  // 클럽 선택지와 미리 채울 계좌: 클럽별 계좌·직책자, 모임회비관리 계좌
   const [info, dues] = await Promise.all([readAllClubInfo(), readDues()]);
   const lists = await getLists();
-  // 소모임 계좌: 소모임관리 › 회비관리의 계좌(없으면 예전 기본 정보의 계좌)
+  // 클럽 계좌: 클럽관리 › 회비관리의 계좌(없으면 예전 기본 정보의 계좌)
   const clubs = await Promise.all(lists.clubs.map(async (name) => {
     const p = await clubPayAccount(name, info[name]);
     return { name, account: p.account, holder: p.holder, leaders: clubLeaders(members, name).map((l) => ({ name: l.name, role: l.role })) };
@@ -104,7 +104,7 @@ const patch = z.object({
   accountHolder: z.string().max(60).optional(),
   feeRules: feeRules.optional(), // 조건별 회비
   audience: audienceInput.optional(), // 공개 대상(비우면 전체 회원)
-  club: z.string().trim().max(40).optional(), // 소모임 일정의 소모임(""= 없음)
+  club: z.string().trim().max(40).optional(), // 클럽 일정의 클럽(""= 없음)
   pinned: z.boolean().optional(), // 회원 일정 목록 맨 위에 고정
   showPrep: z.boolean().optional(), // 준비목록을 회원에게 보이기
   showCosts: z.boolean().optional(), // 비용을 회원에게 보이기
@@ -122,8 +122,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const before = (await s.list("Events")).find((e) => e.id === id);
   if (!before) return bad("일정을 찾을 수 없어요.", 404);
   if (rest.club !== undefined) {
-    if (before.type !== "소모임") rest.club = "";
-    else if (rest.club && rest.club !== (before.club ?? "") && !(await getLists()).clubs.includes(rest.club)) return bad("소모임을 목록에서 골라 주세요.");
+    if (before.type !== "클럽") rest.club = "";
+    else if (rest.club && rest.club !== (before.club ?? "") && !(await getLists()).clubs.includes(rest.club)) return bad("클럽을 목록에서 골라 주세요.");
   }
   const row = await s.update("Events", id, {
     ...rest,
@@ -147,7 +147,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   return NextResponse.json({ event: row });
 }
 
-// 일정 삭제: 일정관리 권한자, 소모임관리 권한자(소모임 일정), 만든 사람만. 딸린 기록도 함께 지운다.
+// 일정 삭제: 일정관리 권한자, 클럽관리 권한자(클럽 일정), 만든 사람만. 딸린 기록도 함께 지운다.
 export async function DELETE(_req: Request, ctx: Ctx) {
   const g = await guardEv(ctx, "events");
   if ("err" in g) return g.err;

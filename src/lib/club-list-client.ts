@@ -1,6 +1,6 @@
 import { api } from "./client";
 
-// 소모임 목록(Settings "clubs") 바꾸기: 소모임관리에서 추가 · 이름 바꾸기 · 삭제.
+// 클럽 목록(Settings "clubs") 바꾸기: 클럽관리에서 추가 · 이름 바꾸기 · 삭제.
 // 서버(/api/admin/lists, 회원정보 권한)가 회원 명단·기본 정보·회비·일정·신청내역에 이름 변경/삭제를 함께 반영한다.
 type Res = { ok: true; moved: number } | { ok: false; error: string };
 

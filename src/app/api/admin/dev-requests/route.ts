@@ -9,7 +9,7 @@ import { getStore } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 // 개발 요청 목록(최근 것부터). canEdit: 상태를 바꿀 수 있는지(전체 관리자만)
-// 관리자(활동·일정 권한) 또는 소모임 직책자가 보고 남길 수 있다.
+// 관리자(활동·일정 권한) 또는 클럽 직책자가 보고 남길 수 있다.
 export async function GET() {
   const g = await adminOrOfficer(["templates", "events"]);
   if ("err" in g) return g.err;

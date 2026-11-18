@@ -14,7 +14,7 @@ const input = z.object({
   request: z.string().trim().min(1, "AI에게 요청할 내용을 적어 주세요.").max(2000, "요청은 2000자까지 쓸 수 있어요."),
   title: z.string().max(100).optional().default(""),
   body: z.string().max(10000).optional().default(""),
-  // 참고할 앱 정보(모임 정보·회비·회칙·일정)와 소모임 이름들
+  // 참고할 앱 정보(모임 정보·회비·회칙·일정)와 클럽 이름들
   refs: z.array(z.enum(REF_KEYS)).max(REF_KEYS.length).optional().default([]),
   clubs: z.array(z.string().trim().max(40)).max(10).optional().default([]),
 });
@@ -22,7 +22,7 @@ const input = z.object({
 export async function POST(req: Request) {
   const m = await getMe();
   if ("err" in m) return m.err;
-  if (!m.me.canWrite) return bad("글은 관리자와 소모임 직책자만 쓸 수 있어요.", 403);
+  if (!m.me.canWrite) return bad("글은 관리자와 클럽 직책자만 쓸 수 있어요.", 403);
   if (!isAiEnabled()) return bad("AI 기능이 꺼져 있어요. 직접 작성해 주세요.", 503);
 
   const parsed = input.safeParse(await req.json().catch(() => null));

@@ -17,7 +17,7 @@ import type { Row } from "./store/types";
 //  - "받을 알림"에서 끈 종류는 0으로 센다.
 export type Kind = "events" | "posts" | "profiles";
 export const KINDS: Kind[] = ["events", "posts", "profiles"];
-// alerts: 소모임 신청 알림(내가 처리할 신청 + 아직 안 본 내 신청 결과) + 내 글에 새로 달린 댓글. "받을 알림" 설정과 상관없이 센다.
+// alerts: 클럽 신청 알림(내가 처리할 신청 + 아직 안 본 내 신청 결과) + 내 글에 새로 달린 댓글. "받을 알림" 설정과 상관없이 센다.
 export type Counts = Record<Kind, number> & { alerts: number };
 type Seen = Record<Kind, string>;
 
@@ -184,7 +184,7 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
       events: prefs.notify.events ? ev : 0,
       posts: po,
       profiles: prefs.notify.profiles ? pr : 0,
-      // 소모임·참관 신청(처리할 것 + 안 본 결과) + 내 글에 새로 달린 댓글 + (관리자) 승인 전 회원 신청
+      // 클럽·참관 신청(처리할 것 + 안 본 결과) + 내 글에 새로 달린 댓글 + (관리자) 승인 전 회원 신청
       // + (일정 관리자·작성자·편집자) 확인 전 입금 알림
       alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)) + co + (isAppHandler(me, groups) ? apps : 0)
         + payNoticesFor(me, events, applies, groups).length
@@ -195,7 +195,7 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
 }
 
 // 회원이 "입금했어요"를 눌렀는데 아직 입금 확인 전인 회비 알림 중, 이 사람이 확인할 수 있는 일정의 것.
-//  확인할 수 있는 사람: 일정관리·모든 권한, 소모임 일정이면 소모임관리 권한, 그 일정을 만든 사람·편집자
+//  확인할 수 있는 사람: 일정관리·모든 권한, 클럽 일정이면 클럽관리 권한, 그 일정을 만든 사람·편집자
 export function payNoticesFor(me: Row | undefined, events: Row[], applies: Row[], groups: Awaited<ReturnType<typeof getPermGroups>>): Row[] {
   if (!me || isGuest(me.kind)) return [];
   const perms = effectivePerms(me, groups);

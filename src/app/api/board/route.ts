@@ -23,12 +23,12 @@ export async function GET() {
   });
 }
 
-// 글쓰기: 관리자(all/board)와 소모임 직책자. 회칙·회비 글은 관리 화면에서만 올린다(400).
+// 글쓰기: 관리자(all/board)와 클럽 직책자. 회칙·회비 글은 관리 화면에서만 올린다(400).
 export async function POST(req: Request) {
   const m = await getMe();
   if ("err" in m) return m.err;
   const { me } = m;
-  if (!me.canWrite) return forbid("글은 관리자와 소모임 직책자만 쓸 수 있어요.");
+  if (!me.canWrite) return forbid("글은 관리자와 클럽 직책자만 쓸 수 있어요.");
   const raw = await req.json().catch(() => null);
   // 회의록은 이제 일정 › 회의 일정에서 쓴다(예전 회의록 글은 고치기만 된다)
   if ((raw as { form?: string } | null)?.form === "minutes") return bad("회의록은 일정에서 ‘회의’ 일정을 만들어 그 안에 써 주세요.");

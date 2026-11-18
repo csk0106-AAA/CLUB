@@ -8,7 +8,7 @@ import { notifyPost } from "./notify";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 
-// 관리 화면에서 만들어 게시판에 "올리는" 글: 모임 회비(관리자 › 회비관리), 회칙(관리자 › 회칙), 소모임 회비(소모임 회비 관리).
+// 관리 화면에서 만들어 게시판에 "올리는" 글: 모임 회비(관리자 › 회비관리), 회칙(관리자 › 회칙), 클럽 회비(클럽 회비 관리).
 //  - 올릴 때 그 순간의 내용을 글(Posts.data)에 그대로 담는다(스냅숏). 그 뒤에 설정을 바꿔도 다시 올리기 전까지 글은 그대로다.
 //  - 글 작성자(authorId)·수정 시각(updatedAt)은 마지막으로 올린 사람·시각이다.
 //  - 지금 연결된 글: Settings "publishLinks" = { dues: 글 id, rules: 글 id, "club:<이름>": 글 id }
@@ -17,7 +17,7 @@ import type { Row } from "./store/types";
 // Posts.data 스냅숏
 //  fee(모임)  : { v:2, period, defaultAmount, rules:[{kind,position,amount}], periodStart, periodEnd, monthDay,
 //                  account("은행 계좌"), accountHolder, note, deadline:"" }
-//  fee(소모임)  : 위와 같고 club: "<소모임 이름>"
+//  fee(클럽)  : 위와 같고 club: "<클럽 이름>"
 //  rules        : { v:2, rules:[{id, chapter, article, body, version}] }
 //  예전 글: fee { defaultAmount, rules, deadline, account, accountHolder } / rules {} (확정 조문을 실시간으로 보여 준다)
 
@@ -36,7 +36,7 @@ export const linkKey = (m: Managed): LinkKey => (m.kind === "club" ? `club:${m.c
 /* ───── 권한(지금 DB 기준 최종 권한으로) ───── */
 const has = (perms: string[], ...k: string[]) => perms.includes("all") || k.some((x) => perms.includes(x));
 
-// 이 글을 고치는 화면 주소. 소모임 회비는 소모임관리 화면을 열 수 있는 관리자(회원정보)면 그 화면, 아니면 회원용 소모임 회비 화면.
+// 이 글을 고치는 화면 주소. 클럽 회비는 클럽관리 화면을 열 수 있는 관리자(회원정보)면 그 화면, 아니면 회원용 클럽 회비 화면.
 export function manageHref(m: Managed, perms: string[]): string {
   if (m.kind === "dues") return "/admin/dues";
   if (m.kind === "rules") return "/admin/rules";
@@ -46,7 +46,7 @@ export const canDues = (perms: string[]) => has(perms, "group");
 export const canRules = (perms: string[]) => has(perms, "group");
 export const clubAdmin = (perms: string[]) => has(perms, "clubs");
 
-// 소모임 회장(대표): 그 소모임에서 직책이 소모임 직책 목록의 첫 번째(지금 "대표")인 회원
+// 클럽 회장(대표): 그 클럽에서 직책이 클럽 직책 목록의 첫 번째(지금 "대표")인 회원
 export async function headRole(): Promise<string> {
   return (await getLists()).clubRoles[0] ?? "";
 }
@@ -56,7 +56,7 @@ export function isClubHead(m: { clubs?: string }, club: string, role: string): b
 export async function canClubDues(m: { clubs?: string }, perms: string[], club: string): Promise<boolean> {
   return clubAdmin(perms) || isClubHead(m, club, await headRole());
 }
-// 내가 회장(대표)인 소모임 이름
+// 내가 회장(대표)인 클럽 이름
 export async function headClubsOf(m: { clubs?: string }): Promise<string[]> {
   const role = await headRole();
   return role ? memberClubs(m).filter((c) => c.role === role).map((c) => c.name) : [];
@@ -163,7 +163,7 @@ export async function publish(m: Managed, input: PublishInput, data: Record<stri
   return { id };
 }
 
-// 소모임 회원 id(기본 공개 대상)
+// 클럽 회원 id(기본 공개 대상)
 export async function clubMemberIds(club: string): Promise<string[]> {
   return clubMembers(await (await getStore()).list("Members"), club).map((m) => m.id);
 }

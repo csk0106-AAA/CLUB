@@ -35,7 +35,7 @@ const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string }[] = [
   { k: "posts", label: "공지글" },
   { k: "profiles", label: "프로필북 수정" },
 ];
-const ROLE_MSG = "소모임 직책이 있는 소모임은 관리자에게 변경을 요청해 주세요.";
+const ROLE_MSG = "클럽 직책이 있는 클럽은 관리자에게 변경을 요청해 주세요.";
 
 const digits = (s: string) => s.replace(/\D/g, "");
 const col = { display: "flex", flexDirection: "column", gap: 8 } as const;
@@ -69,14 +69,14 @@ export default function SettingsPage() {
   const [addingClub, setAddingClub] = useState(false);
   const [clubPick, setClubPick] = useState("");
   const [joinMsg, setJoinMsg] = useState("");
-  // 내가 보낸 소모임 가입 신청 중 아직 처리되지 않은 것(소모임 이름 + 신청 id: 취소할 때)
+  // 내가 보낸 클럽 가입 신청 중 아직 처리되지 않은 것(클럽 이름 + 신청 id: 취소할 때)
   const [pendingReqs, setPendingReqs] = useState<{ id: string; club: string }[]>([]);
   const pendingJoins = pendingReqs.map((x) => x.club);
   const loadPending = () =>
     api<{ mine: { id: string; kind: string; club: string; status: string }[] }>("/api/alerts").then((r) => {
       if (r.ok) setPendingReqs(r.data.mine.filter((x) => x.kind === "join" && x.status === "pending").map((x) => ({ id: x.id, club: x.club })));
     });
-  // 승인 대기 중인 가입 신청 취소(소모임 관리자가 처리하기 전까지)
+  // 승인 대기 중인 가입 신청 취소(클럽 관리자가 처리하기 전까지)
   async function cancelJoin(req: { id: string; club: string }) {
     if (!window.confirm(`${req.club} 가입 신청을 취소할까요?`)) return;
     const r = await api(`/api/club-requests/${req.id}`, { method: "DELETE" });
@@ -91,7 +91,7 @@ export default function SettingsPage() {
     if (!clubPick) return;
     const r = await api("/api/club-requests", { body: { kind: "join", club: clubPick, message: joinMsg.trim() } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setNote({ tone: "ok", text: `${clubPick} 소모임에 가입 신청을 보냈어요. 소모임 임원이 승인하면 알려 드려요.` });
+    setNote({ tone: "ok", text: `${clubPick} 클럽에 가입 신청을 보냈어요. 클럽 임원이 승인하면 알려 드려요.` });
     setAddingClub(false);
     loadPending();
   }
@@ -163,13 +163,13 @@ export default function SettingsPage() {
     if (d) setForm({ company: d.company, title: d.title, phone: d.phone });
   }
 
-  // 소모임: 누르면 바로 저장. 직책이 있는 소모임은 뺄 수 없다.
+  // 클럽: 누르면 바로 저장. 직책이 있는 클럽은 뺄 수 없다.
   async function toggleClub(name: string) {
     if (!me) return;
     const seat = me.clubs.find((c) => c.name === name);
     if (seat?.role) return setNote({ tone: "bad", text: ROLE_MSG });
     const names = seat ? me.clubs.filter((c) => c.name !== name).map((c) => c.name) : [...me.clubs.map((c) => c.name), name];
-    await patch({ clubs: names }, seat ? `${name} 소모임에서 뺐어요.` : `${name} 소모임을 더했어요.`);
+    await patch({ clubs: names }, seat ? `${name} 클럽에서 뺐어요.` : `${name} 클럽을 더했어요.`);
   }
 
   // 화면 모드·알림: 누르면 바로 화면에 반영하고 저장한다. 실패하면 되돌린다.
@@ -210,9 +210,9 @@ export default function SettingsPage() {
   }
 
   const clubNames = me ? [...me.clubOptions, ...me.clubs.map((c) => c.name).filter((n) => !me.clubOptions.includes(n))] : [];
-  // 아직 가입하지 않은 소모임(+ 소모임 추가에서 고를 수 있는 것)
+  // 아직 가입하지 않은 클럽(+ 클럽 추가에서 고를 수 있는 것)
   const joinable = me ? me.clubOptions.filter((n) => !me.clubs.some((c) => c.name === n)) : [];
-  // 이미 가입 신청을 보낸 소모임은 다시 고를 수 없다
+  // 이미 가입 신청을 보낸 클럽은 다시 고를 수 없다
   const requestable = joinable.filter((n) => !pendingJoins.includes(n));
   const pr = me?.prefs;
 
@@ -283,10 +283,10 @@ export default function SettingsPage() {
               <button className="btn" type="submit" disabled={saving || !infoChanged}>내 정보 저장</button>
             </form>
 
-            {/* 소모임: 내가 가입한 소모임만 보여 주고, "+ 소모임 추가"로 더한다 */}
+            {/* 클럽: 내가 가입한 클럽만 보여 주고, "+ 클럽 추가"로 더한다 */}
             <div style={col}>
-              <span className="l" id="c-l" style={{ marginBottom: 0 }}>내 소모임</span>
-              {me.clubs.length === 0 && <span className="small">아직 가입한 소모임이 없어요.</span>}
+              <span className="l" id="c-l" style={{ marginBottom: 0 }}>내 클럽</span>
+              {me.clubs.length === 0 && <span className="small">아직 가입한 클럽이 없어요.</span>}
               {me.clubs.length > 0 && (
                 <ul aria-labelledby="c-l" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {me.clubs.map((c) => (
@@ -298,15 +298,15 @@ export default function SettingsPage() {
                       )}
                       {c.role
                         ? <span className="small" style={{ fontSize: fs(13) }}>관리자에게 변경 요청</span>
-                        : <button className="mini danger" type="button" disabled={saving} aria-label={`${c.name} 소모임에서 빠지기`}
-                            onClick={() => window.confirm(`${c.name} 소모임에서 빠질까요?`) && toggleClub(c.name)}>빼기</button>}
+                        : <button className="mini danger" type="button" disabled={saving} aria-label={`${c.name} 클럽에서 빠지기`}
+                            onClick={() => window.confirm(`${c.name} 클럽에서 빠질까요?`) && toggleClub(c.name)}>빼기</button>}
                     </li>
                   ))}
                 </ul>
               )}
-              {/* 가입 신청 중(소모임 임원 승인 대기) */}
+              {/* 가입 신청 중(클럽 임원 승인 대기) */}
               {pendingJoins.length > 0 && (
-                <ul aria-label="가입 신청 중인 소모임" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <ul aria-label="가입 신청 중인 클럽" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {pendingReqs.map((q) => (
                     <li key={q.id} className="row" style={{ border: "1px dashed var(--line)", borderRadius: 8, padding: "8px 12px", gap: 8 }}>
                       <b className="grow">{q.club}</b>
@@ -319,16 +319,16 @@ export default function SettingsPage() {
               {!addingClub ? (
                 <button className="btn white" type="button" disabled={saving || requestable.length === 0} aria-expanded={false}
                   style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(15) }} onClick={() => { setAddingClub(true); setClubPick(requestable[0] ?? ""); setJoinMsg(""); }}>
-                  + 소모임 가입 신청
+                  + 클럽 가입 신청
                 </button>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div className="row" style={{ flexWrap: "wrap" }}>
-                    <select className="field" aria-label="가입 신청할 소모임" style={{ flex: "1 1 160px", width: "auto", minHeight: 46 }} value={clubPick} onChange={(e) => setClubPick(e.target.value)}>
+                    <select className="field" aria-label="가입 신청할 클럽" style={{ flex: "1 1 160px", width: "auto", minHeight: 46 }} value={clubPick} onChange={(e) => setClubPick(e.target.value)}>
                       {requestable.map((n) => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
-                  <input className="field" aria-label="소모임 임원에게 한마디 (선택)" placeholder="소모임 임원에게 한마디 (선택)" maxLength={200} value={joinMsg} onChange={(e) => setJoinMsg(e.target.value)} />
+                  <input className="field" aria-label="클럽 임원에게 한마디 (선택)" placeholder="클럽 임원에게 한마디 (선택)" maxLength={200} value={joinMsg} onChange={(e) => setJoinMsg(e.target.value)} />
                   <div className="row" style={{ flexWrap: "wrap" }}>
                     <button className="btn" type="button" disabled={saving || !clubPick} style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={requestJoin}>신청 보내기</button>
                     <button className="btn white" type="button" style={{ width: "auto", minHeight: 46, fontSize: fs(15) }} onClick={() => setAddingClub(false)}>취소</button>
@@ -337,9 +337,9 @@ export default function SettingsPage() {
               )}
               <span className="small">
                 {clubNames.length === 0
-                  ? "아직 등록된 소모임이 없어요. 관리자가 소모임을 만들면 신청할 수 있어요."
-                  : requestable.length === 0 && joinable.length === 0 ? "등록된 소모임에 모두 가입했어요."
-                  : "가입 신청을 보내면 소모임 임원(대표·총무 등)이 승인해요. 승인되면 알림으로 알려 드려요. 소모임 직책은 관리자가 정해요."}
+                  ? "아직 등록된 클럽이 없어요. 관리자가 클럽을 만들면 신청할 수 있어요."
+                  : requestable.length === 0 && joinable.length === 0 ? "등록된 클럽에 모두 가입했어요."
+                  : "가입 신청을 보내면 클럽 임원(대표·총무 등)이 승인해요. 승인되면 알림으로 알려 드려요. 클럽 직책은 관리자가 정해요."}
               </span>
             </div>
             </div>

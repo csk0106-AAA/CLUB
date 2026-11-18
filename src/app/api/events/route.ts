@@ -14,12 +14,12 @@ export const dynamic = "force-dynamic";
 const todayKst = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 
 // 회원이 보는 예정된 일정 목록. 공개된 일정만, 내 신청과 회비 상태를 함께 내려준다.
-// 다른 소모임의 일정도 보이지만(읽기만) 참석 신청은 그 소모임 회원·참관자만 할 수 있다(canApply).
+// 다른 클럽의 일정도 보이지만(읽기만) 참석 신청은 그 클럽 회원·참관자만 할 수 있다(canApply).
 //
 // 순서(group):
 //  0 관리자가 맨 위에 고정한 일정(pinned, 지나지 않은 것)
-//  1 아직 참석 여부를 안 알린 일정 / 참석으로 알린 일정 / 내 소모임 일정 — 가까운 날짜 먼저
-//  2 불참으로 알린 일정 / 내가 속하지 않은 소모임 일정 — 가까운 날짜 먼저
+//  1 아직 참석 여부를 안 알린 일정 / 참석으로 알린 일정 / 내 클럽 일정 — 가까운 날짜 먼저
+//  2 불참으로 알린 일정 / 내가 속하지 않은 클럽 일정 — 가까운 날짜 먼저
 //  3 지난 일정 — 최근 것 먼저
 // 날짜가 아직 없는 일정은 같은 묶음의 맨 뒤.
 // 일정 관리 권한(all/events/fees, 지금 DB 기준)이 있으면 공개 전 초안도 draft: true 로 함께 내려준다(관리 화면으로 가는 길).
@@ -44,7 +44,7 @@ export async function GET() {
   const freshness = await eventFreshness(session.mid);
 
   const list = events
-    // 일정 관리 권한이 있으면 모든 일정(초안, 공개 대상 밖의 일정 포함 — 관리자 › 일정관리·소모임관리에서 만든 것 모두)
+    // 일정 관리 권한이 있으면 모든 일정(초안, 공개 대상 밖의 일정 포함 — 관리자 › 일정관리·클럽관리에서 만든 것 모두)
     // 일정 만들기 권한자는 내가 만든 일정(초안 포함)도 본다. 다른 사람이 만든 일정은 나에게 공개된 것만.
     .filter((e) => manager || eventVisible(e, me ?? session.mid) || ownEv(e))
     .map((e) => {
@@ -73,7 +73,7 @@ export async function GET() {
         pinned: e.pinned === "true",
         past,
         group,
-        canApply, // false: 내가 속하지 않은 소모임 일정(읽기만)
+        canApply, // false: 내가 속하지 않은 클럽 일정(읽기만)
         myAnswer,
         // 참석 여부를 아직 안 알림(날짜가 정해지고 지나지 않은, 신청할 수 있는 일정만)
         needsAnswer: !draft && !outside && canApply && myAnswer === "" && !!e.startsAt && !past,

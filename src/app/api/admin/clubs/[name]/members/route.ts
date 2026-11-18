@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ name: string }> };
 
-// 소모임 회원 명단 전체를 저장한다. 빠진 회원은 이 소모임에서 빠지고, 새 회원은 들어온다.
-// role: 소모임 직책(“회원 구분”의 소모임 직책 목록) 또는 ""(일반 소모임 회원)
+// 클럽 회원 명단 전체를 저장한다. 빠진 회원은 이 클럽에서 빠지고, 새 회원은 들어온다.
+// role: 클럽 직책(“회원 구분”의 클럽 직책 목록) 또는 ""(일반 클럽 회원)
 const body = z.object({
   seats: z.array(z.object({ memberId: z.string().min(1).max(64), role: z.string().trim().max(40).default("") })).max(1000),
 });
@@ -22,20 +22,20 @@ export async function PUT(req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const name = clubParam((await ctx.params).name);
   const lists = await getLists();
-  if (!lists.clubs.includes(name)) return bad("소모임을 찾을 수 없어요.", 404);
-  if (!g.adminOk && !g.officerOf.includes(name)) return bad("내가 직책을 맡은 소모임만 관리할 수 있어요.", 403);
+  if (!lists.clubs.includes(name)) return bad("클럽을 찾을 수 없어요.", 404);
+  if (!g.adminOk && !g.officerOf.includes(name)) return bad("내가 직책을 맡은 클럽만 관리할 수 있어요.", 403);
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
   const seats = new Map(parsed.data.seats.map((x) => [x.memberId, x.role]));
   const badRole = [...seats.values()].find((r) => r && !lists.clubRoles.includes(r));
-  if (badRole) return bad(`“${badRole}”은(는) 소모임 직책 목록에 없어요. 회원 구분 화면에서 먼저 더해 주세요.`);
+  if (badRole) return bad(`“${badRole}”은(는) 클럽 직책 목록에 없어요. 회원 구분 화면에서 먼저 더해 주세요.`);
 
   const s = await getStore();
   const members = await s.list("Members");
   const ids = new Set(members.map((m) => m.id));
   if ([...seats.keys()].some((id) => !ids.has(id))) return bad("명단에 없는 회원이 있어요. 새로고침 후 다시 해 주세요.");
 
-  // 소모임 직책자(관리자 아님)는 일반 회원을 더하거나 빼기만: 직책을 주거나 바꾸거나, 직책자를 빼는 것은 관리자만.
+  // 클럽 직책자(관리자 아님)는 일반 회원을 더하거나 빼기만: 직책을 주거나 바꾸거나, 직책자를 빼는 것은 관리자만.
   if (!g.adminOk) {
     const roleNow = new Map(members.flatMap((m) => {
       const seat = memberClubs(m).find((c) => c.name === name);
@@ -44,7 +44,7 @@ export async function PUT(req: Request, ctx: Ctx) {
     const roleChanged =
       [...seats].some(([id, role]) => (roleNow.get(id) ?? "") !== role) ||
       [...roleNow].some(([id, role]) => role && !seats.has(id));
-    if (roleChanged) return bad("소모임 직책을 정하거나 바꾸는 것은 관리자만 할 수 있어요. 일반 회원을 더하거나 빼는 것만 할 수 있어요.", 403);
+    if (roleChanged) return bad("클럽 직책을 정하거나 바꾸는 것은 관리자만 할 수 있어요. 일반 회원을 더하거나 빼는 것만 할 수 있어요.", 403);
   }
 
   const patches = new Map<string, string>();
@@ -62,7 +62,7 @@ export async function PUT(req: Request, ctx: Ctx) {
     if (json !== (m.clubs ?? "")) patches.set(m.id, json);
   }
 
-  // 소모임 직책은 권한 그룹(club:<직책>)에 영향을 준다: 최종 권한이 바뀌면 "모든 권한" 관리자만.
+  // 클럽 직책은 권한 그룹(club:<직책>)에 영향을 준다: 최종 권한이 바뀌면 "모든 권한" 관리자만.
   const groups = await getPermGroups();
   const after = members.map((m) => (patches.has(m.id) ? { ...m, clubs: patches.get(m.id)! } : m));
   const err = checkPermChange(members, groups, after, groups, await isAllNow(g.s.mid));

@@ -9,7 +9,7 @@ import { getClubNames, getStore } from "./store";
 
 // 게시판 "AI에게 작성 요청하기"에 함께 보내는 참고 정보(관리자가 앱에 저장해 둔 내용).
 //  group: 모임 정보(이름·정회원 조건·임원진·회원 수), dues: 모임 회비, rules: 확정 회칙,
-//  events: 다가오는 일정(글쓴이에게 보이는 공개 일정만), clubs: 고른 소모임의 개요·회장·회비·회원 수
+//  events: 다가오는 일정(글쓴이에게 보이는 공개 일정만), clubs: 고른 클럽의 개요·회장·회비·회원 수
 import type { RefKey } from "./board";
 export { REF_KEYS } from "./board";
 
@@ -37,7 +37,7 @@ export async function buildRefContext(refs: RefKey[], clubs: string[], mid: stri
       ["회원 수", `${active.length}명`],
       ["정회원 필수 조건", await getRequirement()],
       ["임원진", officers.join(", ")],
-      ["소모임", lists.clubs.join(", ")],
+      ["클럽", lists.clubs.join(", ")],
     ])}`);
   }
 
@@ -68,7 +68,7 @@ export async function buildRefContext(refs: RefKey[], clubs: string[], mid: stri
       .slice(0, 10);
     const text = evs.map((e) => {
       const when = [e.startsAt?.replace("T", " "), e.endsAt ? `~ ${e.endsAt.replace("T", " ")}` : ""].filter(Boolean).join(" ");
-      return `- ${e.name} (${e.club ? `${e.club} 소모임` : e.type})${when ? ` · ${when}` : ""}${e.place ? ` · ${e.place}` : ""}${e.booking ? `\n  안내: ${e.booking.replace(/\n/g, " / ").slice(0, 300)}` : ""}`;
+      return `- ${e.name} (${e.club ? `${e.club} 클럽` : e.type})${when ? ` · ${when}` : ""}${e.place ? ` · ${e.place}` : ""}${e.booking ? `\n  안내: ${e.booking.replace(/\n/g, " / ").slice(0, 300)}` : ""}`;
     }).join("\n");
     out.push(`[다가오는 일정]\n${text || "(예정된 공개 일정이 없어요)"}`);
   }
@@ -81,7 +81,7 @@ export async function buildRefContext(refs: RefKey[], clubs: string[], mid: stri
       const leaders = clubLeaders(members, c).map((l) => `${l.role} ${l.name}`);
       const feeLine = dues ? duesSummary(dues) : i?.feeAmount ? won(i.feeAmount) : "";
       const acct = dues ? duesAccount(dues) : [i?.bank, i?.account].filter(Boolean).join(" ");
-      out.push(cut(`[소모임: ${c}]\n${lines([
+      out.push(cut(`[클럽: ${c}]\n${lines([
         ["소개", i?.intro],
         ["모임 주기", i?.cycle],
         ["주요 장소", i?.place],

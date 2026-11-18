@@ -20,7 +20,7 @@ const PART = PERM_KEYS.filter((p) => p !== "all");
 const PART_TEXT = PERM_DESC;
 const COLORS = ["var(--chip)", "var(--red-bg)", "var(--soft)", "var(--line)"]; // 이름 첫 글자 칸 바탕(토큰)
 const colorOf = (s: string) => COLORS[[...s].reduce((n, c) => n + c.charCodeAt(0), 0) % COLORS.length];
-const groupLabel = (k: string) => (k.startsWith("pos:") ? `직책 · ${k.slice(4)}` : `소모임 직책 · ${k.slice(5)}`);
+const groupLabel = (k: string) => (k.startsWith("pos:") ? `직책 · ${k.slice(4)}` : `클럽 직책 · ${k.slice(5)}`);
 const norm = (v: string[]) => (v.includes("all") ? ["all"] : [...new Set(v)].sort());
 
 function PermPicker({ value, onChange, disabled, idp }: { value: string[]; onChange: (v: string[]) => void; disabled: boolean; idp: string }) {
@@ -47,7 +47,7 @@ function Pills({ perms }: { perms: string[] }) {
   return <>{perms.map((p) => <span key={p} className={`pill ${p === "all" ? "ok" : "blue"}`}>{PERM_LABELS[p] ?? p}</span>)}</>;
 }
 
-// 위: 직책·소모임 직책별 그룹 권한 표
+// 위: 직책·클럽 직책별 그룹 권한 표
 function GroupMatrix({ g, members, onSaved }: { g: G; members: M[]; onSaved: (t: string) => void }) {
   const rows = [...g.positions.map((p) => `pos:${p}`), ...g.clubRoles.map((r) => `club:${r}`)];
   const [draft, setDraft] = useState<Record<string, string[]>>(g.groups);
@@ -77,7 +77,7 @@ function GroupMatrix({ g, members, onSaved }: { g: G; members: M[]; onSaved: (t:
   return (
     <section className="card" aria-label="그룹별 권한" style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>그룹별 권한</b>
-      <span className="small">직책과 소모임 직책마다 권한을 정해요. 그 직책인 회원은 이 권한을 모두 받아요. 소모임 직책자는 그룹 권한이 없어도 게시글 작성은 할 수 있어요.</span>
+      <span className="small">직책과 클럽 직책마다 권한을 정해요. 그 직책인 회원은 이 권한을 모두 받아요. 클럽 직책자는 그룹 권한이 없어도 게시글 작성은 할 수 있어요.</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <div className="tblw">
         <table className="tbl" style={{ minWidth: 1000 }}>
@@ -106,7 +106,7 @@ function GroupMatrix({ g, members, onSaved }: { g: G; members: M[]; onSaved: (t:
         </table>
       </div>
       {rows.length === 0 && <span className="small">직책이 없어요. <Link href="/admin/kinds">회원 구분</Link>에서 먼저 직책을 더해 주세요.</span>}
-      <span className="small">직책·소모임 직책 목록은 <Link href="/admin/kinds">회원 구분</Link>에서 바꿔요.</span>
+      <span className="small">직책·클럽 직책 목록은 <Link href="/admin/kinds">회원 구분</Link>에서 바꿔요.</span>
       {g.canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(15) }} disabled={busy || !dirty} onClick={save}>{busy ? "저장 중…" : "그룹 권한 저장"}</button>
@@ -176,7 +176,7 @@ function Admins() {
       <div className="adm-two">
         <section style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }} aria-label="권한 종류">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>권한 종류</b>
-          <div className="card"><b>모든권한</b><div className="small">모임설정, 회원관리, 일정관리, 소모임관리, 활동템플릿, 게시글 전부와 권한 바꾸기</div></div>
+          <div className="card"><b>모든권한</b><div className="small">모임설정, 회원관리, 일정관리, 클럽관리, 활동템플릿, 게시글 전부와 권한 바꾸기</div></div>
           <div className="card">
             <b>부분 권한 (여러 개 선택)</b>
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
@@ -184,7 +184,7 @@ function Admins() {
             </ul>
           </div>
           <span className="small">
-            최종 권한 = 속한 그룹(직책·소모임 직책)의 권한 + 개인 권한이에요. “개인 권한 확인·수정”으로 저장하면 그 회원은 그룹 권한 대신 개인 권한만 써요.
+            최종 권한 = 속한 그룹(직책·클럽 직책)의 권한 + 개인 권한이에요. “개인 권한 확인·수정”으로 저장하면 그 회원은 그룹 권한 대신 개인 권한만 써요.
             권한이 있는 회원은 일반 회원과 같은 방법으로 로그인한 뒤 관리자 비밀번호를 한 번 더 입력해요. 모든권한 회원은 한 명 이상 있어야 해요.
           </span>
         </section>
@@ -202,7 +202,7 @@ function Admins() {
                   <span className={`pill ${m.permsCustom ? "warn" : "gray"}`}>{m.permsCustom ? "개인 설정" : m.perms.length ? "그룹 + 개인" : "그룹"}</span>
                 </div>
                 <div style={{ paddingLeft: 44, display: "flex", flexDirection: "column", gap: 4 }}>
-                  {roles.length > 0 && <span className="small">소모임 직책: {roles.join(", ")}</span>}
+                  {roles.length > 0 && <span className="small">클럽 직책: {roles.join(", ")}</span>}
                   <span className="small">
                     속한 그룹: {m.groups.length ? m.groups.map((k) => `${groupLabel(k)}${(g.groups[k] ?? []).length ? "" : "(권한 없음)"}`).join(", ") : "없음"}
                     {m.permsCustom ? " · 그룹 권한은 쓰지 않아요" : ""}

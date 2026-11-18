@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // 홈 화면 종 아이콘의 알림 창:
 //  posts    : 마지막으로 본 뒤 새로 올라오거나 바뀐 글
-//  toHandle : 내가 처리할 소모임 가입·참관 신청(직책자)
+//  toHandle : 내가 처리할 클럽 가입·참관 신청(직책자)
 //  mine     : 내가 보낸 신청과 결과(최근 20개). unseen 이면 아직 안 본 결과
 //  count    : 종 아이콘 숫자(새 글 + 처리할 신청 + 안 본 결과) — 하단 홈 탭 숫자와 같다
 export async function GET() {
@@ -29,7 +29,7 @@ export async function GET() {
   const recent = (a: Row, b: Row) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
 
   const toHandle = rows
-    // 종 알림은 숫자와 같게 그 소모임 처리자(직책자, 없으면 전체 관리자)에게만. 다른 관리자는 소모임관리 › 신청내역에서 본다.
+    // 종 알림은 숫자와 같게 그 클럽 처리자(직책자, 없으면 전체 관리자)에게만. 다른 관리자는 클럽관리 › 신청내역에서 본다.
     .filter((r) => r.status === "pending" && r.memberId !== mid && handlersOf(members, r.club, groups).includes(mid))
     .sort(recent)
     .map((r) => ({

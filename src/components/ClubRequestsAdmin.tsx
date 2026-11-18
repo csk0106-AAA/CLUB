@@ -22,9 +22,9 @@ const STATUS: Record<string, { text: string; tone: string }> = {
   declined: { text: "반려", tone: "bad" },
 };
 
-// 소모임 신청내역(관리자 › 소모임관리 › 신청내역, 소모임 화면의 "신청내역" 탭). club 을 주면 그 소모임 신청만.
-//  대기: 소모임 관리자(직책자)가 승인하면 자동으로 소모임 회원이 되고(참석 요청이면 그 일정 참석까지), 반려는 사유를 적는다.
-//  처리 내역: 승인·반려한 신청과 처리자·처리일·반려 사유. 관리자는 모든 소모임, 소모임 직책자는 자기 소모임만 본다.
+// 클럽 신청내역(관리자 › 클럽관리 › 신청내역, 클럽 화면의 "신청내역" 탭). club 을 주면 그 클럽 신청만.
+//  대기: 클럽 관리자(직책자)가 승인하면 자동으로 클럽 회원이 되고(참석 요청이면 그 일정 참석까지), 반려는 사유를 적는다.
+//  처리 내역: 승인·반려한 신청과 처리자·처리일·반려 사유. 관리자는 모든 클럽, 클럽 직책자는 자기 클럽만 본다.
 export function ClubRequestsAdmin({ club: only }: { club?: string }) {
   const [data, setData] = useState<Data | null>(null);
   const [note, setNote] = useState<Note>(null);
@@ -70,8 +70,8 @@ export function ClubRequestsAdmin({ club: only }: { club?: string }) {
   return (
     <>
       <p className="small" style={{ margin: 0, fontSize: fs(12) }}>
-        소모임 가입·참관 신청이에요. 승인하면 자동으로 소모임 회원이 되고(일정에서 보낸 신청이면 그 일정 참석까지), 반려하면 사유를 적을 수 있어요.
-        {only ? "" : data.all ? " 관리자는 모든 소모임의 신청과 처리 내역을 볼 수 있어요." : " 내가 직책을 맡은 소모임의 신청만 보여요."}
+        클럽 가입·참관 신청이에요. 승인하면 자동으로 클럽 회원이 되고(일정에서 보낸 신청이면 그 일정 참석까지), 반려하면 사유를 적을 수 있어요.
+        {only ? "" : data.all ? " 관리자는 모든 클럽의 신청과 처리 내역을 볼 수 있어요." : " 내가 직책을 맡은 클럽의 신청만 보여요."}
       </p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
@@ -81,8 +81,8 @@ export function ClubRequestsAdmin({ club: only }: { club?: string }) {
           <button type="button" aria-pressed={view === "done"} onClick={() => setView("done")} style={{ minHeight: 40, fontSize: fs(13) }}>처리 내역 {done.length}</button>
         </div>
         {!only && data.clubs.length > 1 && (
-          <select className="field" aria-label="소모임" style={{ width: "auto", minWidth: 120, minHeight: 40 }} value={club} onChange={(e) => setClub(e.target.value)}>
-            <option value="">모든 소모임</option>
+          <select className="field" aria-label="클럽" style={{ width: "auto", minWidth: 120, minHeight: 40 }} value={club} onChange={(e) => setClub(e.target.value)}>
+            <option value="">모든 클럽</option>
             {data.clubs.map((c) => <option key={c}>{c}</option>)}
           </select>
         )}
@@ -107,7 +107,7 @@ export function ClubRequestsAdmin({ club: only }: { club?: string }) {
                     <button className="btn white" type="button" disabled={!!busy} style={{ minHeight: 44 }} aria-haspopup="dialog"
                       onClick={() => { setReason(""); setDecline(i); }} aria-label={`${i.memberName} 님 ${i.kindLabel} 반려`}>반려</button>
                   </div>
-                ) : <span className="small">이 소모임의 직책자가 처리해요.</span>}
+                ) : <span className="small">이 클럽의 직책자가 처리해요.</span>}
               </li>
             ))}
           </ul>

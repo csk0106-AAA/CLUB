@@ -21,16 +21,16 @@ function AiDraftBox({ form, title, body, clubs, onApply }: { form: Form; title: 
   const uid = useId();
   const [open, setOpen] = useState(false);
   const [request, setRequest] = useState("");
-  // 참고할 앱 정보: 관리자가 저장해 둔 모임 정보·회비·회칙·일정, 소모임 개요
+  // 참고할 앱 정보: 관리자가 저장해 둔 모임 정보·회비·회칙·일정, 클럽 개요
   const [refs, setRefs] = useState<RefKey[]>([]);
   const [refClubs, setRefClubs] = useState<string[]>([]);
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
-  // 요청 글에 소모임 이름이나 "회칙"·"회비"·"일정" 같은 말이 있으면 그 정보를 자동으로 체크해 둔다
+  // 요청 글에 클럽 이름이나 "회칙"·"회비"·"일정" 같은 말이 있으면 그 정보를 자동으로 체크해 둔다
   const detect = (text: string) => {
     const r = REF_KEYS.filter((k) => REF_HINTS[k].test(text));
     const named = clubs.filter((n) => text.includes(n) || text.includes(n.replace(/\s+/g, "")));
-    // 이름 없이 "소모임"만 있으면 소모임 전체(10개까지)를 참고한다
-    const c = named.length ? named : /소모임/.test(text) && refClubs.length === 0 ? clubs.slice(0, 10) : [];
+    // 이름 없이 "클럽"만 있으면 클럽 전체(10개까지)를 참고한다
+    const c = named.length ? named : /클럽/.test(text) && refClubs.length === 0 ? clubs.slice(0, 10) : [];
     if (r.length) setRefs((cur) => [...new Set([...cur, ...r])]);
     if (c.length) setRefClubs((cur) => [...new Set([...cur, ...c])]);
     return { refs: [...new Set([...refs, ...r])], clubs: [...new Set([...refClubs, ...c])] };
@@ -87,8 +87,8 @@ function AiDraftBox({ form, title, body, clubs, onApply }: { form: Form; title: 
           ))}
         </div>
         {clubs.length > 0 && (
-          <div className="row" style={{ flexWrap: "wrap", gap: 6 }} role="group" aria-label="참고할 소모임">
-            <span className="small" style={{ alignSelf: "center" }}>소모임:</span>
+          <div className="row" style={{ flexWrap: "wrap", gap: 6 }} role="group" aria-label="참고할 클럽">
+            <span className="small" style={{ alignSelf: "center" }}>클럽:</span>
             {clubs.map((c) => (
               <button key={c} type="button" className={`chip ${refClubs.includes(c) ? "violet" : "line"}`} aria-pressed={refClubs.includes(c)}
                 disabled={!refClubs.includes(c) && refClubs.length >= 10}
@@ -98,7 +98,7 @@ function AiDraftBox({ form, title, body, clubs, onApply }: { form: Form; title: 
             ))}
           </div>
         )}
-        <span className="small" style={{ fontSize: fs(12) }}>요청에 소모임 이름이나 “회칙·회비·일정·임원” 같은 말이 있으면 자동으로 체크돼요. 소모임은 소개·모임 주기·장소·직책자·회비·계좌·운영 정책을 참고해요.</span>
+        <span className="small" style={{ fontSize: fs(12) }}>요청에 클럽 이름이나 “회칙·회비·일정·임원” 같은 말이 있으면 자동으로 체크돼요. 클럽은 소개·모임 주기·장소·직책자·회비·계좌·운영 정책을 참고해요.</span>
       </fieldset>
       {hasCur && (
         <label className="row" style={{ gap: 8, fontSize: fs(14), cursor: "pointer" }}>
@@ -256,7 +256,7 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
   }
 
   if (!meta) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
-  if (!initial && !meta.me.canWrite) return <div className="msg bad" role="alert">글은 관리자와 소모임 직책자만 쓸 수 있어요.</div>;
+  if (!initial && !meta.me.canWrite) return <div className="msg bad" role="alert">글은 관리자와 클럽 직책자만 쓸 수 있어요.</div>;
 
   const forms = WRITE_FORMS;
   const canTpl = meta.me.tplAdmin && !!form;

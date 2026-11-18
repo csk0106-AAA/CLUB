@@ -6,8 +6,8 @@ import { api, fmtDate } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 // 공개 대상 고르기 (게시글·일정 공통).
-//  전체 회원 / 회원 선택 / 일정 참석자 선택(여러 일정) / 소모임 선택(여러 소모임)
-// 일정·소모임을 고르면 그 회원이 아래 명단에 미리 체크되고, 명단에서 한 명씩 더 고치거나 뺄 수 있다.
+//  전체 회원 / 회원 선택 / 일정 참석자 선택(여러 일정) / 클럽 선택(여러 클럽)
+// 일정·클럽을 고르면 그 회원이 아래 명단에 미리 체크되고, 명단에서 한 명씩 더 고치거나 뺄 수 있다.
 // 목록은 /api/audience-options (글을 쓸 수 있는 회원만) 에서 불러온다.
 export type AudienceOptions = {
   members: { id: string; name: string; kind: string }[];
@@ -16,12 +16,12 @@ export type AudienceOptions = {
   clubs: { name: string; memberIds: string[] }[];
 };
 
-// 회원 선택 / 일정 참석자 선택 / 소모임 선택. "회원 선택"에서 모든 회원을 고르면 "전체 회원"(mode all)으로 저장해
+// 회원 선택 / 일정 참석자 선택 / 클럽 선택. "회원 선택"에서 모든 회원을 고르면 "전체 회원"(mode all)으로 저장해
 // 나중에 들어온 회원에게도 보이게 한다.
 const MODES: { k: "members" | "events" | "clubs"; l: string }[] = [
   { k: "members", l: "회원 선택" },
   { k: "events", l: "일정 참석자 선택" },
-  { k: "clubs", l: "소모임 선택" },
+  { k: "clubs", l: "클럽 선택" },
 ];
 const NO_KIND = "미지정";
 const REGULAR = "정회원";
@@ -58,7 +58,7 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
     else onChange({ mode, events: [], clubs: [], memberIds: [] });
   }
 
-  // 일정·소모임을 켜면 그 회원을 더하고, 끄면 다른 고른 일정·소모임에 없는 회원만 뺀다.
+  // 일정·클럽을 켜면 그 회원을 더하고, 끄면 다른 고른 일정·클럽에 없는 회원만 뺀다.
   function toggleGroup(kind: "events" | "clubs", key: string, on: boolean) {
     if (!opts) return;
     const idsOf = (k: string) =>
@@ -135,8 +135,8 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
 
       {tab === "clubs" && opts && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="l" id={`${uid}-cl`}>소모임 고르기 (여러 개 가능)</span>
-          {opts.clubs.length === 0 && <span className="small">등록된 소모임이 없어요.</span>}
+          <span className="l" id={`${uid}-cl`}>클럽 고르기 (여러 개 가능)</span>
+          {opts.clubs.length === 0 && <span className="small">등록된 클럽이 없어요.</span>}
           <div className="checks" role="group" aria-labelledby={`${uid}-cl`}>
             {opts.clubs.map((c) => (
               <label key={c.name}>

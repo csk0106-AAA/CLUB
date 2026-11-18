@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const LISTS = ["memberKinds", "positions", "clubs", "clubRoles"] as const;
 type ListName = (typeof LISTS)[number];
-const NAMES: Record<ListName, string> = { memberKinds: "회원구분", positions: "직책", clubs: "소모임", clubRoles: "소모임 직책" };
+const NAMES: Record<ListName, string> = { memberKinds: "회원구분", positions: "직책", clubs: "클럽", clubRoles: "클럽 직책" };
 
 function counts(members: Row[]) {
   const c: Record<ListName, Record<string, number>> = { memberKinds: {}, positions: {}, clubs: {}, clubRoles: {} };
@@ -26,7 +26,7 @@ function counts(members: Row[]) {
   return c;
 }
 
-// 회원 구분 화면: 회원구분 / 직책 / 소모임 / 소모임 직책 목록과 목록 값별 회원 수
+// 회원 구분 화면: 회원구분 / 직책 / 클럽 / 클럽 직책 목록과 목록 값별 회원 수
 export async function GET() {
   const g = await guard(["members", "clubs", "group", "events"]);
   if ("err" in g) return g.err;
@@ -85,7 +85,7 @@ export async function PUT(req: Request) {
     if (p) patches.set(m.id, p);
   }
 
-  // 권한 그룹 키 반영(직책·소모임 직책): 이름을 바꾸면 키도 바꾸고, 삭제하면 지운다.
+  // 권한 그룹 키 반영(직책·클럽 직책): 이름을 바꾸면 키도 바꾸고, 삭제하면 지운다.
   const groups = await getPermGroups();
   let nextGroups: PermGroups = groups;
   if (list === "positions" || list === "clubRoles") {
@@ -103,8 +103,8 @@ export async function PUT(req: Request) {
   if (nextGroups !== groups) await setSetting("permGroups", nextGroups);
   for (const [id, p] of patches) await s.update("Members", id, p);
 
-  // 소모임: 기본 정보(Settings "clubInfo") 키와 소모임 일정(Events.club)도 이름을 따라 바꾸고, 삭제하면 기본 정보를 지운다.
-  // (삭제된 소모임의 일정은 club 값을 그대로 둔다: 전체 회원에게 갑자기 보이지 않도록. 참관자만 계속 볼 수 있다.)
+  // 클럽: 기본 정보(Settings "clubInfo") 키와 클럽 일정(Events.club)도 이름을 따라 바꾸고, 삭제하면 기본 정보를 지운다.
+  // (삭제된 클럽의 일정은 club 값을 그대로 둔다: 전체 회원에게 갑자기 보이지 않도록. 참관자만 계속 볼 수 있다.)
   if (list === "clubs" && (renames.size || deleted.length)) {
     const info = await getSetting<Record<string, unknown>>("clubInfo", {});
     const next: Record<string, unknown> = {};
@@ -113,7 +113,7 @@ export async function PUT(req: Request) {
       next[renames.get(k) ?? k] = v;
     }
     if (JSON.stringify(next) !== JSON.stringify(info ?? {})) await setSetting("clubInfo", next);
-    // 소모임 회비(Settings "clubDues")도 같은 방식으로
+    // 클럽 회비(Settings "clubDues")도 같은 방식으로
     const cd = await getSetting<Record<string, unknown>>("clubDues", {});
     const nextCd: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(cd ?? {})) {
@@ -126,14 +126,14 @@ export async function PUT(req: Request) {
         const to = e.club ? renames.get(e.club) : undefined;
         if (to) await s.update("Events", e.id, { club: to });
       }
-      // 신청내역도 새 이름으로(처리 내역이 그 소모임 화면에 그대로 남게)
+      // 신청내역도 새 이름으로(처리 내역이 그 클럽 화면에 그대로 남게)
       for (const r of await s.list("ClubRequests")) {
         const to = r.club ? renames.get(r.club) : undefined;
         if (to) await s.update("ClubRequests", r.id, { club: to });
       }
     }
   }
-  // 소모임 직책 이름이 바뀌면 소모임 회비의 직책 조건 줄도 따라 바꾼다.
+  // 클럽 직책 이름이 바뀌면 클럽 회비의 직책 조건 줄도 따라 바꾼다.
   if (list === "clubRoles" && renames.size) {
     const cd = await getSetting<Record<string, { rules?: { position: string }[] }>>("clubDues", {});
     let changed = false;

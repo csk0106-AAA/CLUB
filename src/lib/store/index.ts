@@ -30,6 +30,13 @@ async function seed(s: Store): Promise<void> {
   await seedInterview(s);
   await migrateTemplateVersions(s);
   await migrateTemplateHost(s);
+  await migrateClubType(s);
+}
+
+// "소모임" → "클럽" 이름 변경(2026-11): 예전 일정 유형 "소모임"을 "클럽"으로 고쳐 저장한다(여러 번 불러도 같다).
+// 일정을 읽는 API 에서도 lib/event-migrate.ts fixLegacyTypes 로 한 번 더 고친다.
+async function migrateClubType(s: Store): Promise<void> {
+  for (const e of await s.list("Events")) if (e.type === "소모임") await s.update("Events", e.id, { type: "클럽" });
 }
 
 export const DEFAULT_QUESTIONS = [
@@ -145,8 +152,8 @@ async function seedBase(s: Store): Promise<void> {
   });
   await s.insert("Events", {
     id: "evt-golf",
-    type: "소모임",
-    name: "골프 소모임 3월",
+    type: "클럽",
+    name: "골프 클럽 3월",
     startsAt: "2027-03-14T08:00",
     status: "모집 중",
     published: "true",

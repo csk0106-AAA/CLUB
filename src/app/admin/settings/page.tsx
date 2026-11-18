@@ -8,7 +8,7 @@ import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
-// 회원구분·직책·소모임 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
+// 회원구분·직책·클럽 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
 type S = { clubName: string; clubShortName: string; clubNameDisplay: "full" | "short"; inviteCode: string; requirement: string };
 
 function Settings() {
@@ -89,7 +89,7 @@ function Settings() {
         </span>
       </div>
 
-      <span className="small">회원구분·직책·소모임 목록은 <Link href="/admin/kinds">회원 구분</Link> 메뉴에서 정해요.</span>
+      <span className="small">회원구분·직책·클럽 목록은 <Link href="/admin/kinds">회원 구분</Link> 메뉴에서 정해요.</span>
 
       <button className="btn" type="submit" disabled={busy} style={{ width: "auto", minWidth: 200, alignSelf: "flex-start" }}>{busy ? "저장 중…" : "저장"}</button>
     </form>

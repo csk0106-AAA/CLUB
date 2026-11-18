@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const years = [...new Set([String(kstYear()), ...ledger.map((l) => l.date.slice(0, 4)), ...paid.map((p) => p.period.slice(0, 4)), ...auto.map((a) => a.date.slice(0, 4))])]
     .filter((y) => /^\d{4}$/.test(y)).sort((a, b) => b.localeCompare(a));
-  // 장부에서 "일정 지원"으로 적을 때 고를 일정(최근 것 먼저, 소모임 일정 포함)
+  // 장부에서 "일정 지원"으로 적을 때 고를 일정(최근 것 먼저, 클럽 일정 포함)
   const eventOptions = events
     .slice()
     .sort((a, b) => (b.startsAt || "").localeCompare(a.startsAt || ""))

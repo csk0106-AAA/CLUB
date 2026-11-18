@@ -1,5 +1,5 @@
 // 조직도(모임 전체 직책 체계). 회원 구분 › 직책 목록 순서대로 한 줄씩: 직책 이름 + 맡은 회원.
-// 소모임은 아래에 따로 보여 준다(OrgClubs).
+// 클럽은 아래에 따로 보여 준다(OrgClubs).
 export type OrgItem = { id: string; dept: string; role: string; names: string[] };
 
 export function OrgList({ items, emptyText }: { items: OrgItem[]; emptyText: string }) {
@@ -16,11 +16,11 @@ export function OrgList({ items, emptyText }: { items: OrgItem[]; emptyText: str
   );
 }
 
-// 소모임: 소모임관리의 소모임 목록 + 소모임 직책자(소모임관리) + 모임 주기(소모임관리)
+// 클럽: 클럽관리의 클럽 목록 + 클럽 직책자(클럽관리) + 모임 주기(클럽관리)
 export type OrgClub = { name: string; cycle: string; leaders: { name: string; role: string }[] };
 
 export function OrgClubs({ clubs, href }: { clubs: OrgClub[]; href?: (name: string) => string }) {
-  if (!clubs.length) return <p className="small" style={{ margin: 0 }}>아직 소모임이 없어요.</p>;
+  if (!clubs.length) return <p className="small" style={{ margin: 0 }}>아직 클럽이 없어요.</p>;
   return (
     <ul className="otclubs">
       {clubs.map((c) => (

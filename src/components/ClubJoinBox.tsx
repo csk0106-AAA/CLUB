@@ -7,10 +7,10 @@ import { api, fmtDate } from "@/lib/client";
 import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
 
-// 소모임 회원이 아닌 회원에게 보이는 칸: "○○ 회원이 아닙니다." + "○○ 신청하러 가기".
-//  누르면 신청 양식(남길 말)이 뜨고, 보내면 소모임 관리자(직책자)가 소모임관리 › 신청내역에서 승인·반려한다.
-//  승인되면 자동으로 소모임 회원이 된다. 대기 중이면 "관리자 확인 중"(신청 취소 가능), 반려되면 사유와 함께 다시 신청할 수 있다.
-//  소모임 회비 글(게시글)에서 쓴다. 일정은 참석 요청까지 함께 보내는 ClubRequestCard 를 쓴다.
+// 클럽 회원이 아닌 회원에게 보이는 칸: "○○ 회원이 아닙니다." + "○○ 신청하러 가기".
+//  누르면 신청 양식(남길 말)이 뜨고, 보내면 클럽 관리자(직책자)가 클럽관리 › 신청내역에서 승인·반려한다.
+//  승인되면 자동으로 클럽 회원이 된다. 대기 중이면 "관리자 확인 중"(신청 취소 가능), 반려되면 사유와 함께 다시 신청할 수 있다.
+//  클럽 회비 글(게시글)에서 쓴다. 일정은 참석 요청까지 함께 보내는 ClubRequestCard 를 쓴다.
 export function ClubJoinBox({ club, initial }: { club: string; initial: ClubJoinState }) {
   const cl = clubLabel(club); // 문장 안 이름: "독서" → "독서 모임"
   const [req, setReq] = useState<ClubJoinState>(initial);
@@ -31,7 +31,7 @@ export function ClubJoinBox({ club, initial }: { club: string; initial: ClubJoin
     setReq({ id: r.data.request.id, status: "pending", reason: "", message: message.trim(), createdAt: new Date().toISOString(), handledAt: "" });
     setOpen(false);
     setMessage("");
-    setNote(`${cl} 가입 신청을 보냈어요. 소모임 관리자가 승인하면 바로 ${cl} 회원이 돼요.`);
+    setNote(`${cl} 가입 신청을 보냈어요. 클럽 관리자가 승인하면 바로 ${cl} 회원이 돼요.`);
   }
 
   async function cancel() {
@@ -54,7 +54,7 @@ export function ClubJoinBox({ club, initial }: { club: string; initial: ClubJoin
       </div>
       {pending && req ? (
         <div role="status" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span>가입 신청을 소모임 관리자가 확인하고 있어요. 승인되면 바로 {cl} 회원이 돼요.</span>
+          <span>가입 신청을 클럽 관리자가 확인하고 있어요. 승인되면 바로 {cl} 회원이 돼요.</span>
           <span className="small">{fmtDate(req.createdAt)} 신청</span>
           {req.message && <span className="small" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>“{req.message}”</span>}
         </div>
@@ -64,7 +64,7 @@ export function ClubJoinBox({ club, initial }: { club: string; initial: ClubJoin
           {req.reason && <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>사유: {req.reason}</span>}
         </div>
       ) : (
-        <span className="small">{cl}에 가입하면 이 소모임의 회비·일정에 함께할 수 있어요.</span>
+        <span className="small">{cl}에 가입하면 이 클럽의 회비·일정에 함께할 수 있어요.</span>
       )}
       {note && <div className="msg info" role="status">{note}</div>}
       {error && !open && <div className="msg bad" role="alert">{error}</div>}
@@ -84,7 +84,7 @@ export function ClubJoinBox({ club, initial }: { club: string; initial: ClubJoin
             <textarea id="cjoin-msg" className="field" rows={3} maxLength={300} style={{ padding: 12, lineHeight: 1.5, resize: "vertical" }}
               placeholder={`예) ${cl} 활동에 함께하고 싶어요.`} value={message} onChange={(e) => setMessage(e.target.value)} />
           </div>
-          <div className="msg info">소모임 관리자가 승인하면 바로 {cl} 회원이 돼요. 결과는 홈 화면 종 알림으로 알려 드려요.</div>
+          <div className="msg info">클럽 관리자가 승인하면 바로 {cl} 회원이 돼요. 결과는 홈 화면 종 알림으로 알려 드려요.</div>
           {error && <div className="msg bad" role="alert">{error}</div>}
         </div>
       </Popup>

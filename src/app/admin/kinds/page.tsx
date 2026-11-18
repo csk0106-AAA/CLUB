@@ -32,16 +32,16 @@ const INFO: Record<ListName, { title: string; one: string; help: string; deleteN
     deleteNote: "회원의 직책 값은 남지만(“목록에 없음”), 이 직책에 준 그룹 권한은 사라져요.",
   },
   clubs: {
-    title: "소모임",
-    one: "소모임",
-    help: "골프·등산 같은 소모임 이름이에요. 이름을 바꾸면 회원들의 소모임에도 반영돼요.",
-    deleteNote: "이 소모임에 들어 있는 회원들에게서 소모임이 빠져요.",
+    title: "클럽",
+    one: "클럽",
+    help: "골프·등산 같은 클럽 이름이에요. 이름을 바꾸면 회원들의 클럽에도 반영돼요.",
+    deleteNote: "이 클럽에 들어 있는 회원들에게서 클럽이 빠져요.",
   },
   clubRoles: {
-    title: "소모임 직책",
-    one: "소모임 직책",
-    help: "소모임의 회장·총무 같은 직책이에요. 소모임 직책자는 게시글을 쓸 수 있고, 권한설정에서 권한을 더 줄 수도 있어요.",
-    deleteNote: "회원의 소모임 직책 값은 남지만, 이 직책에 준 그룹 권한은 사라져요.",
+    title: "클럽 직책",
+    one: "클럽 직책",
+    help: "클럽의 회장·총무 같은 직책이에요. 클럽 직책자는 게시글을 쓸 수 있고, 권한설정에서 권한을 더 줄 수도 있어요.",
+    deleteNote: "회원의 클럽 직책 값은 남지만, 이 직책에 준 그룹 권한은 사라져요.",
   },
 };
 
@@ -150,7 +150,7 @@ function Kinds() {
 
   return (
     <>
-      <p className="small" style={{ margin: 0 }}>여기서 정한 목록은 회원 명단에서 고를 수 있어요. 목록마다 따로 저장해요. 소모임을 더하거나 이름을 바꾸는 것은 소모임관리에서 해요.</p>
+      <p className="small" style={{ margin: 0 }}>여기서 정한 목록은 회원 명단에서 고를 수 있어요. 목록마다 따로 저장해요. 클럽을 더하거나 이름을 바꾸는 것은 클럽관리에서 해요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <div className="adm-two">
         <ListEditor list="memberKinds" data={data} onSaved={saved} />

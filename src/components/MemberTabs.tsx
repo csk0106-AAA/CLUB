@@ -12,18 +12,18 @@ const adminMemo = { show: false, issues: 0 };
 
 // 하단 탭: 홈(게시글 + 알림 + 조직도) / 일정 / 프로필 북 / 설정.
 // 조직도는 홈 화면 위쪽 "조직도" 아이콘으로 연다(/org 로 바로 들어오면 "홈" 탭이 켜진다).
-// 관리자: 관리자 권한이 있거나 소모임 직책자에게만 맨 오른쪽 탭으로 보인다(관리자 화면에서는 이 탭이 켜진다).
+// 관리자: 관리자 권한이 있거나 클럽 직책자에게만 맨 오른쪽 탭으로 보인다(관리자 화면에서는 이 탭이 켜진다).
 // 이 탭을 쓰는 화면은 <main className="app with-tabs"> 로 감싼다.
 // 하단 탭 칸 높이는 그대로: 아이콘·글자는 글자 크기 설정을 따르되 120%까지만 커진다(MemberTabs.module.css 와 같은 값).
 const TAB_ICON = 22;
 const TAB_MAX = 1.2;
 type Tab = "events" | "board" | "org" | "profiles" | "settings" | "admin";
-// alerts: 소모임 가입·참관 신청 알림(lib/unread.ts)
+// alerts: 클럽 가입·참관 신청 알림(lib/unread.ts)
 type Counts = { events: number; posts: number; profiles: number; alerts: number };
 // "봤음" 표시는 탭을 여는 순간이 아니라 각 화면이 정한다:
 //  일정·프로필 북: 목록을 받아 NEW / UP 을 그린 뒤 markSeenAfterList() (이번 방문 동안은 표시가 남고, 다음에 열면 사라진다)
 //  홈: 종 아이콘 알림 창을 열어야 새 글을 "봤음"으로 표시한다.
-// 탭 숫자: 홈은 종 아이콘과 같은 숫자(새 글 + 소모임 신청 알림)
+// 탭 숫자: 홈은 종 아이콘과 같은 숫자(새 글 + 클럽 신청 알림)
 const countOf = (t: Tab, c: Counts): number =>
   t === "board" ? c.posts + c.alerts : t === "events" ? c.events : t === "profiles" ? c.profiles : 0;
 
@@ -53,7 +53,7 @@ export function MemberTabs({ on: tab }: { on: Tab }) {
     };
   }, [on]);
 
-  // 관리자 탭: 관리자 권한이 있거나 소모임 직책자일 때만(처리할 일 숫자 배지). 마지막 값을 기억해 깜빡이지 않게.
+  // 관리자 탭: 관리자 권한이 있거나 클럽 직책자일 때만(처리할 일 숫자 배지). 마지막 값을 기억해 깜빡이지 않게.
   const [adm, setAdm] = useState(adminMemo);
   useEffect(() => {
     let stop = false;

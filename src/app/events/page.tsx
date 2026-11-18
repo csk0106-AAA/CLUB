@@ -29,7 +29,7 @@ type Ev = {
   club?: string;
   pinned: boolean;
   past: boolean;
-  group: number; // 0 고정 / 1 참석 예정·미응답·내 소모임 / 2 불참·다른 소모임 / 3 지난 일정
+  group: number; // 0 고정 / 1 참석 예정·미응답·내 클럽 / 2 불참·다른 클럽 / 3 지난 일정
   canApply: boolean;
   needsAnswer: boolean;
   draft?: boolean; // 공개 전 초안(일정 관리 권한이 있는 회원 또는 만든 사람에게만 온다)
@@ -49,7 +49,7 @@ function readView(): View {
   }
 }
 
-// ② 예정된 일정. 순서는 서버(/api/events)가 정한다: 고정 → 참석 예정·미응답·내 소모임 → 불참·다른 소모임 → 지난 일정.
+// ② 예정된 일정. 순서는 서버(/api/events)가 정한다: 고정 → 참석 예정·미응답·내 클럽 → 불참·다른 클럽 → 지난 일정.
 export default function EventsPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
@@ -99,7 +99,7 @@ export default function EventsPage() {
 
   // 일정은 모두 일정 화면(/events/[id] 한 페이지: 개요 정보 + 참석 신청)으로 간다.
   // 초안·공개 대상 밖의 일정은 내 회원 화면이 없으므로 관리 화면으로 간다.
-  // 관리 화면 주소: 소모임 일정은 ?club= 을 붙여 위쪽 메뉴가 소모임관리로, 돌아가기는 그 소모임의 일정 목록으로.
+  // 관리 화면 주소: 클럽 일정은 ?club= 을 붙여 위쪽 메뉴가 클럽관리로, 돌아가기는 그 클럽의 일정 목록으로.
   const manageHref = (e: Ev) => `/admin/events/${e.id}${e.club ? `?club=${encodeURIComponent(e.club)}` : ""}`;
   const hrefOf = (e: Ev) => (e.draft || e.outside ? manageHref(e) : `/events/${e.id}`);
   function open(e: Ev) {
@@ -120,7 +120,7 @@ export default function EventsPage() {
       : e.needsAnswer ? <span className="st" style={{ color: "var(--red-t)" }}>참석 여부 체크 필요</span>
       : e.myAnswer === "불참" ? <span className="st" style={{ color: "var(--sub)", fontWeight: 500 }}>불참으로 알림</span>
       : e.myAnswer ? <span className="st" style={{ color: "var(--violet-t)" }}>{e.myAnswer}</span>
-      : dim ? <span className="st" style={{ color: "var(--sub)", fontWeight: 500 }}>내 소모임 아님 · 신청 가능</span>
+      : dim ? <span className="st" style={{ color: "var(--sub)", fontWeight: 500 }}>내 클럽 아님 · 신청 가능</span>
       : null;
     return (
       <div key={e.id} className={`evcard${dim ? " dim" : ""}`}>
@@ -196,7 +196,7 @@ export default function EventsPage() {
           {showPast && <div id="past-list" className="evlist">{past.map(item)}</div>}
         </section>
       )}
-      {view === "list" && upcoming.length > 0 && <p className="hint" style={{ fontSize: fs(12) }}>일정을 누르면 그 일정에 필요한 화면으로 이동해요. 다른 소모임 일정은 읽어 볼 수 있고, 가입이나 참관을 신청할 수 있어요.</p>}
+      {view === "list" && upcoming.length > 0 && <p className="hint" style={{ fontSize: fs(12) }}>일정을 누르면 그 일정에 필요한 화면으로 이동해요. 다른 클럽 일정은 읽어 볼 수 있고, 가입이나 참관을 신청할 수 있어요.</p>}
 
       {drafts.length > 0 && (
         <section aria-label="공개 전 초안" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

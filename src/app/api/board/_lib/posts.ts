@@ -38,7 +38,7 @@ export async function parsePost(raw: unknown, me: Me, fixedForm?: string): Promi
   if (!fixedForm && !isWriteForm(form)) {
     return {
       ok: false,
-      error: form === "rules" ? "회칙은 관리자 › 모임설정 › 회칙에서 올려 주세요." : form === "fee" ? "회비 글은 관리자 › 모임설정 › 회비설정(소모임은 소모임 회비)에서 올려 주세요." : "이 양식은 글쓰기에서 쓸 수 없어요.",
+      error: form === "rules" ? "회칙은 관리자 › 모임설정 › 회칙에서 올려 주세요." : form === "fee" ? "회비 글은 관리자 › 모임설정 › 회비설정(클럽은 클럽 회비)에서 올려 주세요." : "이 양식은 글쓰기에서 쓸 수 없어요.",
     };
   }
   const d = DATA_SCHEMA[form].safeParse(p.data.data ?? {});
@@ -75,7 +75,7 @@ export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" |
       id: p.id,
       form: p.form,
       title: p.title,
-      // 소모임 회비 글은 문장 속 소모임 이름을 "○○ 모임"으로(예전에 올린 글도)
+      // 클럽 회비 글은 문장 속 클럽 이름을 "○○ 모임"으로(예전에 올린 글도)
       excerpt: (typeof data.club === "string" ? clubText(p.body ?? "", data.club) : p.body ?? "").replace(/\s+/g, " ").slice(0, 90),
       notice: p.notice === "true",
       pinned: p.pinned === "true",
@@ -146,11 +146,11 @@ export async function detail(me: Me, p: Row) {
   }
   if (form === "fee") {
     const rules = Array.isArray(data.rules) ? (data.rules as DuesRule[]) : [];
-    // 소모임 회비 글은 직책 조건을 그 소모임에서 맡은 소모임 직책으로 맞춘다(없으면 일반회원)
+    // 클럽 회비 글은 직책 조건을 그 클럽에서 맡은 클럽 직책으로 맞춘다(없으면 일반회원)
     const club = typeof data.club === "string" ? data.club : "";
     const position = club ? memberClubs(me.row).find((c) => c.name === club)?.role ?? "" : me.row.position;
     const amount = duesAmount({ amount: String(data.defaultAmount ?? ""), rules }, { kind: me.row.kind, position });
-    // 소모임 회원이 아니면 금액 대신 "○○ 회원이 아닙니다" + 가입 신청 칸(최근 가입 신청 상태)
+    // 클럽 회원이 아니면 금액 대신 "○○ 회원이 아닙니다" + 가입 신청 칸(최근 가입 신청 상태)
     const notMember = !!club && !memberClubs(me.row).some((c) => c.name === club);
     extra.myFee = { amount: notMember ? "" : amount, kind: me.row.kind ?? "", position: position ?? "", ...(notMember ? { notMember: true } : {}) };
     if (notMember) extra.clubJoin = joinView(latestJoin(await (await getStore()).list("ClubRequests"), me.row.id, club));
@@ -220,7 +220,7 @@ export async function detail(me: Me, p: Row) {
   const aud = audienceOf(p);
   return {
     post: {
-      // 소모임 회비 글: 문장 속 소모임 이름을 "○○ 모임"으로(예전에 올린 글도. 다시 올리면 고친 문장으로 저장된다)
+      // 클럽 회비 글: 문장 속 클럽 이름을 "○○ 모임"으로(예전에 올린 글도. 다시 올리면 고친 문장으로 저장된다)
       id: p.id, form, title: p.title, body: typeof data.club === "string" ? clubText(p.body ?? "", data.club) : p.body, data, audience: aud, audienceText: audienceLabel(aud, { events: evs }),
       notice: p.notice === "true", pinned: p.pinned === "true", files: readFiles(p),
       authorId: p.authorId, authorName: names.get(p.authorId) ?? "", createdAt: p.createdAt, updatedAt: p.updatedAt,

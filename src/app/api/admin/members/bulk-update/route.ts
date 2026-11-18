@@ -9,7 +9,7 @@ import { checkPermChange, getPermGroups, isAllNow } from "@/lib/perms";
 import { getStore } from "@/lib/store";
 
 // 엑셀로 받은 회원정보를 고쳐 올렸을 때: 회원ID 가 있는 줄은 그 회원의 정보를 고친다(회원 수정과 같은 규칙).
-//  보낸 항목만 바꾼다. 빈 칸은 "지움"(받은 파일에 원래 값이 있었으므로). 관리자 권한·소모임은 여기서 바꾸지 않는다.
+//  보낸 항목만 바꾼다. 빈 칸은 "지움"(받은 파일에 원래 값이 있었으므로). 관리자 권한·클럽은 여기서 바꾸지 않는다.
 //  추가 항목(fields)은 보낸 항목만 바꾸고 나머지는 그대로 둔다.
 const row = z.object({
   id: z.string().min(1).max(64),

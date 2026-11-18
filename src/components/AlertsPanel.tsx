@@ -134,7 +134,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
 
       {d.toHandle.length > 0 && (
         <section aria-labelledby="al-h1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h3 id="al-h1" style={sectionTitle}>처리할 참관·소모임 신청 {d.toHandle.length}건</h3>
+          <h3 id="al-h1" style={sectionTitle}>처리할 참관·클럽 신청 {d.toHandle.length}건</h3>
           {d.toHandle.map((h) => (
             <div key={h.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <b>{h.memberName} 님 · {h.kindLabel}</b>

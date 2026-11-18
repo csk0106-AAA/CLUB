@@ -56,6 +56,11 @@ export class NeonStore implements Store {
     return rows.map((r) => r.data);
   }
 
+  async get(tab: TabName, id: string): Promise<Row | null> {
+    const rows = await this.q(`SELECT data FROM app_rows WHERE tab = $1 AND id = $2`, [tab, id]);
+    return rows[0]?.data ?? null;
+  }
+
   async insert(tab: TabName, row: Partial<Row>): Promise<Row> {
     const full = normalize(tab, { ...row, id: row.id || randomUUID() });
     await this.q(`INSERT INTO app_rows (tab, id, data) VALUES ($1, $2, $3::jsonb)`, [

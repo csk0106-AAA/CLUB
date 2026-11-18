@@ -9,21 +9,21 @@ import { fs } from "@/lib/fs";
 export type AttendReq = {
   id: string; kind: string; status: string; message: string; createdAt: string; handledAt: string; reason?: string;
 } | null;
-// 이 소모임 가입 신청(설정·게시글에서 보낸 것 포함) 중 최근 것
+// 이 클럽 가입 신청(설정·게시글에서 보낸 것 포함) 중 최근 것
 export type JoinReq = { id: string; status: string; reason: string; message: string; createdAt: string; handledAt: string } | null;
 type Kind = "observe" | "join";
 
 const KINDS: { k: Kind; title: string; desc: string }[] = [
-  { k: "join", title: "소모임 가입하고 참석", desc: "소모임 회원이 되고, 이번 일정에도 참석해요." },
-  { k: "observe", title: "이번 일정만 참관", desc: "소모임에 가입하지 않고 이번 일정에만 참석해요." },
+  { k: "join", title: "클럽 가입하고 참석", desc: "클럽 회원이 되고, 이번 일정에도 참석해요." },
+  { k: "observe", title: "이번 일정만 참관", desc: "클럽에 가입하지 않고 이번 일정에만 참석해요." },
 ];
-const kindText = (k: string) => (k === "join" ? "소모임 가입 + 참석" : "참관 + 참석");
+const kindText = (k: string) => (k === "join" ? "클럽 가입 + 참석" : "참관 + 참석");
 
-// 내가 속하지 않은 소모임 일정의 아래쪽 참석 칸. 일정 내용은 모두 읽을 수 있고, 여기에 "○○ 회원이 아닙니다." 를 보여 준다.
-//  참석/불참 대신 "○○ 신청하러 가기" → 팝업에서 소모임 가입 / 이번만 참관을 골라 신청한다(승인되면 이 일정 참석까지).
-//  소모임 관리자(직책자)가 소모임관리 › 신청내역(또는 종 알림)에서 승인하면 참석 신청까지 되어 이 칸 대신 보통 참석 칸이 보인다.
+// 내가 속하지 않은 클럽 일정의 아래쪽 참석 칸. 일정 내용은 모두 읽을 수 있고, 여기에 "○○ 회원이 아닙니다." 를 보여 준다.
+//  참석/불참 대신 "○○ 신청하러 가기" → 팝업에서 클럽 가입 / 이번만 참관을 골라 신청한다(승인되면 이 일정 참석까지).
+//  클럽 관리자(직책자)가 클럽관리 › 신청내역(또는 종 알림)에서 승인하면 참석 신청까지 되어 이 칸 대신 보통 참석 칸이 보인다.
 //  대기 중: "관리자 확인 중"(신청 취소 가능) / 반려: 사유를 보여 주고 다시 신청할 수 있다.
-// guest(대기회원·참관회원): 소모임 가입 없이 "이번 일정 참관"만 신청한다. 소모임이 없는 일정이면 일정 관리자가 승인한다.
+// guest(대기회원·참관회원): 클럽 가입 없이 "이번 일정 참관"만 신청한다. 클럽이 없는 일정이면 일정 관리자가 승인한다.
 export function ClubRequestCard({ eventId, club, leaders, req, join = null, guest = false, onChange }: {
   eventId: string;
   guest?: boolean;
@@ -37,8 +37,8 @@ export function ClubRequestCard({ eventId, club, leaders, req, join = null, gues
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<Kind>(guest ? "observe" : "join");
   const kinds = guest ? KINDS.filter((o) => o.k === "observe") : KINDS;
-  // 승인하는 사람: 소모임 일정이면 소모임 관리자, 그 밖에는 일정 관리자
-  const boss = club ? "소모임 관리자" : "일정 관리자";
+  // 승인하는 사람: 클럽 일정이면 클럽 관리자, 그 밖에는 일정 관리자
+  const boss = club ? "클럽 관리자" : "일정 관리자";
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -94,15 +94,15 @@ export function ClubRequestCard({ eventId, club, leaders, req, join = null, gues
             {req?.reason && <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>사유: {req.reason}</span>}
           </div>
         ) : joinPending ? (
-          <span role="status">{cl} 가입 신청을 소모임 관리자가 확인하고 있어요. 승인되면 이 일정에 참석 신청할 수 있어요.</span>
+          <span role="status">{cl} 가입 신청을 클럽 관리자가 확인하고 있어요. 승인되면 이 일정에 참석 신청할 수 있어요.</span>
         ) : guest ? (
           <span className="small">일정 내용은 모두 볼 수 있어요. 참석하려면 이번 일정 참관을 신청해 주세요. {boss}가 승인하면 참석 신청까지 완료돼요.</span>
         ) : (
           <span className="small">
-            일정 내용은 모두 볼 수 있어요. 참석하려면 {cl}에 가입하거나 이번 일정만 참관 신청해 주세요. 소모임 관리자가 승인하면 참석 신청까지 완료돼요.
+            일정 내용은 모두 볼 수 있어요. 참석하려면 {cl}에 가입하거나 이번 일정만 참관 신청해 주세요. 클럽 관리자가 승인하면 참석 신청까지 완료돼요.
           </span>
         )}
-        {who && <span className="small">소모임 관리자: {who}</span>}
+        {who && <span className="small">클럽 관리자: {who}</span>}
         {note && <div className="msg info" role="status">{note}</div>}
         {error && !open && <div className="msg bad" role="alert">{error}</div>}
       </section>

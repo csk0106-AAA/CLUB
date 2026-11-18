@@ -25,7 +25,7 @@ const isPast = (e: Ev, today: string) => {
 const TYPE_CHIP: Record<string, string> = { red: "red", violet: "violet", warn: "warn", ink: "ink", gray: "line" };
 
 // 관리자 › 일정관리: "+ 일정 만들기"와 만든 일정(초안·공개). 누르면 그 일정의 관리 화면으로.
-// 소모임 일정은 여기서 만들거나 보여 주지 않는다(소모임관리 › 소모임 › 소모임일정관리에서).
+// 클럽 일정은 여기서 만들거나 보여 주지 않는다(클럽관리 › 클럽 › 클럽일정관리에서).
 function EventsAdmin() {
   const [events, setEvents] = useState<Ev[] | null>(null);
   const [msg, setMsg] = useState("");
@@ -67,8 +67,8 @@ function EventsAdmin() {
             {e.pinned === "true" && <span className="chip red"><IconPin size={12} />고정</span>}
             <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
             <span className={`chip ${pub ? "violet" : "gray"}`}>{pub ? "공개" : "초안"}</span>
-            {/* 소모임 유형인데 소모임이 비어 있으면(예전에 만든 일정) 열어서 소모임을 골라 주면 그 소모임 화면으로 옮겨 간다 */}
-            {e.type === "소모임" && !e.club && <span className="chip red">소모임 미지정 · 눌러서 소모임 고르기</span>}
+            {/* 클럽 유형인데 클럽이 비어 있으면(예전에 만든 일정) 열어서 클럽을 골라 주면 그 클럽 화면으로 옮겨 간다 */}
+            {e.type === "클럽" && !e.club && <span className="chip red">클럽 미지정 · 눌러서 클럽 고르기</span>}
           </span>
           <b style={{ font: `700 ${fs(17)} var(--display)`, overflowWrap: "anywhere" }}>{e.name}</b>
           <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place) || "일시·장소를 아직 정하지 않았어요"}</span>
@@ -96,7 +96,7 @@ function EventsAdmin() {
         )}
       </div>
       <p className="small" style={{ margin: 0 }}>
-        만든 일정이 모두 보여요{drafts ? ` (초안 ${drafts}개는 아직 회원에게 안 보여요)` : ""}. 일정을 누르면 관리 화면에서 개요·참석 신청·회비·활동 등을 다뤄요. 소모임 일정은 소모임관리에서 만들고 관리해요.
+        만든 일정이 모두 보여요{drafts ? ` (초안 ${drafts}개는 아직 회원에게 안 보여요)` : ""}. 일정을 누르면 관리 화면에서 개요·참석 신청·회비·활동 등을 다뤄요. 클럽 일정은 클럽관리에서 만들고 관리해요.
         {!canCreate && " 새 일정은 일정관리 권한이 있는 관리자가 만들어요."}
       </p>
       {msg && <div className="msg bad" role="alert">{msg}</div>}

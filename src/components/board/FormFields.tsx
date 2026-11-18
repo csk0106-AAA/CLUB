@@ -35,7 +35,7 @@ export function FormFields({ form, data, onChange, kinds, positions, agendaLabel
   return null;
 }
 
-/* ───── 조건별 금액(회비관리·소모임 회비) ─────
+/* ───── 조건별 금액(회비관리·클럽 회비) ─────
    기본 금액 + 회원구분·직책 조건 줄. 빈 조건("")은 "전체", 직책 "일반회원"은 직책 없는 회원.
    회원에게 맞는 줄 중 조건이 가장 많은 줄(같으면 위쪽 줄)을 쓰고, 맞는 줄이 없으면 기본 금액을 쓴다(lib/fee.ts). */
 export type AmountRule = { kind: string; position: string; amount: string };
@@ -47,7 +47,7 @@ export function FeeRulesFields({ amount, rules, onChange, kinds, positions, unit
   positions: string[];
   unit?: string;
   hideHelp?: boolean; // 설명을 묶음 머리에 따로 적었을 때
-  posLabel?: string; // 직책 칸 이름(소모임 회비는 "소모임 직책")
+  posLabel?: string; // 직책 칸 이름(클럽 회비는 "클럽 직책")
 }) {
   const id = useId();
   const setRules = (r: AmountRule[]) => onChange(amount, r);

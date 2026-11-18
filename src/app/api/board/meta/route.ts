@@ -24,7 +24,7 @@ export async function GET() {
     agendaLabels,
     // 글쓰기 "AI에게 작성 요청하기" 버튼을 보일지
     aiEnabled: isAiEnabled(),
-    clubs: lists.clubs, // AI 초안에 참고할 소모임 고르기
+    clubs: lists.clubs, // AI 초안에 참고할 클럽 고르기
     me: { id: me.row.id, canWrite: me.canWrite, manage: me.manage, isAll: me.isAll, tplAdmin: me.tplAdmin },
   });
 }

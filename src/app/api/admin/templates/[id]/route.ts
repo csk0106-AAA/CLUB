@@ -14,7 +14,7 @@ type Ctx = { params: Promise<{ id: string }> };
 // (예전 형식: 본문이 설정 그대로면 새 버전으로 저장한다.)
 const body = z.object({ config: z.unknown(), mode: z.enum(SAVE_MODES).default("version"), name: z.string().max(100).optional() });
 
-// 저장은 관리자(활동 권한) 또는 소모임 직책자. 지우기(DELETE)는 관리자만.
+// 저장은 관리자(활동 권한) 또는 클럽 직책자. 지우기(DELETE)는 관리자만.
 export async function PUT(req: Request, ctx: Ctx) {
   const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;

@@ -15,22 +15,22 @@ const MODES: { key: AdminMode; href: string; label: string }[] = [
   { key: "group", href: "/admin/settings", label: "모임설정" },
   { key: "members", href: "/admin/members", label: "회원관리" },
   { key: "events", href: "/admin/events", label: "일정관리" },
-  { key: "clubs", href: "/admin/clubs", label: "소모임관리" },
+  { key: "clubs", href: "/admin/clubs", label: "클럽관리" },
   { key: "templates", href: "/admin/templates", label: "활동템플릿" },
 ];
-// 소모임 직책자(관리자 권한 없음)가 관리자 비밀번호 없이 들어올 수 있는 화면
+// 클럽 직책자(관리자 권한 없음)가 관리자 비밀번호 없이 들어올 수 있는 화면
 const OFFICER_MODES: AdminMode[] = ["clubs", "templates"];
 
 // 관리자 화면 공통 틀: 로그인 확인 → 관리자 2차 비밀번호 → 권한 확인 → 위쪽 메뉴.
-// mode: 회원관리 / 일정관리 / 소모임관리 / 활동 템플릿 중 어느 쪽 화면인지.
+// mode: 회원관리 / 일정관리 / 클럽관리 / 활동 템플릿 중 어느 쪽 화면인지.
 // need: 필요한 권한(하나라도 있으면 통과).
 // 접근: 관리자(권한이 하나라도 있음)는 네 메뉴 모두(각 화면은 필요한 권한을 다시 확인),
-//       소모임 직책자는 소모임관리·활동 템플릿만(관리자 비밀번호 없이 — 서버도 직책자로 확인한다).
+//       클럽 직책자는 클럽관리·활동 템플릿만(관리자 비밀번호 없이 — 서버도 직책자로 확인한다).
 export function AdminGate(props: {
   mode?: AdminMode;
   need?: string[];
   active?: string;
-  hideSub?: boolean; // 하위 메뉴를 숨긴다(소모임 화면처럼 자기 제목·돌아가기가 맨 위에 있을 때)
+  hideSub?: boolean; // 하위 메뉴를 숨긴다(클럽 화면처럼 자기 제목·돌아가기가 맨 위에 있을 때)
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -76,7 +76,7 @@ export function AdminGate(props: {
   const officerOf = me.clubOfficerOf ?? [];
   const officer = officerOf.length > 0;
   const hasNeed = need.length === 0 || me.perms.includes("all") || need.some((p) => me.perms.includes(p));
-  // 소모임 직책자로 들어가는 화면: 소모임관리·활동 템플릿이고, 관리자 권한으로는 이 화면 권한이 없을 때(관리자 비밀번호는 필요)
+  // 클럽 직책자로 들어가는 화면: 클럽관리·활동 템플릿이고, 관리자 권한으로는 이 화면 권한이 없을 때(관리자 비밀번호는 필요)
   const asOfficer = officer && !!props.mode && OFFICER_MODES.includes(props.mode) && !(isAdmin && hasNeed);
   const modes = isAdmin ? MODES : MODES.filter((m) => OFFICER_MODES.includes(m.key));
 
@@ -85,9 +85,9 @@ export function AdminGate(props: {
       <main className="app admin with-tabs">
         {officer ? (
           <>
-            <div className="msg bad" role="alert">소모임 직책자는 소모임관리와 활동 템플릿만 쓸 수 있어요.</div>
+            <div className="msg bad" role="alert">클럽 직책자는 클럽관리와 활동 템플릿만 쓸 수 있어요.</div>
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <Link className="btn" href="/admin/clubs" style={{ width: "auto", minWidth: 160, textDecoration: "none" }}>소모임관리로</Link>
+              <Link className="btn" href="/admin/clubs" style={{ width: "auto", minWidth: 160, textDecoration: "none" }}>클럽관리로</Link>
               <Link className="btn white" href="/admin/templates" style={{ width: "auto", minWidth: 160, textDecoration: "none" }}>활동 템플릿으로</Link>
             </div>
           </>
@@ -102,7 +102,7 @@ export function AdminGate(props: {
     );
   }
 
-  // 소모임 직책자도 관리자 기능을 쓸 때는 관리자 비밀번호를 한 번 더 입력한다.
+  // 클럽 직책자도 관리자 기능을 쓸 때는 관리자 비밀번호를 한 번 더 입력한다.
   if (!me.admin) {
     return (
       <main className="app with-tabs">
@@ -133,7 +133,7 @@ export function AdminGate(props: {
       : props.mode === "templates"
         ? [] // 개발 요청은 각 템플릿 편집의 "AI에게 요청"에서 보낸다(위쪽 하위 메뉴 없음)
         : props.mode === "clubs"
-          ? [{ href: "/admin/clubs", label: "소모임 목록" }] // 신청내역은 각 소모임 화면의 "신청내역" 탭에서
+          ? [{ href: "/admin/clubs", label: "클럽 목록" }] // 신청내역은 각 클럽 화면의 "신청내역" 탭에서
           : props.mode === "events"
             ? [{ href: "/admin/events", label: "일정 목록" }]
             : [];
@@ -160,13 +160,13 @@ export function AdminGate(props: {
           ))}
         </nav>
       </header>
-      {/* 하위 메뉴가 하나뿐이면(일정 목록·소모임 목록) 위쪽 메뉴와 같은 곳이라 보여 주지 않는다 */}
+      {/* 하위 메뉴가 하나뿐이면(일정 목록·클럽 목록) 위쪽 메뉴와 같은 곳이라 보여 주지 않는다 */}
       {sub.length > 1 && !props.hideSub && (
         <nav className="subnav menu" aria-label="하위 메뉴">
           {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""} aria-current={props.active === s.href ? "page" : undefined}>{s.label}</Link>)}
         </nav>
       )}
-      {asOfficer && <p className="small" style={{ margin: 0 }}>소모임 직책자로 들어왔어요 ({officerOf.join(", ")}).</p>}
+      {asOfficer && <p className="small" style={{ margin: 0 }}>클럽 직책자로 들어왔어요 ({officerOf.join(", ")}).</p>}
       {allowed ? props.children : <div className="msg bad" role="alert">이 화면을 볼 권한이 없어요. 필요한 권한은 “모든권한” 관리자에게 요청해 주세요.</div>}
       <MemberTabs on="admin" />
     </main>

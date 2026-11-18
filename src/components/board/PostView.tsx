@@ -149,7 +149,7 @@ export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap;
       setTimeout(() => setCopied(false), 1800);
     } catch { /* 길게 눌러 복사 */ }
   }
-  // 소모임 회원이 아니면 금액·계좌 대신 "○○ 회원이 아닙니다." + 신청하러 가기(안내 메모와 관리자 금액표는 그대로)
+  // 클럽 회원이 아니면 금액·계좌 대신 "○○ 회원이 아닙니다." + 신청하러 가기(안내 메모와 관리자 금액표는 그대로)
   const outsider = !!myFee.notMember && !!data.club;
   return (
     <>
@@ -174,7 +174,7 @@ export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap;
         </div>
       )}
       {data.note && <div className="card"><span className="small">안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.note}</div></div>}
-      {/* 모임 회비(소모임 회비 아님): 입금한 뒤 "입금했어요"로 관리자에게 입금 확인 요청 */}
+      {/* 모임 회비(클럽 회비 아님): 입금한 뒤 "입금했어요"로 관리자에게 입금 확인 요청 */}
       {has && !data.club && <DuesPayNotice />}
       {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 모임설정 › 회비설정에서 바꿀 수 있어요. 입금 확인은 회비입금에서 해요.</span>}
       {full && (

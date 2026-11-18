@@ -13,18 +13,18 @@ async function clubName(ctx: Ctx): Promise<string | null> {
   return (await getLists()).clubs.includes(name) ? name : null;
 }
 
-// 관리자(회원정보 권한) 또는 이 소모임의 직책자만
+// 관리자(회원정보 권한) 또는 이 클럽의 직책자만
 async function clubGuard(ctx: Ctx) {
   const g = await adminOrOfficer("members");
   if ("err" in g) return g;
   const name = await clubName(ctx);
-  if (!name) return { err: bad("소모임을 찾을 수 없어요. 회원 구분 화면에서 이름을 확인해 주세요.", 404) };
-  if (!g.adminOk && !g.officerOf.includes(name)) return { err: bad("내가 직책을 맡은 소모임만 관리할 수 있어요.", 403) };
+  if (!name) return { err: bad("클럽을 찾을 수 없어요. 회원 구분 화면에서 이름을 확인해 주세요.", 404) };
+  if (!g.adminOk && !g.officerOf.includes(name)) return { err: bad("내가 직책을 맡은 클럽만 관리할 수 있어요.", 403) };
   return { ...g, name };
 }
 
-// 소모임 한 곳: 기본 정보, 회원(직책 포함), 회원 추가용 전체 명단, 소모임 직책 목록
-//  canEditRoles: 소모임 직책을 바꿀 수 있는지(관리자만)
+// 클럽 한 곳: 기본 정보, 회원(직책 포함), 회원 추가용 전체 명단, 클럽 직책 목록
+//  canEditRoles: 클럽 직책을 바꿀 수 있는지(관리자만)
 export async function GET(_req: Request, ctx: Ctx) {
   const g = await clubGuard(ctx);
   if ("err" in g) return g.err;

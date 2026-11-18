@@ -61,7 +61,7 @@ function DuesEditor() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="small" style={{ margin: 0, fontSize: fs(12) }}>모임 회비(연회비·월회비)를 정해요. 여기서 정한 입금계좌는 새 일정을 만들 때 일정 계좌로 먼저 들어가요(소모임 일정은 소모임 계좌). 회원에게 알리려면 저장한 뒤 아래에서 게시글로 올려 주세요.</p>
+      <p className="small" style={{ margin: 0, fontSize: fs(12) }}>모임 회비(연회비·월회비)를 정해요. 여기서 정한 입금계좌는 새 일정을 만들 때 일정 계좌로 먼저 들어가요(클럽 일정은 클럽 계좌). 회원에게 알리려면 저장한 뒤 아래에서 게시글로 올려 주세요.</p>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>

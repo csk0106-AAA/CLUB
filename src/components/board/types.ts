@@ -68,9 +68,9 @@ export type PostDetail = {
   mine: unknown;
   results: unknown;
   rules?: { id: string; chapter: string; article: string; body: string; version: string }[];
-  // notMember: 소모임 회비 글인데 그 소모임 회원이 아님(금액 대신 "○○ 회원이 아닙니다" + 가입 신청)
+  // notMember: 클럽 회비 글인데 그 클럽 회원이 아님(금액 대신 "○○ 회원이 아닙니다" + 가입 신청)
   myFee?: { amount: string; kind: string; position: string; notMember?: boolean };
-  // 소모임 회원이 아닐 때 그 소모임 가입 신청 상태(최근 것, 없으면 null)
+  // 클럽 회원이 아닐 때 그 클럽 가입 신청 상태(최근 것, 없으면 null)
   clubJoin?: ClubJoinState;
   agendaLabels?: Record<string, string>;
   // 반응·댓글(회칙·회비 글은 null)

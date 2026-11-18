@@ -14,8 +14,8 @@ type Data = {
 };
 type Note = { tone: "bad" | "info"; text: string } | null;
 
-// 소모임 회비: 회비를 정하고 게시판 글로 올린다(제목 앞에 [소모임 이름], 기본 공개 대상은 그 소모임 회원).
-// 관리자 › 소모임관리 › 소모임 화면과 회원용 /clubs/[이름]/dues(소모임 회장·대표) 화면이 함께 쓴다.
+// 클럽 회비: 회비를 정하고 게시판 글로 올린다(제목 앞에 [클럽 이름], 기본 공개 대상은 그 클럽 회원).
+// 관리자 › 클럽관리 › 클럽 화면과 회원용 /clubs/[이름]/dues(클럽 회장·대표) 화면이 함께 쓴다.
 export function ClubDuesEditor({ club }: { club: string }) {
   const [data, setData] = useState<Data | null>(null);
   const [d, setD] = useState<DuesValue | null>(null);
@@ -60,7 +60,7 @@ export function ClubDuesEditor({ club }: { club: string }) {
       setNote({ tone: "bad", text: r.error });
       return false;
     }
-    setNote({ tone: "info", text: `${clubLabel(data?.club ?? "")} 회비를 저장했어요. 소모임 회원에게 알리려면 아래 “게시글 업로드”로 올려 주세요.` });
+    setNote({ tone: "info", text: `${clubLabel(data?.club ?? "")} 회비를 저장했어요. 클럽 회원에게 알리려면 아래 “게시글 업로드”로 올려 주세요.` });
     await load();
     return true;
   }
@@ -68,10 +68,10 @@ export function ClubDuesEditor({ club }: { club: string }) {
   return (
     <div id="club-dues" style={{ display: "flex", flexDirection: "column", gap: 14, scrollMarginTop: 16 }}>
       <b style={{ font: `700 ${fs(16)} var(--display)` }}>{clubLabel(data.club)} 회비</b>
-      <span className="small" style={{ fontSize: fs(12), marginTop: -8 }}>관리자와 소모임 {data.headRole || "회장"}이 정할 수 있어요. 여기 입금계좌가 소모임 일정을 만들 때 일정 입금계좌로 먼저 들어가요.</span>
+      <span className="small" style={{ fontSize: fs(12), marginTop: -8 }}>관리자와 클럽 {data.headRole || "회장"}이 정할 수 있어요. 여기 입금계좌가 클럽 일정을 만들 때 일정 입금계좌로 먼저 들어가요.</span>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
       <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <DuesForm value={d} onChange={setD} kinds={data.options.kinds} positions={data.options.positions} unit="회비" posLabel="소모임 직책" />
+        <DuesForm value={d} onChange={setD} kinds={data.options.kinds} positions={data.options.positions} unit="회비" posLabel="클럽 직책" />
         <DuesPreview d={d} />
         <button className="btn" type="submit" disabled={busy || !dirty} style={{ width: "auto", minWidth: 160, minHeight: 44, fontSize: fs(14), alignSelf: "flex-end" }}>{busy ? "저장 중…" : dirty ? "회비 저장" : "저장됨"}</button>
       </form>

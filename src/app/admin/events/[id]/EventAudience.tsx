@@ -18,7 +18,7 @@ function read(text?: string): Audience {
   }
 }
 
-// 소모임이 아닌 일정의 공개 대상. 일정 목록·참석 신청·알림이 모두 이 대상에게만 보인다.
+// 클럽이 아닌 일정의 공개 대상. 일정 목록·참석 신청·알림이 모두 이 대상에게만 보인다.
 export function EventAudience({ eventId, audience, onSaved }: { eventId: string; audience?: string; onSaved: () => void }) {
   const [saved, setSaved] = useState<Audience>(() => read(audience));
   const [value, setValue] = useState<Audience>(saved);

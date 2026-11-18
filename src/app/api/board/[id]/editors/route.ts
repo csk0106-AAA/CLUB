@@ -10,7 +10,7 @@ import { canOwn, canSee, findPost, forbid, getMe } from "../../_lib/server";
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
-// 이 글의 편집자로 고를 수 있는 회원: 게시글을 쓸 권한(게시글_글쓰기·모든권한·소모임 직책자)이 있는 회원(작성자 제외)
+// 이 글의 편집자로 고를 수 있는 회원: 게시글을 쓸 권한(게시글_글쓰기·모든권한·클럽 직책자)이 있는 회원(작성자 제외)
 async function candidates(authorId: string) {
   const s = await getStore();
   const groups = await getPermGroups();

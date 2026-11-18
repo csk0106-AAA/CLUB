@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   // 같은 이름이 있으면 뒤에 알파벳을 붙여 저장하고(김하늘 → 김하늘B) 화면에 알린다
   const name = uniqueName(d.name, all.map((m) => m.name ?? ""));
   const row = { ...d, birth: tidyBirth(d.birth), phone: tidyPhone(d.phone), ageGroup: ageGroupOf(d.birth) || d.ageGroup, memo: d.memo ?? "", edu: edu ? "true" : "", bookHidden: bookShown === false ? "true" : "", name, perms: (perms ?? []).join("|"), clubs: clubsJson(clubs ?? []), extra: fields ? withFields("", fields) : "" };
-  // 새 회원의 직책·소모임 직책 때문에 권한이 생기면 "모든 권한" 관리자만 추가할 수 있다.
+  // 새 회원의 직책·클럽 직책 때문에 권한이 생기면 "모든 권한" 관리자만 추가할 수 있다.
   const groups = await getPermGroups();
   const err = checkPermChange(all, groups, [...all, { ...row, id: "__new__" }], groups, await isAllNow(g.s.mid));
   if (err) return bad(err[0], err[1]);

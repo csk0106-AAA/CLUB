@@ -15,7 +15,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }
   const s = await getStore();
   if (kind === "org") {
     // 회원 구분과 연동: 모임 직책(목록 순서, 일반회원 제외)마다 그 직책인 회원,
-    // 소모임(목록 순서)마다 소모임 직책자와 소모임관리의 모임 주기. 대기회원·참관회원은 넣지 않는다.
+    // 클럽(목록 순서)마다 클럽 직책자와 클럽관리의 모임 주기. 대기회원·참관회원은 넣지 않는다.
     const [all, lists, info] = await Promise.all([s.list("Members"), getLists(), readAllClubInfo()]);
     const members = all.filter((m) => !isGuest(m.kind));
     return NextResponse.json({
@@ -25,7 +25,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }
       })),
       clubs: lists.clubs.map((name) => ({
         name, cycle: info[name]?.cycle ?? "",
-        // 소모임 직책 목록 순서대로
+        // 클럽 직책 목록 순서대로
         leaders: clubLeaders(members, name)
           .sort((a, b) => lists.clubRoles.indexOf(a.role) - lists.clubRoles.indexOf(b.role))
           .map((l) => ({ name: l.name, role: l.role })),

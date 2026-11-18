@@ -11,7 +11,7 @@ import type { Row } from "@/lib/store/types";
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
-// 편집자로 고를 수 있는 회원: 이 일정 종류를 만들 권한(일정_일정만들기·소모임관리)이 있는 회원.
+// 편집자로 고를 수 있는 회원: 이 일정 종류를 만들 권한(일정_일정만들기·클럽관리)이 있는 회원.
 // 일정관리·모든권한은 이미 모든 일정을 고칠 수 있어서 넣지 않는다. 만든 사람도 뺀다.
 async function candidates(ev: Row) {
   const s = await getStore();

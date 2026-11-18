@@ -57,7 +57,7 @@ async function login(memberId: string, code: string) {
   if (isWithdrawn(member.kind)) {
     return NextResponse.json({ error: "탈퇴한 회원이에요. 다시 활동하려면 로그인 화면 아래 ‘회원 또는 참관 신청’으로 재가입을 신청해 주세요. 관리자가 확인하면 다시 로그인할 수 있어요.", withdrawn: true }, { status: 403 });
   }
-  // 최종 권한 = 직책·소모임 직책 그룹 권한 ∪ 개인 권한 (lib/perms.ts)
+  // 최종 권한 = 직책·클럽 직책 그룹 권한 ∪ 개인 권한 (lib/perms.ts)
   const perms = effectivePerms(member, await getPermGroups());
   await createSession({ mid: member.id, name: member.name, perms, admin: false });
   return NextResponse.json({ ok: true, name: member.name, isAdmin: perms.length > 0 });

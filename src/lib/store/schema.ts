@@ -5,7 +5,7 @@ export const TABS = {
   Members: [
     "id", "no", "name", "kind", "position", "gender", "company", "title",
     "birth", "phone", "ageGroup", "perms", "extra",
-    // clubs: 소모임 [{name, role}] JSON (lib/lists.ts). 회원이 설정에서 소모임을 고르고, role(소모임 직책)은 관리자가 정한다.
+    // clubs: 클럽 [{name, role}] JSON (lib/lists.ts). 회원이 설정에서 클럽을 고르고, role(클럽 직책)은 관리자가 정한다.
     // prefs: 화면 모드·알림 설정 JSON (lib/prefs.ts)
     "clubs", "prefs",
     // avatar: 프로필 사진 JSON {type:"character", key} | {type:"photo", fileId} (lib/avatar.ts). 비어 있으면 기본.
@@ -27,7 +27,7 @@ export const TABS = {
     "feeRules",
     // audience: 공개 대상 JSON (lib/audience.ts). 비어 있으면 전체 회원.
     "audience",
-    // club: 소모임 일정이면 소모임 이름. 이때 대상은 그 소모임 회원(실시간) + observers(참관자 회원 id JSON 배열)
+    // club: 클럽 일정이면 클럽 이름. 이때 대상은 그 클럽 회원(실시간) + observers(참관자 회원 id JSON 배열)
     "club", "observers",
     // pinned: "true"면 회원 일정 목록 맨 위에 고정
     "pinned",
@@ -62,6 +62,11 @@ export const TABS = {
   DuesLedger: ["id", "date", "kind", "item", "amount", "memo", "createdBy", "createdAt"],
   // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.
   EventFiles: ["id", "eventId", "name", "type", "size", "data", "uploadedBy", "createdAt"],
+  // 일정 사진첩(참석한 회원이 올림, lib/event-photos.ts). 목록은 가볍게 읽도록 사진 내용은 EventPhotoData 에 따로 둔다(같은 id).
+  //  caption: 한 줄 설명, w/h: 줄인 사진 크기, size: 바이트, likes: 좋아요 누른 회원 id 배열 JSON
+  EventPhotos: ["id", "eventId", "memberId", "caption", "w", "h", "size", "likes", "createdAt"],
+  // 사진 내용(base64). data: 긴 변 1600px JPEG, thumb: 긴 변 400px JPEG. 화면에서 줄여 올린다(EXIF 위치 정보 없이).
+  EventPhotoData: ["id", "type", "data", "thumb"],
   // place: 위치(주소·장소 이름), memo: 메모(준비물·안내). 일정마다 아이콘으로 보이고 누르면 팝업으로 본다.
   EventSchedule: ["id", "eventId", "at", "title", "place", "memo"],
   // 템플릿 버전: 처음 만든 행이 v1(origin default/custom)이고, 고칠 때마다 새 행이 v2, v3…으로 생긴다(origin "version").
@@ -134,10 +139,10 @@ export const TABS = {
   PostComments: ["id", "postId", "memberId", "body", "createdAt", "updatedAt"],
   // 휴대폰 알림(Web Push) 구독
   PushSubs: ["id", "memberId", "endpoint", "keys", "createdAt"],
-  // 소모임 가입 신청(kind=join) / 소모임 일정 1회 참관 신청(kind=observe, eventId 필수).
-  // status: pending | approved | declined. 처리는 그 소모임 직책자(lib/club-requests.ts).
+  // 클럽 가입 신청(kind=join) / 클럽 일정 1회 참관 신청(kind=observe, eventId 필수).
+  // status: pending | approved | declined. 처리는 그 클럽 직책자(lib/club-requests.ts).
   // resultSeen: 신청한 회원이 결과 알림을 봤으면 "true"
-  // attend: "true"면 소모임 일정 화면에서 보낸 참석 요청(참관 또는 가입 + 그 일정 참석). eventId 필수.
+  // attend: "true"면 클럽 일정 화면에서 보낸 참석 요청(참관 또는 가입 + 그 일정 참석). eventId 필수.
   //   승인되면 그 일정의 EventApplies 를 참석으로 넣는다(lib/club-requests.ts attendApprove).
   ClubRequests: [
     "id", "kind", "club", "eventId", "memberId", "message", "status", "createdAt", "handledBy", "handledAt", "resultSeen", "attend",

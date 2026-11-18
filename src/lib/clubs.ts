@@ -2,10 +2,10 @@ import { z } from "zod";
 import { memberClubs } from "./lists";
 import { getSetting, setSetting } from "./store";
 
-// 소모임 기본 정보. Settings "clubInfo" = { [소모임 이름]: ClubInfo }
+// 클럽 기본 정보. Settings "clubInfo" = { [클럽 이름]: ClubInfo }
 //  intro: 소개, cycle: 모임 주기, place: 장소, bank/account/holder: 입금계좌,
-//  feeAmount/feeText: 예전 소모임 회비 칸(이제 소모임 회비는 Settings "clubDues" — 처음 열 때 여기 값으로 채운다), policy: 운영 정책(여러 줄)
-// 소모임 회원과 직책은 Members.clubs([{name, role}])에 있다. role 이 있으면 그 소모임의 회장(직책자).
+//  feeAmount/feeText: 예전 클럽 회비 칸(이제 클럽 회비는 Settings "clubDues" — 처음 열 때 여기 값으로 채운다), policy: 운영 정책(여러 줄)
+// 클럽 회원과 직책은 Members.clubs([{name, role}])에 있다. role 이 있으면 그 클럽의 회장(직책자).
 export const clubInfoInput = z.object({
   intro: z.string().trim().max(1000).default(""),
   cycle: z.string().trim().max(100).default(""),
@@ -39,7 +39,7 @@ export async function writeClubInfo(name: string, info: ClubInfo): Promise<void>
   await setSetting("clubInfo", { ...raw, [name]: info });
 }
 
-// 주소의 [name] 조각 → 소모임 이름(이미 풀린 값이어도 안전하게)
+// 주소의 [name] 조각 → 클럽 이름(이미 풀린 값이어도 안전하게)
 export function clubParam(raw: string): string {
   try {
     return decodeURIComponent(raw);
@@ -55,7 +55,7 @@ export function clubAccount(i: ClubInfo): string {
 
 type M = { id?: string; name?: string; clubs?: string };
 
-// 이 소모임 회원과 소모임 직책
+// 이 클럽 회원과 클럽 직책
 export function clubMembers<T extends M>(members: T[], club: string): (T & { role: string })[] {
   return members.flatMap((m) => {
     const seat = memberClubs(m).find((c) => c.name === club);
@@ -63,7 +63,7 @@ export function clubMembers<T extends M>(members: T[], club: string): (T & { rol
   });
 }
 
-// 이 소모임의 직책자(회장 등): role 이 있는 회원
+// 이 클럽의 직책자(회장 등): role 이 있는 회원
 export function clubLeaders<T extends M>(members: T[], club: string): { id: string; name: string; role: string }[] {
   return clubMembers(members, club).filter((m) => m.role).map((m) => ({ id: m.id ?? "", name: m.name ?? "", role: m.role }));
 }

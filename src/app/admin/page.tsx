@@ -8,7 +8,7 @@ import { api } from "@/lib/client";
 
 type Me = { perms: string[]; clubOfficerOf?: string[] };
 
-// 관리자 화면에서 처음 열 메뉴: 모임설정 → 회원관리 → 일정관리 → 소모임관리 → 활동템플릿 중 쓸 수 있는 첫 화면.
+// 관리자 화면에서 처음 열 메뉴: 모임설정 → 회원관리 → 일정관리 → 클럽관리 → 활동템플릿 중 쓸 수 있는 첫 화면.
 function firstMode(me: Me): string {
   const p = me.perms;
   const has = (...k: string[]) => p.includes("all") || k.some((x) => p.includes(x));
@@ -31,7 +31,7 @@ function Go({ me }: { me: Me }) {
 }
 
 // 관리자 입구. 관리자는 2차 비밀번호를 통과한 뒤 첫 메뉴로,
-// 관리자 권한 없이 소모임 직책만 있으면 비밀번호 없이 바로 소모임관리로 간다.
+// 관리자 권한 없이 클럽 직책만 있으면 비밀번호 없이 바로 클럽관리로 간다.
 export default function AdminHome() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);

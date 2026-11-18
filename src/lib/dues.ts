@@ -2,7 +2,7 @@ import { z } from "zod";
 import { feeFor, ruleLabel } from "./fee";
 import { getSetting, setSetting } from "./store";
 
-// 모임회비(연회비/월회비). 모임 회비는 Settings "dues", 소모임 회비는 Settings "clubDues" = { [소모임]: Dues }.
+// 모임회비(연회비/월회비). 모임 회비는 Settings "dues", 클럽 회비는 Settings "clubDues" = { [클럽]: Dues }.
 //  period: annual(연회비) / monthly(월회비)
 //  amount: 기본 금액(숫자 문자열, "" = 없음) — 조건별 금액 줄에 맞지 않는 회원이 낸다
 //  rules : 조건별 금액 [{kind, position, amount}] — kind/position 이 "" 이면 "전체".
@@ -71,7 +71,7 @@ export async function readDues(): Promise<Dues> {
   return parseDues(await getSetting<unknown>("dues", {}));
 }
 
-/* ───── 소모임 회비 (Settings "clubDues") ───── */
+/* ───── 클럽 회비 (Settings "clubDues") ───── */
 export async function readClubDues(club: string): Promise<Dues | null> {
   const all = await getSetting<Record<string, unknown>>("clubDues", {});
   const v = all && typeof all === "object" ? all[club] : undefined;
@@ -82,8 +82,8 @@ export async function writeClubDues(club: string, d: Dues): Promise<void> {
   await setSetting("clubDues", { ...(all && typeof all === "object" ? all : {}), [club]: d });
 }
 
-// 소모임 입금계좌: 소모임관리 › 회비관리의 계좌. 아직 회비를 저장하지 않았으면 예전 소모임 기본 정보의 계좌.
-// 소모임 일정을 만들 때 일정 입금계좌로 먼저 넣는다.
+// 클럽 입금계좌: 클럽관리 › 회비관리의 계좌. 아직 회비를 저장하지 않았으면 예전 클럽 기본 정보의 계좌.
+// 클럽 일정을 만들 때 일정 입금계좌로 먼저 넣는다.
 export async function clubPayAccount(club: string, info?: { bank: string; account: string; holder: string }): Promise<{ account: string; holder: string }> {
   const d = await readClubDues(club);
   if (d && (d.account || d.bank || d.holder)) return { account: duesAccount(d), holder: d.holder };

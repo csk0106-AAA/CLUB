@@ -15,7 +15,7 @@ const body = z.object({
   requirement: z.string().trim().max(80).default(""),
 });
 
-// 모임 이름(정식·줄인 이름, 회원 화면에 보일 이름), 초대코드. (회원구분·직책·소모임 목록은 /api/admin/lists 에서 다룬다)
+// 모임 이름(정식·줄인 이름, 회원 화면에 보일 이름), 초대코드. (회원구분·직책·클럽 목록은 /api/admin/lists 에서 다룬다)
 export async function GET() {
   const g = await guard("group");
   if ("err" in g) return g.err;

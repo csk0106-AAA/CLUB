@@ -7,6 +7,7 @@ import { EventHeadCard, FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, 
 import { IconStar } from "@/components/Icons";
 import { LiveActivities } from "@/components/LiveActivities";
 import { EventMinutes } from "@/components/EventMinutes";
+import { EventPhotos } from "@/components/EventPhotos";
 import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
 import { ScheduleView, type SchedItem } from "@/components/ScheduleBoard";
@@ -21,9 +22,9 @@ type Detail = {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
-    canApply?: boolean; // false: 내가 속하지 않은 소모임 일정(읽기만)
-    attendReq?: AttendReq; // 소모임 관리자에게 보낸 내 참석 요청(참관/가입 + 참석)
-    clubJoin?: JoinReq; // 소모임 회원이 아닐 때 그 소모임 가입 신청(최근 것)
+    canApply?: boolean; // false: 내가 속하지 않은 클럽 일정(읽기만)
+    attendReq?: AttendReq; // 클럽 관리자에게 보낸 내 참석 요청(참관/가입 + 참석)
+    clubJoin?: JoinReq; // 클럽 회원이 아닐 때 그 클럽 가입 신청(최근 것)
     guest?: boolean; // 대기회원·참관회원: 참석하려면 참관 신청(관리자 승인)
   };
   activities: { id: string; name: string }[];
@@ -157,7 +158,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
   const hasFee = !!e.fee || !!e.feePending;
   const actNames = d.activities.map((a) => a.name);
-  // 참석인데 여러 날 일정(워크숍) 날짜를 아직 안 골랐으면(예: 소모임 관리자가 참석 요청을 승인한 직후) 날짜를 고르게 한다.
+  // 참석인데 여러 날 일정(워크숍) 날짜를 아직 안 골랐으면(예: 클럽 관리자가 참석 요청을 승인한 직후) 날짜를 고르게 한다.
   const needDays = e.type === "워크숍" && answer === "참석" && e.canApply !== false && (d.apply?.days.length ?? 0) === 0 && days.length > 0;
 
   return (
@@ -268,6 +269,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
 
       {e.type === "회의" && <EventMinutes eventId={id} />}
+      {/* 사진첩: 참석한 회원이 올리고 함께 본다(참석 대상이 아니면 그리지 않는다) */}
+      <EventPhotos eventId={id} />
       <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />
       {e.canObserve && <ObserversCard eventId={id} />}
 
@@ -276,7 +279,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <div className="msg info" role="status">
           <b>신청 완료 ✓</b>{d.apply && d.apply.days.length > 0 ? ` · ${fmtDays(d.apply.days)}` : ""}
           {d.apply?.paid ? " · 회비 입금 확인됨 ✓" : ""}
-          {e.attendReq?.status === "approved" ? " · 소모임 관리자가 승인했어요" : ""}
+          {e.attendReq?.status === "approved" ? " · 클럽 관리자가 승인했어요" : ""}
         </div>
       )}
       {needDays && (

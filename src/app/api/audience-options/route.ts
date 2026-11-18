@@ -7,11 +7,11 @@ import { forbid, getMe } from "../board/_lib/server";
 
 export const dynamic = "force-dynamic";
 
-// 공개 대상 고르기(AudiencePicker)용 목록: 회원, 일정(참석자), 소모임(회원). 글을 쓸 수 있는 사람만.
+// 공개 대상 고르기(AudiencePicker)용 목록: 회원, 일정(참석자), 클럽(회원). 글을 쓸 수 있는 사람만.
 export async function GET() {
   const m = await getMe();
   if ("err" in m) return m.err;
-  // 게시글 작성자(소모임 직책자 포함) + 일정 관리자(관리자 2차 인증) + 회비 글을 올리는 관리자(회비·회원정보)
+  // 게시글 작성자(클럽 직책자 포함) + 일정 관리자(관리자 2차 인증) + 회비 글을 올리는 관리자(회비·회원정보)
   if (!m.me.canWrite && !can(await getSession(), "events") && !clubAdmin(m.me.perms)) return forbid();
   const s = await getStore();
   const [members, events, applies, lists] = await Promise.all([s.list("Members"), s.list("Events"), s.list("EventApplies"), getLists()]);

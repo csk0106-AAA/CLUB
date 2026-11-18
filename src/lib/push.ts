@@ -31,7 +31,7 @@ export function inQuiet(p: Prefs, now = new Date()): boolean {
   return a < b ? cur >= a && cur < b : cur >= a || cur < b;
 }
 
-// alerts: 소모임 가입·참관 신청과 그 결과(받을 알림 종류 설정과 상관없이 알림 ON 이면 보낸다)
+// alerts: 클럽 가입·참관 신청과 그 결과(받을 알림 종류 설정과 상관없이 알림 ON 이면 보낸다)
 export type PushKind = Kind | "alerts";
 const LABEL: Record<PushKind, string> = { events: "일정", posts: "게시글", profiles: "프로필 북", alerts: "알림" };
 const URL_OF: Record<PushKind, string> = { events: "/events", posts: "/board", profiles: "/profiles", alerts: "/board" };

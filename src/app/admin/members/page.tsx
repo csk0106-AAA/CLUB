@@ -20,7 +20,7 @@ import { fs } from "@/lib/fs";
 type M = {
   id: string; no: string; name: string; kind: string; position: string; gender: string;
   company: string; title: string; birth: string; phone: string; ageGroup: string; perms: string[];
-  clubs: Seat[]; // 소모임 [{name, role}] (role 이 비면 일반 회원)
+  clubs: Seat[]; // 클럽 [{name, role}] (role 이 비면 일반 회원)
   effective: string[]; // 최종 권한(그룹 ∪ 개인)
   fields: Record<string, string>; // 관리자가 만든 추가 항목(열)의 값
   genderEdit?: { from: string; to: string; at: string } | null; // 회원이 직접 바꾼 성별 기록
@@ -392,7 +392,7 @@ function Members() {
       ["", ""],
       ["참고", "‘회원명단’ 시트의 첫 줄(머리글)은 지우거나 바꾸지 마세요. 둘째 줄부터 한 줄에 한 명씩 적어요."],
       ["참고", "고친 파일을 ‘엑셀올리기’로 올리면, 바뀐 내용을 미리 보여 준 뒤 확인하면 반영해요. 칸을 비우면 그 값이 지워져요."],
-      ["참고", "관리자 권한과 소모임은 여기서 바꿀 수 없어요. 회원 수정·소모임관리에서 정해 주세요. 회원을 지우는 것도 회원명단에서 해요(줄을 지워도 회원은 그대로예요)."],
+      ["참고", "관리자 권한과 클럽은 여기서 바꿀 수 없어요. 회원 수정·클럽관리에서 정해 주세요. 회원을 지우는 것도 회원명단에서 해요(줄을 지워도 회원은 그대로예요)."],
       ["예시", "김하늘 · 정회원 · YES · 회장 · 여 · 예시상사 · 대표 · 1970-01-01 · 010-0000-0001"],
     ];
     downloadXlsx(file, [
@@ -488,7 +488,7 @@ function Members() {
           </div>
           <span className="small">
             “엑셀 양식 받기”(빈 양식)에 적거나 “회원정보다운로드”로 받은 파일을 고친 뒤 “엑셀 업로드”로 올리면 여기에 채워져요. 표를 복사해 붙여 넣어도 돼요.
-            새로 적은 줄은 새 회원으로 넣고, 회원ID가 있는 줄은 그 회원의 바뀐 정보만 고쳐요(넣기 전에 아래에서 확인해요). 관리자 권한·소모임은 여기서 바꿀 수 없어요.
+            새로 적은 줄은 새 회원으로 넣고, 회원ID가 있는 줄은 그 회원의 바뀐 정보만 고쳐요(넣기 전에 아래에서 확인해요). 관리자 권한·클럽은 여기서 바꿀 수 없어요.
           </span>
           <label className="l" htmlFor="imp">붙여 넣을 명단</label>
           <textarea id="imp" className="field" rows={6} style={{ padding: 12, fontFamily: "inherit" }} value={importText}
@@ -639,13 +639,13 @@ function Members() {
           {form.kind === "명예회원" && !form.memo.trim() && <span className="small">명예회원은 관리자 등록으로만 정해져요. 등록 사유를 메모로 남겨 주세요.</span>}
         </div>
         <div>
-          <span className="l">소모임</span>
-          {/* 소모임 회원과 소모임 직책은 소모임관리에서만 정한다(여기서는 보기만) */}
+          <span className="l">클럽</span>
+          {/* 클럽 회원과 클럽 직책은 클럽관리에서만 정한다(여기서는 보기만) */}
           <span className="small" style={{ display: "block" }}>
-            {form.clubs.length ? clubsText(form.clubs) : "들어간 소모임이 없어요."} 소모임 회원과 소모임 직책은 <Link href="/admin/clubs">소모임관리</Link>에서 정해요.
+            {form.clubs.length ? clubsText(form.clubs) : "들어간 클럽이 없어요."} 클럽 회원과 클럽 직책은 <Link href="/admin/clubs">클럽관리</Link>에서 정해요.
           </span>
         </div>
-        <span className="small">관리자 권한은 직책·소모임 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
+        <span className="small">관리자 권한은 직책·클럽 직책에 따라 정해져요. 개인 권한은 <Link href="/admin/admins">권한설정</Link>에서 바꿔요.</span>
         {editId && (() => {
           const m = list?.find((x) => x.id === editId);
           if (!m) return null;
@@ -715,7 +715,7 @@ function Members() {
 
       {!list && <p className="small">불러오는 중이에요…</p>}
       {list && shown.length === 0 && <div className="msg info">해당하는 회원이 없어요.</div>}
-      {/* 휴대폰: 한 줄 목록(아바타 · 이름/직책 · 회사·소모임 · 구분 칩 · 수정) */}
+      {/* 휴대폰: 한 줄 목록(아바타 · 이름/직책 · 회사·클럽 · 구분 칩 · 수정) */}
       {shown.length > 0 && (
         <ul className="rows bleed only-narrow" aria-label="회원 목록">
           {shown.map((m, i) => (
@@ -753,7 +753,7 @@ function Members() {
       {shown.length > 0 && (
         <div className="tblw only-wide">
           <table className="tbl" style={{ minWidth: 1200 + custom.length * 110 }}>
-            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>소모임</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
+            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>클럽</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
             <tbody>
               {shown.map((m, i) => (
                 <tr key={m.id} ref={dsWide.item(i).ref} style={dsWide.item(i).style}>

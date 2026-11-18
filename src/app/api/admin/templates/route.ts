@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 // 활동 템플릿 보관함: 모든 버전 행을 돌려준다. familyId(v1 id)로 묶어서 보여 준다.
 //  uses: 이 버전을 쓰는 일정 활동 수, useEvents: 그 일정 id들, deletable/deleteWhy: 지울 수 있는지
-// 관리자(활동·일정 권한) 또는 소모임 직책자가 볼 수 있다. canDelete: 지우기는 관리자(활동 권한)만.
+// 관리자(활동·일정 권한) 또는 클럽 직책자가 볼 수 있다. canDelete: 지우기는 관리자(활동 권한)만.
 export async function GET() {
   const g = await adminOrOfficer(["templates", "events"]);
   if ("err" in g) return g.err;
@@ -36,7 +36,7 @@ export async function GET() {
   return NextResponse.json({ templates, canDelete: can(g.s, "templates") });
 }
 
-// 새 템플릿(v1). 복제도 버전이 아니라 새 템플릿으로 만든다. (관리자 또는 소모임 직책자)
+// 새 템플릿(v1). 복제도 버전이 아니라 새 템플릿으로 만든다. (관리자 또는 클럽 직책자)
 export async function POST(req: Request) {
   const g = await adminOrOfficer("templates");
   if ("err" in g) return g.err;
