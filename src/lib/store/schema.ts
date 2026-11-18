@@ -18,7 +18,8 @@ export const TABS = {
   ],
   Org: ["id", "dept", "role", "memberId", "clubName", "frequency", "leaderId"],
   // history: 조문 변경 기록 [{at, by, what}] JSON (최근 30개)
-  Rules: ["id", "chapter", "article", "body", "version", "confirmed", "history"],
+  // hidden: "true"면 비공개(회칙 글 업로드·업데이트 때 빠진다). 비어 있으면 공개. confirmed 는 예전 "확정" 표시(더 쓰지 않음)
+  Rules: ["id", "chapter", "article", "body", "version", "confirmed", "history", "hidden"],
   Minutes: ["id", "heldAt", "place", "attendees", "agenda", "status", "followUp"],
   Events: [
     "id", "type", "name", "startsAt", "endsAt", "place", "booking", "status",

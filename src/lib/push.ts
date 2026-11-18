@@ -32,9 +32,16 @@ export function inQuiet(p: Prefs, now = new Date()): boolean {
 }
 
 // alerts: 클럽 가입·참관 신청과 그 결과(받을 알림 종류 설정과 상관없이 알림 ON 이면 보낸다)
-export type PushKind = Kind | "alerts";
-const LABEL: Record<PushKind, string> = { events: "일정", posts: "게시글", profiles: "프로필 북", alerts: "알림" };
-const URL_OF: Record<PushKind, string> = { events: "/events", posts: "/board", profiles: "/profiles", alerts: "/board" };
+// 알림 종류: 일정 / 공지(공지 글) / 게시글 / 프로필 북 / 신청 피드백(내 신청의 결과) / 신청(처리할 신청) / alerts(댓글 등, 늘 받음)
+export type PushKind = Kind | "notices" | "feedback" | "requests" | "alerts";
+const LABEL: Record<PushKind, string> = { events: "일정", notices: "공지", posts: "게시글", profiles: "프로필 북", feedback: "신청 결과", requests: "신청", alerts: "알림" };
+const URL_OF: Record<PushKind, string> = { events: "/events", notices: "/board", posts: "/board", profiles: "/profiles", feedback: "/board", requests: "/board", alerts: "/board" };
+// "받을 알림" 설정으로 이 종류를 받는지(공지는 공지·게시글 중 하나만 켜도 받는다)
+function wants(p: Prefs, kind: PushKind): boolean {
+  if (kind === "alerts") return true;
+  if (kind === "notices") return p.notify.notices || p.notify.posts;
+  return p.notify[kind];
+}
 
 // 이 회원들에게 kind 종류 알림을 보낸다(조건에 맞는 사람만).
 export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: string): Promise<number> {
@@ -46,7 +53,7 @@ export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: str
     const m = members.find((x) => x.id === mid);
     if (!m) return false;
     const p = readPrefs(m.prefs);
-    return p.notifyOn && (kind === "alerts" || p.notify[kind]) && !inQuiet(p) && subs.some((x) => x.memberId === mid);
+    return p.notifyOn && wants(p, kind) && !inQuiet(p) && subs.some((x) => x.memberId === mid);
   });
   if (targets.length === 0) return 0;
   const counts = await countsFor(targets);
@@ -58,7 +65,7 @@ export async function pushTo(memberIds: string[], kind: PushKind, exceptId?: str
     const p = readPrefs(members.find((x) => x.id === mid)?.prefs);
     const payload = JSON.stringify({
       title,
-      body: kind === "alerts" ? "새 알림이 있어요. 앱에서 확인해 주세요." : total > 0 ? `새 게시물 ${total}개가 있어요. 앱에서 확인해 주세요.` : `새 ${LABEL[kind]} 소식이 있어요. 앱에서 확인해 주세요.`,
+      body: kind === "alerts" || kind === "feedback" || kind === "requests" ? "새 알림이 있어요. 앱에서 확인해 주세요." : total > 0 ? `새 게시물 ${total}개가 있어요. 앱에서 확인해 주세요.` : `새 ${LABEL[kind]} 소식이 있어요. 앱에서 확인해 주세요.`,
       count: total,
       silent: !p.sound,
       url: URL_OF[kind],
@@ -100,7 +107,8 @@ export async function notifyPostPush(postId: string): Promise<void> {
     const p = posts.find((x) => x.id === postId);
     if (!p) return;
     const a = readAudience(p.audience);
-    await pushTo(members.filter((m) => inAudience(a, m.id, p.authorId)).map((m) => m.id), "posts", p.authorId);
+    // 공지 글은 "공지" 또는 "게시글"을 켠 회원에게, 그 밖의 글은 "게시글"을 켠 회원에게
+    await pushTo(members.filter((m) => inAudience(a, m.id, p.authorId)).map((m) => m.id), p.notice === "true" ? "notices" : "posts", p.authorId);
   } catch (e) {
     console.error("[push] 게시글 알림 실패", e);
   }

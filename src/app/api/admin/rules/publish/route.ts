@@ -14,7 +14,7 @@ export async function GET() {
   return NextResponse.json({ ...pub, template: { title: DEFAULT_TEMPLATES.rules.title, body: DEFAULT_TEMPLATES.rules.body } });
 }
 
-// 지금 "확정"된 회칙 조문을 게시판 글로 올린다(새 글 또는 고른 회칙 글 고치기).
+// 지금 저장된 회칙 조문을 게시판 글로 올린다(새 글 또는 고른 회칙 글 고치기).
 export async function POST(req: Request) {
   const g = await guard("group");
   if ("err" in g) return g.err;
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const parsed = publishInput.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad(zodMessage(parsed.error));
   const snap = await rulesSnapshot();
-  if (!(snap.rules as unknown[]).length) return bad("확정된 회칙 조문이 없어요. 조문을 “확정”으로 표시한 뒤 올려 주세요.");
+  if (!(snap.rules as unknown[]).length) return bad("공개된 회칙 조문이 없어요. 조문을 추가하거나 “공개”로 저장한 뒤 올려 주세요.");
   const r = await publish({ kind: "rules" }, parsed.data, snap, m.me.row.id);
   if ("error" in r) return bad(r.error, r.status);
   return NextResponse.json(r);

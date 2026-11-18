@@ -2,7 +2,8 @@ import { z } from "zod";
 
 // 회원 개인 설정(Members.prefs JSON): 화면 모드와 알림.
 //  theme:    "system"(기기 설정 따름) | "light"(기본) | "dark"
-//  notify:   받을 알림 종류 — 일정(events) / 공지글(posts) / 프로필북 수정(profiles)
+//  notify:   받을 알림 종류 — 일정(events) / 공지(notices: 게시글을 꺼도 공지는 받음) / 게시글(posts: 공지 포함 모든 글)
+//            / 프로필 북(profiles) / 신청 피드백(feedback: 내가 낸 신청의 결과) / 신청(requests: 처리할 신청, 관리자만 화면에 보임)
 //  notifyOn: 알림 전체 켜기·끄기
 //  sound:    알림 소리 (알림이 꺼져 있으면 항상 꺼짐)
 //  quiet:    방해 금지 시간 (알림이 꺼져 있으면 항상 꺼짐). from/to 는 "HH:mm", 밤을 넘길 수 있다(22:00~08:00).
@@ -10,7 +11,7 @@ import { z } from "zod";
 export type Theme = "system" | "light" | "dark";
 export type Prefs = {
   theme: Theme;
-  notify: { events: boolean; posts: boolean; profiles: boolean };
+  notify: { events: boolean; notices: boolean; posts: boolean; profiles: boolean; feedback: boolean; requests: boolean };
   notifyOn: boolean;
   sound: boolean;
   quiet: { on: boolean; from: string; to: string };
@@ -20,7 +21,7 @@ export const THEMES: readonly Theme[] = ["system", "light", "dark"];
 
 export const DEFAULT_PREFS: Prefs = {
   theme: "system",
-  notify: { events: true, posts: true, profiles: true },
+  notify: { events: true, notices: true, posts: true, profiles: true, feedback: true, requests: true },
   notifyOn: true,
   sound: true,
   quiet: { on: false, from: "22:00", to: "08:00" },
@@ -52,8 +53,11 @@ export function sanitizePrefs(raw: unknown): Prefs {
     theme: THEMES.includes(o.theme as Theme) ? (o.theme as Theme) : DEFAULT_PREFS.theme,
     notify: {
       events: bool(n.events, DEFAULT_PREFS.notify.events),
+      notices: bool(n.notices, DEFAULT_PREFS.notify.notices),
       posts: bool(n.posts, DEFAULT_PREFS.notify.posts),
       profiles: bool(n.profiles, DEFAULT_PREFS.notify.profiles),
+      feedback: bool(n.feedback, DEFAULT_PREFS.notify.feedback),
+      requests: bool(n.requests, DEFAULT_PREFS.notify.requests),
     },
     notifyOn,
     sound: notifyOn && bool(o.sound, DEFAULT_PREFS.sound),
@@ -69,7 +73,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
 export const prefsInput = z
   .object({
     theme: z.enum(["system", "light", "dark"]),
-    notify: z.object({ events: z.boolean(), posts: z.boolean(), profiles: z.boolean() }).partial().strict(),
+    notify: z.object({ events: z.boolean(), notices: z.boolean(), posts: z.boolean(), profiles: z.boolean(), feedback: z.boolean(), requests: z.boolean() }).partial().strict(),
     notifyOn: z.boolean(),
     sound: z.boolean(),
     quiet: z

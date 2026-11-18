@@ -19,7 +19,7 @@ import type { Row } from "./store/types";
 //                  account("은행 계좌"), accountHolder, note, deadline:"" }
 //  fee(클럽)  : 위와 같고 club: "<클럽 이름>"
 //  rules        : { v:2, rules:[{id, chapter, article, body, version}] }
-//  예전 글: fee { defaultAmount, rules, deadline, account, accountHolder } / rules {} (확정 조문을 실시간으로 보여 준다)
+//  예전 글: fee { defaultAmount, rules, deadline, account, accountHolder } / rules {} (공개 조문을 실시간으로 보여 준다)
 
 export type Managed = { kind: "dues" } | { kind: "rules" } | { kind: "club"; club: string };
 export type LinkKey = "dues" | "rules" | `club:${string}`;
@@ -109,7 +109,8 @@ export function feeSnapshot(d: Dues, club?: string): Record<string, unknown> {
 }
 
 export async function rulesSnapshot(): Promise<Record<string, unknown>> {
-  const rules = (await (await getStore()).list("Rules")).filter((r) => r.confirmed === "true");
+  // 공개로 둔 회칙 조문(비공개로 바꾼 조문은 빠진다)
+  const rules = (await (await getStore()).list("Rules")).filter((r) => r.hidden !== "true");
   return { v: 2, rules: rules.map((r) => ({ id: r.id, chapter: r.chapter, article: r.article, body: r.body, version: r.version })) };
 }
 

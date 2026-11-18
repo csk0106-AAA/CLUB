@@ -25,10 +25,14 @@ type Me = {
   kind?: string; // 회원구분(대기회원·참관회원은 프로필 북에 안 나온다)
 };
 
-const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string }[] = [
-  { k: "events", label: "일정" },
-  { k: "posts", label: "공지글" },
-  { k: "profiles", label: "프로필북 수정" },
+// 받을 알림 종류. adminOnly 는 신청을 처리하는 사람(관리자 권한이 있거나 클럽 직책을 맡은 회원)에게만 보인다.
+const NOTIFY_OPTS: { k: keyof Prefs["notify"]; label: string; title: string; adminOnly?: boolean }[] = [
+  { k: "events", label: "일정", title: "일정이 공개되거나 바뀌면 알려 드려요" },
+  { k: "notices", label: "공지", title: "공지 글이 올라오면 알려 드려요(게시글 알림을 꺼도 공지는 받아요)" },
+  { k: "posts", label: "게시글", title: "공지를 포함한 모든 게시글이 올라오면 알려 드려요" },
+  { k: "profiles", label: "프로필 북", title: "프로필 북에 소개가 공개되거나 바뀌면 알려 드려요" },
+  { k: "feedback", label: "신청 피드백", title: "내가 낸 회원·클럽·참관 신청이 승인되거나 반려되면 알려 드려요" },
+  { k: "requests", label: "신청", title: "처리할 신청(회원·클럽 신청, 입금 알림, 사진 장수 요청)이 들어오면 알려 드려요", adminOnly: true },
 ];
 const ROLE_MSG = "클럽 직책이 있는 클럽은 관리자에게 변경을 요청해 주세요.";
 
@@ -390,12 +394,17 @@ export default function SettingsPage() {
             <h2 id="s-notify">받을 알림</h2>
             <div className="sect-body">
             <div className="checks" role="group" aria-labelledby="s-notify">
-              {NOTIFY_OPTS.map((o) => (
-                <label key={o.k}>
-                  <input type="checkbox" checked={pr.notify[o.k]} onChange={(e) => savePrefs({ notify: { [o.k]: e.target.checked } })} />
-                  {o.label}
-                </label>
-              ))}
+              {NOTIFY_OPTS.filter((o) => !o.adminOnly || (me?.perms.length ?? 0) > 0 || (me?.clubs ?? []).some((c) => c.role)).map((o) => {
+                // 게시글을 받으면 공지도 받는다: 게시글을 켜면 공지도 켜고, 게시글이 켜진 동안 공지 칸은 체크된 채로 잠근다
+                const lockedOn = o.k === "notices" && pr.notify.posts;
+                return (
+                  <label key={o.k} title={lockedOn ? "게시글 알림을 받으면 공지도 함께 받아요" : o.title}>
+                    <input type="checkbox" checked={lockedOn || pr.notify[o.k]} disabled={lockedOn}
+                      onChange={(e) => savePrefs({ notify: o.k === "posts" && e.target.checked ? { posts: true, notices: true } : { [o.k]: e.target.checked } })} />
+                    {o.label}
+                  </label>
+                );
+              })}
             </div>
             <span className="small" style={{ fontSize: fs(12) }}>새 글이 올라오거나 수정되면 알려 드려요. 하단 아이콘에도 숫자로 표시돼요.</span>
             </div>

@@ -37,7 +37,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     try {
       const groups = await getPermGroups();
       const handlers = members.filter((m) => m.id !== g.s.mid && payNoticesFor(m, [e], [{ ...a, payNotice: at }], groups).length > 0).map((m) => m.id);
-      if (handlers.length) await pushTo(handlers, "alerts", g.s.mid);
+      if (handlers.length) await pushTo(handlers, "requests", g.s.mid);
     } catch (err) {
       console.error("[push] 입금 알림 실패", err);
     }

@@ -4,8 +4,8 @@ import { z } from "zod";
 // 화면과 서버가 함께 쓰므로 서버 전용 모듈(store, auth …)을 가져오지 않는다.
 //
 // Posts.data (양식별 JSON)
-//  rules   : { v:2, rules:[{id, chapter, article, body, version}] } — 관리자 › 회칙에서 올린 그때의 확정 조문(스냅숏)
-//            예전 글 {} 은 Rules 표의 확정 조문을 실시간으로 보여 준다
+//  rules   : { v:2, rules:[{id, chapter, article, body, version}] } — 관리자 › 회칙에서 올린 그때의 조문(스냅숏)
+//            예전 글 {} 은 Rules 표의 조문을 실시간으로 보여 준다
 //  fee     : { defaultAmount, rules:[{kind, position, amount}], deadline, account, accountHolder }
 //            + 회비관리·클럽 회비에서 올린 글(v:2)은 period, periodStart, periodEnd, monthDay, note, club(클럽) 도 담는다(lib/published.ts)
 //  minutes : { heldAt, place, attendees, agenda:[{title, status, note}], followUp }
@@ -49,7 +49,7 @@ export const FORM_LABEL: Record<Form, string> = {
   quiz: "퀴즈(OX)",
 };
 export const FORM_HINT: Record<Form, string> = {
-  rules: "확정된 회칙 조문을 그대로 보여 줘요 (전체 관리자만)",
+  rules: "회칙 조문을 그대로 보여 줘요 (전체 관리자만)",
   fee: "회원구분·직책별 연회비, 납부기한, 계좌",
   minutes: "일시, 장소, 참석자, 안건, 후속 조치 (이제 일정 › 회의 일정에서 써요)",
   general: "제목과 내용",
@@ -186,7 +186,7 @@ export const templateInput = z.object({ title: t(100).default(""), body: t(10000
 export const DEFAULT_TEMPLATES: Record<Form, Template> = {
   rules: {
     title: "회칙",
-    body: "모임 회칙이에요. 확정된 조문만 보여요. 궁금한 점은 사무국에 물어봐 주세요.",
+    body: "모임 회칙이에요. 궁금한 점은 사무국에 물어봐 주세요.",
     data: {},
   },
   fee: {

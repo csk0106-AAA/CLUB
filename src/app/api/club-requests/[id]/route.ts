@@ -64,7 +64,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     reason: approve ? "" : parsed.data.reason,
   });
   try {
-    await pushTo([r.memberId], "alerts");
+    await pushTo([r.memberId], "feedback");
   } catch (e) {
     console.error("[push] 클럽 신청 결과 알림 실패", e);
   }

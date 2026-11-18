@@ -8,7 +8,7 @@ import { isGuest } from "./member-kind";
 import { getClubNames, getStore } from "./store";
 
 // 게시판 "AI에게 작성 요청하기"에 함께 보내는 참고 정보(관리자가 앱에 저장해 둔 내용).
-//  group: 모임 정보(이름·정회원 조건·임원진·회원 수), dues: 모임 회비, rules: 확정 회칙,
+//  group: 모임 정보(이름·정회원 조건·임원진·회원 수), dues: 모임 회비, rules: 회칙,
 //  events: 다가오는 일정(글쓴이에게 보이는 공개 일정만), clubs: 고른 클럽의 개요·회장·회비·회원 수
 import type { RefKey } from "./board";
 export { REF_KEYS } from "./board";
@@ -53,9 +53,9 @@ export async function buildRefContext(refs: RefKey[], clubs: string[], mid: stri
   }
 
   if (refs.includes("rules")) {
-    const rules = (await s.list("Rules")).filter((r) => r.confirmed === "true");
+    const rules = (await s.list("Rules")).filter((r) => r.hidden !== "true"); // 공개 조문만
     const text = rules.map((r) => `${[r.chapter, r.article].filter(Boolean).join(" ")}\n${r.body}`).join("\n\n");
-    out.push(`[회칙(확정본)]\n${cut(text) || "(확정된 회칙이 없어요)"}`);
+    out.push(`[회칙]\n${cut(text) || "(회칙이 없어요)"}`);
   }
 
   if (refs.includes("events")) {

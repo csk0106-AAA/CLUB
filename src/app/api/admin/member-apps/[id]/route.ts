@@ -66,7 +66,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     resultSeen: "",
   });
   try {
-    await pushTo([who.id], "alerts");
+    await pushTo([who.id], "feedback");
   } catch (e) {
     console.error("[push] 회원 신청 결과 알림 실패", e);
   }

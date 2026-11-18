@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     });
     await s.update("Members", gone.id, { extra: withHistory(gone.extra, { at: now, what: "재가입 신청", note: sameName ? "" : `신청 이름: ${d.name}` }) });
     try {
-      await pushTo(await appHandlers(members), "alerts");
+      await pushTo(await appHandlers(members), "requests");
     } catch (e) {
       console.error("[push] 재가입 신청 알림 실패", e);
     }
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     note: gName ? `탈퇴회원 “${gName.name}” 님과 이름이 같아요(전화번호는 달라요). 같은 분이면 이 신청은 반려하고 그 회원을 회원 수정에서 ‘탈퇴 해지’해 주세요.` : "",
   });
   try {
-    await pushTo(await appHandlers(members), "alerts");
+    await pushTo(await appHandlers(members), "requests");
   } catch (e) {
     console.error("[push] 회원 신청 알림 실패", e);
   }

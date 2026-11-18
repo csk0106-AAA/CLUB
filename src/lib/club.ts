@@ -31,19 +31,19 @@ type Def = {
 
 // 회칙 변경 기록: 누가, 언제, 무엇을 바꿨는지. 내용이 바뀌면 바꾸기 전 내용도 남긴다.
 export type RuleLog = { at: string; by: string; what: string; before?: string };
-const RULE_FIELDS: [string, string][] = [["chapter", "장"], ["article", "조"], ["body", "내용"], ["version", "버전"], ["confirmed", "확정 여부"]];
+const RULE_FIELDS: [string, string][] = [["chapter", "장"], ["article", "조"], ["body", "내용"], ["version", "버전"], ["hidden", "공개 여부"]]; // 예전 "확정" 표시는 더 쓰지 않는다
 
 function ruleAudit(prev: Row | null, next: Record<string, string>, by: string): Record<string, string> {
   const log = parseJson<RuleLog[]>(prev?.history, []);
   let entry: RuleLog;
   if (!prev) entry = { at: new Date().toISOString(), by, what: "새로 추가" };
   else {
-    const val = (r: Record<string, string>, k: string) => (k === "confirmed" ? String(r[k] === "true") : r[k] ?? "");
+    const val = (r: Record<string, string>, k: string) => (k === "hidden" ? String(r[k] === "true") : r[k] ?? "");
     const changed = RULE_FIELDS.filter(([k]) => val(prev, k) !== val(next, k));
     if (changed.length === 0) return {};
     const parts = changed.map(([k, label]) =>
       k === "version" ? `버전 ${prev.version || "-"} → ${next.version}`
-        : k === "confirmed" ? (next.confirmed === "true" ? "확정으로 표시" : "확정 취소")
+        : k === "hidden" ? (next.hidden === "true" ? "비공개로 바꿈" : "공개로 바꿈")
           : `${label} 수정`);
     entry = { at: new Date().toISOString(), by, what: parts.join(", ") };
     if (changed.some(([k]) => k === "body")) entry.before = (prev.body ?? "").slice(0, 1000);
@@ -67,9 +67,10 @@ export const CLUB: Record<ClubKind, Def> = {
     tab: "Rules",
     perm: ["group"],
     schema: z
-      .object({ chapter: s(60).min(1), article: s(60).default(""), body: s(4000).default(""), version: s(20).default("v1"), confirmed: z.boolean().default(false) })
-      .transform((v) => ({ chapter: v.chapter, article: v.article, body: v.body, version: v.version, confirmed: String(v.confirmed) })),
-    view: (r) => ({ id: r.id, chapter: r.chapter, article: r.article, body: r.body, version: r.version, confirmed: r.confirmed === "true", history: parseJson<RuleLog[]>(r.history, []) }),
+      .object({ chapter: s(60).min(1), article: s(60).default(""), body: s(4000).default(""), version: s(20).default("v1"), public: z.boolean().default(true) })
+      // 공개(public)는 기본 체크. 해제하면 hidden="true"(회칙 글 업로드·업데이트 때 빠진다)
+      .transform((v) => ({ chapter: v.chapter, article: v.article, body: v.body, version: v.version, hidden: v.public ? "" : "true" })),
+    view: (r) => ({ id: r.id, chapter: r.chapter, article: r.article, body: r.body, version: r.version, public: r.hidden !== "true", history: parseJson<RuleLog[]>(r.history, []) }),
     sort: () => 0,
     audit: ruleAudit,
   },

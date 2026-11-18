@@ -13,6 +13,6 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   if ("err" in a) return a.err;
   if (!a.canUpload) return bad("참석 신청한 회원만 요청할 수 있어요.", 403);
   const added = await addPhotoRequest(a.e, a.s.mid);
-  if (added) await pushTo(await photoManagers(a.e), "alerts", a.s.mid).catch(() => 0);
+  if (added) await pushTo(await photoManagers(a.e), "requests", a.s.mid).catch(() => 0);
   return NextResponse.json({ ok: true, already: !added });
 }

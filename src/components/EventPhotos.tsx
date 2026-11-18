@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Popup } from "./Popup";
+import { useDragScroll } from "./useDragScroll";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 import { MAX_SOURCE, shrink } from "@/lib/image-shrink";
@@ -37,38 +38,8 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
   // 장수가 찼을 때 "관리자 요청 / 취소" 창
   const [full, setFull] = useState(false);
   const [reqNote, setReqNote] = useState("");
-  // PC 마우스로 사진 줄을 잡고 끌어 넘기기(휴대폰 손가락·터치패드는 브라우저 기본 스크롤 그대로)
-  const drag = useRef<{ x: number; left: number; moved: boolean; el: HTMLElement } | null>(null);
-  const dragged = useRef(false);
-  const onDown = (e: React.PointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "mouse" || e.button !== 0) return;
-    const el = e.currentTarget;
-    drag.current = { x: e.clientX, left: el.scrollLeft, moved: false, el };
-    dragged.current = false;
-  };
-  const onMove = (e: React.PointerEvent<HTMLElement>) => {
-    const d = drag.current;
-    if (!d) return;
-    const dx = e.clientX - d.x;
-    if (!d.moved && Math.abs(dx) > 5) {
-      d.moved = true;
-      d.el.classList.add("dragging"); // 끄는 동안은 자석처럼 맞추기(스냅)를 끈다
-      d.el.setPointerCapture(e.pointerId);
-    }
-    if (d.moved) d.el.scrollLeft = d.left - dx;
-  };
-  const onUp = () => {
-    const d = drag.current;
-    drag.current = null;
-    if (!d?.moved) return;
-    dragged.current = true; // 끈 뒤 바로 오는 클릭은 크게 보기를 열지 않는다
-    // 가장 가까운 사진에 맞춰 멈춘다
-    const kids = [...d.el.children] as HTMLElement[];
-    const base = d.el.getBoundingClientRect().left;
-    const near = kids.reduce((b, k) => (Math.abs(k.getBoundingClientRect().left - base) < Math.abs(b.getBoundingClientRect().left - base) ? k : b), kids[0]);
-    d.el.classList.remove("dragging");
-    if (near) d.el.scrollTo({ left: d.el.scrollLeft + near.getBoundingClientRect().left - base, behavior: "smooth" });
-  };
+  // PC 마우스로 사진 줄을 잡고 끌어 넘기기(components/useDragScroll.ts)
+  const dragHandlers = useDragScroll("start");
 
   const load = useCallback(async () => {
     const r = await api<List>(`/api/events/${eventId}/photos`);
@@ -235,9 +206,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
             <span>{list.canUpload ? "아직 사진이 없어요. “+ 사진”으로 첫 사진을 올려 주세요!" : list.attending ? "아직 사진이 없어요." : "참석 신청한 회원이 사진을 올릴 수 있어요."}</span>
           </div>
         ) : (
-          <ul className="ph-track" aria-label="사진 목록(옆으로 넘겨 보기)" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-            onClickCapture={(e) => { if (dragged.current) { e.preventDefault(); e.stopPropagation(); dragged.current = false; } }}
-            onDragStart={(e) => e.preventDefault()}>
+          <ul className="ph-track" aria-label="사진 목록(옆으로 넘겨 보기)" {...dragHandlers}>
             {photos.map((p, i) => (
               <li key={p.id} className="ph-slide">
                 <button type="button" className="ph-open" onClick={() => setOpen(p.id)} aria-label={`${i + 1}/${photos.length}: ${p.name} 님의 사진${p.caption ? `, ${p.caption}` : ""} 크게 보기`}>

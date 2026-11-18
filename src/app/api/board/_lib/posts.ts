@@ -120,8 +120,8 @@ export async function detail(me: Me, p: Row) {
       // 관리자 › 회칙에서 올린 그때의 조문(스냅숏)
       extra.rules = data.rules;
     } else {
-      // 예전 회칙 글: 지금 확정된 조문을 그대로
-      const rules = (await s.list("Rules")).filter((r) => r.confirmed === "true");
+      // 예전 회칙 글: 지금 공개된 조문을 그대로
+      const rules = (await s.list("Rules")).filter((r) => r.hidden !== "true");
       extra.rules = rules.map((r) => ({ id: r.id, chapter: r.chapter, article: r.article, body: r.body, version: r.version }));
     }
     delete data.rules;

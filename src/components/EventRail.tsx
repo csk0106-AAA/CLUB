@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
+import { useDragScroll } from "./useDragScroll";
 
 // 홈 맨 위 "다가오는 나의 일정" 카드: 내가 참석 신청한 일정 중 한 달 안에 시작하는, 날짜가 가장 가까운 3개까지(옆으로 넘기기 + 5초마다 자동으로 다음 카드).
 // 자동 넘김은 손가락·마우스를 올리거나 포커스가 있으면 멈추고, 기기의 "동작 줄이기"가 켜져 있으면 하지 않는다.
@@ -50,6 +51,7 @@ export function EventRail() {
   const [idx, setIdx] = useState(0);
   const track = useRef<HTMLDivElement>(null);
   const hold = useRef(false);
+  const drag = useDragScroll("center");
 
   useEffect(() => {
     api<{ events: Ev[] }>("/api/events").then((r) => {
@@ -107,7 +109,8 @@ export function EventRail() {
         <h2 className="title" style={{ margin: 0 }}>다가오는 나의 일정</h2>
         <Link href="/events" className="rail-more">타임라인 ›</Link>
       </div>
-      <div ref={track} className="rail-track" onScroll={onScroll}
+      {/* PC 마우스로 잡고 끌어 넘기기(가운데 맞춤, components/useDragScroll.ts). 끈 뒤에는 카드 링크로 이동하지 않는다 */}
+      <div ref={track} className="rail-track" onScroll={onScroll} {...drag}
         onPointerEnter={stop} onPointerLeave={resume} onTouchStart={stop} onTouchEnd={resume} onFocus={stop} onBlur={resume}>
         {list.map((e, i) => {
           const dd = dday(e.startsAt, e.endsAt);

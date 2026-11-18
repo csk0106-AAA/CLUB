@@ -1057,3 +1057,12 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .ph-track.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
 .ph-track.dragging .ph-open { cursor: grabbing; }
 .ph-track img { -webkit-user-drag: none; user-select: none; }
+/* 홈 일정 카드 줄: 마우스로 잡고 끌기(PC) */
+@media (hover: hover) and (pointer: fine) { .rail-track { cursor: grab; } }
+.rail-track.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+.rail-track.dragging .rail-hit, .rail-track.dragging .rail-act { cursor: grabbing; }
+.rail-track img { -webkit-user-drag: none; user-select: none; }
+/* 고친 내용이 있을 때의 작은 저장 버튼(회칙 조문 등): 주색으로 눈에 띄게, 저장됨 상태는 흐리게 */
+.mini.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 700; }
+.mini.primary:hover:not(:disabled) { background: var(--brand-h); border-color: var(--brand-h); }
+.mini:disabled { opacity: .7; cursor: default; }

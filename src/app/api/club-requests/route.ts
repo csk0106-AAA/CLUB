@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     createdAt: new Date().toISOString(), handledBy: "", handledAt: "", resultSeen: "", attend: attend ? "true" : "",
   });
   try {
-    await pushTo(handlersOf(members, club, await getPermGroups()), "alerts", me.id);
+    await pushTo(handlersOf(members, club, await getPermGroups()), "requests", me.id);
   } catch (e) {
     console.error("[push] 클럽 신청 알림 실패", e);
   }

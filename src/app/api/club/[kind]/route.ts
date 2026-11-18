@@ -7,7 +7,7 @@ import { getLists } from "@/lib/lists";
 
 export const dynamic = "force-dynamic";
 
-// 회원이 보는 모임 정보: 조직도(이름과 직책만), 확정된 회칙. 회의록은 관리자만 본다.
+// 회원이 보는 모임 정보: 조직도(이름과 직책만), 회칙. 회의록은 관리자만 본다.
 export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }> }) {
   const g = await guard();
   if ("err" in g) return g.err;
@@ -33,7 +33,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }
     });
   }
   if (kind === "rules") {
-    const rules = (await s.list("Rules")).filter((r) => r.confirmed === "true");
+    const rules = (await s.list("Rules")).filter((r) => r.hidden !== "true"); // 공개 조문만
     return NextResponse.json({ items: rules.map((r) => ({ id: r.id, chapter: r.chapter, article: r.article, body: r.body, version: r.version })) });
   }
   return bad("볼 수 없는 항목이에요.", 404);

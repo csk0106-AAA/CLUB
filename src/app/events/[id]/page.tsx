@@ -5,7 +5,6 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EventHero } from "@/components/EventHero";
 import { FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, type FeeView } from "@/components/EventInfoCard";
-import { IconStar } from "@/components/Icons";
 import { LiveActivities } from "@/components/LiveActivities";
 import { EventMinutes } from "@/components/EventMinutes";
 import { EventPhotos } from "@/components/EventPhotos";
@@ -15,7 +14,7 @@ import { ScheduleView, type SchedItem } from "@/components/ScheduleBoard";
 import { Sheet } from "@/components/Sheet";
 import { ClubRequestCard, type AttendReq, type JoinReq } from "./ClubRequestCard";
 import { ObserversCard } from "./ObserversCard";
-import { api, fmtDateDow, fmtDays, fmtDaySpan, won } from "@/lib/client";
+import { api, fmtDateDow, fmtDays, won } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Detail = {
@@ -156,7 +155,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const e = d.event;
   const dd = dday(e.startsAt, e.endsAt);
   const answer = d.apply?.answer ?? "";
-  const tripDays = e.type === "워크숍" && answer === "참석" ? fmtDaySpan(d.apply?.days ?? []) : "";
   const days = eventDays(e.startsAt, e.endsAt);
   const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
   const hasFee = !!e.fee || !!e.feePending;
@@ -166,12 +164,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <main className="app with-tabs">
-      {(dd || tripDays) && (
-        <div className="stats">
-          {dd ? <span className="stat"><span style={{ color: "var(--red)", display: "inline-flex" }}><IconStar size={18} /></span>{dd}</span> : <span />}
-          {tripDays && <span className="pill warn">졸업여행 참석자 · {tripDays}</span>}
-        </div>
-      )}
+      {/* 맨 위 ★ D-day·참석 날짜 줄은 없앴다: D-day는 사진 카드(EventHero), 참석 날짜는 아래 "신청 완료 ✓" 안내에 보인다 */}
 
       {d.feeDue && (
         d.apply?.payNotice ? (

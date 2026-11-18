@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     try {
       const groups = await getPermGroups();
       const to = members.filter((m) => m.id !== me.id && isDuesHandler(m, groups)).map((m) => m.id);
-      if (to.length) await pushTo(to, "alerts", me.id);
+      if (to.length) await pushTo(to, "requests", me.id);
     } catch (e) {
       console.error("[push] 회비 입금 알림 실패", e);
     }

@@ -56,7 +56,7 @@ export function Attachments({ files }: { files: FileMeta[] }) {
 
 /* ───── 회칙 ───── */
 export function RulesView({ rules }: { rules: NonNullable<PostDetail["rules"]> }) {
-  if (rules.length === 0) return <div className="msg info">확정된 회칙이 아직 없어요.</div>;
+  if (rules.length === 0) return <div className="msg info">회칙이 아직 없어요.</div>;
   const chapters: [string, typeof rules][] = [];
   for (const r of rules) {
     const last = chapters[chapters.length - 1];

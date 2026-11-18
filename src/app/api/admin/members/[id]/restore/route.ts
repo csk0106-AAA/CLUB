@@ -29,7 +29,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     await s.update("MemberApps", a.id, { status: "approved", handledBy: g.s.mid, handledAt: now, fromKind: who.kind ?? "", toKind: patch.kind, resultSeen: "" });
   }
   try {
-    await pushTo([id], "alerts");
+    await pushTo([id], "feedback");
   } catch (e) {
     console.error("[push] 탈퇴 해지 알림 실패", e);
   }

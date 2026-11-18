@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(), handledBy: "", handledAt: "", fromKind: me.kind ?? "", toKind: opt.to, resultSeen: "", note: "",
     });
     try {
-      await pushTo(await appHandlers(members), "alerts", me.id);
+      await pushTo(await appHandlers(members), "requests", me.id);
     } catch (e) {
       console.error("[push] 구분 변경 요청 알림 실패", e);
     }
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     createdAt: new Date().toISOString(), handledBy: "", handledAt: "", fromKind: "", toKind: "", resultSeen: "",
   });
   try {
-    await pushTo(await appHandlers(members), "alerts", me.id);
+    await pushTo(await appHandlers(members), "requests", me.id);
   } catch (e) {
     console.error("[push] 정회원 신청 알림 실패", e);
   }
