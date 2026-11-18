@@ -42,7 +42,8 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 const gen = z.object({
-  mode: z.enum(["random", "mix", "manual"]),
+  mode: z.enum(["random", "mix", "manual", "copy"]),
+  from: z.string().optional(), // copy: 가져올 일정 조편성 id
   count: z.number().int().min(1).max(30).optional(),
   size: z.number().int().min(2).max(20).optional(),
 });
@@ -63,13 +64,29 @@ export async function POST(req: Request, ctx: Ctx) {
   const c = await loadTeamActivity(aid, id);
   if (typeof c === "string") return bad(c, 404);
   const parsed = gen.safeParse(await req.json().catch(() => null));
-  if (!parsed.success || (!parsed.data.count && !parsed.data.size)) return bad("방식을 고르고 팀 수나 팀당 인원 중 하나를 입력해 주세요.");
   if (await locked(aid)) return bad("이미 작성된 타임캡슐이 있어서 팀을 다시 만들 수 없어요.", 409);
+  // 일정 조편성에서 가져오기: 조 이름·조원을 그대로(이 활동에 참여하지 않는 사람은 뺀다). 초안이라 확인을 눌러야 배포된다.
+  if (parsed.success && parsed.data.mode === "copy") {
+    const src = (await (await getStore()).list("Groupings")).find((x) => x.id === parsed.data.from && x.eventId === id);
+    if (!src) return bad("가져올 조편성을 찾을 수 없어요.", 404);
+    const p = await pool(c.cfg, c.act, c.ev);
+    const ok = new Set(p.members.map((m) => m.id));
+    let dropped = 0;
+    const list = (JSON.parse(src.teams || "[]") as { name: string; memberIds: string[] }[]).map((t) => {
+      const ids = t.memberIds.filter((mid) => ok.has(mid));
+      dropped += t.memberIds.length - ids.length;
+      return { name: t.name.slice(0, 20), memberIds: ids };
+    });
+    if (list.length === 0) return bad("그 조편성에는 아직 짜인 조가 없어요.");
+    await replaceTeams(aid, list);
+    return NextResponse.json({ ok: true, teams: list.length, dropped });
+  }
+  if (!parsed.success || (!parsed.data.count && !parsed.data.size)) return bad("방식을 고르고 팀 수나 팀당 인원 중 하나를 입력해 주세요.");
 
   const p = await pool(c.cfg, c.act, c.ev);
   if (p.members.length < 2) return bad("팀을 만들 회원이 부족해요. 활동에 참여할 회원을 먼저 선택해 주세요.");
   const count = Math.min(p.members.length, parsed.data.count ?? Math.ceil(p.members.length / (parsed.data.size as number)));
-  const made = makeTeams(p.members, count, parsed.data.mode);
+  const made = makeTeams(p.members, count, parsed.data.mode as "random" | "mix" | "manual"); // copy 는 위에서 처리했다
   await replaceTeams(aid, made.map((ms, i) => ({ name: `${i + 1}팀`, memberIds: ms.map((m) => m.id) })));
   return NextResponse.json({ ok: true, teams: count, mode: parsed.data.mode, poolKind: p.kind });
 }

@@ -484,7 +484,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             <section className="card" aria-label="팀 배정" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
               <b style={{ font: `700 ${fs(17)} var(--display)` }}>팀 배정</b>
               <span className="small">이 일정의 참여자로 팀을 나눠요. 팀은 이 일정의 이 활동에만 쓰여요.</span>
-              <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}/teams`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} />
+              <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} copyFromEvent={eventId} />
             </section>
           )}
           {a.config.preEvent.steps.includes("ai_interview") && (

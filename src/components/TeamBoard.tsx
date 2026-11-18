@@ -22,7 +22,19 @@ const POOL_TEXT: Record<string, string> = { selected: "관리자 선택 회원",
 
 // 팀(조) 구성 보드: 관리자 배정 / 연령대 섞기 / 랜덤 배정 → 끌어서 옮기기 → 확인으로 회원에게 배포.
 // base 는 `.../teams`, `.../teams/publish` 를 가진 API 주소다(타임캡슐 팀 구성과 일정 조편성이 같이 쓴다).
-export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: string; canEdit: boolean; unit?: string; screenHref?: string }) {
+// copyFromEvent: 활동 팀 보드에서 쓰면, 그 일정의 "일정 › 조편성"을 골라 그대로 가져올 수 있다(가져온 뒤에는 서로 연결되지 않음).
+export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEvent }: { base: string; canEdit: boolean; unit?: string; screenHref?: string; copyFromEvent?: string }) {
+  const [srcs, setSrcs] = useState<{ id: string; title: string; teamCount: number }[]>([]);
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    if (!copyFromEvent) return;
+    api<{ groups: { id: string; title: string; teamCount: number }[] }>(`/api/admin/events/${copyFromEvent}/groups`).then((r) => {
+      if (!r.ok) return;
+      const list = r.data.groups.filter((g) => g.teamCount > 0);
+      setSrcs(list);
+      setSrc((cur) => cur || list[0]?.id || "");
+    });
+  }, [copyFromEvent]);
   const [td, setTd] = useState<TeamsData | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [mode, setMode] = useState<Mode>("random");
@@ -87,6 +99,18 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
     setBusy(false);
     setMsg(r.ok ? { tone: "info", text: mode === "manual" ? `빈 ${unit}을 만들었어요. 회원을 끌어서 넣어 주세요.` : `${unit}을 만들었어요. 끌어서 바꿀 수 있고, 마지막에 확인을 눌러야 배포돼요.` } : { tone: "bad", text: r.error });
     load();
+  }
+  // 일정 조편성 가져오기(서버가 이 활동에 참여하지 않는 사람은 뺀다). 결과는 초안.
+  async function copyGroups() {
+    const g = srcs.find((x) => x.id === src);
+    if (!g) return;
+    if (cols.some((c) => c.ids.length) && !window.confirm(`지금 ${unit} 구성을 “${g.title}” 조편성으로 바꿀까요?`)) return;
+    setBusy(true);
+    const r = await api<{ teams: number; dropped: number }>(`${base}/teams`, { body: { mode: "copy", from: src } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    await load();
+    setMsg({ tone: "info", text: `“${g.title}” 조편성을 가져왔어요(${r.data.teams}개 ${unit}).${r.data.dropped ? ` 이 활동에 참여하지 않는 ${r.data.dropped}명은 뺐어요.` : ""} 확인을 눌러야 회원에게 배포돼요.` });
   }
   async function saveDraft(): Promise<boolean> {
     const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c, i) => ({ name: c.name.trim() || `${i + 1}${unit}`, memberIds: c.ids })) } });
@@ -187,6 +211,16 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref }: { base: s
               : <input className="field" aria-label={`${unit} 수`} type="number" min={1} max={30} style={{ width: 100 }} value={count} onChange={(e) => setCount(e.target.value)} />}
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={generate}>{cols.length > 0 ? "다시 만들기" : `${unit} 만들기`}</button>
           </div>
+          {/* 일정 › 조편성 가져오기(활동 팀 보드에서만) */}
+          {copyFromEvent && srcs.length > 0 && (
+            <div className="row" style={{ flexWrap: "wrap", borderTop: "1px dashed var(--line)", paddingTop: 10 }}>
+              <span className="small">또는 일정 조편성 가져오기</span>
+              <select className="field" aria-label="가져올 일정 조편성" style={{ width: "auto", minWidth: 160 }} value={src} onChange={(e) => setSrc(e.target.value)}>
+                {srcs.map((g) => <option key={g.id} value={g.id}>{g.title} ({g.teamCount}개 조)</option>)}
+              </select>
+              <button className="btn white" type="button" disabled={busy || !src} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={copyGroups}>가져오기</button>
+            </div>
+          )}
         </div>
       )}
 

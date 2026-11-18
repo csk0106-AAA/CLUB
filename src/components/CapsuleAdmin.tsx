@@ -39,7 +39,7 @@ export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: 
 
   return (
     <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
-      <TeamBoard base={base} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${aid}`} />
+      <TeamBoard base={base} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${aid}`} copyFromEvent={eventId} />
 
       <b style={{ font: `700 ${fs(16)} var(--display)` }}>봉인과 열림</b>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}

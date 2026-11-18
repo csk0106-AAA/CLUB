@@ -90,7 +90,8 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
       <div className="cards">
         {shown.map((c) => {
           const x = draft[c.id] ?? c;
-          const options = d.members.filter((m) => !x.guests.includes(m.id));
+          // 투숙자 추가 목록: 이 일정에 참석 신청한 회원만(이미 이 방에 있는 사람은 빼고)
+          const options = d.members.filter((m) => d.attendingIds.includes(m.id) && !x.guests.includes(m.id));
           return (
             <div key={c.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div className="row" style={{ flexWrap: "wrap" }}>
@@ -109,7 +110,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
               </div>
               {canEdit && (
                 <select aria-label="투숙자 추가" className="field" value="" onChange={(e) => e.target.value && set(c.id, { guests: [...x.guests, e.target.value] })}>
-                  <option value="">+ 투숙자 추가 (이 날 방 없는 참석자 우선)</option>
+                  <option value="">{options.length ? "+ 투숙자 추가 (참석자만 · 이 날 방 없는 사람 먼저)" : d.attendingIds.length ? "참석자가 모두 이 방에 있어요" : "참석 신청한 회원이 아직 없어요"}</option>
                   {[...options].sort((a, b) => Number(free.includes(b.id)) - Number(free.includes(a.id))).map((m) => (
                     <option key={m.id} value={m.id}>{m.name}{free.includes(m.id) ? " (방 없음)" : ""}</option>
                   ))}
