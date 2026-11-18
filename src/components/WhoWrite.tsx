@@ -401,7 +401,7 @@ export function WhoWrite(props: {
               {!approved && <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>}
             </div>
           ))}
-          <label className="l" htmlFor="intro">소개 글 (직접 고칠 수 있어요)</label>
+          <label className="l" htmlFor="intro">{approved ? "소개 글 (고치려면 아래 “승인 취소하고 다시 고치기”를 눌러 주세요)" : "소개 글 (직접 고칠 수 있어요)"}</label>
           <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} disabled={approved} onChange={(e) => setIntro(e.target.value)} />
 
           {!approved && (

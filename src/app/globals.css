@@ -1086,3 +1086,28 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .act-card { scroll-margin-top: 12px; transition: box-shadow .4s; }
 .act-card.act-flash { box-shadow: 0 0 0 3px var(--focus); }
 @media (prefers-reduced-motion: reduce) { .act-card { transition: none; } }
+/* 숙박·방배정: 방 없는 참석자 칸과 끌어서 넣기 */
+.room-pool { display: flex; flex-direction: column; gap: 8px; border-style: dashed; }
+.room-pool.over, .card.room-over { border-color: var(--violet); background: var(--violet-bg); }
+.room-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.room-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-weight: 600; cursor: grab; user-select: none; }
+.room-chip:active { cursor: grabbing; }
+/* 방 카드: 한 줄(방 이름 · 정원 · 인원), "+" 투숙자 추가 */
+.room-head { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.room-head > input:first-child { flex: 1 1 auto; min-width: 0; min-height: 42px; font-weight: 700; }
+.room-head > input.num { width: 64px; flex: none; min-height: 42px; text-align: center; padding: 0 6px; }
+.room-head > label { flex: none; margin: 0; }
+.room-head > .pill { flex: none; white-space: nowrap; }
+.room-add { width: 52px; min-height: 36px; padding: 0 8px; text-align: center; text-align-last: center; font: 800 calc(18px * var(--fs, 1)) var(--body); cursor: pointer; flex: none; }
+.room-add:disabled { opacity: .4; cursor: not-allowed; }
+/* "+" 투숙자 추가: 선택 상자의 아래 화살표를 숨기고 "+"만 보이게 */
+.room-add { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none !important; padding: 0 !important; }
+.room-add::-ms-expand { display: none; }
+/* "+ 투숙객" 버튼: 글자 길이만큼 */
+.room-add { width: auto; padding: 0 12px !important; font-size: calc(14px * var(--fs, 1)); font-weight: 700; }
+/* 방배정 메모: 한 줄로 줄이고(…) 더블클릭하면 고치기 */
+.room-memo { flex: 1; min-width: 0; min-height: 36px; display: flex; align-items: center; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); cursor: text; user-select: none; font-size: calc(14px * var(--fs, 1)); }
+.room-memo, .room-memo-ro { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-memo { display: block; line-height: 34px; }
+.room-memo-ro { display: block; }
+.room-memo:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }

@@ -48,6 +48,24 @@ export function roomConflict(all: Room[], next: Room, names: Map<string, string>
 }
 
 const key = (eventId: string) => `rooms:${eventId}`;
-export type RoomState = { published: boolean; publishedAt: string };
+// same: "모든 밤 같은 배정"(첫날 밤 배정을 나머지 밤에 그대로 맞춘다). 아니면 날짜별 배정.
+export type RoomState = { published: boolean; publishedAt: string; same?: boolean };
 export const roomState = (eventId: string): Promise<RoomState> => getSetting<RoomState>(key(eventId), { published: false, publishedAt: "" });
-export const saveRoomState = (eventId: string, s: RoomState): Promise<void> => setSetting(key(eventId), s);
+// 바꾼 값만 덮어쓴다(배포 상태를 바꿔도 같은 배정 설정은 남게)
+export const saveRoomState = async (eventId: string, s: Partial<RoomState>): Promise<void> => setSetting(key(eventId), { ...(await roomState(eventId)), ...s });
+
+// "모든 밤 같은 배정"이면 첫날 밤 방 구성(방 이름·정원·메모·투숙자)을 나머지 밤에 그대로 맞춘다.
+// 첫날 방을 만들거나 고치거나 지운 뒤, 그리고 같은 배정으로 바꿀 때 부른다.
+export async function syncSameRooms(eventId: string): Promise<void> {
+  if (!(await roomState(eventId)).same) return;
+  const s = await getStore();
+  const ev = (await s.list("Events")).find((e) => e.id === eventId);
+  const nights = ev ? nightsOf(ev.startsAt ?? "", ev.endsAt ?? "") : [];
+  if (nights.length < 2) return;
+  const all = await rooms(eventId);
+  const base = all.filter((r) => r.date === nights[0]);
+  for (const r of all) if (r.date !== nights[0]) await s.remove("Rooms", r.id);
+  for (const n of nights.slice(1)) {
+    for (const r of base) await s.insert("Rooms", { eventId, date: n, name: r.name, capacity: String(r.capacity), memo: r.memo, guests: JSON.stringify(r.guests) });
+  }
+}

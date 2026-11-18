@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
-import { roomConflict, rooms, saveRoomState, suggestRoomName, toRoom, validDate } from "@/lib/rooms";
+import { roomConflict, rooms, saveRoomState, suggestRoomName, syncSameRooms, toRoom, validDate } from "@/lib/rooms";
 import { getStore } from "@/lib/store";
 
 type Ctx = { params: Promise<{ id: string; rid: string }> };
@@ -36,6 +36,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (why) return bad(why, 409);
   await s.update("Rooms", rid, { date: next.date, name: next.name, capacity: String(next.capacity), memo: next.memo, guests: JSON.stringify(next.guests) });
   await saveRoomState(id, { published: false, publishedAt: "" });
+  await syncSameRooms(id);
   return NextResponse.json({ ok: true });
 }
 
@@ -47,5 +48,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if (!(await s.list("Rooms")).some((r) => r.id === rid && r.eventId === id)) return bad("방을 찾을 수 없어요.", 404);
   await s.remove("Rooms", rid);
   await saveRoomState(id, { published: false, publishedAt: "" });
+  await syncSameRooms(id);
   return NextResponse.json({ ok: true });
 }

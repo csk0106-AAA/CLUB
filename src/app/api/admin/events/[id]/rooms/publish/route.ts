@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
-import { roomState, rooms, saveRoomState, validDate } from "@/lib/rooms";
+import { roomState, rooms, saveRoomState, syncSameRooms, validDate } from "@/lib/rooms";
 import { getStore } from "@/lib/store";
 
 const body = z.object({
-  action: z.enum(["publish", "unpublish", "copy"]),
-  from: z.string().refine(validDate).optional(),
-  to: z.string().refine(validDate).optional(),
+  action: z.enum(["publish", "unpublish", "copy", "mode"]),
+  same: z.boolean().optional(), // mode: true = 모든 밤 같은 배정, false = 날짜별 배정
+  from: z.preprocess((v) => (v === "" ? undefined : v), z.string().refine(validDate).optional()), // 빈 값은 없는 것으로
+  to: z.preprocess((v) => (v === "" ? undefined : v), z.string().refine(validDate).optional()),
 });
 
 // publish: 확인(회원에게 배포) / unpublish: 배포 취소 / copy: 한 날짜의 방 구성(방 이름·정원·투숙자)을 다른 날짜로 복사
@@ -20,6 +21,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const s = await getStore();
   const { action, from, to } = parsed.data;
 
+  // 배정 방식 바꾸기: 같은 배정으로 바꾸면 첫날 밤 구성으로 나머지 밤을 맞춘다(날짜별로 바꾸면 지금 배정을 그대로 두고 따로 고친다)
+  if (action === "mode") {
+    await saveRoomState(id, { same: !!parsed.data.same, published: false, publishedAt: "" });
+    await syncSameRooms(id);
+    return NextResponse.json({ ok: true });
+  }
   if (action === "unpublish") {
     await saveRoomState(id, { published: false, publishedAt: "" });
     return NextResponse.json({ ok: true });

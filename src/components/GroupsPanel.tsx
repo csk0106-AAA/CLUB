@@ -21,7 +21,7 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
   const [sources, setSources] = useState<{ id: string; name: string; teamCount: number }[]>([]);
   const [from, setFrom] = useState("");
   // 고른 조편성의 제목 고치기
-  const [rename, setRename] = useState("");
+  const [rename, setRename] = useState<string | null>(null); // null = 고치는 중이 아님(현재 이름을 보여 줌)
 
   const load = useCallback(async () => {
     const r = await api<{ groups: G[]; sources?: { id: string; name: string; teamCount: number }[] }>(base);
@@ -47,9 +47,10 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
     setSel(r.data.id);
   }
   async function saveTitle(g: G) {
-    const t = rename.trim();
-    if (!t || t === g.title) return setRename(g.title);
+    const t = (rename ?? "").trim();
+    if (!t || t === g.title) return setRename(null); // 비우고 나가면 원래 이름으로
     const r = await api(`${base}/${g.id}`, { method: "PATCH", body: { title: t } });
+    setRename(null);
     setNote(r.ok ? { tone: "info", text: "조편성 이름을 바꿨어요." } : { tone: "bad", text: r.error });
     load();
   }
@@ -62,7 +63,7 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
 
   if (!list) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
   const cur = list.find((g) => g.id === sel);
-  const titleNow = cur && rename === "" ? cur.title : rename;
+  const titleNow = rename ?? cur?.title ?? "";
 
   return (
     <>
@@ -70,7 +71,7 @@ export function GroupsPanel({ eventId, canEdit }: { eventId: string; canEdit: bo
       <span className="small">활동마다 조를 따로 만들 수 있어요. 조편성 이름과 조 이름(1조, 2조…)은 칸을 눌러 바로 고칠 수 있어요. 배포한 조편성은 해당 회원의 일정 화면에 “내 조”로 나와요.</span>
       <div className="subnav" role="tablist" aria-label="조편성 목록">
         {list.map((g) => (
-          <a key={g.id} href="#" role="tab" aria-selected={sel === g.id} className={sel === g.id ? "on" : ""} onClick={(e) => { e.preventDefault(); setSel(g.id); setRename(""); }}>
+          <a key={g.id} href="#" role="tab" aria-selected={sel === g.id} className={sel === g.id ? "on" : ""} onClick={(e) => { e.preventDefault(); setSel(g.id); setRename(null); }}>
             {g.title}{g.published ? " ✓" : ""}
           </a>
         ))}
