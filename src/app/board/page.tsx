@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApplyNotice } from "@/components/ApplyNotice";
 import { ConsentSheet } from "@/components/ConsentSheet";
+import { EventRail } from "@/components/EventRail";
 import { FreshChip } from "@/components/FreshChip";
 import { IconClip, IconMegaphone, IconPin } from "@/components/Icons";
 import { type AvatarView } from "@/components/Avatars";
@@ -20,7 +21,7 @@ import { fs } from "@/lib/fs";
 
 type Me = { name: string; consent: boolean; avatar: AvatarView };
 
-// 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
+// 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 예정된 일정 카드(롤링), 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
 export default function BoardPage() {
   const router = useRouter();
   const [who, setWho] = useState<Me | null>(null);
@@ -74,6 +75,8 @@ export default function BoardPage() {
     <main className="app with-tabs" style={{ gap: 8 }}>
       {/* 윗줄: 홈·일정·프로필 북 공통(프로필 + 모임 이름·회원 이름 + 알림·조직도·로그아웃) */}
       <MainHeader openAlerts={alertsOpen} onAlertsClosed={() => { setAlertsOpen(false); load(); }} />
+      {/* 예정된 일정 카드(옆으로 넘기기·자동 넘김). 일정이 없으면 그리지 않는다 */}
+      <EventRail />
       <div className="row" style={{ marginTop: 4 }}>
         <h1 className="title grow">게시글</h1>
         {me?.canWrite && (

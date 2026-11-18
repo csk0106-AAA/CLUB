@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { memberFee, payable } from "@/lib/fee";
-import { eventVisible, inClubOrObserver } from "@/lib/audience";
+import { eventJoinable, eventVisible, inClubOrObserver } from "@/lib/audience";
+import { parseJson } from "@/lib/api";
 import { fixLegacyTypes, migrateMinutesPosts } from "@/lib/event-migrate";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { readEditors } from "@/lib/editors";
@@ -31,7 +32,21 @@ export async function GET() {
   // 예전 데이터 옮기기(여러 번 불러도 같다): 게시판 회의록 → 회의 일정, 전체정기모임 → 정기모임
   await migrateMinutesPosts().catch(() => 0);
   const s = await getStore();
-  const [events, applies, members] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members")]);
+  const [events, applies, members, photos] = await Promise.all([s.list("Events"), s.list("EventApplies"), s.list("Members"), s.list("EventPhotos")]);
+  // 일정별 대표 사진(좋아요가 가장 많은 사진, 같으면 먼저 올린 사진)과 사진 수. 사진 내용은 읽지 않는다(목록 행만).
+  const coverOf = new Map<string, { id: string; likes: number; at: string; n: number }>();
+  for (const p of photos) {
+    const likes = parseJson<string[]>(p.likes, []).length;
+    const c = coverOf.get(p.eventId);
+    if (!c) coverOf.set(p.eventId, { id: p.id, likes, at: p.createdAt ?? "", n: 1 });
+    else {
+      c.n++;
+      if (likes > c.likes || (likes === c.likes && (p.createdAt ?? "") < c.at)) Object.assign(c, { id: p.id, likes, at: p.createdAt ?? "" });
+    }
+  }
+  // 일정별 참석 인원
+  const goingOf = new Map<string, number>();
+  for (const a of applies) if (a.answer === "참석") goingOf.set(a.eventId, (goingOf.get(a.eventId) ?? 0) + 1);
   await fixLegacyTypes(events);
   const mine = applies.filter((a) => a.memberId === session.mid);
   const me = members.find((m) => m.id === session.mid);
@@ -85,6 +100,10 @@ export async function GET() {
         feeDue: attending && hasFee && a?.paid !== "true",
         feePaid: attending && hasFee && a?.paid === "true",
         payNotice: attending && hasFee && a?.paid !== "true" && Boolean(a?.payNotice),
+        going: goingOf.get(e.id) ?? 0, // 참석 인원
+        // 대표 사진(사진첩을 볼 수 있는 회원에게만: /api/events/[id]/photos/[pid]?size=thumb — lib/event-photos.ts 와 같은 기준)
+        cover: eventJoinable(e, me ?? session.mid) ? coverOf.get(e.id)?.id ?? "" : "",
+        photoCount: coverOf.get(e.id)?.n ?? 0,
       };
     })
     .sort((x, y) => {

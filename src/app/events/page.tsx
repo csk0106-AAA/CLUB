@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApplyNotice } from "@/components/ApplyNotice";
 import { ConsentSheet } from "@/components/ConsentSheet";
-import { EventCalendar } from "@/components/EventCalendar";
 import { EventCreate } from "@/components/EventCreate";
 import { IconPin } from "@/components/Icons";
 import { MainHeader } from "@/components/MainHeader";
 import { FreshChip, type Fresh } from "@/components/FreshChip";
 import { MemberTabs, markSeenAfterList } from "@/components/MemberTabs";
+import { WeekStrip } from "@/components/WeekStrip";
 import { api, fmtDate, fmtWhen, TYPE_TONE } from "@/lib/client";
 import { fs } from "@/lib/fs";
 import { creatableTypes } from "@/lib/perm-keys";
@@ -36,38 +36,23 @@ type Ev = {
   mine?: boolean; // 내가 만든 일정
   outside?: boolean; // 공개 대상 밖의 일정(일정 관리 권한이 있는 회원에게만 온다)
   fresh?: Fresh | null; // 마지막으로 본 뒤 새로 공개(NEW) / 바뀜(UP)
+  going?: number; // 참석 인원
+  cover?: string; // 대표 사진 id(사진첩을 볼 수 있을 때만)
+  photoCount?: number;
 };
 type Me = { name: string; consent: boolean; admin: boolean; livePerms?: string[]; clubOptions?: string[] };
-type View = "list" | "calendar";
-// 고른 보기(리스트/캘린더)는 이 기기에만 기억한다.
-const VIEW_KEY = "club:events-view";
-function readView(): View {
-  try {
-    return localStorage.getItem(VIEW_KEY) === "calendar" ? "calendar" : "list";
-  } catch {
-    return "list";
-  }
-}
 
-// ② 예정된 일정. 순서는 서버(/api/events)가 정한다: 고정 → 참석 예정·미응답·내 클럽 → 불참·다른 클럽 → 지난 일정.
+const PAST_STEP = 10; // 지난 일정은 10개씩 더 보기
+
+// ② 일정 › 타임라인: 위에 주간 달력, 아래에 날짜별 일정 피드(다가오는 일정 → 날짜 미정 → 지난 일정).
+// 날짜를 누르면 피드가 그날(없으면 그 뒤 가장 가까운 날)로 이동한다. 고정 일정은 맨 위에 따로 보여 준다.
 export default function EventsPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [events, setEvents] = useState<Ev[] | null>(null);
   const [error, setError] = useState("");
-  const [view, setView] = useState<View>("list");
-  // 지난 일정은 늘 접힌 채로 시작한다(펼침 상태는 기억하지 않음).
-  const [showPast, setShowPast] = useState(false);
-  useEffect(() => setView(readView()), []);
-  function toggleView() {
-    const next: View = view === "list" ? "calendar" : "list";
-    setView(next);
-    try {
-      localStorage.setItem(VIEW_KEY, next);
-    } catch {
-      // 저장소를 못 쓰는 환경: 이번에만 적용
-    }
-  }
+  const [day, setDay] = useState("");
+  const [pastShown, setPastShown] = useState(PAST_STEP);
 
   useEffect(() => {
     (async () => {
@@ -88,31 +73,47 @@ export default function EventsPage() {
   }, [router]);
 
   const locked = me ? !me.consent : true;
-  // 일정 만들기: 일정 권한(all/events), 일정 관리 화면: 일정·회비 권한(all/events/fees) — 지금 DB 기준 권한
-  const perms = me?.livePerms ?? [];
   // 일정관리(모든 일정) 또는 일정 만들기 권한(evMain·evClub: 정해진 종류만, 내가 만든 일정만 관리)
+  const perms = me?.livePerms ?? [];
   const canManageAll = perms.includes("all") || perms.includes("events");
   const canCreate = canManageAll || perms.includes("evMain") || perms.includes("evClub");
   const createTypes = creatableTypes(perms);
   const canManageOf = (e: Ev) => canManageAll || !!e.mine;
   const [creating, setCreating] = useState(false);
 
-  // 일정은 모두 일정 화면(/events/[id] 한 페이지: 개요 정보 + 참석 신청)으로 간다.
-  // 초안·공개 대상 밖의 일정은 내 회원 화면이 없으므로 관리 화면으로 간다.
+  // 일정은 모두 일정 화면(/events/[id])으로 간다. 초안·공개 대상 밖의 일정은 관리 화면으로.
   // 관리 화면 주소: 클럽 일정은 ?club= 을 붙여 위쪽 메뉴가 클럽관리로, 돌아가기는 그 클럽의 일정 목록으로.
   const manageHref = (e: Ev) => `/admin/events/${e.id}${e.club ? `?club=${encodeURIComponent(e.club)}` : ""}`;
   const hrefOf = (e: Ev) => (e.draft || e.outside ? manageHref(e) : `/events/${e.id}`);
-  function open(e: Ev) {
-    router.push(hrefOf(e));
+
+  const shown = useMemo(() => events?.filter((e) => !e.draft) ?? [], [events]);
+  const drafts = events?.filter((e) => e.draft) ?? [];
+  const pinned = shown.filter((e) => e.pinned && !e.past);
+  // 다가오는 일정: 날짜순(서버 순서는 참석 상태로 묶여 있어 타임라인에서는 날짜로 다시 정렬)
+  const upcoming = shown.filter((e) => !e.past && !e.pinned && e.startsAt).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const undated = shown.filter((e) => !e.past && !e.pinned && !e.startsAt);
+  const past = shown.filter((e) => e.past); // 서버가 최근 것 먼저 보낸다
+
+  // 다가오는 일정을 날짜(한국 시간)별로 묶는다
+  const byDay = useMemo(() => {
+    const m = new Map<string, Ev[]>();
+    for (const e of upcoming) {
+      const k = dayKey(e.startsAt);
+      m.set(k, [...(m.get(k) ?? []), e]);
+    }
+    return [...m.entries()];
+  }, [upcoming]);
+
+  // 주간 달력에서 날짜를 고르면 그날(없으면 그 뒤 가장 가까운 날, 지난 날이면 지난 일정)로 이동
+  function pick(d: string) {
+    setDay(d);
+    const target = byDay.find(([k]) => k >= d)?.[0];
+    const id = target ? `tl-${target}` : past.some((e) => dayKey(e.startsAt) <= d) ? "tl-past" : "";
+    if (id) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
-  const shown = events?.filter((e) => !e.draft) ?? [];
-  const drafts = events?.filter((e) => e.draft) ?? [];
-  const upcoming = shown.filter((e) => !e.past);
-  const past = shown.filter((e) => e.past);
-
-  // 일정 카드(목업 C): 칩 줄(고정·유형 + 오른쪽 내 상태) → 왼쪽 날짜 칸(월/일/요일) | 이름·일시·장소
-  // 일정 관리 권한이 있으면 카드 아래 "일정 관리"(관리 화면, 관리자 비밀번호를 아직 확인하지 않았으면 그 화면에서 묻는다)
+  // 타임라인 카드: 왼쪽 대표 사진(없으면 날짜 칸) | 칩 줄 → 이름 → 일시·장소 → 참석 인원·사진 수 → 회비 상태
+  // 일정 관리 권한이 있으면 카드 아래 "일정 관리"
   const item = (e: Ev) => {
     const d = dateParts(e.startsAt);
     const dim = !e.canApply && !e.draft;
@@ -123,27 +124,35 @@ export default function EventsPage() {
       : dim ? <span className="st" style={{ color: "var(--sub)", fontWeight: 500 }}>내 클럽 아님 · 신청 가능</span>
       : null;
     return (
-      <div key={e.id} className={`evcard${dim ? " dim" : ""}`}>
-        <button type="button" disabled={locked} onClick={() => open(e)}>
-          <span className="top">
-            {e.pinned && !e.past && <span className="chip red"><IconPin size={12} />고정</span>}
-            <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
-            {e.draft && <span className="chip gray">초안 · 회원에게 안 보임</span>}
-            {e.outside && <span className="chip line">공개 대상 아님 · 관리자만 보임</span>}
-            <FreshChip fresh={e.fresh} />
-            {status}
-          </span>
+      <div key={e.id} className={`evcard tl${dim ? " dim" : ""}`}>
+        <button type="button" disabled={locked} onClick={() => router.push(hrefOf(e))}>
           <span className="body">
-            <span className="date" aria-hidden="true">
-              {d ? <>{d.m}월<b>{d.d}</b>{d.w}</> : <>날짜<b>–</b>미정</>}
-            </span>
+            {e.cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className="tl-thumb" src={`/api/events/${e.id}/photos/${e.cover}?size=thumb`} alt="" loading="lazy" />
+            ) : (
+              <span className="tl-thumb tl-date" aria-hidden="true">
+                {d ? <>{d.m}월<b>{d.d}</b>{d.w}</> : <>날짜<b>–</b>미정</>}
+              </span>
+            )}
             <span className="info">
+              <span className="top">
+                {e.pinned && !e.past && <span className="chip red"><IconPin size={12} />고정</span>}
+                <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
+                {e.draft && <span className="chip gray">초안 · 회원에게 안 보임</span>}
+                {e.outside && <span className="chip line">공개 대상 아님 · 관리자만 보임</span>}
+                <FreshChip fresh={e.fresh} />
+              </span>
               <span className="n">{e.name}</span>
               <span className="s">{fmtWhen(e.startsAt, e.endsAt, e.place)}</span>
-              {(e.feeDue || e.feePaid) && (
-                <span style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
+              {((e.going ?? 0) > 0 || (e.photoCount ?? 0) > 0) && (
+                <span className="s">{[(e.going ?? 0) > 0 ? `${e.going}명 참석` : "", (e.photoCount ?? 0) > 0 ? `사진 ${e.photoCount}장` : ""].filter(Boolean).join(" · ")}</span>
+              )}
+              {(status || e.feeDue || e.feePaid) && (
+                <span style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center", marginTop: 2 }}>
                   {e.feeDue && (e.payNotice ? <span className="chip warn">₩ 입금 확인 중</span> : <span className="chip red">₩ 회비 미입금</span>)}
                   {e.feePaid && <span className="chip violet">회비 입금 ✓</span>}
+                  {status}
                 </span>
               )}
             </span>
@@ -162,17 +171,8 @@ export default function EventsPage() {
     <main className="app with-tabs">
       {/* 윗줄: 홈·프로필 북과 같은 공통 머리(프로필 + 이름 + 알림·조직도·로그아웃) */}
       <MainHeader />
-      {/* 제목 줄: 제목 + 리스트|캘린더 보기 전환 (+ 일정 만들기) */}
-      <div className="row" style={{ marginTop: 4, flexWrap: "wrap", gap: 8 }}>
-        <h1 className="title grow" style={{ whiteSpace: "nowrap" }}>예정된 일정</h1>
-        <div className="seg" role="group" aria-label="보기 방식" style={{ flex: "none" }}>
-          <button type="button" aria-pressed={view === "list"} onClick={() => view !== "list" && toggleView()} style={{ minHeight: 36, padding: "0 12px", fontSize: fs(13) }}>
-            리스트
-          </button>
-          <button type="button" aria-pressed={view === "calendar"} onClick={() => view !== "calendar" && toggleView()} style={{ minHeight: 36, padding: "0 12px", fontSize: fs(13) }}>
-            캘린더
-          </button>
-        </div>
+      <div className="row" style={{ marginTop: 4, gap: 8 }}>
+        <h1 className="title grow" style={{ whiteSpace: "nowrap" }}>타임라인</h1>
         {canCreate && (
           <button type="button" className="btn" style={{ width: "auto", minHeight: 36, padding: "0 12px", flex: "none", fontSize: fs(13), fontWeight: 500 }} aria-haspopup="dialog" disabled={locked} onClick={() => setCreating(true)}>
             + 일정 만들기
@@ -182,21 +182,41 @@ export default function EventsPage() {
 
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}
-      {view === "list" && events && upcoming.length === 0 && <div className="msg info">아직 예정된 일정이 없어요.</div>}
 
-      {view === "calendar" && events && <EventCalendar events={shown} renderItem={item} hrefOf={hrefOf} />}
+      {events && <WeekStrip events={shown} selected={day} onPick={pick} />}
 
-      {view === "list" && upcoming.length > 0 && <div className="evlist">{upcoming.map(item)}</div>}
-
-      {view === "list" && past.length > 0 && (
-        <section aria-label="지난 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <button type="button" className="morebtn" aria-expanded={showPast} aria-controls="past-list" onClick={() => setShowPast(!showPast)}>
-            {showPast ? "지난 일정 접기 ▴" : `지난 일정 ${past.length}개 보기 ▾`}
-          </button>
-          {showPast && <div id="past-list" className="evlist">{past.map(item)}</div>}
+      {pinned.length > 0 && (
+        <section aria-label="고정 일정" className="tl-group">
+          <h2 className="tl-h"><IconPin size={14} /> 고정</h2>
+          <div className="evlist">{pinned.map(item)}</div>
         </section>
       )}
-      {view === "list" && upcoming.length > 0 && <p className="hint" style={{ fontSize: fs(12) }}>일정을 누르면 그 일정에 필요한 화면으로 이동해요. 다른 클럽 일정은 읽어 볼 수 있고, 가입이나 참관을 신청할 수 있어요.</p>}
+
+      {events && byDay.length === 0 && undated.length === 0 && pinned.length === 0 && <div className="msg info">아직 예정된 일정이 없어요.</div>}
+
+      {byDay.map(([k, list]) => (
+        <section key={k} id={`tl-${k}`} aria-label={dayLabel(k)} className={`tl-group${day && k === day ? " on" : ""}`}>
+          <h2 className="tl-h">{dayLabel(k)}{dday(k) && <span className="tl-dday">{dday(k)}</span>}</h2>
+          <div className="evlist">{list.map(item)}</div>
+        </section>
+      ))}
+
+      {undated.length > 0 && (
+        <section aria-label="날짜 미정" className="tl-group">
+          <h2 className="tl-h">날짜 미정</h2>
+          <div className="evlist">{undated.map(item)}</div>
+        </section>
+      )}
+
+      {past.length > 0 && (
+        <section id="tl-past" aria-label="지난 일정" className="tl-group">
+          <div className="tl-sep"><span>지난 일정</span></div>
+          <div className="evlist">{past.slice(0, pastShown).map(item)}</div>
+          {past.length > pastShown && (
+            <button type="button" className="morebtn" onClick={() => setPastShown(pastShown + PAST_STEP)}>지난 일정 더 보기 ({past.length - pastShown}개 남음) ▾</button>
+          )}
+        </section>
+      )}
 
       {drafts.length > 0 && (
         <section aria-label="공개 전 초안" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -226,4 +246,22 @@ function dateParts(startsAt: string): { m: number; d: number; w: string } | null
   if (!x) return null;
   const [y, m, d] = [Number(x[1]), Number(x[2]), Number(x[3])];
   return { m, d, w: DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] };
+}
+// 한국 시간 날짜 "YYYY-MM-DD"
+function dayKey(startsAt: string): string {
+  return fmtDate(startsAt).replace(/\//g, "-");
+}
+// "12월 11일 (목)" — 올해가 아니면 연도도
+function dayLabel(k: string): string {
+  const [y, m, d] = k.split("-").map(Number);
+  const w = DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${y !== new Date().getFullYear() ? `${y}년 ` : ""}${m}월 ${d}일 (${w})`;
+}
+// 오늘 / 내일 / D-n
+function dday(k: string): string {
+  const t = new Date();
+  const today = Date.UTC(t.getFullYear(), t.getMonth(), t.getDate());
+  const [y, m, d] = k.split("-").map(Number);
+  const n = Math.round((Date.UTC(y, m - 1, d) - today) / 86_400_000);
+  return n === 0 ? "오늘" : n === 1 ? "내일" : n > 1 ? `D-${n}` : "";
 }
