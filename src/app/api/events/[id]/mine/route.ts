@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { bad, guard, parseJson } from "@/lib/api";
 import { teams, teamsState } from "@/lib/capsule";
-import { DIRS, DIR_LABEL, carpoolState, cars } from "@/lib/carpool";
+import { DIRS, DIR_LABEL, carpoolState, cars, driverLabel, legSeats } from "@/lib/carpool";
+import { carRequests, visibleRiders } from "@/lib/car-requests";
 import { roomState, rooms } from "@/lib/rooms";
 import { gTeams } from "@/lib/groups";
 import { eventVisible } from "@/lib/audience";
@@ -60,17 +61,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     });
   }
 
-  // 구간별(갈 때 → 올 때)로 내가 운전하거나 타는 차량
+  // 구간별(갈 때 → 올 때)로 내가 운전하거나 타는 차량. 확정된 자리만 보인다(승인만 되고 확정 전이면 안 보임).
+  const carReqs = await carRequests(id);
   const myCars = state.published
     ? DIRS.flatMap((d) =>
         all
-          .filter((c) => c[d].on && (c.driverId === g.s.mid || c[d].riders.includes(g.s.mid)))
-          .map((c) => ({
-            dir: d, leg: DIR_LABEL[d], name: c.name, plate: c.plate, from: c[d].from, to: c[d].to, departAt: c[d].departAt, arriveAt: c[d].arriveAt,
-            driver: nm(c.driverId), iDrive: !!c.driverId && c.driverId === g.s.mid, riders: c[d].riders.filter((x) => x !== g.s.mid).map(nm), seats: c.seats,
-            // 이 차에 타는 모든 사람(운전자 먼저, 나 포함)
-            people: [...(c.driverId ? [`${nmMe(c.driverId)} · 운전`] : []), ...c[d].riders.filter((x) => x !== c.driverId).map(nmMe)],
-          })),
+          .filter((c) => c[d].on && ((c.kind !== "rental" && c.driverId === g.s.mid) || visibleRiders(c, d, carReqs).includes(g.s.mid)))
+          .map((c) => {
+            const seen = visibleRiders(c, d, carReqs);
+            const driver = driverLabel(c, nm);
+            return {
+              dir: d, leg: DIR_LABEL[d], name: c.name, plate: c.plate, from: c[d].from, to: c[d].to, departAt: c[d].departAt, arriveAt: c[d].arriveAt,
+              driver, iDrive: c.kind !== "rental" && !!c.driverId && c.driverId === g.s.mid, riders: seen.filter((x) => x !== g.s.mid).map(nm), seats: legSeats(c, d), memo: c[d].memo,
+              // 이 차에 타는 모든 사람(운전자 먼저, 나 포함). 외부 대절은 운전자 이름 그대로
+              people: [...(driver ? [`${c.kind !== "rental" && c.driverId ? nmMe(c.driverId) : driver} · 운전`] : []), ...seen.filter((x) => x !== c.driverId).map(nmMe)],
+            };
+          }),
       )
     : [];
 

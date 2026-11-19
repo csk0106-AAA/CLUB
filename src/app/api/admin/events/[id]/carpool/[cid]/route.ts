@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
-import { applyInput, carInput, cars, conflict, inputPeople, saveCarpoolState, suggestName, timeIssue, toCar, toRow } from "@/lib/carpool";
+import { applyInput, autoName, carInput, cars, conflict, inputPeople, timeIssue, toCar, toRow } from "@/lib/carpool";
+import { dropCar, syncRemoved } from "@/lib/car-requests";
+import { addAlerts } from "@/lib/member-alerts";
 import { getStore } from "@/lib/store";
 
 type Ctx = { params: Promise<{ id: string; cid: string }> };
@@ -19,14 +21,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (inputPeople(parsed.data).some((p) => !members.some((m) => m.id === p))) return bad("명단에 없는 회원이에요.");
 
   const all = await cars(id);
+  const before = toCar(row);
   const next = applyInput(toCar(row), parsed.data);
-  if (!next.name) next.name = suggestName(all.filter((c) => c.id !== cid));
+  if (!next.name) next.name = autoName(next, all, (mid) => members.find((m) => m.id === mid)?.name ?? "");
   const order = timeIssue(next);
   if (order) return bad(order);
   const why = conflict(all, next, new Map(members.map((m) => [m.id, m.name])));
   if (why) return bad(why, 409);
   await s.update("Carpools", cid, toRow(next));
-  await saveCarpoolState(id, { published: false, publishedAt: "" });
+  // 뺀 탑승자의 신청은 취소로, 빈자리에는 대기자를 올린다(확정한 배정은 그대로 보이고, 바꾼 것은 다시 "확정"을 눌러야 알린다)
+  await syncRemoved(id, before, next);
   return NextResponse.json({ ok: true });
 }
 
@@ -36,7 +40,9 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const { id, cid } = await ctx.params;
   const s = await getStore();
   if (!(await s.list("Carpools")).some((c) => c.id === cid && c.eventId === id)) return bad("차량을 찾을 수 없어요.", 404);
+  const gone = (await s.list("Carpools")).find((c) => c.id === cid);
   await s.remove("Carpools", cid);
-  await saveCarpoolState(id, { published: false, publishedAt: "" });
+  const hit = [...new Set([...(gone ? [...JSON.parse(gone.riders || "[]"), ...JSON.parse(gone.backRiders || "[]")] : []), ...(await dropCar(id, cid))])] as string[];
+  await addAlerts(hit, { eventId: id, text: `${gone?.name ?? "차량"}이(가) 없어져서 배정이 풀렸어요. 다른 차량을 신청해 주세요.`, href: `/events/${id}#cars` });
   return NextResponse.json({ ok: true });
 }

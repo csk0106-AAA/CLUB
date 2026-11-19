@@ -8,6 +8,9 @@ import { isDuesHandler, pendingDuesNotices } from "./dues-ledger";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 import { joinerIssuesFor } from "./new-joiners";
+import { pendingIn, unseenFor } from "./car-requests";
+import { runCarpoolDue } from "./car-auto";
+import { unseenAlertsIn } from "./member-alerts";
 
 // 새 글 표시(하단 아이콘 숫자)와 휴대폰 알림 숫자.
 //  - 회원마다 마지막으로 본 시각: Settings "seen:<회원 id>" = { events, posts, profiles } (ISO)
@@ -162,12 +165,15 @@ export async function markCommentsSeen(mid: string): Promise<void> {
 
 // 여러 회원의 숫자를 한 번에 센다(알림 보낼 때 표를 한 번만 읽도록).
 export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
+  await runCarpoolDue(); // 카풀 마감 시각이 지난 일정이 있으면 먼저 자동 처리(알림이 숫자에 바로 잡히게)
   const s = await getStore();
   const [members, events, posts, profiles, stamps, first, requests, groups, comments, applies, duesPays] = await Promise.all([
     s.list("Members"), s.list("Events"), s.list("Posts"), s.list("Profiles"),
     getSetting<Stamps>("eventStamps", {}), getSetting<Stamps>("eventFirstPublished", {}), s.list("ClubRequests"), getPermGroups(),
     s.list("PostComments"), s.list("EventApplies"), s.list("DuesPayments"),
   ]);
+  const carReqs = await s.list("CarRequests");
+  const memberAlerts = await s.list("MemberAlerts");
   // 모임 회비 입금 알림(확인 전): 회비를 관리하는 관리자(모임설정·모든 권한)의 종 숫자에 더한다
   const duesNotices = pendingDuesNotices(duesPays).length;
   // 승인 전 회원 신청(회원정보·모든 권한 관리자의 종 숫자에 더한다. 알림 창에서 누르면 회원신청관리로)
@@ -194,7 +200,11 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
         + payNoticesFor(me, events, applies, groups).length
         + (isDuesHandler(me, groups) ? duesNotices : 0)
         // 신규 회원 확인이 필요한 글·일정(공개 대상을 골라 올렸는데 그 뒤 가입한 회원이 있음)
-        + (await joinerIssuesFor(me, groups, posts, events, members, stamps)).length,
+        + (await joinerIssuesFor(me, groups, posts, events, members, stamps)).length
+        // 차량 배정: 내 신청 결과(확정·반려·취소, 아직 안 봄) + (그 일정 관리자) 승인할 신청
+        + unseenFor(carReqs, mid).length
+        + unseenAlertsIn(memberAlerts, mid).length // 차량 지원 모집·카풀 자동 배정·확정·마감 등
+        + pendingIn(carReqs, managedEventIds(me, events, groups)).length,
     });
   }
   return out;
@@ -210,6 +220,15 @@ export function payNoticesFor(me: Row | undefined, events: Row[], applies: Row[]
   const mine = (ev: Row) => all || (clubs && !!(ev.club ?? "").trim()) || ev.createdBy === me.id || readEditors(ev.editors).includes(me.id);
   const ok = new Set(events.filter(mine).map((e) => e.id));
   return applies.filter((a) => ok.has(a.eventId) && a.payNotice && a.paid !== "true" && a.answer === "참석");
+}
+
+// 이 사람이 관리하는 일정 id(입금 확인·차량 신청 승인 알림): 일정관리·모든 권한, 클럽 일정이면 클럽관리, 만든 사람·편집자
+export function managedEventIds(me: Row | undefined, events: Row[], groups: Awaited<ReturnType<typeof getPermGroups>>): Set<string> {
+  if (!me || isGuest(me.kind)) return new Set();
+  const perms = effectivePerms(me, groups);
+  const all = perms.some((p) => p === "all" || p === "events");
+  const clubs = perms.includes("clubs");
+  return new Set(events.filter((ev) => all || (clubs && !!(ev.club ?? "").trim()) || ev.createdBy === me.id || readEditors(ev.editors).includes(me.id)).map((e) => e.id));
 }
 
 // 회원 신청을 처리하는 관리자인지(회원정보 또는 모든 권한)

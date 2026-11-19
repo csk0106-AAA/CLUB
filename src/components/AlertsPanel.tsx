@@ -26,6 +26,10 @@ export type AlertsData = {
   duesNotices?: { id: string; period: string; periodLabel: string; memberName: string; at: string }[];
   // 신규 회원 확인이 필요한 글·일정(공개 대상을 골라 올렸는데 그 뒤 가입한 회원이 있음)
   joinerIssues?: { kind: "post" | "event"; id: string; title: string; count: number; href: string }[];
+  // 차량 배정: 내 신청 결과(확정·반려·취소) / 내가 승인할 신청(일정별)
+  memberAlerts?: { id: string; text: string; href: string; at: string; eventName: string }[];
+  carResults?: { id: string; eventId: string; eventName: string; car: string; dir: string; status: string; label: string; at: string }[];
+  carPending?: { eventId: string; eventName: string; count: number }[];
 };
 
 const STATUS: Record<string, { text: string; tone: string }> = {
@@ -96,13 +100,51 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   const pays = d.payNotices ?? [];
   const duesN = d.duesNotices ?? [];
   const joins = d.joinerIssues ?? [];
-  const empty = joins.length === 0 && apps === 0 && pays.length === 0 && duesN.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
+  const carR = d.carResults ?? [];
+  const mAl = d.memberAlerts ?? [];
+  const carP = d.carPending ?? [];
+  const empty = mAl.length === 0 && joins.length === 0 && carR.length === 0 && carP.length === 0 && apps === 0 && pays.length === 0 && duesN.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {note && <div className="msg info" role="status">{note}</div>}
       {empty && <div className="msg info">새 알림이 없어요.</div>}
+
+      {mAl.length > 0 && (
+        <section aria-labelledby="al-m" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 id="al-m" style={sectionTitle}>새 알림 {mAl.length}건</h3>
+          {mAl.map((a) => (
+            <Link key={a.id} href={a.href || "/events"} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+              <span className="ic" aria-hidden="true">!</span>
+              <span className="grow"><b>{a.text}</b><span className="t">{fmtDate(a.at)} · 확인하기 ›</span></span>
+            </Link>
+          ))}
+        </section>
+      )}
+
+      {carR.length > 0 && (
+        <section aria-labelledby="al-car" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 id="al-car" style={sectionTitle}>차량 배정 {carR.length}건</h3>
+          {carR.map((r) => (
+            <Link key={r.id} href={`/events/${r.eventId}#cars`} className={`fb ${r.status === "confirmed" ? "info" : "bad"}`} style={{ textDecoration: "none", alignItems: "center" }}>
+              <span className="ic" aria-hidden="true">{r.status === "confirmed" ? "✓" : "!"}</span>
+              <span className="grow"><b>{r.eventName} · {r.dir} {r.car} {r.label}</b><span className="t">{fmtDate(r.at)} · 일정에서 확인하기 ›</span></span>
+            </Link>
+          ))}
+        </section>
+      )}
+      {carP.length > 0 && (
+        <section aria-labelledby="al-carp" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 id="al-carp" style={sectionTitle}>승인할 차량 신청 {carP.reduce((n, x) => n + x.count, 0)}건</h3>
+          {carP.map((p) => (
+            <Link key={p.eventId} href={`/admin/events/${p.eventId}?tab=car`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+              <span className="ic" aria-hidden="true">!</span>
+              <span className="grow"><b>{p.eventName} · 승인 대기 {p.count}건</b><span className="t">일정 관리 › 카풀에서 승인하기 ›</span></span>
+            </Link>
+          ))}
+        </section>
+      )}
 
       {joins.length > 0 && (
         <section aria-labelledby="al-join" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -10,6 +10,7 @@ import { EventMinutes } from "@/components/EventMinutes";
 import { EventPhotos } from "@/components/EventPhotos";
 import { MemberTabs } from "@/components/MemberTabs";
 import { MineInfo } from "@/components/MineInfo";
+import { CarRequestBox } from "@/components/CarRequestBox";
 import { ScheduleView, type SchedItem } from "@/components/ScheduleBoard";
 import { Sheet } from "@/components/Sheet";
 import { ClubRequestCard, type AttendReq, type JoinReq } from "./ClubRequestCard";
@@ -285,6 +286,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {/* 사진첩: 참석한 회원이 올리고 함께 본다(참석 대상이 아니면 그리지 않는다) */}
       <EventPhotos eventId={id} carousel />
       <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />
+      {/* 차량 신청: 관리자가 신청을 받거나 확정했을 때(참석 신청자만 신청할 수 있다) */}
+      {!e.preview && <CarRequestBox eventId={id} />}
       {e.canObserve && <ObserversCard eventId={id} />}
 
       {/* 참석 신청(예전 일정 개요의 아래쪽 그대로) */}

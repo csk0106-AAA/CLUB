@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
-import { applyInput, carInput, carpoolState, cars, conflict, freeFor, inputPeople, newCar, saveCarpoolState, suggestName, timeIssue, toRow } from "@/lib/carpool";
+import { applyInput, autoName, carInput, carpoolState, cars, conflict, freeFor, inputPeople, newCar, timeIssue, toRow } from "@/lib/carpool";
+import { carRequests, REQ_LABEL } from "@/lib/car-requests";
+import { notifyNewCar, runCarpoolDue } from "@/lib/car-auto";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
 
@@ -12,14 +14,26 @@ export async function GET(_req: Request, ctx: Ctx) {
   const g = await guardEv(ctx, ["events"]);
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
+  await runCarpoolDue(); // 마감 시각이 지났으면 먼저 자동 처리
   const s = await getStore();
-  const [members, applies, all, state] = await Promise.all([s.list("Members"), s.list("EventApplies"), cars(id), carpoolState(id)]);
+  const [members, applies, all, state, reqs] = await Promise.all([s.list("Members"), s.list("EventApplies"), cars(id), carpoolState(id), carRequests(id)]);
+  const nm = (mid: string) => members.find((m) => m.id === mid)?.name ?? "(지운 회원)";
   const live = members.filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")));
   const att = live.filter((m) => applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
   const free = freeFor(all, att);
   return NextResponse.json({
     published: state.published,
+    open: !!state.open, // 회원 신청 받기
+    waitUntil: state.waitUntil ?? "", // 카풀신청 마감
+    recruitOn: !!state.recruitOn, recruitUntil: state.recruitUntil ?? "", recruitFrom: state.recruitFrom ?? "", // 차량모집
+    openFrom: state.openFrom ?? "", // 카풀신청 시작
+    // 회원 신청: 승인 대기·대기(처리할 것) + 승인(확정 전)·확정 표시용
+    requests: reqs
+      .filter((r) => ["pending", "waiting", "approved", "confirmed"].includes(r.status))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((r) => ({ id: r.id, carId: r.carId, dir: r.dir, memberId: r.memberId, name: nm(r.memberId), status: r.status, label: REQ_LABEL[r.status], createdAt: r.createdAt, fromCar: r.fromCarId ? all.find((c) => c.id === r.fromCarId)?.name ?? "" : "" })),
     members: live.map((m) => ({ id: m.id, name: m.name })),
+    allMembers: members.filter((m) => !isGuest(m.kind)).map((m) => ({ id: m.id, name: m.name })), // 운전자 검색(참석하지 않는 회원이 운전할 수도 있다)
     attendingIds: att,
     cars: all,
     free,
@@ -40,13 +54,13 @@ export async function POST(req: Request, ctx: Ctx) {
   const names = new Map(members.map((m) => [m.id, m.name]));
   const existing = await cars(id);
   const car = applyInput(newCar(), parsed.data);
-  if (!car.name) car.name = suggestName(existing);
+  // 그룹명을 비우면 차량번호 → 운전자 이름 → "카풀 N조"
+  if (!car.name) car.name = autoName(car, existing, (mid) => names.get(mid) ?? "");
   const order = timeIssue(car);
   if (order) return bad(order);
   const why = conflict(existing, car, names);
   if (why) return bad(why, 409);
   const row = await s.insert("Carpools", { eventId: id, ...toRow(car) });
-  // 구성이 바뀌면 다시 배포해야 한다.
-  await saveCarpoolState(id, { published: false, publishedAt: "" });
+  await notifyNewCar(id, car.name); // 카풀신청 중이면 차 없는 참석자에게 "새 차량"
   return NextResponse.json({ id: row.id });
 }

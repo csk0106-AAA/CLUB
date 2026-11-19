@@ -37,6 +37,8 @@ export const TABS = {
     "club", "observers",
     // coverAt: 일정 대표사진을 올린 시각(사진 내용은 CoverData "event:<id>", lib/covers.ts). 비어 있으면 없음.
     "coverAt",
+    // audSeenAt: 신규 회원 알림을 관리자가 확인한 시각(lib/new-joiners.ts)
+    "audSeenAt",
     // pinned: "true"면 회원 일정 목록 맨 위에 고정
     "pinned",
     // minutes: 회의 일정의 회의록 JSON { heldAt, place, attendees, agenda:[{title, status, note}], followUp } (lib/board.ts minutesData)
@@ -80,6 +82,11 @@ export const TABS = {
   EventPhotoData: ["id", "type", "data", "thumb"],
   // 사진 댓글(사진첩을 볼 수 있는 회원이 씀). 사진·일정을 지우면 함께 지운다.
   //  likes: 좋아요 회원 id 배열 JSON, parentId: 답글이면 원댓글 id(lib/comments.ts)
+  // 차량 배정 신청(lib/car-requests.ts): 구간(dir go|back)별. status pending|approved|confirmed|waiting|rejected|canceled|changed
+  //  fromCarId: 변경 요청이면 원래 탄 차, seen: 회원이 결과(확정·반려·취소)를 봤는지
+  // 회원 한 명에게 가는 알림(lib/member-alerts.ts): 차량 지원 모집·카풀 자동 배정·자동 확정 등
+  MemberAlerts: ["id", "memberId", "eventId", "text", "href", "createdAt", "seen"],
+  CarRequests: ["id", "eventId", "carId", "memberId", "dir", "status", "createdAt", "handledAt", "fromCarId", "seen", "note"],
   PhotoComments: ["id", "eventId", "photoId", "memberId", "body", "createdAt", "updatedAt", "likes", "parentId"],
   // 대표사진(lib/covers.ts): id "org"(모임) | "club:<클럽 이름>". 회원이 올린 일정 사진이 없을 때 일정 카드에 보인다.
   //  data: 긴 변 1600px JPEG, thumb: 400px JPEG(base64). 등록 여부·바뀐 시각은 Settings "covers" 에 따로 둔다(목록을 가볍게).
@@ -105,6 +112,9 @@ export const TABS = {
   Carpools: [
     "id", "eventId", "leg", "driverId", "seats", "from", "departAt", "riders", "to", "arriveAt", "plate", "name",
     "goOn", "backOn", "backFrom", "backDepartAt", "backTo", "backArriveAt", "backRiders",
+    "kind", "driverName", // kind: member(회원 차량) | rental(외부 대절, driverName 에 운전자 이름)
+    "memo", "ownerId", // memo: 메모(경유지 등), ownerId: 차량 지원 모집으로 회원이 직접 등록한 차면 그 회원
+    "goSeats", "backSeats", "goMemo", "backMemo", // 구간(갈 때·올 때)별 좌석·메모
   ],
   // 숙박 숙소배정: date(YYYY-MM-DD) 날짜별 방, guests 는 회원 id 배열 JSON
   Rooms: ["id", "eventId", "date", "name", "capacity", "memo", "guests"],

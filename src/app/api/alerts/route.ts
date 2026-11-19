@@ -7,7 +7,9 @@ import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 import { isDuesHandler, pendingDuesNotices, periodLabel } from "@/lib/dues-ledger";
 import { joinerIssuesFor } from "@/lib/new-joiners";
-import { commentAlertsOf, countsOf, isAppHandler, markCommentsSeen, markSeen, newPostsOf, payNoticesFor } from "@/lib/unread";
+import { pendingIn, REQ_LABEL, unseenFor, type CarReqStatus } from "@/lib/car-requests";
+import { markAlertsSeen, toAlert, unseenAlertsIn } from "@/lib/member-alerts";
+import { commentAlertsOf, managedEventIds, countsOf, isAppHandler, markCommentsSeen, markSeen, newPostsOf, payNoticesFor } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +67,23 @@ export async function GET() {
     : [];
   // 신규 회원 확인이 필요한 글·일정
   const joinerIssues = await joinerIssuesFor(members.find((m) => m.id === mid), groups, await s.list("Posts"), events, members, await getSetting<Record<string, string>>("eventStamps", {}));
+  // 차량 배정: 내 신청 결과(아직 안 봄) / 내가 승인할 신청(일정별)
+  const carRows = await s.list("CarRequests");
+  const carName = async () => new Map((await s.list("Carpools")).map((c) => [c.id, c.name ?? ""]));
+  const cn = await carName();
+  const carResults = unseenFor(carRows, mid).map((r) => ({
+    id: r.id, eventId: r.eventId, eventName: evName(r.eventId), car: cn.get(r.carId) ?? "", dir: r.dir === "back" ? "올 때" : "갈 때",
+    status: r.status, label: REQ_LABEL[r.status as CarReqStatus] ?? r.status, at: r.handledAt || r.createdAt,
+  }));
+  const pend = pendingIn(carRows, managedEventIds(members.find((m) => m.id === mid), events, groups));
+  const carPending = [...new Set(pend.map((r) => r.eventId))].map((eid) => ({ eventId: eid, eventName: evName(eid), count: pend.filter((r) => r.eventId === eid).length }));
+  // 나에게 온 알림(차량 지원 모집·카풀 자동 배정·확정·마감 등)
+  const memberAlerts = unseenAlertsIn(await s.list("MemberAlerts"), mid).map(toAlert).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((a) => ({ id: a.id, text: a.text, href: a.href, at: a.createdAt, eventName: evName(a.eventId) }));
   return NextResponse.json({
+    memberAlerts,
+    carResults,
+    carPending,
     joinerIssues,
     memberApps,
     payNotices,
@@ -90,6 +108,7 @@ export async function POST(req: Request) {
   const s = await getStore();
   await markSeen(g.s.mid, "posts");
   await markCommentsSeen(g.s.mid);
+  await markAlertsSeen(g.s.mid);
   const rows = await s.list("ClubRequests");
   for (const r of rows.filter((x) => x.memberId === g.s.mid && x.status !== "pending" && x.resultSeen !== "true")) {
     await s.update("ClubRequests", r.id, { resultSeen: "true" });
