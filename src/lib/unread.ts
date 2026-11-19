@@ -8,6 +8,7 @@ import { isDuesHandler, pendingDuesNotices } from "./dues-ledger";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 import { joinerIssuesFor } from "./new-joiners";
+import { postLive } from "./post-period";
 import { pendingIn, unseenFor } from "./car-requests";
 import { runCarpoolDue } from "./car-auto";
 import { unseenAlertsIn } from "./member-alerts";
@@ -115,7 +116,8 @@ function newPostsIn(posts: Row[], mid: string, since: string): Row[] {
 // 종 아이콘 숫자에 들어가는 글: 마지막으로 본 뒤 올라오거나 바뀐 글.
 // "받을 알림": 게시글을 켜면 모든 글, 게시글을 끄고 공지만 켜면 공지 글만, 둘 다 끄면 없다.
 // 홈 화면 목록의 "새 글"/"수정됨" 표시와 알림 창 목록이 모두 이 기준을 쓴다(숫자와 표시가 같게).
-function countedPosts(posts: Row[], me: Row, seen: Seen): Row[] {
+function countedPosts(all: Row[], me: Row, seen: Seen): Row[] {
+  const posts = all.filter((p) => postLive(p)); // 게시 기간 밖 글은 세지 않는다
   const n = readPrefs(me.prefs).notify;
   if (n.posts) return newPostsIn(posts, me.id, seen.posts);
   return n.notices ? newPostsIn(posts.filter((p) => p.notice === "true"), me.id, seen.posts) : [];

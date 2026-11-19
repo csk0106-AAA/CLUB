@@ -25,9 +25,11 @@ const postInput = z.object({
   audience: audienceInput.default(ALL),
   notice: z.boolean().default(false),
   pinned: z.boolean().default(false),
+  postFrom: z.string().max(40).default(""), // 게시 기간(비면 계속 게시)
+  postUntil: z.string().max(40).default(""),
 });
 
-export type PostFields = { form: Form; title: string; body: string; data: string; audience: string; notice: string; pinned: string };
+export type PostFields = { form: Form; title: string; body: string; data: string; audience: string; notice: string; pinned: string; postFrom: string; postUntil: string };
 
 // 글쓰기·고치기 입력 검증. 양식별 내용(data)과 공개 대상을 함께 확인한다.
 export async function parsePost(raw: unknown, me: Me, fixedForm?: string): Promise<{ ok: true; v: PostFields } | { ok: false; error: string; status?: number }> {
@@ -47,11 +49,14 @@ export async function parsePost(raw: unknown, me: Me, fixedForm?: string): Promi
   const aud = await cleanAudience(p.data.audience);
   if (typeof aud === "string") return { ok: false, error: aud };
   const audience: Audience = aud;
+  const { postFrom, postUntil } = p.data;
+  if ((postFrom && Number.isNaN(Date.parse(postFrom))) || (postUntil && Number.isNaN(Date.parse(postUntil)))) return { ok: false, error: "게시 기간을 확인해 주세요." };
+  if (postFrom && postUntil && postFrom >= postUntil) return { ok: false, error: "게시 기간의 시작이 끝보다 앞이어야 해요." };
   return {
     ok: true,
     v: {
       form, title: p.data.title, body: p.data.body, data: JSON.stringify(d.data), audience: JSON.stringify(audience),
-      notice: String(p.data.notice), pinned: String(p.data.pinned),
+      notice: String(p.data.notice), pinned: String(p.data.pinned), postFrom, postUntil,
     },
   };
 }
@@ -234,6 +239,7 @@ export async function detail(me: Me, p: Row) {
       id: p.id, form, title: p.title, body: typeof data.club === "string" ? clubText(p.body ?? "", data.club) : p.body, data, audience: aud, audienceText: audienceLabel(aud, { events: evs }),
       notice: p.notice === "true", pinned: p.pinned === "true", files: readFiles(p),
       authorId: p.authorId, authorName: names.get(p.authorId) ?? "", createdAt: p.createdAt, updatedAt: p.updatedAt,
+      postFrom: p.postFrom ?? "", postUntil: p.postUntil ?? "", // 게시 기간(비면 계속)
     },
     canEdit: canEdit(me, p),
     // 게시 뒤 새로 가입했는데 공개 대상에 없는 회원(고칠 수 있는 사람에게만)

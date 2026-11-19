@@ -153,6 +153,8 @@ export const TABS = {
     "editors",
     // audSeenAt: 새로 가입한 회원 알림을 작성자가 확인한 시각(이 뒤에 가입한 회원만 다시 알린다)
     "audSeenAt",
+    // postFrom·postUntil: 게시 기간(비면 계속 게시). 기간 밖이면 회원 게시판에 안 보임(lib/post-period.ts)
+    "postFrom", "postUntil",
   ],
   // 첨부 파일 내용(base64). 게시글 목록을 읽을 때 같이 읽지 않도록 따로 둔다.
   PostFiles: ["id", "postId", "name", "type", "size", "data", "createdAt"],

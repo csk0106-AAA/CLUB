@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { bad } from "@/lib/api";
 import { migrateMinutesPosts } from "@/lib/event-migrate";
 import { notifyPost } from "@/lib/notify";
+import { postLive } from "@/lib/post-period";
 import { getStore } from "@/lib/store";
 import { postFreshness } from "@/lib/unread";
 import { parsePost, sortPosts, summaries } from "./_lib/posts";
@@ -16,7 +17,8 @@ export async function GET() {
   await ensureBoard();
   await migrateMinutesPosts().catch(() => 0); // 예전 회의록 글 → 회의 일정
   const { me } = m;
-  const posts = (await (await getStore()).list("Posts")).filter((p) => canSee(me, p)).sort(sortPosts);
+  // 게시 기간 밖 글은 게시판에 안 보인다(관리자 › 게시글관리에서 본다)
+  const posts = (await (await getStore()).list("Posts")).filter((p) => canSee(me, p) && postLive(p)).sort(sortPosts);
   return NextResponse.json({
     posts: await summaries(me, posts, await postFreshness(me.row.id)),
     me: { canWrite: me.canWrite, manage: me.manage, isAll: me.isAll, tplAdmin: me.tplAdmin },

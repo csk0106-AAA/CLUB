@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AudiencePicker } from "@/components/AudiencePicker";
+import { DateField } from "@/components/DateField";
 import type { Audience } from "@/lib/audience";
 import {
   checkFileType, FILE_ACCEPT, FORM_HINT, FORM_LABEL, fmtSize, IMAGE_ACCEPT, MAX_FILE_BYTES, MAX_FILES,
@@ -147,6 +148,10 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
   const [audience, setAudience] = useState<Audience>(initial?.audience ?? ALL_AUD);
   const [notice, setNotice] = useState(initial?.notice ?? false);
   const [pinned, setPinned] = useState(initial?.pinned ?? false);
+  // 게시 기간: 계속 게시 / 기간 설정(시작 ~ 종료). 종료가 지나면 회원 게시판에서 안 보여요
+  const [periodOn, setPeriodOn] = useState(!!(initial?.postFrom || initial?.postUntil));
+  const [postFrom, setPostFrom] = useState(initial?.postFrom ?? "");
+  const [postUntil, setPostUntil] = useState(initial?.postUntil ?? "");
   const [files, setFiles] = useState<FileMeta[]>(initial?.files ?? []);
   const [pending, setPending] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -227,7 +232,8 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
     if (!form) return;
     setBusy(true);
     setNote(null);
-    const payload = { form, title, body, data, audience, notice, pinned };
+    if (periodOn && !postUntil) { setBusy(false); setNote({ tone: "bad", text: "게시 기간의 종료 일시를 정해 주세요." }); return; }
+    const payload = { form, title, body, data, audience, notice, pinned, postFrom: periodOn ? postFrom : "", postUntil: periodOn ? postUntil : "" };
     const r = savedId
       ? await api<{ id: string }>(`/api/board/${encodeURIComponent(savedId)}`, { method: "PATCH", body: payload })
       : await api<{ id: string }>("/api/board", { body: payload });
@@ -298,6 +304,23 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
           <FormFields form={form} data={data} onChange={touch(setData)} kinds={meta.kinds} positions={meta.positions} agendaLabels={meta.agendaLabels} />
 
           <AudiencePicker value={audience} onChange={touch(setAudience)} />
+
+          {/* 게시 기간 */}
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <b>게시 기간</b>
+            <div className="seg" role="group" aria-label="게시 기간" style={{ alignSelf: "flex-start" }}>
+              <button type="button" aria-pressed={!periodOn} onClick={() => { setDirty(true); setPeriodOn(false); }} style={{ minHeight: 38, padding: "0 14px" }}>계속 게시</button>
+              <button type="button" aria-pressed={periodOn} onClick={() => { setDirty(true); setPeriodOn(true); }} style={{ minHeight: 38, padding: "0 14px" }}>기간 설정</button>
+            </div>
+            {periodOn && (
+              <div className="cp-range">
+                <div><DateField id={`${uid}-pf`} mode="datetime" ariaLabel="게시 시작" value={postFrom} onChange={touch(setPostFrom)} /></div>
+                <span aria-hidden="true">~</span>
+                <div><DateField id={`${uid}-pu`} mode="datetime" ariaLabel="게시 종료" value={postUntil} onChange={touch(setPostUntil)} /></div>
+              </div>
+            )}
+            <span className="small">{periodOn ? "시작을 비우면 올리는 순간부터예요. 종료 일시가 지나면 회원 게시판에서 보이지 않고, 관리자 › 게시글관리에서 볼 수 있어요." : "기간 없이 계속 게시해요."}</span>
+          </div>
 
           <div className="checks" role="group" aria-label="게시 옵션">
             <label><input type="checkbox" checked={notice} onChange={(e) => touch(setNotice)(e.target.checked)} />공지 (목록에 공지 표시)</label>

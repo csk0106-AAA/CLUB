@@ -5,6 +5,7 @@ import { canManage, managedOf } from "@/lib/published";
 import { getStore } from "@/lib/store";
 import { detail, parsePost } from "../_lib/posts";
 import { canEdit, canOwn, canSee, ensureBoard, findPost, forbid, getMe, readFiles } from "../_lib/server";
+import { postLive } from "@/lib/post-period";
 import { removeTalk } from "../_lib/talk";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,8 @@ export async function GET(_req: Request, ctx: Ctx) {
   await ensureBoard();
   const p = await findPost((await ctx.params).id);
   if (!p || !canSee(m.me, p)) return notFound();
+  // 게시 기간 밖: 작성자·편집자·게시글 관리자만 볼 수 있다(회원에게는 없는 글)
+  if (!postLive(p) && !canEdit(m.me, p) && !m.me.manage) return notFound();
   return NextResponse.json(await detail(m.me, p));
 }
 

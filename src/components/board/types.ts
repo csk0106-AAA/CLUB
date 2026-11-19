@@ -43,6 +43,7 @@ export type PostTalk = {
 
 export type PostFull = {
   id: string;
+  postFrom?: string; postUntil?: string; // 게시 기간(비면 계속 게시)
   form: Form;
   title: string;
   body: string;
