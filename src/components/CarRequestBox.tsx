@@ -250,7 +250,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
                 <div><label className="l" htmlFor={`of-${dir}-fr`}>{LABEL[dir]} 출발지</label><input id={`of-${dir}-fr`} className="field" value={offer[dir].from} onChange={(e) => setLeg(dir, { from: e.target.value })} /></div>
                 <div><label className="l" htmlFor={`of-${dir}-dp`}>{LABEL[dir]} 출발 시간</label><DateField id={`of-${dir}-dp`} mode="datetime" value={offer[dir].departAt} onChange={(v) => setLeg(dir, { departAt: v })} /></div>
                 <div><label className="l" htmlFor={`of-${dir}-to`}>{LABEL[dir]} 도착지</label><input id={`of-${dir}-to`} className="field" value={offer[dir].to} onChange={(e) => setLeg(dir, { to: e.target.value })} /></div>
-                <div><label className="l" htmlFor={`of-${dir}-se`}>{LABEL[dir]} {offer.who === "other" ? "좌석수(운전자제외)" : "탈 수 있는 인원 (운전자 포함)"}</label><input id={`of-${dir}-se`} className="field" type="number" min={1} max={12} value={offer[dir].seats || ""} onChange={(e) => setLeg(dir, { seats: Number(e.target.value) })} /></div>
+                <div><label className="l" htmlFor={`of-${dir}-se`}>{LABEL[dir]} {offer.who === "other" ? "좌석 수(운전자 제외)" : "탈 수 있는 인원 (운전자 포함)"}</label><input id={`of-${dir}-se`} className="field" type="number" min={1} max={12} value={offer[dir].seats || ""} onChange={(e) => setLeg(dir, { seats: Number(e.target.value) })} /></div>
                 <div style={{ gridColumn: "1 / -1" }}><label className="l" htmlFor={`of-${dir}-mm`}>{LABEL[dir]} 메모</label><input id={`of-${dir}-mm`} className="field" maxLength={100} placeholder="예: 강남역 경유 가능" value={offer[dir].memo} onChange={(e) => setLeg(dir, { memo: e.target.value })} /></div>
               </div>
             ))}

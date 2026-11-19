@@ -81,7 +81,7 @@ function CarForm({ idp, v, set, members }: { idp: string; v: Form; set: (p: Part
             <div><label className="l" htmlFor={`${idp}-${dir}-dp`}>출발 시간</label><DateField id={`${idp}-${dir}-dp`} mode="datetime" value={v[dir].departAt} onChange={(x) => setLeg(dir, { departAt: x })} /></div>
             <div><label className="l" htmlFor={`${idp}-${dir}-to`}>도착지</label><input id={`${idp}-${dir}-to`} className="field" value={v[dir].to} onChange={(e) => setLeg(dir, { to: e.target.value })} /></div>
             <div><label className="l" htmlFor={`${idp}-${dir}-ar`}>도착 예상 시간</label><DateField id={`${idp}-${dir}-ar`} mode="datetime" value={v[dir].arriveAt} onChange={(x) => setLeg(dir, { arriveAt: x })} /></div>
-            <div><label className="l" htmlFor={`${idp}-${dir}-se`}>{v.kind === "rental" || extDriver ? "좌석수(운전자제외)" : "좌석 수 (운전자 포함)"}</label><input id={`${idp}-${dir}-se`} className="field" type="number" min={1} max={45} value={v[dir].seats || ""} onChange={(e) => setLeg(dir, { seats: Number(e.target.value) })} /></div>
+            <div><label className="l" htmlFor={`${idp}-${dir}-se`}>{v.kind === "rental" || extDriver ? "좌석 수(운전자 제외)" : "좌석 수 (운전자 포함)"}</label><input id={`${idp}-${dir}-se`} className="field" type="number" min={1} max={45} value={v[dir].seats || ""} onChange={(e) => setLeg(dir, { seats: Number(e.target.value) })} /></div>
             <div><label className="l" htmlFor={`${idp}-${dir}-mm`}>메모</label><input id={`${idp}-${dir}-mm`} className="field" maxLength={100} value={v[dir].memo} placeholder="예: 강남역 경유 가능" onChange={(e) => setLeg(dir, { memo: e.target.value })} /></div>
           </div>
         </section>
