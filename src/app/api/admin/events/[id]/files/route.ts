@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
 import { checkFileType, MAX_FILE_BYTES } from "@/lib/board";
-import { fileMeta, MAX_EVENT_FILES } from "@/lib/event-files";
+import { fileMeta, listEventFileMeta, MAX_EVENT_FILES } from "@/lib/event-files";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const { id } = await ctx.params;
   const s = await getStore();
-  const [rows, members] = await Promise.all([s.list("EventFiles"), s.list("Members")]);
+  const [rows, members] = await Promise.all([listEventFileMeta(id), s.list("Members")]);
   const nameOf = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
-  const files = rows.filter((r) => r.eventId === id).sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? "")).map((r) => fileMeta(r, nameOf));
+  const files = rows.sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? "")).map((r) => fileMeta(r, nameOf));
   return NextResponse.json({ files });
 }
 
@@ -28,7 +28,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (len > MAX_FILE_BYTES + 64 * 1024) return bad("파일은 하나에 4MB까지 올릴 수 있어요.", 413);
   const s = await getStore();
   if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
-  if ((await s.list("EventFiles")).filter((r) => r.eventId === id).length >= MAX_EVENT_FILES) return bad(`파일은 일정 하나에 ${MAX_EVENT_FILES}개까지 올릴 수 있어요.`);
+  if ((await listEventFileMeta(id)).length >= MAX_EVENT_FILES) return bad(`파일은 일정 하나에 ${MAX_EVENT_FILES}개까지 올릴 수 있어요.`);
   const form = await req.formData().catch(() => null);
   const f = form?.get("file");
   if (!f || typeof f === "string") return bad("파일을 골라 주세요.");

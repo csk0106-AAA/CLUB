@@ -11,7 +11,8 @@ export async function GET(_req: Request, ctx: Ctx) {
   const g = await guardEv(ctx, "events");
   if ("err" in g) return g.err;
   const { id, fid } = await ctx.params;
-  const r = (await (await getStore()).list("EventFiles")).find((x) => x.id === fid && x.eventId === id);
+  const one = await (await getStore()).get("EventFiles", fid);
+  const r = one && one.eventId === id ? one : null;
   if (!r) return bad("파일을 찾을 수 없어요.", 404);
   return fileResponse(r);
 }
@@ -22,7 +23,8 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const { id, fid } = await ctx.params;
   const s = await getStore();
-  const r = (await s.list("EventFiles")).find((x) => x.id === fid && x.eventId === id);
+  const one = await s.get("EventFiles", fid);
+  const r = one && one.eventId === id ? one : null;
   if (!r) return bad("파일을 찾을 수 없어요.", 404);
   await s.remove("EventFiles", fid);
   return NextResponse.json({ ok: true });

@@ -60,8 +60,7 @@ export const DEFAULT_GUIDELINES = [
 
 // 인터뷰 질문과 AI 지침의 기본값. 관리자가 바꿀 수 있다.
 async function seedInterview(s: Store): Promise<void> {
-  const settings = await s.list("Settings");
-  if (settings.some((r) => r.id === "seeded3")) return;
+  if (await s.get("Settings", "seeded3")) return;
   const put = (id: string, value: unknown) => s.insert("Settings", { id, value: JSON.stringify(value) });
   await put("interviewQuestions", DEFAULT_QUESTIONS);
   await put("aiGuidelines", DEFAULT_GUIDELINES);
@@ -71,8 +70,7 @@ async function seedInterview(s: Store): Promise<void> {
 
 // 송년 워크숍에 기본 활동 3개를 넣는다. 템플릿 설정을 복사해 일정별로 수정할 수 있게 한다.
 async function seedActivities(s: Store): Promise<void> {
-  const settings = await s.list("Settings");
-  if (settings.some((r) => r.id === "seeded2")) return;
+  if (await s.get("Settings", "seeded2")) return;
   const templates = await s.list("ActivityTemplates");
   let order = 1;
   for (const t of templates) {
@@ -89,8 +87,7 @@ async function seedActivities(s: Store): Promise<void> {
 }
 
 async function seedBase(s: Store): Promise<void> {
-  const settings = await s.list("Settings");
-  if (settings.some((r) => r.id === "seeded")) return;
+  if (await s.get("Settings", "seeded")) return;
 
   const put = (id: string, value: unknown) =>
     s.insert("Settings", { id, value: JSON.stringify(value) });
@@ -162,9 +159,10 @@ async function seedBase(s: Store): Promise<void> {
   await put("seeded", true);
 }
 
+// 설정은 한 줄씩(id) 읽는다. 표 전체(회원별 읽음 기록 등)를 매번 읽으면 DB 전송량이 크게 늘어난다.
 export async function getSetting<T>(id: string, fallback: T): Promise<T> {
   const s = await getStore();
-  const row = (await s.list("Settings")).find((r) => r.id === id);
+  const row = await s.get("Settings", id);
   if (!row) return fallback;
   try {
     return JSON.parse(row.value) as T;
@@ -178,9 +176,11 @@ export type ClubNameDisplay = "full" | "short";
 // 회원 화면에 보이는 모임 이름. 관리자 › 모임 설정에서 정식 이름/줄여 쓰는 이름 중 고른다.
 // "short"를 골랐어도 줄인 이름이 비어 있으면 정식 이름을 쓴다.
 export async function getClubNames(): Promise<{ clubName: string; clubShortName: string; clubNameDisplay: ClubNameDisplay; displayName: string }> {
-  const rows = await (await getStore()).list("Settings");
+  const s = await getStore();
+  const ids = ["clubName", "clubShortName", "clubNameDisplay"];
+  const got = await Promise.all(ids.map((id) => s.get("Settings", id)));
   const read = (id: string): string => {
-    const row = rows.find((r) => r.id === id);
+    const row = got[ids.indexOf(id)];
     if (!row) return "";
     try {
       const v = JSON.parse(row.value);
@@ -198,7 +198,7 @@ export async function getClubNames(): Promise<{ clubName: string; clubShortName:
 
 export async function setSetting(id: string, value: unknown): Promise<void> {
   const s = await getStore();
-  const row = (await s.list("Settings")).find((r) => r.id === id);
+  const row = await s.get("Settings", id);
   const v = JSON.stringify(value);
   if (row) await s.update("Settings", id, { value: v });
   else await s.insert("Settings", { id, value: v });

@@ -156,7 +156,7 @@ export function needsHostScreen(cfg: TemplateConfig): boolean {
 // 이미 host 를 정한 템플릿은 건드리지 않는다.
 export async function migrateTemplateHost(s: Store): Promise<{ templates: number; acts: number } | null> {
   const flag = "templateHostMigrated";
-  if ((await s.list("Settings")).some((r) => r.id === flag)) return null;
+  if (await s.get("Settings", flag)) return null;
   const out = { templates: 0, acts: 0 };
   const fix = (json: string | undefined): string | null => {
     const cfg = readConfig(json);
@@ -187,7 +187,7 @@ export function deleteBlock(rows: Row[], acts: Row[], r: Row): string | null {
 // 예전 데이터 정리(한 번만): v1 은 version 1 로, 예전 "일정 템플릿"(origin event)은 원래 템플릿의 새 버전으로 바꾼다.
 export async function migrateTemplateVersions(s: Store): Promise<{ roots: number; converted: number; orphans: number; acts: number } | null> {
   const flag = "templateVersionsMigrated";
-  if ((await s.list("Settings")).some((r) => r.id === flag)) return null;
+  if (await s.get("Settings", flag)) return null;
   const rows = await s.list("ActivityTemplates");
   const byId = new Map(rows.map((r) => [r.id, r]));
   const isOld = (r: Row) => r.origin === "event" || r.origin === "version";

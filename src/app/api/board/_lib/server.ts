@@ -85,8 +85,8 @@ function kstIso(v: string): string {
 
 async function seedBoard(): Promise<void> {
   const s = await getStore();
-  const settings = await s.list("Settings");
-  const has = (id: string) => settings.some((r) => r.id === id);
+  const flags = { boardSeeded: !!(await s.get("Settings", "boardSeeded")), minutesMigrated: !!(await s.get("Settings", "minutesMigrated")) };
+  const has = (id: "boardSeeded" | "minutesMigrated") => flags[id];
   if (has("boardSeeded") && has("minutesMigrated")) return;
   const members = await s.list("Members");
   const groups = await getPermGroups();
