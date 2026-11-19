@@ -212,14 +212,15 @@ export default function EventsPage() {
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}
 
-      {/* 일정 피드 맨 위: 일정 만들기(권한이 있을 때) */}
-      {canCreate && (
-        <div className="tl-create">
+      {/* 일정 피드 맨 위: 왼쪽 "타임라인" 제목(게시글 제목과 같은 글꼴·크기) · 오른쪽 일정 만들기(권한이 있을 때) */}
+      <div className="row tl-create" style={{ marginTop: 4 }}>
+        <h2 className="title grow" style={{ margin: 0 }}>타임라인</h2>
+        {canCreate && (
           <button type="button" className="btn wk-create" aria-haspopup="dialog" disabled={locked} onClick={() => setCreating(true)}>
             + 일정 만들기
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {pinned.length > 0 && (
         <section aria-label="고정 일정" className="tl-group">

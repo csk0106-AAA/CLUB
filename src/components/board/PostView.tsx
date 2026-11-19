@@ -92,6 +92,7 @@ function dueLabel(d: FeeSnap): string {
 }
 
 // 모임 회비 입금 확인 요청(일정 회비의 "입금했어요"와 같은 방식). 관리자가 회비입금에서 확인하면 "입금 확인됨".
+// "내 연회비" 금액 카드 안, 금액 바로 아래에 붙여서 보여 준다(따로 카드를 만들지 않음).
 function DuesPayNotice() {
   const [s, setS] = useState<{ periodLabel: string; amount: string; paid: boolean; paidAt: string; notice: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -114,20 +115,19 @@ function DuesPayNotice() {
   }
   if (!s || !(Number(s.amount) > 0)) return null;
   return (
-    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span className="small">{s.periodLabel} 입금</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", borderTop: "1px solid var(--line)", marginTop: 10, paddingTop: 10 }}>
       {s.paid ? (
-        <b style={{ color: "var(--green-t)" }}>입금 확인됐어요 ✓ <span className="small">({fmtDate(s.paidAt)})</span></b>
+        <b style={{ color: "var(--green-t)" }}>{s.periodLabel} 입금 확인됐어요 ✓ <span className="small">({fmtDate(s.paidAt)})</span></b>
       ) : s.notice ? (
         <>
           <b style={{ color: "var(--blue-t)" }}>입금 확인 기다리는 중</b>
           <span className="small">{fmtDate(s.notice)}에 입금했다고 알렸어요. 관리자가 확인하면 바뀌어요.</span>
-          <button className="mini" type="button" disabled={busy} style={{ alignSelf: "flex-start" }} onClick={() => send(false)}>알림 취소</button>
+          <button className="mini" type="button" disabled={busy} onClick={() => send(false)}>알림 취소</button>
         </>
       ) : (
         <>
-          <span className="small">입금한 뒤 아래 버튼을 누르면 관리자에게 입금 확인을 요청해요.</span>
-          <button className="btn" type="button" disabled={busy} style={{ alignSelf: "flex-start", width: "auto", minHeight: 42, fontSize: fs(14) }} onClick={() => send(true)}>입금했어요 (입금 확인 요청)</button>
+          <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 42, fontSize: fs(14) }} onClick={() => send(true)}>입금했어요 (입금 확인 요청)</button>
+          <span className="small">입금한 뒤 누르면 관리자에게 입금 확인을 요청해요.</span>
         </>
       )}
       {err && <div className="msg bad" role="alert">{err}</div>}
@@ -157,6 +157,8 @@ export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap;
         <div className="card center">
           <span className="small">{data.club ? `${clubLabel(data.club)} ` : ""}내 {label}{who ? ` (${who})` : ""}</span>
           <div className="title num" style={{ fontSize: fs(36) }}>{has ? won(myFee.amount) : "없어요"}</div>
+          {/* 모임 회비(클럽 회비 아님): 금액 바로 아래에서 입금 상태 확인·입금 확인 요청 */}
+          {has && !data.club && <DuesPayNotice />}
         </div>
       )}
       {has && (
@@ -174,8 +176,6 @@ export function FeeView({ data, myFee, full, clubJoin = null }: { data: FeeSnap;
         </div>
       )}
       {data.note && <div className="card"><span className="small">안내</span><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{data.note}</div></div>}
-      {/* 모임 회비(클럽 회비 아님): 입금한 뒤 "입금했어요"로 관리자에게 입금 확인 요청 */}
-      {has && !data.club && <DuesPayNotice />}
       {full && data.fromDues && <span className="small">금액과 계좌는 관리자 › 모임설정 › 회비설정에서 바꿀 수 있어요. 입금 확인은 회비입금에서 해요.</span>}
       {full && (
         <details className="card">

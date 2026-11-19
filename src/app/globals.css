@@ -994,7 +994,7 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .wk-right .wk-today { min-height: 34px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: var(--violet-t); font: 700 calc(14px * var(--fs, 1)) var(--body); cursor: pointer; }
 .wk-right .wk-today:hover { text-decoration: underline; }
 .wk-right .wk-today:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.tl-create { display: flex; justify-content: flex-end; margin-top: 2px; }
+.tl-create { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
 /* 회원 일정 화면 맨 위(components/EventHero.tsx): 큰 둥근 사진 + 유형 라벨 → 큰 제목 → 일시·장소 줄 */
 .evhero { display: flex; flex-direction: column; gap: 10px; }
 .evhero-photo { position: relative; aspect-ratio: 1 / 1; max-height: 70vh; border-radius: 28px; overflow: hidden; background: var(--soft); box-shadow: 0 12px 30px var(--shadow); }
