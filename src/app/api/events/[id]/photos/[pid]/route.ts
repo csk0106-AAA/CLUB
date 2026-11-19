@@ -51,6 +51,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청 형식이 맞지 않아요.");
   const patch: Record<string, string> = {};
+  if (parsed.data.like !== undefined && !r.canUpload) return bad("참석 신청한 회원만 좋아요를 누를 수 있어요.", 403);
   if (parsed.data.like !== undefined) {
     const likes = new Set(parseJson<string[]>(r.p.likes, []));
     if (parsed.data.like) likes.add(r.s.mid);
@@ -74,5 +75,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if (r.p.memberId !== r.s.mid && !r.manager) return bad("올린 사람이나 일정 관리자만 지울 수 있어요.", 403);
   await r.store.remove("EventPhotoData", r.p.id);
   await r.store.remove("EventPhotos", r.p.id);
+  // 이 사진의 댓글도 함께
+  for (const c of (await r.store.list("PhotoComments")).filter((x) => x.photoId === r.p.id)) await r.store.remove("PhotoComments", c.id);
   return NextResponse.json({ ok: true });
 }

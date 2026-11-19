@@ -7,6 +7,7 @@ import { gTeams } from "@/lib/groups";
 import { eventVisible } from "@/lib/audience";
 import { readDayPlaces } from "@/lib/day-places";
 import { getStore } from "@/lib/store";
+import { canPreviewEvent } from "@/lib/event-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     s.list("Events"), s.list("EventSchedule"), s.list("Groupings"), s.list("Members"), carpoolState(id), cars(id),
   ]);
   const me = members.find((m) => m.id === g.s.mid);
-  const ev = events.find((e) => e.id === id && eventVisible(e, me ?? g.s.mid));
+  const found = events.find((e) => e.id === id);
+  // 관리하는 사람의 미리보기는 공개전 일정만(공개 대상 밖 일정은 열 수 없다)
+  const ev = found && (eventVisible(found, me ?? g.s.mid) || (found.published !== "true" && (await canPreviewEvent(found, me, g.s.mid)))) ? found : undefined;
   if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   const nm = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
   // 같은 조·차·방 명단: 나도 넣고 "(나)"로 표시

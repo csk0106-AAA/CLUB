@@ -7,6 +7,7 @@ import { readEditors } from "./editors";
 import { isDuesHandler, pendingDuesNotices } from "./dues-ledger";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
+import { joinerIssuesFor } from "./new-joiners";
 
 // 새 글 표시(하단 아이콘 숫자)와 휴대폰 알림 숫자.
 //  - 회원마다 마지막으로 본 시각: Settings "seen:<회원 id>" = { events, posts, profiles } (ISO)
@@ -191,7 +192,9 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
       // + (일정 관리자·작성자·편집자) 확인 전 입금 알림
       alerts: (({ toHandle, results }) => toHandle + results)(countIn(requests, members, mid, groups)) + co + (isAppHandler(me, groups) ? apps : 0)
         + payNoticesFor(me, events, applies, groups).length
-        + (isDuesHandler(me, groups) ? duesNotices : 0),
+        + (isDuesHandler(me, groups) ? duesNotices : 0)
+        // 신규 회원 확인이 필요한 글·일정(공개 대상을 골라 올렸는데 그 뒤 가입한 회원이 있음)
+        + (await joinerIssuesFor(me, groups, posts, events, members, stamps)).length,
     });
   }
   return out;

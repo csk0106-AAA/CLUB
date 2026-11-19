@@ -3,9 +3,10 @@ import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { handlersOf, isAttend, reqLabel } from "@/lib/club-requests";
 import { getPermGroups } from "@/lib/perms";
-import { getStore } from "@/lib/store";
+import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 import { isDuesHandler, pendingDuesNotices, periodLabel } from "@/lib/dues-ledger";
+import { joinerIssuesFor } from "@/lib/new-joiners";
 import { commentAlertsOf, countsOf, isAppHandler, markCommentsSeen, markSeen, newPostsOf, payNoticesFor } from "@/lib/unread";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +63,10 @@ export async function GET() {
       .sort((a, b) => (b.notice ?? "").localeCompare(a.notice ?? ""))
       .map((p) => ({ id: p.id, period: p.period, periodLabel: periodLabel(p.period), memberName: name(p.memberId), at: p.notice }))
     : [];
+  // 신규 회원 확인이 필요한 글·일정
+  const joinerIssues = await joinerIssuesFor(members.find((m) => m.id === mid), groups, await s.list("Posts"), events, members, await getSetting<Record<string, string>>("eventStamps", {}));
   return NextResponse.json({
+    joinerIssues,
     memberApps,
     payNotices,
     duesNotices,

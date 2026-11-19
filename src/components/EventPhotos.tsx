@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Popup } from "./Popup";
+import { PhotoComments } from "./PhotoComments";
 import { useDragScroll } from "./useDragScroll";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 import { MAX_SOURCE, shrink } from "@/lib/image-shrink";
 import { limitMessage } from "@/lib/photo-limit";
+import { zipSync } from "fflate";
 
 // 일정 사진첩: 참석한 회원이 사진을 올리고 함께 본다(회원 일정 화면, 일정관리·클럽관리 › 일정 › 사진첩 탭).
 // 사진은 이 기기에서 긴 변 1600px(원본)·400px(미리보기) JPEG 로 다시 그려 올린다(위치 정보 같은 EXIF 는 따라가지 않는다).
@@ -40,6 +42,43 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
   const [reqNote, setReqNote] = useState("");
   // PC 마우스로 사진 줄을 잡고 끌어 넘기기(components/useDragScroll.ts)
   const dragHandlers = useDragScroll("start");
+  // 전체 사진 내려받기: 이 기기에서 사진을 하나씩 받아 zip 파일 하나로 묶는다(서버 응답 크기 제한을 피하려고 화면에서 묶는다)
+  const [zipping, setZipping] = useState<{ done: number; total: number } | null>(null);
+  async function downloadAll() {
+    if (!list || list.photos.length === 0 || zipping) return;
+    const all = list.photos;
+    setZipping({ done: 0, total: all.length });
+    const files: Record<string, [Uint8Array, { level: 0 }]> = {};
+    let failed = 0;
+    for (let i = 0; i < all.length; i++) {
+      const res = await fetch(src(eventId, all[i].id), { cache: "force-cache" }).catch(() => null);
+      if (res?.ok) {
+        const type = res.headers.get("content-type") ?? "";
+        const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg";
+        const who = (all[i].name || "회원").replace(/[\\/:*?"<>|]/g, ""); // 파일 이름에 못 쓰는 글자 빼기
+        files[`${String(i + 1).padStart(3, "0")}_${who}.${ext}`] = [new Uint8Array(await res.arrayBuffer()), { level: 0 }]; // 사진은 이미 압축돼 있어 묶기만 한다
+      } else failed++;
+      setZipping({ done: i + 1, total: all.length });
+    }
+    setZipping(null);
+    if (Object.keys(files).length === 0) return setError("사진을 받지 못했어요. 잠시 후 다시 눌러 주세요.");
+    const blob = new Blob([new Uint8Array(zipSync(files))], { type: "application/zip" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `사진첩-${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    if (failed) setError(`${failed}장은 받지 못해서 빼고 묶었어요.`);
+  }
+  const dlIcon = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>;
+  // "+ 사진" 옆: 전체 ⬇ (사진이 있을 때)
+  const dlAll = (cls: string) => list && list.photos.length > 0 && (
+    <button type="button" className={cls} disabled={!!zipping} onClick={downloadAll} aria-label={`사진 ${list.photos.length}장 모두 내려받기(zip)`} title="사진 전체 내려받기(zip 파일)">
+      {zipping ? `받는 중 ${zipping.done}/${zipping.total}` : <>전체 {dlIcon}</>}
+    </button>
+  );
 
   const load = useCallback(async () => {
     const r = await api<List>(`/api/events/${eventId}/photos`);
@@ -144,7 +183,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
     <Popup id="event-photo" open={!!cur} onClose={() => setOpen(null)} title={cur ? `${cur.name} 님의 사진` : "사진"} width={720}
       footer={cur && (
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-          <button type="button" className={`btn ${cur.liked ? "" : "white"}`} style={{ width: "auto", minWidth: 96 }} aria-pressed={cur.liked} onClick={() => like(cur)}>
+          <button type="button" className={`btn ${cur.liked ? "" : "white"}`} style={{ width: "auto", minWidth: 96 }} aria-pressed={cur.liked} onClick={() => like(cur)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
             {cur.liked ? "♥" : "♡"} {cur.likes}
           </button>
           <a className="btn white" style={{ width: "auto", minWidth: 96, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
@@ -163,6 +202,8 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
           </div>
           {cur.caption && <p style={{ margin: 0, overflowWrap: "anywhere" }}>{cur.caption}</p>}
           <span className="small">{cur.name} · {when(cur.createdAt)} · {curIdx + 1}/{photos.length}</span>
+          {/* 사진 댓글: 좋아요·답글 */}
+          <PhotoComments eventId={eventId} photoId={cur.id} canWrite={list.canUpload} />
         </div>
       )}
     </Popup>
@@ -185,6 +226,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
               {progress ? `올리는 중 ${progress.done}/${progress.total}` : "+ 사진"}
             </button>
           )}
+          {dlAll("ph-add ph-dl")}
         </div>
         {progress && (
           <div className="ph-bar" role="progressbar" aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.done} aria-label="사진 올리는 중">
@@ -214,7 +256,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
                   <img src={src(eventId, p.id)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" />
                 </button>
                 <div className="ph-acts">
-                  <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)}>
+                  <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
                     <span aria-hidden="true">{p.liked ? "♥" : "♡"}</span>{p.likes > 0 && <span>{p.likes}</span>}
                   </button>
                   <a className="ph-act" href={`${src(eventId, p.id)}?dl=1`} download aria-label={`${p.name} 님의 사진 내려받기`}>
@@ -231,7 +273,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
             ))}
           </ul>
         )}
-        {!list.canUpload && list.photos.length > 0 && !list.attending && <p className="small" style={{ margin: 0 }}>참석 신청하면 사진을 올릴 수 있어요.</p>}
+        {!list.canUpload && list.photos.length > 0 && !list.attending && <p className="small" style={{ margin: 0 }}>참석 신청하면 사진 올리기·좋아요·댓글을 할 수 있어요.</p>}
         {viewer}
         {/* 장수가 찼을 때: 관리자 요청 / 취소 */}
         <Popup id="photo-full" open={full} onClose={() => setFull(false)} title="사진이 가득 찼어요" width={420}
@@ -260,11 +302,12 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
         {list.canUpload && (
           <>
             {picker}
-            <button type="button" className="btn ph-up" disabled={!!progress} onClick={() => fileRef.current?.click()}>
-              {progress ? `올리는 중 ${progress.done}/${progress.total}` : "+ 사진 올리기"}
+            <button type="button" className="btn ph-up" disabled={!!progress} onClick={() => fileRef.current?.click()} aria-label="사진 올리기">
+              {progress ? `올리는 중 ${progress.done}/${progress.total}` : "+ 사진"}
             </button>
           </>
         )}
+        {dlAll("btn white ph-up ph-dl")}
       </div>
 
       {progress && (
@@ -290,12 +333,25 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
       ) : (
         <ul className="ph-grid" aria-label="사진 목록">
           {shown.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="ph-cell-wrap">
               <button type="button" className="ph-cell" onClick={() => setOpen(p.id)} aria-label={`${p.name} 님의 사진${p.caption ? `: ${p.caption}` : ""} 크게 보기`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={src(eventId, p.id, true)} alt="" loading="lazy" decoding="async" />
-                {p.likes > 0 && <span className="ph-likes" aria-hidden="true">♥ {p.likes}</span>}
               </button>
+              {/* 회원 화면 사진첩과 같은 아이콘: 좋아요 · 내려받기 · 지우기(관리자는 모든 사진) */}
+              <div className="ph-acts sm">
+                <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
+                  <span aria-hidden="true">{p.liked ? "♥" : "♡"}</span>{p.likes > 0 && <span>{p.likes}</span>}
+                </button>
+                <a className="ph-act" href={`${src(eventId, p.id)}?dl=1`} download aria-label={`${p.name} 님의 사진 내려받기`}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                </a>
+                {(p.mine || list.manager) && (
+                  <button type="button" className="ph-act" aria-label={p.mine ? "내 사진 지우기" : `${p.name} 님의 사진 지우기`} onClick={() => remove(p)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -304,7 +360,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
         <button type="button" className="btn white" onClick={() => setMore(true)}>사진 {photos.length - PREVIEW}장 더 보기 ▾</button>
       )}
       {!list.canUpload && list.photos.length > 0 && !list.attending && (
-        <p className="small" style={{ margin: 0 }}>참석 신청하면 사진을 올릴 수 있어요.</p>
+        <p className="small" style={{ margin: 0 }}>참석 신청하면 사진 올리기·좋아요·댓글을 할 수 있어요.</p>
       )}
 
       {viewer}

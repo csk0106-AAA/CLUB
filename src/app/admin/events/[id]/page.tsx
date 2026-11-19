@@ -21,6 +21,7 @@ import { readDayPlaces } from "@/lib/day-places";
 import { EditorsBox } from "@/components/EditorsBox";
 import { EventDuplicate } from "@/components/EventDuplicate";
 import { EventAudience } from "./EventAudience";
+import { EventJoiners } from "./EventJoiners";
 import { api, fmtDate, fmtDateDow, fmtDateTime, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
 import { defaultPhotoLimit, eventDayCount } from "@/lib/photo-limit";
@@ -392,6 +393,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button type="button" role="switch" className="switch" aria-checked={ev.pinned === "true"} aria-labelledby="o-pin-l" aria-describedby="o-pin-d"
               disabled={busy} onClick={() => togglePin(ev.pinned !== "true")} />
           </div>
+          {!ev.club && <EventJoiners eventId={id} onChanged={load} />}
           {!ev.club && <EventAudience key={ev.id} eventId={id} audience={ev.audience} onSaved={load} />}
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           <div className="grid2">

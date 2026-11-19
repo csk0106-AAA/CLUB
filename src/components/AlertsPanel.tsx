@@ -24,6 +24,8 @@ export type AlertsData = {
   payNotices?: { id: string; eventId: string; eventName: string; club: string; memberName: string; at: string }[];
   // 모임 회비 입금 알림(회비를 관리하는 관리자에게만)
   duesNotices?: { id: string; period: string; periodLabel: string; memberName: string; at: string }[];
+  // 신규 회원 확인이 필요한 글·일정(공개 대상을 골라 올렸는데 그 뒤 가입한 회원이 있음)
+  joinerIssues?: { kind: "post" | "event"; id: string; title: string; count: number; href: string }[];
 };
 
 const STATUS: Record<string, { text: string; tone: string }> = {
@@ -93,13 +95,26 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
   const apps = d.memberApps ?? 0;
   const pays = d.payNotices ?? [];
   const duesN = d.duesNotices ?? [];
-  const empty = apps === 0 && pays.length === 0 && duesN.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
+  const joins = d.joinerIssues ?? [];
+  const empty = joins.length === 0 && apps === 0 && pays.length === 0 && duesN.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && <div className="msg bad" role="alert">{error}</div>}
       {note && <div className="msg info" role="status">{note}</div>}
       {empty && <div className="msg info">새 알림이 없어요.</div>}
+
+      {joins.length > 0 && (
+        <section aria-labelledby="al-join" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h3 id="al-join" style={sectionTitle}>신규 회원 확인 필요 {joins.length}건</h3>
+          {joins.map((j) => (
+            <Link key={`${j.kind}-${j.id}`} href={j.href} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+              <span className="ic" aria-hidden="true">!</span>
+              <span className="grow"><b>{j.kind === "event" ? "일정" : "게시글"} · {j.title}</b><span className="t">올린 뒤 가입한 회원 {j.count}명이 공개 대상에 없어요 · 확인하고 업데이트하기 ›</span></span>
+            </Link>
+          ))}
+        </section>
+      )}
 
       {apps > 0 && (
         <Link href="/admin/member-apps" className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>

@@ -96,6 +96,19 @@ export default function BoardPage() {
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!posts && !error && <p className="small">불러오는 중이에요…</p>}
       {posts && posts.length === 0 && <div className="msg info">아직 올라온 글이 없어요.</div>}
+      {/* 내가 올린(또는 편집자인) 글 중 게시 뒤 새로 가입한 회원이 공개 대상에 없는 글 */}
+      {posts && posts.some((p) => (p.newJoiners ?? 0) > 0) && (
+        <div className="fb info" role="alert">
+          <span className="ic" aria-hidden="true">!</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+            <b>새로 가입한 회원이 있어요. 게시물을 확인해 주세요</b>
+            <span className="t">아래 글은 공개 대상을 골라 올려서, 그 뒤 가입한 회원이 볼 수 없어요.</span>
+            {posts.filter((p) => (p.newJoiners ?? 0) > 0).map((p) => (
+              <Link key={p.id} href={`/board/${p.id}`} style={{ fontWeight: 700, textDecoration: "none" }}>· {p.title} (새 회원 {p.newJoiners}명) ›</Link>
+            ))}
+          </div>
+        </div>
+      )}
       {/* 고정 글: 한 줄씩 짧게(칩 + 제목 + "고정") */}
       {pinned.length > 0 && (
         <ul className="rows bleed" aria-label="상단 고정 글">

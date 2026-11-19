@@ -68,6 +68,6 @@ export async function POST(req: Request) {
   const err = checkPermChange(all, groups, [...all, { ...row, id: "__new__" }], groups, await isAllNow(g.s.mid));
   if (err) return bad(err[0], err[1]);
   const no = String(all.reduce((n, m) => Math.max(n, Number(m.no) || 0), 0) + 1);
-  const saved = await s.insert("Members", { ...row, no });
+  const saved = await s.insert("Members", { ...row, no, joinedAt: new Date().toISOString() });
   return NextResponse.json({ member: saved, ...(name !== d.name.trim() ? { renamed: { from: d.name.trim(), to: name } } : {}) });
 }

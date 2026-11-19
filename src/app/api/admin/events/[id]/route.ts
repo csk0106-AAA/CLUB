@@ -139,7 +139,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
     ...(supports === undefined ? {} : { supports: JSON.stringify(supports) }),
     // 사진 최대 장수를 바꿔 저장하면 회원들의 장수 늘리기 요청을 처리한 것으로 비운다(처리할 일에서 사라짐)
     ...(photoLimit === undefined || photoLimit === (before.photoLimit ?? "") ? {} : { photoLimit: photoLimit ? String(Number(photoLimit)) : "", photoReqs: "" }),
-    ...(audience === undefined ? {} : { audience: audience.mode === "all" ? "" : JSON.stringify(audience) }),
+    // 공개 대상을 다시 저장하면 신규 회원 확인도 한 것으로 본다(lib/new-joiners.ts)
+    ...(audience === undefined ? {} : { audience: audience.mode === "all" ? "" : JSON.stringify(audience), audSeenAt: new Date().toISOString() }),
   });
   if (!row) return bad("일정을 찾을 수 없어요.", 404);
   // 회원에게 공개된 일정이 새로 공개되거나 내용이 바뀌면 알림(배지·휴대폰)

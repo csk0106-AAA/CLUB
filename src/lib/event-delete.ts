@@ -3,7 +3,7 @@ import { getStore } from "./store";
 
 // 일정을 지울 때 그 일정에 딸린 기록도 함께 지운다(참석 신청·세부 일정·준비·비용·조 편성·카풀·방·활동과 활동 기록).
 // 회원의 소개 글(Profiles)과 인터뷰 원문(Interviews)은 회원 것이라 남긴다(프로필 북에서 다시 쓴다).
-const BY_EVENT: TabName[] = ["EventApplies", "EventCosts", "EventPrep", "EventFiles", "EventSchedule", "Groupings", "Carpools", "Rooms"];
+const BY_EVENT: TabName[] = ["EventApplies", "EventCosts", "EventPrep", "EventFiles", "EventSchedule", "Groupings", "Carpools", "Rooms", "PhotoComments"];
 const BY_ACTIVITY: TabName[] = ["Attendance", "Teams", "LiveState", "TruthLies", "Guesses", "Worries", "Capsules"];
 
 export async function deleteEventCascade(id: string): Promise<boolean> {

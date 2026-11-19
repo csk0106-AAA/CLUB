@@ -40,9 +40,12 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Note>(null);
   const [doneId, setDoneId] = useState("");
+  // 고른 글을 올린 뒤 새로 가입했는데 공개 대상에 없는 회원(업데이트하면 사라진다)
+  const [joiners, setJoiners] = useState<{ id: string; name: string }[]>([]);
 
   // 기존 글을 고르면 그 글의 제목·내용·공지·고정·공개 대상을 불러온다. 새 글이면 기본값.
   useEffect(() => {
+    setJoiners([]);
     if (mode === "new" || !postId) {
       setTitle(defaultTitle);
       setBody(defaultBody);
@@ -62,6 +65,7 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
       setAudience(r.data.post.audience);
       setNotice(r.data.post.notice);
       setPinned(r.data.post.pinned);
+      setJoiners(r.data.newJoiners ?? []);
     });
     return () => { stop = true; };
     // 기본값(defaultTitle 등)이 바뀔 때마다 고친 칸을 덮어쓰지 않도록 mode·postId 만 본다.
@@ -78,6 +82,7 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
     const r = await api<{ id: string }>(endpoint, { body: { mode, postId: mode === "update" ? postId : "", title, body, audience, notice, pinned } });
     setBusy(false);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setJoiners([]); // 업데이트했으니 새 회원 안내는 지운다
     setDoneId(r.data.id);
     setNote({ tone: "info", text: mode === "new" ? `새 ${what}을 올렸어요.` : `${what}을 업데이트했어요.` });
     setMode("update");
@@ -137,6 +142,16 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
           {busy ? "올리는 중…" : mode === "new" ? "새 게시글로 올리기" : "게시글 업데이트"}
         </button>
       </div>
+      {/* 게시 뒤 새로 가입한 회원 안내: 공개 대상을 확인하고 "게시글 업데이트"를 누르면 사라진다 */}
+      {mode === "update" && joiners.length > 0 && (
+        <div className="fb info" role="alert" style={{ margin: "0 16px 16px" }}>
+          <span className="ic" aria-hidden="true">!</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <b>신규 회원이 가입했어요. 확인 후 게시글 업데이트가 필요해요</b>
+            <span className="t">이 글을 올린 뒤 가입한 {joiners.map((x) => x.name).join(", ")} 님({joiners.length}명)은 지금 공개 대상에 없어서 이 글을 볼 수 없어요. 위 공개 대상을 확인하고 “게시글 업데이트”를 눌러 주세요.</span>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

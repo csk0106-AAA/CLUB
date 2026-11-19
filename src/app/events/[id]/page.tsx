@@ -21,6 +21,7 @@ type Detail = {
   event: {
     id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
     coverUrl?: string; // 맨 위 사진(목록 카드와 같은 규칙)
+    preview?: boolean; draft?: boolean; // 관리하는 사람이 공개 대상 밖·공개전 일정을 회원 화면으로 보는 중
     going?: number; // 참석 인원
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
@@ -182,8 +183,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       <div className="row" style={{ justifyContent: "space-between" }}>
         <Link href="/events" className="small" style={{ fontWeight: 700, color: "var(--blue-t)", textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>‹ 일정 목록으로</Link>
-        {manage && <Link className="mini" href={`/admin/events/${id}`} style={{ minHeight: 40 }}>일정 관리</Link>}
+        {(manage || d?.event.preview) && <Link className="mini" href={`/admin/events/${id}${d?.event.club ? `?club=${encodeURIComponent(d.event.club)}` : ""}`} style={{ minHeight: 40 }}>일정 관리 ›</Link>}
       </div>
+      {d?.event.preview && (
+        <div className="msg info" role="status">
+          아직 공개전인 일정이에요. 관리자라서 회원 화면 그대로 미리 보고 있어요. 참석 신청은 할 수 없어요. 고치려면 오른쪽 위 “일정 관리”를 눌러 주세요.
+        </div>
+      )}
       {error && <div className="msg bad" role="alert">{error}</div>}
 
       {/* 맨 위: 큰 사진(유형 라벨) · 제목 · 일시 · 장소(지도 고르기) */}
@@ -194,7 +200,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {/* 주요 활동: 펼치면 예전 일정 홈의 활동 길(함께할 활동)과 진행 중 카드. 일정 당일에는 처음부터 펼쳐 둔다. */}
       {actNames.length > 0 && (
         <Fold title="주요 활동" summary={actNames.join(" · ")} defaultOpen={dd === "오늘 진행"}>
-          <LiveActivities eventId={id} layout="path" />
+          {/* 참석 신청 전에는 활동 내용만 보이고, 누르면 신청 안내(참석 신청자에게는 모두 열림) */}
+          <div onClickCapture={(ev) => {
+            if (answer === "참석" || !(ev.target as HTMLElement).closest("a,button")) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (e.canApply === false || e.preview) return void window.alert(e.preview ? "미리보기에서는 활동에 들어갈 수 없어요." : "이 클럽 회원·참관자만 활동에 참여할 수 있어요.");
+            if (window.confirm("활동은 참석 신청한 회원만 참여할 수 있어요. 지금 참석 신청하러 갈까요?")) document.getElementById("apply")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}>
+            {answer !== "참석" && <p className="small" style={{ margin: "0 0 8px" }}>참석 신청하면 활동에 참여할 수 있어요.</p>}
+            <LiveActivities eventId={id} layout="path" />
+          </div>
         </Fold>
       )}
       {hasFee && (
@@ -287,7 +303,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
       {answer === "불참" && e.canApply !== false && <div className="msg info">참석 안함으로 알렸어요. 마음이 바뀌면 언제든 바꿀 수 있어요.</div>}
 
-      {e.canApply === false && (e.club || e.guest) ? (
+      {e.canApply === false && !e.preview && (e.club || e.guest) ? (
         <>
           <ClubRequestCard eventId={id} club={e.club ?? ""} guest={e.guest} leaders={e.clubLeaders ?? []} req={e.attendReq ?? null} join={e.clubJoin ?? null} onChange={load} />
           <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
@@ -298,15 +314,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <button className="btn white" type="button" onClick={() => router.push("/events")}>일정 목록으로</button>
         </div>
       ) : (
-        <div className="footer-actions">
-          {answer === "" && <p className="hint center">참석 여부를 알려 주세요. 나중에 바꿀 수 있어요.</p>}
+        <div className="footer-actions" id="apply">
+          {answer === "" && <p className="hint center">참석 여부를 알려 주세요. 나중에 바꿀 수 있어요. 참석 신청하면 활동·사진첩(올리기·좋아요·댓글)을 모두 쓸 수 있어요.</p>}
           {/* 신청 완료 · 참석 안함 · (워크숍) 참석 날짜 바꾸기를 한 줄에 */}
           <div className="row" style={{ gap: 6 }}>
-            <button className="btn" type="button" disabled={busy || answer === "참석"} onClick={() => apply("참석")}
+            <button className="btn" type="button" disabled={busy || !!e.preview || answer === "참석"} onClick={() => apply("참석")}
               style={{ flex: "1 1 0", minWidth: 0, padding: "0 6px", fontSize: fs(15, 1.2), whiteSpace: "nowrap" }}>
               {answer === "참석" ? "신청 완료 ✓" : "참석 신청하기"}
             </button>
-            <button className={`btn ${answer === "불참" ? "blue" : "white"}`} type="button" disabled={busy || answer === "불참"} onClick={() => apply("불참")}
+            <button className={`btn ${answer === "불참" ? "blue" : "white"}`} type="button" disabled={busy || !!e.preview || answer === "불참"} onClick={() => apply("불참")}
               style={{ flex: "1 1 0", minWidth: 0, padding: "0 6px", fontSize: fs(15, 1.2), whiteSpace: "nowrap" }}>
               참석 안함
             </button>

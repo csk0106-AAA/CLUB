@@ -82,6 +82,7 @@ export async function POST(req: Request) {
   const no = String(members.reduce((n, m) => Math.max(n, Number(m.no) || 0), 0) + 1);
   const member = await s.insert("Members", {
     no, name, kind: startKind(d.edu, type), phone, edu: d.edu ? "true" : "", perms: "", clubs: "", extra: "",
+    joinedAt: new Date().toISOString(),
   });
   // 이름이 같은 탈퇴회원이 있으면(전화번호는 다름) 관리자가 알 수 있게 적어 둔다
   const gName = members.find((m) => isWithdrawn(m.kind) && (m.name ?? "").trim() === d.name.trim());

@@ -35,7 +35,7 @@ type Ev = {
   needsAnswer: boolean;
   draft?: boolean; // 공개 전 초안(일정 관리 권한이 있는 회원 또는 만든 사람에게만 온다)
   mine?: boolean; // 내가 만든 일정
-  outside?: boolean; // 공개 대상 밖의 일정(일정 관리 권한이 있는 회원에게만 온다)
+  outside?: boolean; // 나에게 공개되지 않은 일정(목록에만 보이고 열 수 없다)
   fresh?: Fresh | null; // 마지막으로 본 뒤 새로 공개(NEW) / 바뀜(UP)
   going?: number; // 참석 인원
   coverUrl?: string; // 카드 사진 주소(회원 사진 → 클럽·모임 대표사진, 없으면 "")
@@ -54,6 +54,16 @@ export default function EventsPage() {
   const [error, setError] = useState("");
   const [day, setDay] = useState("");
   const [pastShown, setPastShown] = useState(PAST_STEP);
+  // "나에게 공개된 일정만" 보기(기본: 모두 보기). 이 기기에 기억한다.
+  const [onlyMine, setOnlyMine] = useState(false);
+  useEffect(() => {
+    try { setOnlyMine(localStorage.getItem("ev-only-mine") === "1"); } catch { /* 기억 못 해도 된다 */ }
+  }, []);
+  function toggleOnlyMine() {
+    const v = !onlyMine;
+    setOnlyMine(v);
+    try { localStorage.setItem("ev-only-mine", v ? "1" : "0"); } catch { /* 기억 못 해도 된다 */ }
+  }
 
   useEffect(() => {
     (async () => {
@@ -85,9 +95,12 @@ export default function EventsPage() {
   // 일정은 모두 일정 화면(/events/[id])으로 간다. 초안·공개 대상 밖의 일정은 관리 화면으로.
   // 관리 화면 주소: 클럽 일정은 ?club= 을 붙여 위쪽 메뉴가 클럽관리로, 돌아가기는 그 클럽의 일정 목록으로.
   const manageHref = (e: Ev) => `/admin/events/${e.id}${e.club ? `?club=${encodeURIComponent(e.club)}` : ""}`;
-  const hrefOf = (e: Ev) => (e.draft || e.outside ? manageHref(e) : `/events/${e.id}`);
+  const hrefOf = (e: Ev) => `/events/${e.id}`;
+  // 나에게 공개되지 않은 일정은 열지 않고 안내만(관리자는 그 날짜 줄 오른쪽 "일정 관리 ›"로 관리 화면에 간다)
+  const outsideAlert = () => window.alert("나에게 공개되지 않은 일정이에요. 공개 대상인 회원만 볼 수 있어요.");
+  const open = (e: Ev) => (e.outside ? outsideAlert() : router.push(hrefOf(e)));
 
-  const shown = useMemo(() => events?.filter((e) => !e.draft) ?? [], [events]);
+  const shown = useMemo(() => events?.filter((e) => !e.draft && (!onlyMine || !e.outside)) ?? [], [events, onlyMine]);
   const drafts = events?.filter((e) => e.draft) ?? [];
   const pinned = shown.filter((e) => e.pinned && !e.past);
   // 다가오는 일정: 날짜순(서버 순서는 참석 상태로 묶여 있어 타임라인에서는 날짜로 다시 정렬)
@@ -126,7 +139,7 @@ export default function EventsPage() {
     const extra = [(e.going ?? 0) > 0 ? `${e.going}명 참석` : "", (e.photoCount ?? 0) > 0 ? `사진 ${e.photoCount}장` : ""].filter(Boolean).join(" · ");
     return (
       <div key={e.id} className={`evcard tl${dim ? " dim" : ""}`}>
-        <button type="button" disabled={locked} onClick={() => router.push(hrefOf(e))}>
+        <button type="button" disabled={locked} onClick={() => open(e)} aria-disabled={e.outside || undefined}>
           <span className="body">
             {e.coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -162,7 +175,7 @@ export default function EventsPage() {
   // 날짜 줄(오른쪽 끝에 "일정 관리"): 그 날짜의 일정 중 내가 관리할 수 있는 일정마다 링크.
   // 한 날짜에 둘 이상이면 "(이름) 관리 ›"로 구분한다.
   const manageLinks = (list: Ev[]) => {
-    const mine = list.filter((e) => canManageOf(e) && !e.draft && !e.outside);
+    const mine = list.filter((e) => canManageOf(e) && !e.draft); // 나에게 공개되지 않은 일정도 관리자는 여기로 관리 화면에 간다
     if (mine.length === 0) return null;
     return (
       <span className="tl-links">
@@ -187,7 +200,14 @@ export default function EventsPage() {
       <MainHeader />
       {/* 화면 제목은 보이지 않게(화면 낭독기용). 윗줄은 달력 머리: 연도 | 오늘 · 주/월 */}
       <h1 className="sr-only">일정 타임라인</h1>
-      <WeekStrip events={shown} selected={day} onPick={pick} hrefOf={hrefOf} />
+      <WeekStrip events={shown} selected={day} onPick={pick} hrefOf={hrefOf} canOpen={(e) => !e.outside} onBlocked={outsideAlert}
+        actions={
+          <button type="button" className={`wk-filter${onlyMine ? " on" : ""}`} aria-pressed={onlyMine} onClick={toggleOnlyMine}
+            title={onlyMine ? "나에게 공개된 일정만 보는 중 · 누르면 모두 보기" : "나에게 공개된 일정만 보기"} aria-label="나에게 공개된 일정만 보기">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4 1.5v-8z" /></svg>
+            <span>{onlyMine ? "내 일정" : "전체"}</span>
+          </button>
+        } />
 
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}

@@ -4,6 +4,7 @@ import { bad } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
 import { COMMENT_MAX, REACTIONS, talkable } from "@/lib/board";
 import { getStore } from "@/lib/store";
+import { likesOf, threadOrder } from "@/lib/comments";
 import type { Row } from "@/lib/store/types";
 import { canSee, findPost, getMe, type Me } from "./server";
 
@@ -16,11 +17,13 @@ export type Talk = {
   comments: {
     id: string; name: string; avatar: ReturnType<typeof avatarView>; body: string;
     createdAt: string; edited: boolean; canEdit: boolean; canDelete: boolean;
+    likes: number; liked: boolean; parentId: string; // 좋아요 수·내가 눌렀는지·답글이면 원댓글 id
   }[];
 };
 
 export const commentInput = z.object({
   body: z.string().trim().min(1, "댓글 내용을 적어 주세요.").max(COMMENT_MAX, `댓글은 ${COMMENT_MAX}자까지 쓸 수 있어요.`),
+  parentId: z.string().max(80).optional(), // 답글이면 원댓글 id
 });
 
 // 반응·댓글 API 공통: 로그인 + 글 찾기 + 볼 수 있는지 + 받는 글인지
@@ -43,9 +46,7 @@ export async function talkOf(me: Me, postId: string): Promise<Talk> {
       const rs = mine.filter((r) => r.type === key).sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
       return { type: key, count: rs.length, mine: rs.some((r) => r.memberId === me.row.id), names: rs.map((r) => byId.get(r.memberId)?.name ?? "(지운 회원)") };
     }),
-    comments: comments
-      .filter((c) => c.postId === postId)
-      .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))
+    comments: threadOrder(comments.filter((c) => c.postId === postId))
       .map((c) => {
         const m = byId.get(c.memberId);
         const own = c.memberId === me.row.id;
@@ -53,6 +54,7 @@ export async function talkOf(me: Me, postId: string): Promise<Talk> {
           id: c.id, name: m?.name ?? "(지운 회원)", avatar: m ? avatarView(m) : null, body: c.body,
           createdAt: c.createdAt, edited: !!c.updatedAt && c.updatedAt !== c.createdAt,
           canEdit: own, canDelete: own || me.manage,
+          likes: likesOf(c).length, liked: likesOf(c).includes(me.row.id), parentId: c.parentId ?? "",
         };
       }),
   };

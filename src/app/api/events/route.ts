@@ -63,12 +63,12 @@ export async function GET() {
   const freshness = await eventFreshness(session.mid);
 
   const list = events
-    // 일정 관리 권한이 있으면 모든 일정(초안, 공개 대상 밖의 일정 포함 — 관리자 › 일정관리·클럽관리에서 만든 것 모두)
-    // 일정 만들기 권한자는 내가 만든 일정(초안 포함)도 본다. 다른 사람이 만든 일정은 나에게 공개된 것만.
-    .filter((e) => manager || eventVisible(e, me ?? session.mid) || ownEv(e))
+    // 공개된 일정은 공개 대상이 아니어도 모두 목록에 보인다(outside: true — 눌러도 열 수 없고 안내만, 회원은 "나에게 공개된 일정만"으로 거를 수 있다).
+    // 공개전(초안)은 일정 관리 권한자·만든 사람·편집자에게만.
+    .filter((e) => e.published === "true" || manager || ownEv(e))
     .map((e) => {
       const draft = e.published !== "true";
-      // 공개됐지만 나는 공개 대상이 아닌 일정(관리자에게만 보임): 회원 화면이 없으니 관리 화면으로 간다
+      // 공개됐지만 나는 공개 대상이 아닌 일정: 목록에만 보이고 열 수 없다
       const outside = !draft && !eventVisible(e, me ?? session.mid);
       const a = mine.find((x) => x.eventId === e.id);
       const attending = a?.answer === "참석";

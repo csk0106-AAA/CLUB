@@ -26,6 +26,9 @@ export type PostSummary = {
   // 반응 수·댓글 수
   reactions: number;
   comments: number;
+  // 게시 뒤 새로 가입했는데 공개 대상에 없는 회원 수(작성자·편집자, 회칙·회비 글은 그 관리자에게만)
+  newJoiners?: number;
+  manageHref?: string; // 회칙·회비 글의 관리 화면
 };
 
 // 반응·댓글 (/api/board/[id] 의 talk, /api/board/[id]/reactions·comments 응답)
@@ -34,6 +37,7 @@ export type PostTalk = {
   comments: {
     id: string; name: string; avatar: AvatarView; body: string;
     createdAt: string; edited: boolean; canEdit: boolean; canDelete: boolean;
+    likes: number; liked: boolean; parentId: string; // 좋아요·답글(components/CommentThread.tsx)
   }[];
 };
 
@@ -59,6 +63,8 @@ export type ClubJoinState = { id: string; status: string; reason: string; messag
 export type PostDetail = {
   post: PostFull;
   canEdit: boolean;
+  // 게시 뒤 새로 가입했는데 공개 대상에 없는 회원(작성자·편집자에게만)
+  newJoiners?: { id: string; name: string }[];
   // 회칙·회비 글: 고칠 수 있는 사람에게만 관리 화면 주소(없으면 "")
   manageHref: string;
   canDelete: boolean;

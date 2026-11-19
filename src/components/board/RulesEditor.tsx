@@ -180,6 +180,28 @@ export function RulesEditor() {
     // 잠시 뒤 안내를 지운다(버튼은 계속 "저장됨 ✓")
     window.setTimeout(() => setRowState((m) => (m[x.id]?.kind === "done" ? { ...m, [x.id]: { kind: "done" } } : m)), 5000);
   }
+  // 공개 전체 선택/해제: 모든 조문의 "공개"만 바로 저장한다(다른 칸에서 고치던 내용은 그대로 두고 저장하지 않는다).
+  // 그 뒤에도 조문마다 "공개"를 따로 누를 수 있다.
+  const [allBusy, setAllBusy] = useState(false);
+  async function setAllPublic(on: boolean) {
+    if (!items) return;
+    const targets = items.filter((x) => (saved[x.id]?.public ?? x.public) !== on);
+    setItems((l) => l && l.map((x) => ({ ...x, public: on })));
+    if (targets.length === 0) return;
+    setAllBusy(true);
+    let failed = 0;
+    for (const x of targets) {
+      const b = saved[x.id] ?? x; // 저장된 내용 그대로, 공개만 바꿔 저장
+      const r = await api(`/api/admin/club/rules/${x.id}`, { method: "PATCH", body: { chapter: b.chapter, article: b.article, body: b.body, version: b.version, public: on } });
+      if (r.ok) setSaved((m) => ({ ...m, [x.id]: { ...b, public: on } }));
+      else failed++;
+    }
+    setAllBusy(false);
+    setNote(failed ? { tone: "bad", text: `${failed}개 조문은 저장하지 못했어요. 그 조문에서 “저장”을 눌러 주세요.` } : { tone: "info", text: `조문을 모두 ${on ? "공개" : "비공개"}로 저장했어요 · 아래 “게시글 업로드”로 올리거나 업데이트하면 회원에게 반영돼요.` });
+  }
+  const allPublic = !!items?.length && items.every((x) => x.public);
+  const somePublic = !!items?.some((x) => x.public);
+
   async function remove(x: Rule) {
     if (!window.confirm(`“${x.article || x.chapter}” 조문을 지울까요?`)) return;
     const r = await api(`/api/admin/club/rules/${x.id}`, { method: "DELETE" });
@@ -192,7 +214,19 @@ export function RulesEditor() {
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>회칙 조문</b>
       <span className="small">조문을 고치거나 “공개” 체크를 바꾸면 “저장됨”이 “저장”으로 바뀌어요. 공개를 풀면 회칙 글에서 빠져요. 다 고친 뒤 “저장”을 누르고, 아래 “게시글 업로드”로 올리거나 업데이트하면 회원의 회칙 글에 반영돼요. 저장할 때마다 변경 기록이 남아요.</span>
       <Msg n={note} />
-      <div className="row"><button className="mini" type="button" aria-expanded={paste} onClick={() => setPaste(!paste)}>{paste ? "붙여넣기 닫기" : "회칙 붙여넣기 · 파일"}</button></div>
+      <div className="row">
+        <button className="mini" type="button" aria-expanded={paste} onClick={() => setPaste(!paste)}>{paste ? "붙여넣기 닫기" : "회칙 붙여넣기 · 파일"}</button>
+        <span className="grow" />
+        {/* 공개 전체 선택/해제(일부만 공개면 가운데 표시). 그 뒤에도 조문마다 따로 바꿀 수 있다 */}
+        {!!items?.length && (
+          <div className="checks"><label title="모든 조문의 공개를 한 번에 켜거나 꺼요(바로 저장)">
+            <input type="checkbox" checked={allPublic} disabled={allBusy}
+              ref={(el) => { if (el) el.indeterminate = somePublic && !allPublic; }}
+              onChange={(e) => setAllPublic(e.target.checked)} />
+            {allBusy ? "저장하는 중…" : "공개 전체 선택"}
+          </label></div>
+        )}
+      </div>
       {paste && <RulesPaste onDone={load} />}
       {!items && <p className="small">불러오는 중이에요…</p>}
       {items?.map((r) => (

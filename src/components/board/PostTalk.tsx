@@ -1,30 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Avatar } from "@/components/Avatars";
 import { Popup } from "@/components/Popup";
 import { COMMENT_MAX, REACTIONS } from "@/lib/board";
-import { api, fmtDateTime } from "@/lib/client";
+import { api } from "@/lib/client";
+import { CommentThread, submitKey } from "@/components/CommentThread";
 import { fs } from "@/lib/fs";
 import type { PostTalk as Talk } from "./types";
 
 // 게시글 아래 반응(좋아요 등)과 댓글. 관리 화면에서 올린 회칙·회비 글에는 나오지 않는다(talk 가 null).
-
-// "방금" / "3분 전" / 그 밖에는 "YYYY/MM/DD HH:mm"
-function ago(iso: string): string {
-  const ms = Date.now() - Date.parse(iso);
-  if (Number.isNaN(ms)) return "";
-  if (ms < 60_000) return "방금";
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}분 전`;
-  return fmtDateTime(iso);
-}
-
-const submitKey = (e: React.KeyboardEvent, go: () => void) => {
-  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault();
-    go();
-  }
-};
 
 export function PostTalk({ postId, initial }: { postId: string; initial: Talk }) {
   const [talk, setTalk] = useState<Talk>(initial);
@@ -32,7 +16,6 @@ export function PostTalk({ postId, initial }: { postId: string; initial: Talk })
   const [busy, setBusy] = useState("");
   const [who, setWho] = useState(false);
   const [draft, setDraft] = useState("");
-  const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
   const [note, setNote] = useState("");
   const base = `/api/board/${encodeURIComponent(postId)}`;
   // 알림 창의 댓글 알림(…#comments)으로 들어오면 글을 불러온 뒤 댓글로 내려가요
@@ -63,15 +46,23 @@ export function PostTalk({ postId, initial }: { postId: string; initial: Talk })
       setNote("댓글을 남겼어요.");
     }
   }
-  async function save() {
-    if (!editing || !editing.body.trim() || busy) return;
-    if (await call(`e:${editing.id}`, `${base}/comments/${encodeURIComponent(editing.id)}`, "PATCH", { body: editing.body })) {
-      setEditing(null);
-      setNote("댓글을 고쳤어요.");
-    }
+  async function save(id: string, body: string): Promise<boolean> {
+    const ok = await call(`e:${id}`, `${base}/comments/${encodeURIComponent(id)}`, "PATCH", { body });
+    if (ok) setNote("댓글을 고쳤어요.");
+    return ok;
+  }
+  // 댓글 좋아요 켜고 끄기
+  async function like(id: string, on: boolean) {
+    if (await call(`l:${id}`, `${base}/comments/${encodeURIComponent(id)}`, "PATCH", { like: on })) setNote(on ? "댓글에 좋아요를 눌렀어요." : "좋아요를 취소했어요.");
+  }
+  // 답글 달기
+  async function reply(parentId: string, body: string): Promise<boolean> {
+    const ok = await call("reply", `${base}/comments`, "POST", { body, parentId });
+    if (ok) setNote("답글을 남겼어요.");
+    return ok;
   }
   async function remove(id: string, own: boolean) {
-    if (!window.confirm(own ? "이 댓글을 지울까요?" : "다른 회원의 댓글이에요. 관리자로서 지울까요?")) return;
+    if (!window.confirm(own ? "이 댓글을 지울까요? 답글이 있으면 함께 지워져요." : "다른 회원의 댓글이에요. 관리자로서 지울까요? 답글이 있으면 함께 지워져요.")) return;
     if (await call(`d:${id}`, `${base}/comments/${encodeURIComponent(id)}`, "DELETE")) setNote("댓글을 지웠어요.");
   }
 
@@ -116,45 +107,11 @@ export function PostTalk({ postId, initial }: { postId: string; initial: Talk })
         <h2 style={{ font: `700 ${fs(16)} var(--display)`, margin: 0 }}>댓글 {talk.comments.length}개</h2>
         {talk.comments.length === 0 && <span className="small">아직 댓글이 없어요. 첫 댓글을 남겨 보세요.</span>}
         {talk.comments.length > 0 && (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-            {talk.comments.map((c) => {
-              const isEditing = editing?.id === c.id;
-              return (
-                <li key={c.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <Avatar member={{ name: c.name, avatar: c.avatar }} size={36} />
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                      <b>{c.name}</b>
-                      <time className="small" dateTime={c.createdAt} title={fmtDateTime(c.createdAt)}>{ago(c.createdAt)}</time>
-                      {c.edited && <span className="small">· 수정됨</span>}
-                    </div>
-                    {isEditing ? (
-                      <>
-                        <textarea
-                          className="field" rows={3} maxLength={COMMENT_MAX} aria-label="댓글 고치기" autoFocus
-                          style={{ padding: 10 }} value={editing.body}
-                          onChange={(e) => setEditing({ id: c.id, body: e.target.value })}
-                          onKeyDown={(e) => submitKey(e, save)}
-                        />
-                        <div className="row" style={{ gap: 6 }}>
-                          <button type="button" className="mini" disabled={!!busy || !editing.body.trim()} onClick={save}>{busy === `e:${c.id}` ? "저장하는 중…" : "저장"}</button>
-                          <button type="button" className="mini" onClick={() => setEditing(null)}>취소</button>
-                        </div>
-                      </>
-                    ) : (
-                      <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6, overflowWrap: "anywhere" }}>{c.body}</p>
-                    )}
-                    {!isEditing && (c.canEdit || c.canDelete) && (
-                      <div className="row" style={{ gap: 6 }}>
-                        {c.canEdit && <button type="button" className="mini" disabled={!!busy} onClick={() => setEditing({ id: c.id, body: c.body })} aria-label={`${c.name} 님 댓글 수정`}>수정</button>}
-                        {c.canDelete && <button type="button" className="mini" disabled={!!busy} onClick={() => remove(c.id, c.canEdit)} aria-label={`${c.name} 님 댓글 삭제`}>삭제</button>}
-                      </div>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <CommentThread comments={talk.comments} busy={busy}
+            onLike={(c) => like(c.id, !c.liked)}
+            onReply={(parentId, body) => reply(parentId, body)}
+            onEdit={(id, body) => save(id, body)}
+            onDelete={(c) => remove(c.id, c.canEdit)} />
         )}
 
         {err && <div className="msg bad" role="alert">{err}</div>}

@@ -11,6 +11,7 @@ import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 import { audienceOf, canEdit, canOwn, canSeeResults, memberNames, readFiles, type Me } from "./server";
+import { newJoiners } from "./joiners";
 import { readEditors } from "@/lib/editors";
 import { talkCounts, talkOf } from "./talk";
 
@@ -66,8 +67,14 @@ async function eventNames(): Promise<Record<string, string>> {
 
 // fresh: 종 아이콘 숫자에 들어간 글(lib/unread.ts postFreshness)과 같은 기준의 "새 글"/"수정됨" 표시
 export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" | "updated"> = new Map()) {
-  const [names, evs, responses, talk] = await Promise.all([memberNames(), eventNames(), (await getStore()).list("PostResponses"), talkCounts()]);
+  const [names, evs, responses, talk, members] = await Promise.all([memberNames(), eventNames(), (await getStore()).list("PostResponses"), talkCounts(), (await getStore()).list("Members")]);
   const mine = new Set(responses.filter((r) => r.memberId === me.row.id).map((r) => r.postId));
+  // 새 회원 알림을 받을 글: 고칠 수 있는 글 + (회칙·회비 글은) 그 관리 화면을 쓸 수 있는 사람
+  const watch = new Set<string>();
+  for (const p of posts) {
+    const managed = managedOf(p);
+    if (canEdit(me, p) || (managed && (await canManage(me.row, me.perms, managed)))) watch.add(p.id);
+  }
   return posts.map((p) => {
     const files = readFiles(p);
     const data = parseJson<Record<string, unknown>>(p.data, {});
@@ -92,6 +99,9 @@ export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" |
       // 반응·댓글 수(회칙·회비 글은 받지 않아서 0)
       reactions: talkable(p.form) ? talk.get(p.id)?.reactions ?? 0 : 0,
       comments: talkable(p.form) ? talk.get(p.id)?.comments ?? 0 : 0,
+      // 게시 뒤 새로 가입했는데 공개 대상에 없는 회원 수(고칠 수 있는 사람에게만)
+      newJoiners: watch.has(p.id) ? newJoiners(p, members).length : 0,
+      manageHref: (() => { const m = managedOf(p); return m && watch.has(p.id) ? manageHref(m, me.perms) : ""; })(), // 회칙·회비 글: 관리 화면(공개 대상 고치는 곳)
     };
   });
 }
@@ -226,6 +236,9 @@ export async function detail(me: Me, p: Row) {
       authorId: p.authorId, authorName: names.get(p.authorId) ?? "", createdAt: p.createdAt, updatedAt: p.updatedAt,
     },
     canEdit: canEdit(me, p),
+    // 게시 뒤 새로 가입했는데 공개 대상에 없는 회원(고칠 수 있는 사람에게만)
+    // (회칙·회비 글은 그 관리 화면을 쓸 수 있는 사람에게 — 관리 화면 "게시글 업데이트" 아래에 안내)
+    newJoiners: canEdit(me, p) || (managed && mayManage) ? newJoiners(p, await (await getStore()).list("Members")) : [],
     // 회칙·회비 글: 고칠 수 있는 사람에게만 관리 화면 주소(“수정”은 그 화면을 연다)와 삭제
     manageHref: managed && mayManage ? manageHref(managed, me.perms) : "",
     canDelete: managed ? mayManage : canOwn(me, p),

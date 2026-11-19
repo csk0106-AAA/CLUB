@@ -10,6 +10,8 @@ export const TABS = {
     "clubs", "prefs",
     // avatar: 프로필 사진 JSON {type:"character", key} | {type:"photo", fileId} (lib/avatar.ts). 비어 있으면 기본.
     "avatar",
+    // joinedAt: 명단에 들어온 시각(ISO). 게시 뒤 새로 가입한 회원을 글 작성자에게 알릴 때 쓴다(예전 회원은 비어 있음).
+    "joinedAt",
     // edu: 교육 이수 여부("true"면 이수). 회원 신청 승인 때 정회원(이수) / 준회원(비이수)을 가른다(lib/member-apps.ts).
     // memo: 관리자 메모(예: 명예회원 등록 사유). 관리자에게만 보인다.
     "edu", "memo",
@@ -73,6 +75,9 @@ export const TABS = {
   EventPhotos: ["id", "eventId", "memberId", "caption", "w", "h", "size", "likes", "createdAt"],
   // 사진 내용(base64). data: 긴 변 1600px JPEG, thumb: 긴 변 400px JPEG. 화면에서 줄여 올린다(EXIF 위치 정보 없이).
   EventPhotoData: ["id", "type", "data", "thumb"],
+  // 사진 댓글(사진첩을 볼 수 있는 회원이 씀). 사진·일정을 지우면 함께 지운다.
+  //  likes: 좋아요 회원 id 배열 JSON, parentId: 답글이면 원댓글 id(lib/comments.ts)
+  PhotoComments: ["id", "eventId", "photoId", "memberId", "body", "createdAt", "updatedAt", "likes", "parentId"],
   // 대표사진(lib/covers.ts): id "org"(모임) | "club:<클럽 이름>". 회원이 올린 일정 사진이 없을 때 일정 카드에 보인다.
   //  data: 긴 변 1600px JPEG, thumb: 400px JPEG(base64). 등록 여부·바뀐 시각은 Settings "covers" 에 따로 둔다(목록을 가볍게).
   CoverData: ["id", "type", "data", "thumb", "updatedAt"],
@@ -133,6 +138,8 @@ export const TABS = {
     "authorId", "createdAt", "updatedAt",
     // editors: 편집자 회원 id 배열 JSON(작성자가 추가, lib/editors.ts). 편집자도 이 글을 고칠 수 있다.
     "editors",
+    // audSeenAt: 새로 가입한 회원 알림을 작성자가 확인한 시각(이 뒤에 가입한 회원만 다시 알린다)
+    "audSeenAt",
   ],
   // 첨부 파일 내용(base64). 게시글 목록을 읽을 때 같이 읽지 않도록 따로 둔다.
   PostFiles: ["id", "postId", "name", "type", "size", "data", "createdAt"],
@@ -145,7 +152,7 @@ export const TABS = {
   PostReactions: ["id", "postId", "memberId", "type", "createdAt"],
   // 게시글 댓글(답글 없이 한 줄로). body 최대 1000자. 지우면 행을 지운다. updatedAt 이 있으면 "수정됨".
   // 글쓴이 알림: 내 글에 남이 단 댓글 중 Settings "commentSeen:<회원 id>"(ISO) 뒤의 것(lib/unread.ts)
-  PostComments: ["id", "postId", "memberId", "body", "createdAt", "updatedAt"],
+  PostComments: ["id", "postId", "memberId", "body", "createdAt", "updatedAt", "likes", "parentId"], // likes·parentId: lib/comments.ts
   // 휴대폰 알림(Web Push) 구독
   PushSubs: ["id", "memberId", "endpoint", "keys", "createdAt"],
   // 클럽 가입 신청(kind=join) / 클럽 일정 1회 참관 신청(kind=observe, eventId 필수).

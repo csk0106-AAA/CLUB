@@ -30,12 +30,14 @@ function readMode(): Mode {
   }
 }
 
-export function WeekStrip<T extends StripEvent>({ events, selected, onPick, hrefOf, actions }: {
+export function WeekStrip<T extends StripEvent>({ events, selected, onPick, hrefOf, actions, canOpen, onBlocked }: {
   events: T[];
   selected: string;
   onPick: (day: string) => void;
   hrefOf: (e: T) => string; // 라벨을 누르면 갈 일정 화면
   actions?: React.ReactNode; // 윗줄 오른쪽 끝(주/월 옆)에 둘 버튼(일정 만들기 등)
+  canOpen?: (e: T) => boolean; // 열 수 있는 일정인지(나에게 공개되지 않은 일정은 false)
+  onBlocked?: (e: T) => void; // 열 수 없는 일정의 라벨을 눌렀을 때(안내)
 }) {
   const [mode, setMode] = useState<Mode>("week");
   useEffect(() => setMode(readMode()), []);
@@ -121,7 +123,7 @@ export function WeekStrip<T extends StripEvent>({ events, selected, onPick, href
               <span className="wk-mark">
                 {/* 일정 유형 라벨(참석하는 일정이 있으면 강조색, 여러 개면 "+n") — 누르면 그 일정 화면 */}
                 {lead && (
-                  <Link href={hrefOf(lead)} className={`wk-lab${attend ? " go" : ""}`} aria-label={`${lead.type} 일정 열기${evs.length > 1 ? `, 이날 일정 ${evs.length}개 중 하나` : ""}`}>
+                  <Link href={hrefOf(lead)} onClick={(ev) => { if (canOpen && !canOpen(lead)) { ev.preventDefault(); onBlocked?.(lead); } }} className={`wk-lab${attend ? " go" : ""}`} aria-label={`${lead.type} 일정 열기${evs.length > 1 ? `, 이날 일정 ${evs.length}개 중 하나` : ""}`}>
                     {lead.type}{evs.length > 1 ? <b>+{evs.length - 1}</b> : null}
                   </Link>
                 )}

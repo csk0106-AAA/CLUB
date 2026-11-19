@@ -44,6 +44,14 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
   // 수정 버튼: 회칙·회비 글은 그 관리 화면으로, 일반 글은 게시판 수정 화면으로
   const editHref = d ? (d.manageHref || (d.canEdit ? `/board/${d.post.id}/edit` : "")) : "";
   const btn = { width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" } as const;
+  // 새로 가입한 회원 알림 처리: add = 공개 대상에 넣기, dismiss = 넣지 않고 알림 끄기
+  async function joiners(action: "add" | "dismiss") {
+    if (!d) return;
+    if (action === "dismiss" && !window.confirm("새로 가입한 회원을 공개 대상에 넣지 않을까요? 이 회원들은 이 글을 볼 수 없어요.")) return;
+    const r = await api(`/api/board/${d.post.id}/joiners`, { body: { action } });
+    if (!r.ok) return setError(r.error);
+    load();
+  }
 
   return (
     <main className="app with-tabs">
@@ -62,6 +70,21 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
             {edited ? "업데이트" : "작성"} {fmtDateTime(edited ? p.updatedAt : p.createdAt)} · {p.authorName || "운영진"}
             {p.audienceText !== "전체 회원" ? ` · 공개: ${p.audienceText}` : ""}
           </span>
+          {/* 게시 뒤 새로 가입한 회원 알림(작성자·편집자): 공개 대상에 넣거나, 넣지 않고 알림 끄기 */}
+          {d.newJoiners && d.newJoiners.length > 0 && (
+            <div className="fb info" role="alert">
+              <span className="ic" aria-hidden="true">!</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+                <b>이 글을 올린 뒤 새로 가입한 회원이 있어요</b>
+                <span className="t">{d.newJoiners.map((j) => j.name).join(", ")} 님({d.newJoiners.length}명)은 지금 공개 대상에 없어서 이 글을 볼 수 없어요. 확인하고 게시물을 업데이트해 주세요.</span>
+                <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                  <button type="button" className="btn" style={{ width: "auto", minHeight: 40, fontSize: fs(14) }} onClick={() => joiners("add")}>공개 대상에 넣기</button>
+                  {editHref && <Link href={editHref} className="btn white" style={{ width: "auto", minHeight: 40, fontSize: fs(14), textDecoration: "none" }}>수정해서 고르기</Link>}
+                  <button type="button" className="btn white" style={{ width: "auto", minHeight: 40, fontSize: fs(14) }} onClick={() => joiners("dismiss")}>넣지 않기</button>
+                </div>
+              </div>
+            </div>
+          )}
           {p.body && <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7, overflowWrap: "anywhere" }}>{p.body}</p>}
 
           {p.form === "rules" && d.rules && <RulesView rules={d.rules} />}

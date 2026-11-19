@@ -12,6 +12,7 @@ import { isGuest } from "@/lib/member-kind";
 import { ITEMS } from "@/lib/items";
 import { fileMeta } from "@/lib/event-files";
 import { getStore } from "@/lib/store";
+import { canPreviewEvent } from "@/lib/event-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   ]);
   await fixLegacyTypes(events);
   const me = members.find((m) => m.id === g.s.mid);
-  const e = events.find((x) => x.id === id && eventVisible(x, me ?? g.s.mid));
+  // 공개 대상 밖 일정은 목록에만 보이고 열 수 없다. 공개전 일정은 관리하는 사람만 회원 화면 그대로 미리 본다(preview, 참석 신청은 안 됨)
+  const found = events.find((x) => x.id === id);
+  const visible = !!found && eventVisible(found, me ?? g.s.mid);
+  if (found && !visible && found.published === "true") return NextResponse.json({ error: "나에게 공개되지 않은 일정이에요.", outside: true }, { status: 403 });
+  const preview = !!found && !visible && (await canPreviewEvent(found, me, g.s.mid));
+  const e = visible || preview ? found : undefined;
   if (!e) return bad("일정을 찾을 수 없어요.", 404);
 
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);
@@ -39,7 +45,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 클럽 일정: 클럽 이름, 회장(직책자) 이름, 내가 그 클럽 직책자인지(참관자 추가 카드)
   const club = (e.club ?? "").trim();
   // 내가 속하지 않은 클럽 일정이면 읽기만 된다(참석 신청 대신 "클럽 관리자에게 요청하기")
-  const canApply = inClubOrObserver(e, { id: g.s.mid, clubs: me?.clubs, kind: me?.kind });
+  const canApply = !preview && inClubOrObserver(e, { id: g.s.mid, clubs: me?.clubs, kind: me?.kind });
   // 이 일정에 보낸 내 참석 요청(참관/가입 + 참석) 중 가장 최근 것. 클럽 밖 회원에게만 보여 준다.
   const myReq = requests
     .filter((r) => r.memberId === g.s.mid && r.eventId === id && isAttend(r))
@@ -75,6 +81,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   return NextResponse.json({
     event: {
       id: e.id,
+      // 관리하는 사람이 공개 대상 밖·공개전 일정을 회원 화면으로 보는 중(참석 신청 안 됨). draft: 공개전 일정
+      preview, draft: e.published !== "true",
       coverUrl, // 맨 위 큰 사진(원본 크기). 없으면 ""
       going: applies.filter((x) => x.eventId === id && x.answer === "참석").length, // 참석 인원
       type: e.type,
