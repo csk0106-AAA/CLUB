@@ -1,5 +1,6 @@
 "use client";
 
+import { focusStyle } from "@/lib/cover-focus";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { resetHeaderCache } from "@/components/MainHeader";
@@ -79,7 +80,7 @@ export default function LoginPage() {
         {/* 모임 대표사진이 있으면 그 사진, 없으면 지금처럼 마스코트 */}
         {club?.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="login-cover" src={club.coverUrl} alt={`${club.displayName || club.clubName} 대표사진`} />
+          <img className="login-cover" src={club.coverUrl} style={focusStyle(club.coverUrl)} alt={`${club.displayName || club.clubName} 대표사진`} />
         ) : (
           <Mascot />
         )}

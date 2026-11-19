@@ -1,5 +1,6 @@
 "use client";
 
+import { focusStyle } from "@/lib/cover-focus";
 import { useState } from "react";
 import { IconCalendar, IconNext } from "./Icons";
 import { Popup } from "./Popup";
@@ -50,7 +51,7 @@ export function EventHero({ ev, children }: { ev: HeroEvent; children?: React.Re
       <div className={`evhero-card${ev.coverUrl ? "" : " none"}`}>
         {ev.coverUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={ev.coverUrl} alt="" />
+          <img src={ev.coverUrl} alt="" style={focusStyle(ev.coverUrl)} />
         )}
         <span className="rail-badges">
           {dd && <span className="rail-dday">{dd}</span>}

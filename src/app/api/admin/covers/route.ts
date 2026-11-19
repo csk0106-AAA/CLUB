@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminOrOfficer, bad, guard, guardEv } from "@/lib/api";
 import { clubParam } from "@/lib/clubs";
-import { coverUrl, readCovers, removeCover, saveCover, type CoverScope } from "@/lib/covers";
+import { coverId, coverUrl, readCovers, removeCover, saveCover, setCoverFocus, type CoverScope } from "@/lib/covers";
 import { imageTypeOf, MAX_PHOTO_BYTES, MAX_THUMB_BYTES } from "@/lib/event-photos";
 import { getLists } from "@/lib/lists";
 import { getStore } from "@/lib/store";
@@ -34,16 +34,20 @@ async function access(scope: string | null, name: string | null): Promise<{ err:
   return { err: bad("대표사진 종류를 확인해 주세요.") };
 }
 
-const view = (c: CoverScope, at: string | undefined) => ({ url: at ? coverUrl(c, at, false) : "", at: at ?? "" });
+// url 끝에 중심점(#f=x,y)이 붙고, focus 로도 따로 준다
+const view = async (c: CoverScope, at: string | undefined) => {
+  const focus = (await readCovers()).focus[coverId(c)] ?? "50,50";
+  return { url: at ? coverUrl(c, at, false, focus) : "", at: at ?? "", focus };
+};
 
 // 지금 대표사진(없으면 url "")
 export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const a = await access(q.get("scope"), q.get("name"));
   if ("err" in a) return a.err;
-  if (a.c.scope === "event") return NextResponse.json(view(a.c, (await (await getStore()).get("Events", a.c.id))?.coverAt || undefined));
+  if (a.c.scope === "event") return NextResponse.json(await view(a.c, (await (await getStore()).get("Events", a.c.id))?.coverAt || undefined));
   const meta = await readCovers();
-  return NextResponse.json(view(a.c, a.c.scope === "org" ? meta.org : meta.clubs[a.c.name]));
+  return NextResponse.json(await view(a.c, a.c.scope === "org" ? meta.org : meta.clubs[a.c.name]));
 }
 
 // 올리기·바꾸기 (multipart/form-data): scope, name(클럽), file(긴 변 1600px), thumb(400px). 화면에서 줄여 올린다.
@@ -63,7 +67,7 @@ export async function POST(req: Request) {
   const type = imageTypeOf(buf);
   if (!type || !imageTypeOf(tbuf)) return bad("jpg, png, webp 사진만 올릴 수 있어요.");
   const at = await saveCover(a.c, type, buf, tbuf);
-  return NextResponse.json(view(a.c, at));
+  return NextResponse.json(await view(a.c, at));
 }
 
 // 지우기: ?scope=org | ?scope=club&name=
@@ -72,5 +76,18 @@ export async function DELETE(req: Request) {
   const a = await access(q.get("scope"), q.get("name"));
   if ("err" in a) return a.err;
   await removeCover(a.c);
-  return NextResponse.json(view(a.c, undefined));
+  return NextResponse.json(await view(a.c, undefined));
+}
+
+// 보일 중심점 바꾸기: { scope, name?, focus: { x, y } } (0~100 %)
+export async function PATCH(req: Request) {
+  const b = (await req.json().catch(() => null)) as { scope?: string; name?: string; focus?: { x?: unknown; y?: unknown } } | null;
+  const a = await access(b?.scope ?? null, b?.name ?? null);
+  if ("err" in a) return a.err;
+  const x = Number(b?.focus?.x);
+  const y = Number(b?.focus?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 100 || y < 0 || y > 100) return bad("중심점을 확인해 주세요.");
+  await setCoverFocus(a.c, `${Math.round(x)},${Math.round(y)}`);
+  const at = a.c.scope === "event" ? (await (await getStore()).get("Events", a.c.id))?.coverAt || undefined : a.c.scope === "org" ? (await readCovers()).org : (await readCovers()).clubs[a.c.name];
+  return NextResponse.json(await view(a.c, at));
 }

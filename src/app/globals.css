@@ -1133,3 +1133,12 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .modes > [data-over="after"], .subnav.menu > [data-over="after"] { box-shadow: inset -3px 0 0 var(--brand); }
 /* 로그인 화면 맨 위 모임 대표사진 */
 .login-cover { width: 100%; max-width: 480px; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 20px; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.3); }
+/* 대표사진 보이는 영역 조정: 사진 전체를 보여 주고 누른 곳(중심점)에 표시 */
+.focus-pick { position: relative; align-self: center; max-width: 100%; border-radius: 12px; overflow: hidden; cursor: crosshair; touch-action: none; user-select: none; background: var(--soft); }
+.focus-pick img { display: block; max-width: 100%; max-height: 52vh; pointer-events: none; }
+.focus-dot { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; border: 3px solid var(--brand); box-shadow: 0 0 0 2px rgba(0,0,0,.55), 0 0 0 9999px rgba(0,0,0,.18); pointer-events: none; }
+.focus-previews { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.focus-previews figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.focus-previews img { width: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.focus-previews figcaption { font-size: calc(12px * var(--fs, 1)); color: var(--muted, inherit); text-align: center; }
+@media (max-width: 480px) { .focus-previews { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

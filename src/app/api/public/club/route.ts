@@ -17,6 +17,6 @@ export async function GET() {
   return NextResponse.json({
     clubName: n.clubName || "모임", clubShortName: n.clubShortName, displayName: n.displayName, members,
     requirement: await getRequirement(),
-    coverUrl: await (async () => { const at = (await readCovers()).org; return at ? coverUrl({ scope: "org" }, at, false) : ""; })(),
+    coverUrl: await (async () => { const m = await readCovers(); return m.org ? coverUrl({ scope: "org" }, m.org, false, m.focus.org ?? "") : ""; })(),
   });
 }

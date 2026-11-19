@@ -1,5 +1,6 @@
 "use client";
 
+import { focusStyle } from "@/lib/cover-focus";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
@@ -119,7 +120,7 @@ export function EventRail() {
             <div key={e.id} className={`rail-card${e.coverUrl ? " photo" : ""}`} aria-roledescription="slide" role="group" aria-label={`${i + 1}/${list.length}`}>
               {e.coverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={e.coverUrl} alt="" loading={i < 2 ? "eager" : "lazy"} />
+                <img src={e.coverUrl} alt="" loading={i < 2 ? "eager" : "lazy"} style={focusStyle(e.coverUrl)} />
               )}
               <Link href={`/events/${e.id}`} className="rail-hit"
                 aria-label={`${e.name}, ${when(e.startsAt)}${dd ? `, ${dd}` : ""}${e.going ? `, ${e.going}명 참석` : ""} — 일정 보기`} />

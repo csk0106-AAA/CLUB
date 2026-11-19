@@ -69,7 +69,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 맨 위 사진: 목록 카드와 같은 규칙(회원 사진 중 좋아요 많은 것 → 먼저 올린 것 → 클럽·모임 대표사진, lib/covers.ts)
   const photo = eventJoinable(e, me ?? g.s.mid) ? bestPhoto((await s.list("EventPhotos")).filter((p) => p.eventId === id)) : null;
   // 일정 대표사진을 올렸으면 그것이 먼저
-  const coverUrl = e.coverAt ? eventCoverUrl({ id: e.id, coverAt: e.coverAt }, false) : photo ? `/api/events/${id}/photos/${photo.id}` : defaultCoverUrl(await readCovers(), e.club, false);
+  const covers = await readCovers();
+  const coverUrl = e.coverAt ? eventCoverUrl({ id: e.id, coverAt: e.coverAt }, covers, false) : photo ? `/api/events/${id}/photos/${photo.id}` : defaultCoverUrl(covers, e.club, false);
 
   return NextResponse.json({
     event: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { focusStyle } from "@/lib/cover-focus";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApplyNotice } from "@/components/ApplyNotice";
@@ -129,7 +130,7 @@ export default function EventsPage() {
           <span className="body">
             {e.coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img className="tl-thumb" src={e.coverUrl} alt="" loading="lazy" />
+              <img className="tl-thumb" src={e.coverUrl} alt="" loading="lazy" style={focusStyle(e.coverUrl)} />
             ) : (
               // 회원 사진도 대표사진도 없으면 유형 이름 칸(관리자가 모임설정·클럽 개요에서 대표사진을 올리면 그 사진이 보인다)
               <span className="tl-thumb tl-none" aria-hidden="true">{e.type}</span>
