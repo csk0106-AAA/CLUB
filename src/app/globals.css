@@ -1131,3 +1131,5 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .modes > [data-dragging], .subnav.menu > [data-dragging] { opacity: .4; }
 .modes > [data-over="before"], .subnav.menu > [data-over="before"] { box-shadow: inset 3px 0 0 var(--brand); }
 .modes > [data-over="after"], .subnav.menu > [data-over="after"] { box-shadow: inset -3px 0 0 var(--brand); }
+/* 로그인 화면 맨 위 모임 대표사진 */
+.login-cover { width: 100%; max-width: 480px; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 20px; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.3); }

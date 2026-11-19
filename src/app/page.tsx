@@ -10,7 +10,7 @@ import { SignupSheet } from "@/components/SignupSheet";
 import { fs } from "@/lib/fs";
 import { NameSearch } from "@/components/NameSearch";
 
-type Club = { clubName: string; displayName: string; members: { id: string; name: string }[]; requirement?: string };
+type Club = { clubName: string; displayName: string; members: { id: string; name: string }[]; requirement?: string; coverUrl?: string };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -76,7 +76,13 @@ export default function LoginPage() {
   return (
     <main className="app">
       <div style={{ paddingTop: 20, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-        <Mascot />
+        {/* 모임 대표사진이 있으면 그 사진, 없으면 지금처럼 마스코트 */}
+        {club?.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="login-cover" src={club.coverUrl} alt={`${club.displayName || club.clubName} 대표사진`} />
+        ) : (
+          <Mascot />
+        )}
         <h1 className="title center" style={{ fontSize: fs(20) }}>
           {club ? club.displayName || club.clubName : "모임"}
         </h1>

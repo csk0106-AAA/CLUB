@@ -11,6 +11,7 @@ import { EventMinutes } from "@/components/EventMinutes";
 import { EventPhotos } from "@/components/EventPhotos";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
+import { CoverPicker } from "@/components/CoverPicker";
 import { useTabOrder } from "@/components/useTabOrder";
 import { DateField } from "@/components/DateField";
 import { ObserversCard } from "@/app/events/[id]/ObserversCard";
@@ -425,6 +426,10 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               value={ev.booking} onChange={(e) => set("booking", e.target.value)} />
             <span className="hint">{ev.booking.length}/2000자 · 회원 화면에도 줄바꿈 그대로 보여요.</span>
           </div>
+
+          {/* 일정 대표사진: 모임·클럽 대표사진처럼 고르면 바로 저장 */}
+          <CoverPicker scope="event" club={id} title="일정 대표사진"
+            help={`홈의 다가오는 일정·타임라인 카드와 일정 화면 맨 위에 이 사진이 보여요. 회원이 올린 사진보다 먼저예요. 없으면 회원 사진 → ${ev.club ? "클럽" : "모임"} 대표사진 순서로 보여요. 사진을 고르면 바로 저장돼요.`} />
 
           {/* 편집자: 만든 사람(또는 일정관리)이 이 일정 종류를 만들 권한이 있는 회원 중에서 추가 */}
           <EditorsBox endpoint={`/api/admin/events/${id}/editors`} what="일정" need={`${ev.type} 일정을 만들 권한`} />

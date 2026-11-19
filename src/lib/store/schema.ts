@@ -30,6 +30,8 @@ export const TABS = {
     "audience",
     // club: 클럽 일정이면 클럽 이름. 이때 대상은 그 클럽 회원(실시간) + observers(참관자 회원 id JSON 배열)
     "club", "observers",
+    // coverAt: 일정 대표사진을 올린 시각(사진 내용은 CoverData "event:<id>", lib/covers.ts). 비어 있으면 없음.
+    "coverAt",
     // pinned: "true"면 회원 일정 목록 맨 위에 고정
     "pinned",
     // minutes: 회의 일정의 회의록 JSON { heldAt, place, attendees, agenda:[{title, status, note}], followUp } (lib/board.ts minutesData)

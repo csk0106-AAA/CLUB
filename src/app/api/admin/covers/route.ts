@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { adminOrOfficer, bad, guard } from "@/lib/api";
+import { adminOrOfficer, bad, guard, guardEv } from "@/lib/api";
 import { clubParam } from "@/lib/clubs";
 import { coverUrl, readCovers, removeCover, saveCover, type CoverScope } from "@/lib/covers";
 import { imageTypeOf, MAX_PHOTO_BYTES, MAX_THUMB_BYTES } from "@/lib/event-photos";
 import { getLists } from "@/lib/lists";
+import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,13 @@ export const dynamic = "force-dynamic";
 //  모임(scope=org): 모임설정 권한(group)
 //  클럽(scope=club&name=): 회원정보 권한 관리자 또는 그 클럽 직책자(클럽관리 › 개요와 같은 기준)
 async function access(scope: string | null, name: string | null): Promise<{ err: NextResponse } | { c: CoverScope }> {
+  // 일정(scope=event&name=일정 id): 그 일정 관리 화면을 쓸 수 있는 사람(일정관리 권한·만든 사람·편집자·클럽관리)
+  if (scope === "event" && name) {
+    const g = await guardEv({ params: Promise.resolve({ id: name }) }, "events");
+    if ("err" in g) return g;
+    if (!(await (await getStore()).get("Events", name))) return { err: bad("일정을 찾을 수 없어요.", 404) };
+    return { c: { scope: "event", id: name } };
+  }
   if (scope === "org") {
     const g = await guard("group");
     return "err" in g ? g : { c: { scope: "org" } };
@@ -33,6 +41,7 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const a = await access(q.get("scope"), q.get("name"));
   if ("err" in a) return a.err;
+  if (a.c.scope === "event") return NextResponse.json(view(a.c, (await (await getStore()).get("Events", a.c.id))?.coverAt || undefined));
   const meta = await readCovers();
   return NextResponse.json(view(a.c, a.c.scope === "org" ? meta.org : meta.clubs[a.c.name]));
 }

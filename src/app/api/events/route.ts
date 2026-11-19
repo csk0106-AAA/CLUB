@@ -7,7 +7,7 @@ import { fixLegacyTypes, migrateMinutesPosts } from "@/lib/event-migrate";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { readEditors } from "@/lib/editors";
 import { activityShortcut } from "@/lib/activity-shortcut";
-import { defaultCoverUrl, readCovers } from "@/lib/covers";
+import { defaultCoverUrl, eventCoverUrl, readCovers } from "@/lib/covers";
 import { getStore } from "@/lib/store";
 import { eventFreshness } from "@/lib/unread";
 
@@ -105,8 +105,9 @@ export async function GET() {
         feePaid: attending && hasFee && a?.paid === "true",
         payNotice: attending && hasFee && a?.paid !== "true" && Boolean(a?.payNotice),
         going: goingOf.get(e.id) ?? 0, // 참석 인원
-        // 카드 사진 주소: 회원 사진(사진첩을 볼 수 있는 사람에게만) → 대표사진 → 없음("")
+        // 카드 사진 주소: 일정 대표사진 → 회원 사진(사진첩을 볼 수 있는 사람에게만) → 클럽·모임 대표사진 → 없음("")
         coverUrl: (() => {
+          if (e.coverAt) return eventCoverUrl({ id: e.id, coverAt: e.coverAt });
           const c = coverOf.get(e.id);
           // 사진첩을 볼 수 있는 사람(lib/event-photos.ts photoAccess 와 같은 기준): 참석 대상 회원, 또는 관리자 2차 인증을 마친
           // 일정관리 권한자·만든 사람·편집자·(클럽 일정이면) 클럽관리 권한자

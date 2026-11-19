@@ -8,8 +8,9 @@ import { MAX_SOURCE, shrink } from "@/lib/image-shrink";
 // 대표사진 올리기·바꾸기·지우기(관리자 › 모임설정 = scope "org", 클럽관리 › 개요 = scope "club" + 클럽 이름).
 // 일정에 회원이 올린 사진이 없을 때 홈 다가오는 일정·타임라인·달력 카드에 이 사진이 보인다(lib/covers.ts).
 // 사진은 이 기기에서 긴 변 1600px·400px JPEG 로 줄여 올린다(위치 정보 같은 EXIF 는 따라가지 않는다).
-export function CoverPicker({ scope, club, title, help }: { scope: "org" | "club"; club?: string; title: string; help: string }) {
-  const q = scope === "org" ? "scope=org" : `scope=club&name=${encodeURIComponent(club ?? "")}`;
+// scope "event": 일정 대표사진(club 자리에 일정 id 를 넘긴다 — 서버에서는 name 으로 받는다)
+export function CoverPicker({ scope, club, title, help }: { scope: "org" | "club" | "event"; club?: string; title: string; help: string }) {
+  const q = scope === "org" ? "scope=org" : `scope=${scope}&name=${encodeURIComponent(club ?? "")}`;
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
@@ -28,7 +29,7 @@ export function CoverPicker({ scope, club, title, help }: { scope: "org" | "club
       const { full, thumb } = await shrink(f);
       const fd = new FormData();
       fd.append("scope", scope);
-      if (scope === "club") fd.append("name", club ?? "");
+      if (scope !== "org") fd.append("name", club ?? "");
       fd.append("file", new File([full.blob], "cover.jpg", { type: "image/jpeg" }));
       fd.append("thumb", new File([thumb.blob], "thumb.jpg", { type: "image/jpeg" }));
       const res = await fetch("/api/admin/covers", { method: "POST", body: fd, cache: "no-store" }).catch(() => null);

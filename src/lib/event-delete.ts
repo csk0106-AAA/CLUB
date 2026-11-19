@@ -19,6 +19,8 @@ export async function deleteEventCascade(id: string): Promise<boolean> {
     await s.remove("EventPhotoData", p.id);
     await s.remove("EventPhotos", p.id);
   }
+  // 일정 대표사진
+  await s.remove("CoverData", `event:${id}`);
   // 처리 전인 클럽 참관·참석 요청은 일정이 없어지므로 함께 지운다(처리된 요청은 기록으로 둔다)
   await drop("ClubRequests", (r) => r.eventId !== id || (r.status ?? "") !== "pending");
 
