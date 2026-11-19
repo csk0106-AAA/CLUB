@@ -2,6 +2,7 @@
 
 import { focusStyle } from "@/lib/cover-focus";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
 
@@ -9,8 +10,8 @@ import { api, fmtDate } from "@/lib/client";
 // 2개 이상이면 세로 축 원통에 카드가 둘러 있고, 옆으로 밀면 원통이 손가락을 따라 돌다가 놓으면 다음·이전 카드에 멈춘다(끝에서 처음으로 끊김 없이).
 // 저절로 넘어가지는 않고, 5초 넘게 돌리지 않으면 원통이 몇 초마다 살짝 움찔해서 넘길 수 있다는 걸 알려 준다(돌리면 멈췄다가 다시 5초 뒤부터).
 // 사진은 아주 천천히 확대·축소돼서(1장이어도) 멈춘 그림처럼 보이지 않게. 기기의 "동작 줄이기"가 켜져 있으면 움직임은 하지 않는다.
-// 카드: 사진(회원 사진 → 클럽·모임 대표사진, 없으면 바탕색) 위에 라벨 줄(D-day · 유형 · 오른쪽 끝 참석 인원), 오른쪽 아래 "활동 바로가기",
-// 카드를 누르면 일정 화면, "활동 바로가기"를 누르면 지금 할 활동 화면(사전 작성 등, lib/activity-shortcut.ts).
+// 카드: 사진(회원 사진 → 클럽·모임 대표사진, 없으면 바탕색) 위에 라벨 줄(D-day · 유형 · 오른쪽 끝 참석 인원). 카드를 누르면 일정 화면.
+// 원통(3D) 안에서는 브라우저가 누른 곳을 잘못 짚을 수 있어서, 마우스·손가락으로 누른 것은 원통 쪽에서 직접 앞면 일정으로 보낸다(링크는 키보드용).
 type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; club?: string;
   past: boolean; draft?: boolean; outside?: boolean; pinned: boolean; coverUrl?: string; actHref?: string; going?: number; myAnswer: string; needsAnswer: boolean;
@@ -49,6 +50,7 @@ function dday(startsAt: string, endsAt: string): string {
 }
 
 export function EventRail() {
+  const router = useRouter();
   const [list, setList] = useState<Ev[] | null>(null);
   // rot: 지금까지 돈 칸 수(음수도 됨). 지금 앞면 카드 = rot 를 개수로 나눈 나머지
   const [rot, setRot] = useState(0);
@@ -104,7 +106,7 @@ export function EventRail() {
   // 끌어서 돌리기: 옆으로 끌면 원통이 손가락을 따라 돌고, 놓을 때 충분히 끌었거나(폭의 1/5) 빠르게 튕겼으면 다음·이전 카드로.
   // 위아래로 먼저 움직이면 화면 스크롤로 둔다. 끈 뒤에는 카드 링크로 넘어가지 않게.
   const onDown = (ev: React.PointerEvent) => {
-    if (n < 2 || (ev.pointerType === "mouse" && ev.button !== 0)) return;
+    if (ev.pointerType === "mouse" && ev.button !== 0) return;
     start.current = { x: ev.clientX, y: ev.clientY, t: Date.now(), id: ev.pointerId, lock: null };
     swiped.current = false;
   };
@@ -115,16 +117,22 @@ export function EventRail() {
     if (!s0.lock) {
       if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
       s0.lock = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-      if (s0.lock === "x") { setDragging(true); poke(); (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId); }
+      if (s0.lock === "x" && n > 1) { setDragging(true); poke(); (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId); }
     }
     if (s0.lock !== "x") return;
     setDx(mx);
-    if (Math.abs(mx) > 8) swiped.current = true;
+    if (n > 1 && Math.abs(mx) > 8) swiped.current = true;
+    if (n < 2) return;
   };
   const onUp = (ev: React.PointerEvent) => {
     const s0 = start.current;
     start.current = null;
-    if (!s0 || s0.lock !== "x") { setDragging(false); setDx(0); return; }
+    if (!s0 || s0.lock !== "x") {
+      setDragging(false); setDx(0);
+      // 끌지 않고 누르고 뗐으면: 지금 앞면 일정 화면으로
+      if (s0 && !s0.lock && ev.type === "pointerup" && list) router.push(`/events/${list[idx].id}`);
+      return;
+    }
     const mx = ev.clientX - s0.x;
     const fast = Math.abs(mx) / Math.max(1, Date.now() - s0.t) > 0.4 && Math.abs(mx) > 20;
     const far = Math.abs(mx) > (w || 300) / 5;
@@ -146,7 +154,7 @@ export function EventRail() {
       <div ref={stage} className={`rail-stage${n > 1 ? " drum" : ""}`}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
         onDragStart={(ev) => ev.preventDefault()}
-        onClickCapture={(ev) => { if (swiped.current) { ev.preventDefault(); ev.stopPropagation(); swiped.current = false; } }}>
+        onClickCapture={(ev) => { swiped.current = false; if (ev.detail > 0) { ev.preventDefault(); ev.stopPropagation(); } }}>
         <div className={`rail-nudge${n > 1 && idle && !dragging ? " hint" : ""}`}>
         <div className={`rail-drum${dragging ? " dragging" : ""}`} style={n > 1 ? { transform: `translateZ(${-radius}px) rotateY(${angle}deg)` } : undefined}>
         {Array.from({ length: faces }, (_, k) => k).map((k) => {
@@ -156,7 +164,7 @@ export function EventRail() {
           const dd = dday(e.startsAt, e.endsAt);
           const face = n > 1 ? { transform: `rotateY(${k * step}deg) translateZ(${radius}px)` } : undefined;
           return (
-            // 카드: 전체를 덮는 일정 상세 링크(.rail-hit) 위에 라벨 줄. 오른쪽 아래 "활동 바로가기"는 따로 누르는 링크
+            // 카드: 전체를 덮는 일정 상세 링크(.rail-hit, 키보드용) 위에 라벨 줄
             <div key={`${e.id}-${k}`} className={`rail-card${e.coverUrl ? " photo" : ""}${front ? " front" : ""}`} aria-roledescription="slide" role="group" aria-label={`${i + 1}/${n}`}
               aria-hidden={!front ? true : undefined} inert={!front ? true : undefined} style={face}>
               {e.coverUrl && (
@@ -171,8 +179,6 @@ export function EventRail() {
                 {/* 라벨 줄 오른쪽 끝: 참석 인원(일정 상세 맨 위 카드와 같은 모양) */}
                 {(e.going ?? 0) > 0 && <span className="evhero-going" aria-hidden="true">{e.going}명 참석</span>}
               </span>
-              {/* 오른쪽 아래: 활동 바로가기(지금 할 활동 화면으로) */}
-              {e.actHref && <Link href={e.actHref} className="rail-act rail-act-bottom" draggable={false} aria-label={`${e.name} 활동 바로가기`}>활동 바로가기 ›</Link>}
               <span className="rail-text" aria-hidden="true">
                 <b>{e.name}</b>
                 <span>{when(e.startsAt)}</span>
