@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { RowDelete } from "../RowDelete";
 import { LadderFields } from "./Ladder";
+import { MapButton } from "../MapButton";
 import { DateField } from "@/components/DateField";
 import { DragHandle, useDragSort } from "@/components/DragSort";
 import { AGENDA_STATUS, DEFAULT_TEMPLATES, resultsToOf, type Form, type MinutesData, type PollData, type LadderData, type QuizData, type ResultsTo, type SurveyData } from "@/lib/board";
@@ -125,7 +126,11 @@ export function MinutesFields({ data, onChange, labels }: P<MinutesData> & { lab
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>회의 정보</b>
       <div className="grid2">
         <div><label className="l" htmlFor={`${id}-at`}>일시</label><DateField id={`${id}-at`} mode="datetime" value={data.heldAt} onChange={(v) => onChange({ ...data, heldAt: v })} /></div>
-        <div><label className="l" htmlFor={`${id}-pl`}>장소</label><input id={`${id}-pl`} className="field" maxLength={100} value={data.place} onChange={(e) => onChange({ ...data, place: e.target.value })} /></div>
+        <div><label className="l" htmlFor={`${id}-pl`}>장소</label><div style={{ display: "flex", gap: 6 }}><input id={`${id}-pl`} className="field" style={{ flex: 1, minWidth: 0 }} maxLength={100} value={data.place} onChange={(e) => onChange({ ...data, place: e.target.value })} />{data.place.trim() && (
+            <MapButton place={data.place} style={{ flex: "none", width: 46, minHeight: 46, padding: 0, display: "grid", placeItems: "center" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+            </MapButton>
+          )}</div></div>
       </div>
       <div><label className="l" htmlFor={`${id}-who`}>참석자</label><textarea id={`${id}-who`} className="field" rows={2} maxLength={1000} style={{ padding: 10 }} value={data.attendees} onChange={(e) => onChange({ ...data, attendees: e.target.value })} /></div>
       <b>안건과 내용</b>
