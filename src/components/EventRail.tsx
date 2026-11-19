@@ -7,7 +7,7 @@ import { api, fmtDate } from "@/lib/client";
 
 // 홈 맨 위 "다가오는 일정" 카드: 내가 참석 신청한 일정 중 한 달 안에 시작하는, 날짜가 가장 가까운 3개까지.
 // 2개 이상이면 세로 축 원통에 카드가 둘러 있고, 옆으로 밀면 원통이 손가락을 따라 돌다가 놓으면 다음·이전 카드에 멈춘다(끝에서 처음으로 끊김 없이).
-// 저절로 넘어가지는 않고, 한 번도 넘기기 전에는 원통이 살짝 움찔해서 넘길 수 있다는 걸 알려 준다.
+// 저절로 넘어가지는 않고, 5초 넘게 돌리지 않으면 원통이 몇 초마다 살짝 움찔해서 넘길 수 있다는 걸 알려 준다(돌리면 멈췄다가 다시 5초 뒤부터).
 // 사진은 아주 천천히 확대·축소돼서(1장이어도) 멈춘 그림처럼 보이지 않게. 기기의 "동작 줄이기"가 켜져 있으면 움직임은 하지 않는다.
 // 카드: 사진(회원 사진 → 클럽·모임 대표사진, 없으면 바탕색) 위에 라벨 줄(D-day · 유형 · 오른쪽 끝 참석 인원), 오른쪽 아래 "활동 바로가기",
 // 카드를 누르면 일정 화면, "활동 바로가기"를 누르면 지금 할 활동 화면(사전 작성 등, lib/activity-shortcut.ts).
@@ -55,7 +55,15 @@ export function EventRail() {
   const [w, setW] = useState(0); // 카드 폭(px) — 원통 반지름 계산용
   const [dx, setDx] = useState(0); // 끄는 중 옆으로 움직인 거리(px)
   const [dragging, setDragging] = useState(false);
-  const [touched, setTouched] = useState(false); // 한 번이라도 넘겼으면 움찔 안내를 멈춘다
+  // 움찔 안내: 처음에는 바로, 돌린 뒤에는 5초 동안 안 건드리면 다시
+  const [idle, setIdle] = useState(true);
+  const idleTimer = useRef<number | undefined>(undefined);
+  const poke = () => {
+    setIdle(false);
+    window.clearTimeout(idleTimer.current);
+    idleTimer.current = window.setTimeout(() => setIdle(true), 5000);
+  };
+  useEffect(() => () => window.clearTimeout(idleTimer.current), []);
   const stage = useRef<HTMLDivElement>(null);
   const start = useRef<{ x: number; y: number; t: number; id: number; lock: "x" | "y" | null } | null>(null);
   const swiped = useRef(false);
@@ -107,7 +115,7 @@ export function EventRail() {
     if (!s0.lock) {
       if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
       s0.lock = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-      if (s0.lock === "x") { setDragging(true); setTouched(true); (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId); }
+      if (s0.lock === "x") { setDragging(true); poke(); (ev.currentTarget as HTMLElement).setPointerCapture?.(ev.pointerId); }
     }
     if (s0.lock !== "x") return;
     setDx(mx);
@@ -121,6 +129,7 @@ export function EventRail() {
     const fast = Math.abs(mx) / Math.max(1, Date.now() - s0.t) > 0.4 && Math.abs(mx) > 20;
     const far = Math.abs(mx) > (w || 300) / 5;
     if (fast || far) setRot((r) => r + (mx < 0 ? 1 : -1));
+    poke();
     setDragging(false);
     setDx(0);
   };
@@ -138,7 +147,7 @@ export function EventRail() {
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
         onDragStart={(ev) => ev.preventDefault()}
         onClickCapture={(ev) => { if (swiped.current) { ev.preventDefault(); ev.stopPropagation(); swiped.current = false; } }}>
-        <div className={`rail-nudge${n > 1 && !touched ? " hint" : ""}`}>
+        <div className={`rail-nudge${n > 1 && idle && !dragging ? " hint" : ""}`}>
         <div className={`rail-drum${dragging ? " dragging" : ""}`} style={n > 1 ? { transform: `translateZ(${-radius}px) rotateY(${angle}deg)` } : undefined}>
         {Array.from({ length: faces }, (_, k) => k).map((k) => {
           const i = k % n;
@@ -180,7 +189,7 @@ export function EventRail() {
       {n > 1 && (
         <div className="rail-dots" role="group" aria-label="일정 카드 고르기">
           {list.map((e, i) => (
-            <button key={e.id} type="button" className={i === idx ? "on" : ""} aria-label={`${i + 1}번째 일정 카드`} aria-current={i === idx ? "true" : undefined} onClick={() => { setTouched(true); goTo(i); }} />
+            <button key={e.id} type="button" className={i === idx ? "on" : ""} aria-label={`${i + 1}번째 일정 카드`} aria-current={i === idx ? "true" : undefined} onClick={() => { poke(); goTo(i); }} />
           ))}
         </div>
       )}
