@@ -38,6 +38,7 @@ function Rules() {
           defaultTitle={data.template.title}
           defaultBody={data.template.body}
           defaultAudience={ALL}
+          membersOnly
           onDone={load}
         />
       )}
