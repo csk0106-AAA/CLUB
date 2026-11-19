@@ -2,9 +2,10 @@
 
 import { useId } from "react";
 import { RowDelete } from "../RowDelete";
+import { LadderFields } from "./Ladder";
 import { DateField } from "@/components/DateField";
 import { DragHandle, useDragSort } from "@/components/DragSort";
-import { AGENDA_STATUS, DEFAULT_TEMPLATES, resultsToOf, type Form, type MinutesData, type PollData, type QuizData, type ResultsTo, type SurveyData } from "@/lib/board";
+import { AGENDA_STATUS, DEFAULT_TEMPLATES, resultsToOf, type Form, type MinutesData, type PollData, type LadderData, type QuizData, type ResultsTo, type SurveyData } from "@/lib/board";
 import { won } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -33,6 +34,7 @@ export function FormFields({ form, data, onChange, kinds, positions, agendaLabel
   if (form === "survey") return <SurveyFields data={withDefaults<SurveyData>(form, data)} onChange={set} />;
   if (form === "poll") return <PollFields data={withDefaults<PollData>(form, data)} onChange={set} />;
   if (form === "quiz") return <QuizFields data={withDefaults<QuizData>(form, data)} onChange={set} />;
+  if (form === "ladder") return <LadderFields data={withDefaults<LadderData>(form, data)} onChange={set} />;
   return null;
 }
 

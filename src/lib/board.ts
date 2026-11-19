@@ -13,12 +13,14 @@ import { z } from "zod";
 //  survey  : { questions:[{id, type:"text"|"single"|"multi", q, options[]}], deadline }
 //  poll    : { options[], multi, deadline, anonymous }
 //  quiz    : { items:[{q, answer:"O"|"X", explain}] }
+//  ladder  : { players[], results[], rungs:[[칸, 줄]] } — 사다리 타기. 가로줄(rungs)은 서버가 무작위로 만든다(작성자도 미리 모름).
+//            모두 같은 사다리를 보고, 이름을 누르면 길을 따라 내려가 결과가 보인다(보는 사람 화면에서만, 저장하지 않음).
 // PostResponses.answer (JSON)
 //  survey  : { answers: { [questionId]: string | number[] } }
 //  poll    : { choices: number[] }
 //  quiz    : { answers: ("O"|"X")[] }
 
-export const FORMS = ["rules", "fee", "minutes", "general", "survey", "poll", "quiz"] as const;
+export const FORMS = ["rules", "fee", "minutes", "general", "survey", "poll", "quiz", "ladder"] as const;
 export type Form = (typeof FORMS)[number];
 export const isForm = (f: string): f is Form => (FORMS as readonly string[]).includes(f);
 // 글쓰기에서 고를 수 있는 양식.
@@ -47,6 +49,7 @@ export const FORM_LABEL: Record<Form, string> = {
   survey: "설문",
   poll: "투표",
   quiz: "퀴즈(OX)",
+  ladder: "사다리",
 };
 export const FORM_HINT: Record<Form, string> = {
   rules: "회칙 조문을 그대로 보여 줘요 (전체 관리자만)",
@@ -56,6 +59,7 @@ export const FORM_HINT: Record<Form, string> = {
   survey: "질문 여러 개 (주관식·하나 고르기·여러 개 고르기)",
   poll: "보기 중 하나 또는 여러 개 고르기",
   quiz: "O·X 문제와 해설",
+  ladder: "참가자와 결과를 넣으면 사다리를 만들어요 (가로줄은 무작위)",
 };
 // 응답을 받는 양식
 export const RESPONSE_FORMS: Form[] = ["survey", "poll", "quiz"];
@@ -155,6 +159,49 @@ export const quizData = z.object({
 });
 export type QuizData = z.infer<typeof quizData>;
 
+// 사다리: 참가자 2~12명, 결과는 참가자 수와 같게. rungs: [칸(0 = 1·2번 사이), 줄(0~LADDER_ROWS-1)]
+export const LADDER_ROWS = 10;
+export const LADDER_MAX = 12;
+export const ladderData = z
+  .object({
+    players: z.array(t(20).min(1, "비어 있는 참가자가 있어요.")).min(2, "참가자를 두 명 이상 넣어 주세요.").max(LADDER_MAX, `참가자는 ${LADDER_MAX}명까지예요.`),
+    results: z.array(t(30).min(1, "비어 있는 결과가 있어요.")),
+    rungs: z.array(z.tuple([z.number().int().min(0), z.number().int().min(0).max(LADDER_ROWS - 1)])).max(200).default([]),
+  })
+  .refine((v) => v.results.length === v.players.length, { message: "결과를 참가자 수와 같게 넣어 주세요." });
+export type LadderData = z.infer<typeof ladderData>;
+
+// 가로줄 만들기: 줄마다 칸을 훑으며 반쯤 확률로 놓되 옆 칸과 같은 높이에 붙지 않게, 칸마다 적어도 하나
+export function makeRungs(n: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (let r = 0; r < LADDER_ROWS; r++) {
+    for (let c = 0; c < n - 1; c++) {
+      if (out.some(([pc, pr]) => pr === r && pc === c - 1)) continue;
+      if (Math.random() < 0.45) out.push([c, r]);
+    }
+  }
+  for (let c = 0; c < n - 1; c++) {
+    if (out.some(([pc]) => pc === c)) continue;
+    const free = [...Array(LADDER_ROWS).keys()].filter((r) => !out.some(([pc, pr]) => pr === r && (pc === c - 1 || pc === c + 1)));
+    out.push([c, free[Math.floor(Math.random() * free.length)] ?? 0]);
+  }
+  return out.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+}
+// 가로줄이 이 인원에 맞는지(칸 범위·같은 높이에 붙은 줄 없음)
+export const rungsFit = (rungs: [number, number][], n: number) =>
+  rungs.length > 0 && rungs.every(([c, r]) => c < n - 1 && !rungs.some(([c2, r2]) => r2 === r && c2 === c + 1));
+// start 번 참가자가 내려가는 길: 지나는 점들(칸 번호, 줄) → 마지막 칸이 결과 번호
+export function ladderPath(rungs: [number, number][], start: number): { col: number; steps: [number, number][] } {
+  let col = start;
+  const steps: [number, number][] = [[col, -1]];
+  for (let r = 0; r < LADDER_ROWS; r++) {
+    if (rungs.some(([c, rr]) => rr === r && c === col)) { steps.push([col, r], [col + 1, r]); col += 1; }
+    else if (rungs.some(([c, rr]) => rr === r && c === col - 1)) { steps.push([col, r], [col - 1, r]); col -= 1; }
+  }
+  steps.push([col, LADDER_ROWS]);
+  return { col, steps };
+}
+
 export type ResultsTo = "audience" | "author";
 export const RESULTS_TO_LABEL: Record<ResultsTo, string> = { audience: "공개 대상 전체", author: "작성자만" };
 // 예전 글처럼 값이 없으면: 투표는 공개 대상 전체, 설문은 작성자만(지금까지의 방식)
@@ -171,6 +218,7 @@ export const DATA_SCHEMA: Record<Form, z.ZodTypeAny> = {
   survey: surveyData,
   poll: pollData,
   quiz: quizData,
+  ladder: ladderData,
 };
 
 // zod 오류 중 직접 정한 안내 문구가 있으면 그것을 쓴다.
@@ -216,6 +264,11 @@ export const DEFAULT_TEMPLATES: Record<Form, Template> = {
     title: "투표",
     body: "",
     data: { options: ["찬성", "반대"], multi: false, deadline: "", anonymous: false, resultsTo: "audience" },
+  },
+  ladder: {
+    title: "사다리 타기",
+    body: "내 이름을 눌러 사다리를 타 보세요!",
+    data: { players: ["", "", "", ""], results: ["", "", "", ""], rungs: [] },
   },
   quiz: {
     title: "OX 퀴즈",

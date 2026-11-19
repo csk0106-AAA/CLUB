@@ -7,9 +7,10 @@ import { IconMegaphone, IconPin } from "@/components/Icons";
 import { MemberTabs } from "@/components/MemberTabs";
 import { Attachments, FeeView, MinutesView, PollBox, QuizBox, RulesView, SurveyBox } from "@/components/board/PostView";
 import { PostTalk } from "@/components/board/PostTalk";
+import { LadderBox } from "@/components/board/Ladder";
 import { EditorsBox } from "@/components/EditorsBox";
 import type { PostDetail } from "@/components/board/types";
-import { FORM_LABEL, type FeeSnap, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
+import { FORM_LABEL, type FeeSnap, type LadderData, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -92,6 +93,7 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
           {p.form === "minutes" && <MinutesView data={p.data as unknown as MinutesData} labels={d.agendaLabels ?? {}} />}
           {p.form === "poll" && <PollBox key={JSON.stringify(d.mine)} id={p.id} data={p.data as unknown as PollData} mine={d.mine as Any} results={d.results as Any} onDone={load} />}
           {p.form === "survey" && <SurveyBox key={JSON.stringify(d.mine)} id={p.id} data={p.data as unknown as SurveyData} mine={d.mine as Any} results={d.results as Any} onDone={load} />}
+          {p.form === "ladder" && <LadderBox data={p.data as unknown as LadderData} />}
           {p.form === "quiz" && <QuizBox key={JSON.stringify(d.mine)} id={p.id} data={p.data as unknown as QuizData} mine={d.mine as Any} results={d.results as Any} onDone={load} />}
 
           <Attachments files={p.files} />

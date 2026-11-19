@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseJson } from "@/lib/api";
 import { ALL, audienceInput, audienceLabel, type Audience } from "@/lib/audience";
+import { makeRungs, rungsFit, type LadderData } from "@/lib/board";
 import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, resultsToOf, talkable, zodMessage, type Form, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
@@ -46,6 +47,11 @@ export async function parsePost(raw: unknown, me: Me, fixedForm?: string): Promi
   }
   const d = DATA_SCHEMA[form].safeParse(p.data.data ?? {});
   if (!d.success) return { ok: false, error: zodMessage(d.error, "양식 내용을 확인해 주세요.") };
+  // 사다리: 가로줄은 서버가 무작위로(비었거나 인원이 바뀌었으면 새로)
+  if (form === "ladder") {
+    const ld = d.data as LadderData;
+    if (!rungsFit(ld.rungs as [number, number][], ld.players.length)) ld.rungs = makeRungs(ld.players.length);
+  }
   const aud = await cleanAudience(p.data.audience);
   if (typeof aud === "string") return { ok: false, error: aud };
   const audience: Audience = aud;
