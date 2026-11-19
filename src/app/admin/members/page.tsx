@@ -440,15 +440,15 @@ function Members() {
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {formErr && <div className="msg bad" role="alert">{formErr}</div>}
         {/* 한 줄씩: (성명 · 성별 · 연락처) (생년월일 · 연령대) (회원구분 · 모임직책) (회사명 · 직위) */}
-        <div className="mf-row" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+        <div className="mf-row" style={{ gridTemplateColumns: "minmax(0, 1fr) 64px minmax(148px, 1.4fr)" }}>
           <div><label className="l" htmlFor="f-name">성명</label><input id="f-name" className="field" value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
           <div>
             <label className="l" htmlFor="f-gender">성별</label>
-            <select id="f-gender" className="field" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
-              <option value="">선택 안 함</option><option>남</option><option>여</option>
+            <select id="f-gender" className="field" style={{ paddingLeft: 8, paddingRight: 4 }} value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+              <option value="">-</option><option>남</option><option>여</option>
             </select>
           </div>
-          <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" inputMode="tel" placeholder="010-0000-0000" value={form.phone} onChange={(e) => set("phone", typePhone(e.target.value))} /></div>
+          <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" style={{ paddingLeft: 8, paddingRight: 8 }} inputMode="tel" placeholder="010-0000-0000" value={form.phone} onChange={(e) => set("phone", typePhone(e.target.value))} /></div>
         </div>
         <div className="mf-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
@@ -548,12 +548,13 @@ function Members() {
             </>
           );
         })()}
-        <div className="row">
-          <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "auto", minWidth: 160 }}>{editId ? "저장" : "추가"}</button>
-          <button className="btn white" type="button" style={{ width: "auto", minWidth: 120 }} onClick={reset}>취소</button>
+        {/* 저장 · 취소 · 삭제: 같은 크기로 한 줄 */}
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${editId && list?.some((x) => x.id === editId) ? 3 : 2}, minmax(0, 1fr))`, gap: 8 }}>
+          <button className="btn" type="submit" disabled={busy || !form.name.trim()} style={{ width: "100%", whiteSpace: "nowrap" }}>{editId ? "저장" : "추가"}</button>
+          <button className="btn white" type="button" style={{ width: "100%", whiteSpace: "nowrap" }} onClick={reset}>취소</button>
           {editId && (() => {
             const m = list?.find((x) => x.id === editId);
-            return m ? <button className="btn red" type="button" style={{ width: "auto", marginLeft: "auto" }} onClick={() => { reset(); remove(m); }}>삭제</button> : null;
+            return m ? <button className="btn red" type="button" style={{ width: "100%", whiteSpace: "nowrap" }} onClick={() => { reset(); remove(m); }}>삭제</button> : null;
           })()}
         </div>
       </form>
@@ -747,16 +748,17 @@ function Members() {
               <DragHandle plain {...dsNarrow.handle(i, m.name)} />
               <Avatar member={m} size={36} />
               <span className="who">
-                <b>{m.name}</b>
-                <span>{[m.position, [m.company, m.title].filter(Boolean).join(" "), clubsText(m.clubs ?? [])].filter(Boolean).join(" · ") || "정보를 입력해 주세요"}</span>
+                <b style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                  <span style={{ font: "inherit", color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}{m.position ? <small>{m.position}</small> : null}</span>
+                  {m.app && <AppLabel app={m.app} />}
+                </b>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[[m.company, m.title].filter(Boolean).join(" "), clubsText(m.clubs ?? []), m.approvedAt ? `승인 ${fmtDate(m.approvedAt)}` : ""].filter(Boolean).join(" · ") || "정보를 입력해 주세요"}</span>
                 {m.genderEdit && (
                   <span style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>
                     <span className="chip warn">성별 회원 수정 ({m.genderEdit.from || "없음"}→{m.genderEdit.to})</span>
                     <button className="mini" type="button" style={{ minHeight: 32 }} onClick={() => ackGender(m)}>확인</button>
                   </span>
                 )}
-                {m.app && <span style={{ marginTop: 2 }}><AppLabel app={m.app} /></span>}
-                {m.approvedAt && <span className="small">승인 {fmtDate(m.approvedAt)}</span>}
               </span>
               {/* 한 줄: 회원구분 · 프로필 북 체크 · 삭제 · 수정(맨 오른쪽) */}
               <span className={`chip ${isWithdrawn(m.kind) ? "red" : "line"}`} style={{ flex: "none", whiteSpace: "nowrap" }}>{m.kind || "미지정"}</span>
