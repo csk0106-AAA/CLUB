@@ -1,5 +1,6 @@
 import { carOwners, carRequests, confirmAll } from "./car-requests";
 import { carpoolState, cars, driverLabel, DIRS, missingInfo, requestsOpen, saveCarpoolState, selfOf } from "./carpool";
+import { kstTime } from "./kst-time";
 import { addAlerts } from "./member-alerts";
 import { pushTo } from "./push";
 import { getSetting, getStore, setSetting } from "./store";
@@ -13,7 +14,7 @@ import { isGuest } from "./member-kind";
 //  일정 시작 3일 전까지 확정하지 않았으면 관리자에게 리마인드(한 번)
 // 처리할 일정은 Settings "carpoolDue" = { 일정 id: true } 로 모아 둔다(관리자가 시각을 저장할 때 넣는다).
 const DUE = "carpoolDue";
-const passed = (iso?: string) => !!iso && Date.now() > Date.parse(iso);
+const passed = (iso?: string) => !!iso && Date.now() > kstTime(iso);
 
 export async function markDue(eventId: string): Promise<void> {
   const due = await getSetting<Record<string, boolean>>(DUE, {});
@@ -120,7 +121,7 @@ async function remindUnconfirmed(): Promise<void> {
   for (const id of ids) {
     if (done[id]) continue;
     const ev = events.find((e) => e.id === id);
-    const start = ev?.startsAt ? Date.parse(ev.startsAt) : NaN;
+    const start = ev?.startsAt ? kstTime(ev.startsAt) : NaN;
     if (!ev || Number.isNaN(start) || start <= now || start - now > 3 * 86_400_000) continue;
     const st = await carpoolState(id);
     const unconfirmed = reqRows.some((r) => r.eventId === id && r.status === "approved");
@@ -184,7 +185,7 @@ async function remindUnassigned(): Promise<void> {
   for (const id of ids) {
     if (done[id]) continue;
     const ev = events.find((e) => e.id === id);
-    const start = ev?.startsAt ? Date.parse(ev.startsAt) : NaN;
+    const start = ev?.startsAt ? kstTime(ev.startsAt) : NaN;
     if (!ev || Number.isNaN(start) || start <= now || start - now > 3 * 86_400_000) continue;
     const st = await carpoolState(id);
     if (st.adminOnly || !requestsOpen(st)) continue;
@@ -197,7 +198,7 @@ async function remindUnassigned(): Promise<void> {
       return !seated && !selfOf(st, d).includes(m) && !waiting.some((r) => r.memberId === m && r.dir === d);
     }));
     if (missing.length) {
-      const until = st.waitUntil ? ` 신청 마감은 ${new Date(Date.parse(st.waitUntil) + 9 * 3600_000).toISOString().slice(5, 16).replace("-", "/").replace("T", " ")}이에요.` : "";
+      const until = st.waitUntil ? ` 신청 마감은 ${new Date(kstTime(st.waitUntil) + 9 * 3600_000).toISOString().slice(5, 16).replace("-", "/").replace("T", " ")}이에요.` : "";
       await addAlerts(missing, { eventId: id, text: `${ev.name}이(가) 3일 앞으로 다가왔는데 아직 차량배정이 안 되셨어요. 차량을 신청하거나 개별 이동을 골라 주세요.${until}`, href: `/events/${id}#cars` });
       await pushTo(missing, "alerts").catch(() => undefined);
     }

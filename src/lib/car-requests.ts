@@ -1,5 +1,6 @@
 import { cars, carpoolState, requestsOpen, riderCap, saveCarpoolState, selfOf, toRow, type Car, type Dir } from "./carpool";
 import { addAlerts } from "./member-alerts";
+import { kstTime } from "./kst-time";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
@@ -36,7 +37,7 @@ const now = () => new Date().toISOString();
 const OPEN: CarReqStatus[] = ["pending", "waiting"];
 const SEATED: CarReqStatus[] = ["approved", "confirmed"];
 // 대기 기한이 지났는지
-export const waitClosed = (waitUntil?: string) => !!waitUntil && Date.now() > Date.parse(waitUntil);
+export const waitClosed = (waitUntil?: string) => !!waitUntil && Date.now() > kstTime(waitUntil);
 // 이 차·구간에 남은 자리(탑승자 수 기준) 중 승인 대기 중인 신청을 뺀 수
 const openSeats = (car: Car, dir: Dir, reqs: CarReq[]) =>
   riderCap(car, dir) - car[dir].riders.length - reqs.filter((r) => r.carId === car.id && r.dir === dir && r.status === "pending").length;

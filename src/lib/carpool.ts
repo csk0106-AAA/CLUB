@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseJson } from "./api";
+import { kstTime } from "./kst-time";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
 
@@ -238,8 +239,8 @@ export type CarpoolState = {
   adminOnly?: boolean; // 관리자배정: 차량모집·차량신청 없이 관리자가 모두 배정(켜면 둘은 꺼진다)
 };
 export const selfOf = (s: CarpoolState, d: Dir): string[] => (d === "go" ? s.selfGo : s.selfBack) ?? [];
-const passed = (iso?: string) => !!iso && Date.now() > Date.parse(iso);
-const begun = (iso?: string) => !iso || Date.now() >= Date.parse(iso);
+const passed = (iso?: string) => !!iso && Date.now() > kstTime(iso);
+const begun = (iso?: string) => !iso || Date.now() >= kstTime(iso);
 // 차량모집 지원을 받는 중인지: 켜져 있고, 시작 시각이 지났고, 모집·신청 마감 전
 export const recruiting = (s: CarpoolState) => !!s.recruitOn && begun(s.recruitFrom) && !passed(s.recruitUntil) && !passed(s.waitUntil);
 // 차량신청을 받는 중인지: (차량신청을 켰고 시작 시각이 지남) 또는 (차량신청을 따로 켜지 않았는데 차량모집이 끝남), 그리고 신청 마감 전.
