@@ -95,14 +95,16 @@ export function EventHeadCard({ ev, titleAs = "h1", children }: { ev: InfoEvent;
 }
 
 // 여닫는 칸. 제목 줄 오른쪽 버튼으로 펼치고 접는다(처음엔 접힘, defaultOpen 이면 펼침).
-export function Fold(props: { title: string; summary?: string; defaultOpen?: boolean; children: React.ReactNode }) {
+// badge: 제목 바로 옆에 붙는 작은 표시(예: "모집 중")
+export function Fold(props: { title: string; summary?: string; defaultOpen?: boolean; badge?: React.ReactNode; id?: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(!!props.defaultOpen);
   const bodyId = useId();
   return (
-    <section className="card" aria-label={props.title} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <section className="card" id={props.id} aria-label={props.title} style={{ display: "flex", flexDirection: "column", gap: 8, scrollMarginTop: 16 }}>
       <div className="row" style={{ gap: 8 }}>
         <span className="grow" style={{ minWidth: 0 }}>
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>{props.title}</b>
+          {props.badge && <span style={{ marginLeft: 6, verticalAlign: "middle" }}>{props.badge}</span>}
           {props.summary && !open && <span className="small" style={{ display: "block", overflowWrap: "anywhere" }}>{props.summary}</span>}
         </span>
         <button type="button" className="mini" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(!open)}

@@ -22,7 +22,7 @@ export type CarKind = "member" | "rental";
 export type Car = {
   id: string; name: string; plate: string; driverId: string; seats: number; // 이름 외 운전자·차량번호는 선택 입력
   kind: CarKind; driverName: string;
-  memo: string; ownerId: string; // 메모(예: 강남역 경유 가능), 차량 지원으로 회원이 등록한 차면 그 회원 id
+  memo: string; ownerId: string; // 메모(예: 강남역 경유 가능), 차량모집 지원으로 회원이 등록한 차면 그 회원 id
   leg: Leg; // goOn/backOn 에서 만든 값(호환용)
   go: LegInfo; back: LegInfo;
 };
@@ -92,6 +92,7 @@ export const carInput = z.object({
   name: text(30), plate: text(20), driverId: z.string().optional(), seats: z.number().int().min(1).max(45).optional(),
   kind: z.enum(["member", "rental"]).optional(), driverName: text(30), // 회원이 아닌 운전자 이름(기사님 등)
   memo: text(100), // 메모(예: 강남역 경유 가능)
+  ownerId: z.string().max(80).optional(), // 관리자가 등록할 때: 차량을 지원한 회원(그 회원이 직접 고칠 수 있다)
   go: legInput.optional(), back: legInput.optional(),
   leg: z.enum(LEGS).optional(), from: text(60), departAt: text(40), to: text(60), arriveAt: text(40), riders: z.array(z.string()).max(45).optional(),
 });
@@ -110,6 +111,7 @@ export function applyInput(cur: Car, d: CarInput): Car {
   if (d.kind !== undefined) next.kind = d.kind;
   if (d.driverName !== undefined) next.driverName = d.driverName;
   if (d.memo !== undefined) { next.memo = d.memo; next.go.memo = d.memo; next.back.memo = d.memo; }
+  if (d.ownerId !== undefined) next.ownerId = d.ownerId;
   if (next.kind === "rental") next.driverId = ""; // 외부 대절은 운전자가 회원이 아니다
   if (next.driverId) next.driverName = ""; // 회원이 운전하면 이름을 따로 두지 않는다
   // 예전 형식
@@ -158,6 +160,13 @@ export function timeIssue(c: Car): string | null {
 export const driverLabel = (c: Pick<Car, "kind" | "driverId" | "driverName">, nameOf: (id: string) => string): string =>
   c.kind !== "rental" && c.driverId ? nameOf(c.driverId) : c.driverName;
 
+// 차량 사람 표시: 지원자와 운전자가 다르면 "지원 OOO(운전 OOO)", 같거나 지원자가 없으면 "운전 OOO"
+export function crewLabel(c: Pick<Car, "kind" | "driverId" | "driverName" | "ownerId">, nameOf: (id: string) => string): string {
+  const drv = driverLabel(c, nameOf) || "미정";
+  if (c.ownerId && c.ownerId !== c.driverId) return `지원 ${nameOf(c.ownerId)}(운전 ${drv})`;
+  return drv === "미정" ? "" : `운전 ${drv}`;
+}
+
 // 운전자가 차지하는 자리: 회원 차량에 운전자(회원이든 아니든)가 정해져 있으면 1
 // 운전자가 차지하는 자리: 회원 차량을 회원이 운전할 때만 1(회원 차량을 외부 사람이 운전하거나 외부 대절이면 좌석수는 운전자 제외로 받는다)
 export const driverSeat = (c: Pick<Car, "kind" | "driverId" | "driverName">): number => (c.kind !== "rental" && c.driverId ? 1 : 0);
@@ -180,8 +189,8 @@ export function autoName(c: Car, all: Car[], nameOf: (id: string) => string): st
 export function suggestName(all: Car[]): string {
   const used = new Set(all.map((c) => c.name));
   let n = all.length + 1;
-  while (used.has(`카풀 ${n}조`)) n++;
-  return `카풀 ${n}조`;
+  while (used.has(`차량 ${n}조`)) n++;
+  return `차량 ${n}조`;
 }
 
 export async function cars(eventId: string): Promise<Car[]> {
@@ -198,7 +207,14 @@ export function conflict(all: Car[], next: Car, names: Map<string, string>): str
     const label = DIR_LABEL[d];
     const people = peopleOn(next, d);
     if (new Set(people).size !== people.length) return `${label}: 운전자와 탑승자가 겹쳐요.`;
-    if (next[d].riders.length > riderCap(next, d)) return `${label}: 좌석은 ${legSeats(next, d)}개예요${driverSeat(next) ? "(운전자 포함)" : ""}. 탑승자를 줄이거나 좌석 수를 늘려 주세요.`;
+    if (next[d].riders.length > riderCap(next, d)) {
+      // 지원 회원이 운전하지 않으면 지원 회원도 그 차 탑승자로 들어가므로 자리가 하나 더 필요하다
+      const ownerRides = !!next.ownerId && next.ownerId !== next.driverId && next[d].riders.includes(next.ownerId);
+      if (ownerRides && next[d].riders.length === 1) {
+        return `${label}: 지원 회원이 운전하지 않아서 지원 회원도 이 차에 타요. 좌석 수를 ${driverSeat(next) + 1}석 이상으로 해 주세요(지금 ${legSeats(next, d)}석).`;
+      }
+      return `${label}: 좌석은 ${legSeats(next, d)}개예요${driverSeat(next) ? "(운전자 포함)" : ""}${ownerRides ? " — 지원 회원도 이 차에 타요" : ""}. 탑승자를 줄이거나 좌석 수를 늘려 주세요.`;
+    }
     if (timeOrder(next[d].departAt, next[d].arriveAt)) return `${label}: 도착 시간이 출발 시간보다 빠를 수 없어요.`;
     for (const pid of people) {
       const o = others.find((x) => peopleOn(x, d).includes(pid));
@@ -209,22 +225,25 @@ export function conflict(all: Car[], next: Car, names: Map<string, string>): str
 }
 
 const key = (eventId: string) => `carpool:${eventId}`;
-// published: 확정(회원에게 보임) · open: 카풀 신청 받기
-// recruitOn/recruitUntil: 차량 지원 모집(회원이 자기 차를 등록) — 마감 시각이 지나면 카풀 신청이 자동으로 열린다
-// waitUntil: 카풀신청 마감 — 지나면 신청을 받지 않는다(확정은 관리자가 "확정(알림)", 그때 남은 대기는 마감)
+// published: 확정(회원에게 보임) · open: 차량신청 받기
+// recruitOn/recruitUntil: 차량모집(회원이 자기 차를 등록) — 마감 시각이 지나면 차량신청이 자동으로 열린다
+// waitUntil: 차량신청 마감 — 지나면 신청을 받지 않는다(확정은 관리자가 "확정(알림)", 그때 남은 대기는 마감)
 // recruitDone/confirmDone: 그 시각의 자동 처리를 마쳤는지(lib/car-auto.ts)
-// recruitFrom/openFrom: 차량모집·카풀신청 시작 시각(비우면 켜는 순간부터). recruitStarted/openStarted: 시작 알림을 보냈는지
+// recruitFrom/openFrom: 차량모집·차량신청 시작 시각(비우면 켜는 순간부터). recruitStarted/openStarted: 시작 알림을 보냈는지
 export type CarpoolState = {
   published: boolean; publishedAt: string; open?: boolean; waitUntil?: string;
   recruitOn?: boolean; recruitUntil?: string; recruitDone?: boolean; confirmDone?: boolean;
   recruitFrom?: string; openFrom?: string; recruitStarted?: boolean; openStarted?: boolean;
+  selfGo?: string[]; selfBack?: string[]; // 개별 이동(차를 타지 않고 각자 가는 회원) — 구간별
+  adminOnly?: boolean; // 관리자배정: 차량모집·차량신청 없이 관리자가 모두 배정(켜면 둘은 꺼진다)
 };
+export const selfOf = (s: CarpoolState, d: Dir): string[] => (d === "go" ? s.selfGo : s.selfBack) ?? [];
 const passed = (iso?: string) => !!iso && Date.now() > Date.parse(iso);
 const begun = (iso?: string) => !iso || Date.now() >= Date.parse(iso);
-// 차량 지원을 받는 중인지: 켜져 있고, 시작 시각이 지났고, 모집·신청 마감 전
+// 차량모집 지원을 받는 중인지: 켜져 있고, 시작 시각이 지났고, 모집·신청 마감 전
 export const recruiting = (s: CarpoolState) => !!s.recruitOn && begun(s.recruitFrom) && !passed(s.recruitUntil) && !passed(s.waitUntil);
-// 카풀 신청을 받는 중인지: (카풀신청을 켰고 시작 시각이 지남) 또는 (카풀신청을 따로 켜지 않았는데 차량모집이 끝남), 그리고 신청 마감 전.
-// 차량모집이 끝나기 전에 카풀신청이 시작되면 그때까지 등록된 차로 먼저 받고, 나중에 등록된 차도 바로 목록에 더해진다.
+// 차량신청을 받는 중인지: (차량신청을 켰고 시작 시각이 지남) 또는 (차량신청을 따로 켜지 않았는데 차량모집이 끝남), 그리고 신청 마감 전.
+// 차량모집이 끝나기 전에 차량신청이 시작되면 그때까지 등록된 차로 먼저 받고, 나중에 등록된 차도 바로 목록에 더해진다.
 export const requestsOpen = (s: CarpoolState) =>
   ((!!s.open && begun(s.openFrom)) || (!s.open && !!s.recruitOn && passed(s.recruitUntil))) && !passed(s.waitUntil);
 export const carpoolState = (eventId: string): Promise<CarpoolState> =>
@@ -234,8 +253,9 @@ export const saveCarpoolState = async (eventId: string, s: Partial<CarpoolState>
   setSetting(key(eventId), { ...(await carpoolState(eventId)), ...s });
 
 // 구간별로 아직 차가 없는 참석자(운전자나 탑승자로 들어가지 않은 사람)
-export function freeFor(all: Car[], applicants: string[]): Record<Dir, string[]> {
-  const used = { go: new Set<string>(), back: new Set<string>() };
+// self: 개별 이동을 고른 회원(배정 대기에서 뺀다)
+export function freeFor(all: Car[], applicants: string[], self: Record<Dir, string[]> = { go: [], back: [] }): Record<Dir, string[]> {
+  const used = { go: new Set<string>(self.go), back: new Set<string>(self.back) };
   for (const c of all) for (const d of DIRS) for (const pid of peopleOn(c, d)) used[d].add(pid);
   return { go: applicants.filter((p) => !used.go.has(p)), back: applicants.filter((p) => !used.back.has(p)) };
 }
@@ -259,4 +279,36 @@ export async function autoAssign(eventId: string, applicants: string[]): Promise
     if (changed) await s.update("Carpools", car.id, toRow(car));
   }
   return added;
+}
+
+// 지원한 차량의 빈 칸(차량번호, 운행하는 구간의 출발지·출발 시간·도착지). 회원에게 채워 달라고 알릴 때 쓴다.
+export function missingInfo(c: Car): string[] {
+  const out: string[] = [];
+  if (!c.plate.trim()) out.push("차량번호");
+  for (const d of DIRS) {
+    if (!c[d].on) continue;
+    if (!c[d].from.trim()) out.push(`${DIR_LABEL[d]} 출발지`);
+    if (!c[d].departAt.trim()) out.push(`${DIR_LABEL[d]} 출발 시간`);
+    if (!c[d].to.trim()) out.push(`${DIR_LABEL[d]} 도착지`);
+  }
+  return out;
+}
+
+// 지원 회원이 운전하지 않으면(다른 회원·외부 사람이 운전) 지원 회원을 그 차 탑승자로 먼저 넣는다(운행하는 구간마다).
+// 같은 구간의 다른 차에 타고 있었으면 거기서 뺀다(그 차는 저장). 지원 회원이 직접 운전하면 탑승자에서 뺀다.
+export async function seatOwner(others: Car[], car: Car): Promise<void> {
+  const mid = car.ownerId;
+  if (!mid) return;
+  const s = await getStore();
+  for (const d of DIRS) {
+    if (car.driverId === mid || !car[d].on) {
+      car[d].riders = car[d].riders.filter((x) => x !== mid);
+      continue;
+    }
+    if (!car[d].riders.includes(mid)) car[d].riders = [mid, ...car[d].riders];
+    for (const o of others.filter((x) => x.id !== car.id && x[d].riders.includes(mid))) {
+      o[d].riders = o[d].riders.filter((x) => x !== mid);
+      await s.update("Carpools", o.id, toRow(o));
+    }
+  }
 }

@@ -60,7 +60,7 @@ const TABS = [
   { key: "prep", label: "준비목록" },
   { key: "cost", label: "비용" },
   { key: "group", label: "조편성" },
-  { key: "car", label: "카풀" },
+  { key: "car", label: "차량배정" },
   { key: "room", label: "숙소배정" },
   { key: "photo", label: "사진첩" },
 ];

@@ -77,7 +77,7 @@ export async function GET() {
   }));
   const pend = pendingIn(carRows, managedEventIds(members.find((m) => m.id === mid), events, groups));
   const carPending = [...new Set(pend.map((r) => r.eventId))].map((eid) => ({ eventId: eid, eventName: evName(eid), count: pend.filter((r) => r.eventId === eid).length }));
-  // 나에게 온 알림(차량 지원 모집·카풀 자동 배정·확정·마감 등)
+  // 나에게 온 알림(차량모집·카풀 자동 배정·확정·마감 등)
   const memberAlerts = unseenAlertsIn(await s.list("MemberAlerts"), mid).map(toAlert).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((a) => ({ id: a.id, text: a.text, href: a.href, at: a.createdAt, eventName: evName(a.eventId) }));
   return NextResponse.json({

@@ -1252,3 +1252,16 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .car-del { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 999px; background: transparent; color: var(--red-t, #ff8a8a); cursor: pointer; }
 .car-del:hover:not(:disabled) { background: var(--soft); }
 .car-del:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* 차량모집 지원: 빈 칸 안내(포인트 색) */
+.car-missing { color: var(--brand); font-weight: 700; font-size: calc(14px * var(--fs, 1)); line-height: 1.5; }
+
+/* 카풀: 개별 이동 칸(배정 대기 막대 안) */
+.car-self { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--line); padding-top: 8px; border-radius: 8px; }
+.car-self.over { background: var(--blue-bg); }
+.car-chip.self { background: transparent; border-style: dashed; }
+.mini.on-self { border-color: var(--brand); color: var(--brand); }
+
+/* 차량배정: 다른 차량 접어 보기 */
+.car-others > summary { cursor: pointer; font-weight: 700; font-size: calc(14px * var(--fs, 1)); padding: 6px 0; }
+.car-others[open] > summary { margin-bottom: 8px; }

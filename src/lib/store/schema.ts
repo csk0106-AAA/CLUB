@@ -84,7 +84,7 @@ export const TABS = {
   //  likes: 좋아요 회원 id 배열 JSON, parentId: 답글이면 원댓글 id(lib/comments.ts)
   // 차량 배정 신청(lib/car-requests.ts): 구간(dir go|back)별. status pending|approved|confirmed|waiting|rejected|canceled|changed
   //  fromCarId: 변경 요청이면 원래 탄 차, seen: 회원이 결과(확정·반려·취소)를 봤는지
-  // 회원 한 명에게 가는 알림(lib/member-alerts.ts): 차량 지원 모집·카풀 자동 배정·자동 확정 등
+  // 회원 한 명에게 가는 알림(lib/member-alerts.ts): 차량모집·카풀 자동 배정·자동 확정 등
   MemberAlerts: ["id", "memberId", "eventId", "text", "href", "createdAt", "seen"],
   CarRequests: ["id", "eventId", "carId", "memberId", "dir", "status", "createdAt", "handledAt", "fromCarId", "seen", "note"],
   PhotoComments: ["id", "eventId", "photoId", "memberId", "body", "createdAt", "updatedAt", "likes", "parentId"],
@@ -113,7 +113,7 @@ export const TABS = {
     "id", "eventId", "leg", "driverId", "seats", "from", "departAt", "riders", "to", "arriveAt", "plate", "name",
     "goOn", "backOn", "backFrom", "backDepartAt", "backTo", "backArriveAt", "backRiders",
     "kind", "driverName", // kind: member(회원 차량) | rental(외부 대절, driverName 에 운전자 이름)
-    "memo", "ownerId", // memo: 메모(경유지 등), ownerId: 차량 지원 모집으로 회원이 직접 등록한 차면 그 회원
+    "memo", "ownerId", // memo: 메모(경유지 등), ownerId: 차량모집으로 회원이 직접 등록한 차면 그 회원
     "goSeats", "backSeats", "goMemo", "backMemo", // 구간(갈 때·올 때)별 좌석·메모
   ],
   // 숙박 숙소배정: date(YYYY-MM-DD) 날짜별 방, guests 는 회원 id 배열 JSON

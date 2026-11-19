@@ -2,7 +2,7 @@ import { getStore } from "./store";
 import type { Row } from "./store/types";
 
 // 회원 한 명에게 가는 알림(종 숫자·알림 창). 표 MemberAlerts.
-//  지금은 차량 지원 모집·카풀 신청 시작·자동 배정·확정 요청·리마인드·대기 마감 등에 쓴다.
+//  지금은 차량모집·차량신청 시작·자동 배정·확정 요청·리마인드·대기 마감 등에 쓴다.
 //  알림 창을 열면 seen 이 true 가 되어 숫자에서 빠진다.
 export type MemberAlert = { id: string; memberId: string; eventId: string; text: string; href: string; createdAt: string; seen: boolean };
 

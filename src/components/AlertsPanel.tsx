@@ -140,7 +140,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
           {carP.map((p) => (
             <Link key={p.eventId} href={`/admin/events/${p.eventId}?tab=car`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">!</span>
-              <span className="grow"><b>{p.eventName} · 승인 대기 {p.count}건</b><span className="t">일정 관리 › 카풀에서 승인하기 ›</span></span>
+              <span className="grow"><b>{p.eventName} · 승인 대기 {p.count}건</b><span className="t">일정 관리 › 차량배정에서 승인하기 ›</span></span>
             </Link>
           ))}
         </section>

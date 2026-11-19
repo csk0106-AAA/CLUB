@@ -14,13 +14,15 @@ type Car = { id: string; name: string; plate: string; driverId: string; seats: n
 type Req = { id: string; carId: string; dir: Dir; memberId: string; name: string; status: "pending" | "waiting" | "approved" | "confirmed"; label: string; createdAt: string; fromCar: string };
 type Data = {
   published: boolean; open: boolean; waitUntil: string; requests: Req[];
-  recruitOn: boolean; recruitUntil: string; recruitFrom: string; openFrom: string; // 차량모집·카풀신청 시작·마감
+  self: Record<Dir, string[]>; // 개별 이동(구간별)
+  recruitOn: boolean; recruitUntil: string; recruitFrom: string; openFrom: string; // 차량모집·차량신청 시작·마감
+  adminOnly: boolean; // 관리자배정
   members: { id: string; name: string }[]; attendingIds: string[];
   allMembers: { id: string; name: string }[]; // 운전자 검색용(참석하지 않는 회원도)
   cars: Car[]; free: Record<Dir, string[]>;
 };
 type Form = Omit<Car, "id" | "ownerId"> & { ownerId?: string };
-type Setting = { open: boolean; waitUntil: string; recruitOn: boolean; recruitUntil: string; recruitFrom: string; openFrom: string };
+type Setting = { open: boolean; waitUntil: string; recruitOn: boolean; recruitUntil: string; recruitFrom: string; openFrom: string; adminOnly: boolean };
 
 const DIRS: Dir[] = ["go", "back"];
 const LABEL: Record<Dir, string> = { go: "갈 때", back: "올 때" };
@@ -29,14 +31,23 @@ const blank = (): Form => ({ name: "", plate: "", driverId: "", seats: 5, kind: 
 // 운전자가 차지하는 자리(회원 차량에 운전자가 정해져 있으면 1) — 서버 lib/carpool.ts driverSeat 와 같다
 const driverSeat = (c: Pick<Car, "kind" | "driverId" | "driverName">) => (c.kind !== "rental" && c.driverId ? 1 : 0);
 const legBody = (l: LegInfo) => ({ on: l.on, from: l.from, departAt: l.departAt, to: l.to, arriveAt: l.arriveAt, riders: l.on ? l.riders : [], seats: l.seats || 1, memo: l.memo });
-const carBody = (c: Form) => ({ name: c.name, plate: c.plate, driverId: c.driverId, kind: c.kind, driverName: c.driverName, go: legBody(c.go), back: legBody(c.back) });
+const carBody = (c: Form) => ({ name: c.name, plate: c.plate, driverId: c.driverId, kind: c.kind, driverName: c.driverName, ownerId: c.ownerId ?? "", go: legBody(c.go), back: legBody(c.back) });
 // 구간 좌석(없으면 차량 전체)
 const legSeats = (c: { seats: number; go: LegInfo; back: LegInfo }, d: Dir) => c[d].seats || c.seats;
 
 // 차량 정보 입력(등록·정보 수정 창이 함께 쓴다): 종류·운전자·그룹명·차량번호·좌석, 운행 구간과 구간별 장소·시간
 function CarForm({ idp, v, set, members }: { idp: string; v: Form; set: (p: Partial<Form>) => void; members: { id: string; name: string }[] }) {
-  // 회원 차량을 회원이 아닌 사람이 운전하는지
-  const [extDriver, setExtDriver] = useState(v.kind === "member" && !v.driverId && !!v.driverName);
+  // 회원 차량 운전자: 차량모집 지원 회원 / 다른 회원 / 회원 아닌 분(회원의 "차량모집 지원" 창과 같은 고르기)
+  type Mode = "owner" | "member" | "other";
+  const [mode, setMode] = useState<Mode>(() =>
+    v.driverId && v.driverId === v.ownerId ? "owner" : v.driverId ? "member" : v.driverName ? "other" : v.ownerId ? "owner" : "member");
+  const extDriver = v.kind === "member" && mode === "other";
+  const pickMode = (m: Mode) => {
+    setMode(m);
+    if (m === "owner") set({ driverId: v.ownerId ?? "", driverName: "" });
+    else if (m === "member") set({ driverId: v.driverId && v.driverId !== v.ownerId ? v.driverId : "", driverName: "" });
+    else set({ driverId: "" });
+  };
   const setLeg = (dir: Dir, p: Partial<LegInfo>) => set({ [dir]: { ...v[dir], ...p } } as Partial<Form>);
   const toggle = (dir: Dir, on: boolean) => {
     const other = v[dir === "go" ? "back" : "go"];
@@ -50,21 +61,27 @@ function CarForm({ idp, v, set, members }: { idp: string; v: Form; set: (p: Part
         <button type="button" aria-pressed={v.kind === "rental"} onClick={() => set({ kind: "rental", driverId: "" })} style={{ minHeight: 38, padding: "0 14px" }}>외부 대절</button>
       </div>
       <div className="grid2">
-        <div>
-          <div className="row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
-            <label className="l grow" htmlFor={`${idp}-dr`} style={{ margin: 0 }}>운전자</label>
-            {/* 회원 차량: 운전자가 회원이면 이름 검색, 다른 사람(외부)이면 이름 직접 입력 */}
-            {v.kind === "member" && (
-              <div className="seg" role="group" aria-label="운전자" style={{ flex: "none" }}>
-                <button type="button" aria-pressed={!extDriver} onClick={() => { setExtDriver(false); set({ driverName: "" }); }} style={{ minHeight: 30, padding: "0 10px", fontSize: fs(12) }}>회원</button>
-                <button type="button" aria-pressed={extDriver} onClick={() => { setExtDriver(true); set({ driverId: "" }); }} style={{ minHeight: 30, padding: "0 10px", fontSize: fs(12) }}>외부 사람</button>
+        {v.kind === "member" ? (
+          <>
+            {/* 차량모집 지원 회원: 회원 대신 먼저 등록할 때. 그 회원이 일정 화면에서 빈 칸을 채울 수 있고, 빈 칸이 있으면 알림이 가요 */}
+            <div style={{ gridColumn: "1 / -1" }}><label className="l" htmlFor={`${idp}-ow`}>차량모집 지원 회원 <span style={{ color: "var(--brand)" }}>(필수)</span></label>
+              <NameSearch id={`${idp}-ow`} members={members} value={v.ownerId ?? ""} onChange={(id) => set({ ownerId: id, ...(mode === "owner" ? { driverId: id, driverName: "" } : {}) })} /></div>
+            <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 6 }}>
+              <span className="l" style={{ margin: 0 }}>운전자</span>
+              <div className="seg" role="group" aria-label="운전자" style={{ alignSelf: "flex-start" }}>
+                <button type="button" aria-pressed={mode === "owner"} disabled={!v.ownerId} title={v.ownerId ? undefined : "차량모집 지원 회원을 먼저 골라 주세요"} onClick={() => pickMode("owner")} style={{ minHeight: 36, padding: "0 12px" }}>지원 회원</button>
+                <button type="button" aria-pressed={mode === "member"} onClick={() => pickMode("member")} style={{ minHeight: 36, padding: "0 12px" }}>다른 회원</button>
+                <button type="button" aria-pressed={mode === "other"} onClick={() => pickMode("other")} style={{ minHeight: 36, padding: "0 12px" }}>회원 아닌 분</button>
               </div>
-            )}
-          </div>
-          {v.kind === "rental" || extDriver
-            ? <input id={`${idp}-dr`} className="field" maxLength={30} value={v.driverName} placeholder={v.kind === "rental" ? "예: 김기사 010-0000-0000" : "운전자 이름"} onChange={(e) => set({ driverName: e.target.value })} />
-            : <NameSearch id={`${idp}-dr`} members={members} value={v.driverId} onChange={(id) => set({ driverId: id })} />}
-        </div>
+              {mode === "owner" && <span className="small">{v.ownerId ? `${members.find((m) => m.id === v.ownerId)?.name ?? "지원 회원"} 님이 운전해요.` : "차량모집 지원 회원을 먼저 골라 주세요."}</span>}
+              {mode === "member" && <NameSearch id={`${idp}-dr`} members={members} value={v.driverId} onChange={(id) => set({ driverId: id })} />}
+              {mode === "other" && <input id={`${idp}-dr`} className="field" aria-label="운전자 이름" maxLength={30} value={v.driverName} placeholder="운전자 이름 (예: 가족·지인)" onChange={(e) => set({ driverName: e.target.value })} />}
+            </div>
+          </>
+        ) : (
+          <div><label className="l" htmlFor={`${idp}-dr`}>운전자</label>
+            <input id={`${idp}-dr`} className="field" maxLength={30} value={v.driverName} placeholder="예: 김기사 010-0000-0000" onChange={(e) => set({ driverName: e.target.value })} /></div>
+        )}
         <div><label className="l" htmlFor={`${idp}-nm`}>그룹명</label><input id={`${idp}-nm`} className="field" maxLength={30} value={v.name} placeholder="비우면 차량번호 → 운전자 이름" onChange={(e) => set({ name: e.target.value })} /></div>
         <div><label className="l" htmlFor={`${idp}-pl`}>차량번호</label><input id={`${idp}-pl`} className="field" maxLength={20} value={v.plate} onChange={(e) => set({ plate: e.target.value })} /></div>
       </div>
@@ -115,7 +132,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     const r = await api<Data>(base);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setD(r.data);
-    setSetting({ open: r.data.open, waitUntil: r.data.waitUntil, recruitOn: r.data.recruitOn, recruitUntil: r.data.recruitUntil, recruitFrom: r.data.recruitFrom ?? "", openFrom: r.data.openFrom ?? "" });
+    setSetting({ open: r.data.open, waitUntil: r.data.waitUntil, recruitOn: r.data.recruitOn, recruitUntil: r.data.recruitUntil, recruitFrom: r.data.recruitFrom ?? "", openFrom: r.data.openFrom ?? "", adminOnly: !!r.data.adminOnly });
   }, [base]);
   useEffect(() => {
     load();
@@ -128,8 +145,20 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
   const reqOf = (carId: string, mid: string) => d.requests.find((q) => q.carId === carId && q.dir === dir && q.memberId === mid && (q.status === "approved" || q.status === "confirmed"));
 
   // 탑승자 옮기기: from/to 가 ""면 배정 대기. 빼는 차를 먼저 저장해야 "다른 차에 이미 있어요"에 걸리지 않는다.
+  // 옮기기: to/from 이 ""면 배정 대기, "self"면 개별 이동, 그 밖에는 차 id
   async function move(mid: string, from: string, to: string) {
     if (!d || from === to) return;
+    if (to === "self" || from === "self") {
+      setBusy(true);
+      setNote(null);
+      setPick(null);
+      // 개별 이동으로: 서버가 탄 차에서 빼고 개별 이동에 넣는다 / 개별 이동에서: 먼저 빼고(배정 대기), 차로 가면 이어서 넣는다
+      const r = await api(`${base}/publish`, { body: { action: "self", memberId: mid, dir, on: to === "self" } });
+      if (!r.ok) { setBusy(false); setNote({ tone: "bad", text: r.error }); return load(); }
+      setBusy(false);
+      if (to && to !== "self") return moveAfterLoad(mid, to);
+      return load();
+    }
     const target = d.cars.find((c) => c.id === to);
     if (target) {
       if (target.kind === "member" && target.driverId === mid) return setNote({ tone: "bad", text: `${nm(mid)} 님은 ${target.name}의 운전자예요.` });
@@ -148,6 +177,17 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
       if (!r.ok) setNote({ tone: "bad", text: r.error });
     }
     setBusy(false);
+    load();
+  }
+  // 개별 이동에서 꺼낸 뒤 차에 넣기(배정 대기 상태에서 옮기는 것과 같다)
+  async function moveAfterLoad(mid: string, to: string) {
+    const r = await api<Data>(base);
+    if (!r.ok) return load();
+    const target = r.data.cars.find((c) => c.id === to);
+    if (target) {
+      const p = await api(`${base}/${target.id}`, { method: "PATCH", body: { [dir]: { riders: [...target[dir].riders, mid] } } });
+      if (!p.ok) setNote({ tone: "bad", text: p.error });
+    }
     load();
   }
   async function addMany(carId: string, mids: string[]) {
@@ -179,13 +219,14 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     const r = await api<{ added?: number; told?: number }>(`${base}/publish`, { body: { action } });
     setBusy(false);
     if (!r.ok) setNote({ tone: "bad", text: r.error });
-    else setNote({ tone: "info", text: action === "auto" ? `빈 좌석에 ${r.data.added ?? 0}자리를 채웠어요. 확인하고 “확정”을 눌러 주세요.` : action === "publish" ? `확정했어요. ${r.data.told ?? 0}명에게 확정 알림을 보냈어요.` : "확정을 취소했어요. 회원에게 차량 배정이 보이지 않아요." });
+    else setNote({ tone: "info", text: action === "auto" ? `빈 좌석에 ${r.data.added ?? 0}자리를 채웠어요. 확인하고 “확정”을 눌러 주세요.` : action === "publish" ? `확정했어요. ${r.data.told ?? 0}명에게 확정 알림을 보냈어요.` : "확정을 취소했어요. 확정됐던 분들은 \"확정 전\"으로 돌아갔어요. 다시 \"확정 (알림)\"을 누르면 다시 안내돼요." });
     load();
   }
   async function saveForm(e: React.FormEvent) {
     e.preventDefault();
     if (!form) return;
     if (!form.v.go.on && !form.v.back.on) return setFormErr("갈 때와 올 때 중 하나는 운행해야 해요.");
+    if (form.v.kind === "member" && !form.v.ownerId) return setFormErr("회원 차량은 차량모집 지원 회원을 골라 주세요.");
     setFormErr("");
     const r = form.id === "new"
       ? await api(base, { body: carBody(form.v) })
@@ -208,7 +249,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     load();
   }
 
-  const targets = [...shown.map((c) => ({ key: c.id, label: c.name })), { key: "", label: "배정 대기" }];
+  const targets = [...shown.map((c) => ({ key: c.id, label: c.name })), { key: "", label: "배정 대기" }, { key: "self", label: "개별 이동" }];
   // 이름 한 줄(끌어서 옮기기 + 선택 상자로 옮기기)
   const person = (mid: string, where: string) => {
     const q = where ? reqOf(where, mid) : undefined;
@@ -222,13 +263,6 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
           <select aria-label={`${nm(mid)} 옮기기`} className="field car-move" value={where} disabled={busy} onChange={(e) => move(mid, where, e.target.value)}>
             {targets.map((t) => <option key={t.key || "pool"} value={t.key}>{t.label}</option>)}
           </select>
-        )}
-        {/* 차에서 빼기(배정 대기로) — 바로 저장 */}
-        {canEdit && where && (
-          <button type="button" className="car-del" disabled={busy} aria-label={`${nm(mid)} 이 차에서 빼기`} title="이 차에서 빼기"
-            onClick={() => { if (window.confirm(`${nm(mid)} 님을 이 차에서 뺄까요? 배정 대기로 돌아가요.`)) move(mid, where, ""); }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
-          </button>
         )}
       </div>
     );
@@ -245,17 +279,18 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
-      {/* 한 줄: 카풀설정(펼치기) · 차량모집 · 카풀신청(체크하면 바로 표시) · (승인 대기) · + 차량 */}
+      {/* 한 줄: 차량신청설정(펼치기) · 차량모집 · 차량신청(체크하면 바로 표시) · (승인 대기) · + 차량 */}
       <div className="row car-top">
         {canEdit && (
           <button type="button" className="mini" aria-expanded={showSetting} onClick={() => setShowSetting(!showSetting)}>
-            카풀설정 <span aria-hidden="true">{showSetting ? "▴" : "▾"}</span>
+            차량신청설정 <span aria-hidden="true">{showSetting ? "▴" : "▾"}</span>
           </button>
         )}
-        {/* 카풀설정의 체크(저장 전이라도)를 그대로 보여 준다 */}
+        {/* 차량신청설정의 체크(저장 전이라도)를 그대로 보여 준다 */}
         {(setting ?? d).recruitOn && <span className="pill blue">차량모집</span>}
-        {(setting ?? d).open && <span className="pill blue">카풀신청</span>}
-        {!(setting ?? d).recruitOn && !(setting ?? d).open && <span className="pill gray">신청 안 받음</span>}
+        {(setting ?? d).open && <span className="pill blue">차량신청</span>}
+        {(setting ?? d).adminOnly && <span className="pill blue">관리자배정</span>}
+        {!(setting ?? d).recruitOn && !(setting ?? d).open && !(setting ?? d).adminOnly && <span className="pill gray">신청 안 받음</span>}
         {pending > 0 && <span className="pill blue">승인 대기 {pending}</span>}
         <span className="grow" />
         {canEdit && <button type="button" className="btn" style={{ width: "auto", minHeight: 38, padding: "0 14px", fontSize: fs(14), flex: "none" }} onClick={() => { setFormErr(""); setForm({ id: "new", v: blank() }); }}>+ 차량</button>}
@@ -264,7 +299,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
           {/* 차량모집 · 마감 일시(오른쪽) */}
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <div className="checks"><label><input type="checkbox" checked={setting.recruitOn} onChange={(e) => setSetting({ ...setting, recruitOn: e.target.checked })} />차량모집</label></div>
+            <div className="checks"><label><input type="checkbox" checked={setting.recruitOn} disabled={setting.adminOnly} onChange={(e) => setSetting({ ...setting, recruitOn: e.target.checked })} />차량모집</label></div>
             <span className="grow" />
             {/* 시작 ~ 마감(시작을 비우면 저장하는 순간부터) */}
             <div className="cp-range">
@@ -273,21 +308,27 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
               <div aria-label="차량모집 마감 일시"><DateField id="cp-rec" mode="datetime" ariaLabel="차량모집 마감" value={setting.recruitUntil} onChange={(v) => setSetting({ ...setting, recruitUntil: v })} /></div>
             </div>
           </div>
-          <span className="small">켜면 참석자에게 알림이 가고, 차를 가져오실 분이 일정 화면 “내 차로 지원하기”로 직접 등록해요(운전자·좌석·출발지·메모). 시작을 비우면 저장하는 순간부터예요. 카풀신청을 따로 켜지 않으면 차량모집 마감 때 카풀신청이 열려요.</span>
-          {/* 카풀신청 · 시작~마감 일시(오른쪽). 확정은 관리자가 "확정(알림)" */}
+          <span className="small">켜면 참석자에게 알림이 가고, 차를 가져오실 분이 일정 화면 “내 차로 지원하기”로 직접 등록해요(운전자·좌석·출발지·메모). 시작을 비우면 저장하는 순간부터예요. 차량신청을 따로 켜지 않으면 차량모집 마감 때 차량신청이 열려요.</span>
+          {/* 차량신청 · 시작~마감 일시(오른쪽). 확정은 관리자가 "확정(알림)" */}
           <div className="row" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-            <div className="checks"><label><input type="checkbox" checked={setting.open} onChange={(e) => setSetting({ ...setting, open: e.target.checked })} />카풀신청</label></div>
+            <div className="checks"><label><input type="checkbox" checked={setting.open} disabled={setting.adminOnly} onChange={(e) => setSetting({ ...setting, open: e.target.checked })} />차량신청</label></div>
             <span className="grow" />
             <div className="cp-range">
-              <div aria-label="카풀신청 시작 일시"><DateField id="cp-open-from" mode="datetime" ariaLabel="카풀신청 시작" value={setting.openFrom} onChange={(v) => setSetting({ ...setting, openFrom: v })} /></div>
+              <div aria-label="차량신청 시작 일시"><DateField id="cp-open-from" mode="datetime" ariaLabel="차량신청 시작" value={setting.openFrom} onChange={(v) => setSetting({ ...setting, openFrom: v })} /></div>
               <span aria-hidden="true">~</span>
-              <div aria-label="카풀신청 마감 일시"><DateField id="cp-wait" mode="datetime" ariaLabel="카풀신청 마감" value={setting.waitUntil} onChange={(v) => setSetting({ ...setting, waitUntil: v })} /></div>
+              <div aria-label="차량신청 마감 일시"><DateField id="cp-wait" mode="datetime" ariaLabel="차량신청 마감" value={setting.waitUntil} onChange={(v) => setSetting({ ...setting, waitUntil: v })} /></div>
             </div>
           </div>
           <span className="small">승인 없이 자리가 있으면 바로 배정되고, 정원이 차면 대기로 받아요. 자리가 나면 대기 1번이 자동으로 들어가요. 마감 시각이 되면 신청이 닫히고 관리자에게 알림이 가요. <b>최종 확정은 아래 “확정 (알림)”</b>을 눌러야 탑승자·운전자에게 안내돼요(일정 3일 전까지 확정하지 않으면 다시 알려 드려요). 차량모집 마감 전에 시작하면 그때까지 등록된 차로 먼저 받고, 나중에 등록되는 차는 바로 더해지고 차 없는 참석자에게 알림이 가요.</span>
+          {/* 관리자배정: 차량모집·차량신청 없이 관리자가 모두 등록·배정(켜면 둘은 꺼지고 누를 수 없어요) */}
+          <div className="row" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+            <div className="checks"><label><input type="checkbox" checked={setting.adminOnly}
+              onChange={(e) => setSetting({ ...setting, adminOnly: e.target.checked, ...(e.target.checked ? { recruitOn: false, open: false } : {}) })} />관리자배정</label></div>
+          </div>
+          <span className="small">차량모집·차량신청 없이 관리자가 차량을 모두 등록하고 배정해요. 회원에게는 “관리자가 차량을 배정 중입니다”가 보이고, “확정 (알림)”을 누르면 배정 정보가 보여요.</span>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <button type="button" className="btn" style={{ width: "auto", minHeight: 42, fontSize: fs(14) }}
-              disabled={setting.open === d.open && setting.waitUntil === d.waitUntil && setting.recruitOn === d.recruitOn && setting.recruitUntil === d.recruitUntil && setting.recruitFrom === (d.recruitFrom ?? "") && setting.openFrom === (d.openFrom ?? "")} onClick={saveSetting}>저장</button>
+              disabled={setting.open === d.open && setting.waitUntil === d.waitUntil && setting.recruitOn === d.recruitOn && setting.recruitUntil === d.recruitUntil && setting.recruitFrom === (d.recruitFrom ?? "") && setting.openFrom === (d.openFrom ?? "") && setting.adminOnly === !!d.adminOnly} onClick={saveSetting}>저장</button>
           </div>
         </div>
       )}
@@ -308,7 +349,8 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
           <div className="seg" role="tablist" aria-label="구간" style={{ flex: "none" }}>
             {DIRS.map((x) => (
               <button key={x} type="button" role="tab" aria-selected={dir === x} aria-pressed={dir === x} onClick={() => setDir(x)} style={{ minHeight: 40, padding: "0 16px" }}>
-                {LABEL[x]} <span className="small">· 대기 {d.free[x].length}명</span>
+                {/* 갈 때 N명(차에 배정된 사람: 탑승자 + 회원 운전자) · 대기 N명 */}
+                {LABEL[x]} {d.cars.filter((c) => c[x].on).reduce((n, c) => n + c[x].riders.length + driverSeat(c), 0)}명 <span className="small">· 대기 {d.free[x].length}명</span>
               </button>
             ))}
           </div>
@@ -323,7 +365,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
               <span className="small grow">{LABEL[dir]} 차가 없는 참석자</span>
               {pick && <span className="small" style={{ fontWeight: 700 }}>{nm(pick.mid)} 고름 · 차의 “넣기”를 누르세요</span>}
               {pick && <button type="button" className="mini" onClick={() => setPick(null)}>고르기 취소</button>}
-              {canEdit && pick && pick.where && <button type="button" className="mini" disabled={busy} onClick={() => move(pick.mid, pick.where, "")}>배정 대기로 빼기</button>}
+              {canEdit && pick && pick.where && <button type="button" className="mini" disabled={busy} onClick={() => move(pick.mid, pick.where, "")}>{pick.where === "self" ? "개별 이동 취소" : "배정 대기로 빼기"}</button>}
             </div>
             <div className="car-chips">
               {d.free[dir].map((mid) => (
@@ -332,6 +374,22 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
                   aria-pressed={pick?.mid === mid} onClick={() => setPick(pick?.mid === mid ? null : { mid, where: "" })}>{nm(mid)}</button>
               ))}
               {d.free[dir].length === 0 && <span className="hint">모두 배정됐어요</span>}
+            </div>
+            {/* 개별 이동: 차를 타지 않고 각자 가는 분. 끌어서 넣고 빼요(회원도 카풀 칸에서 직접 고르고 취소할 수 있어요) */}
+            <div className={`car-self${over === "self" ? " over" : ""}`} {...drop("self")}>
+              <div className="row" style={{ gap: 6 }}>
+                <b>개별 이동 {(d.self?.[dir] ?? []).length}명</b>
+                <span className="small grow">{LABEL[dir]} 차 없이 각자 이동</span>
+                {canEdit && pick && pick.where !== "self" && <button type="button" className="mini" disabled={busy} onClick={() => move(pick.mid, pick.where, "self")}>개별 이동으로</button>}
+              </div>
+              <div className="car-chips">
+                {(d.self?.[dir] ?? []).map((mid) => (
+                  <button key={mid} type="button" className={`car-chip self${pick?.mid === mid ? " on" : ""}`} draggable={canEdit && !busy} disabled={!canEdit || busy}
+                    onDragStart={(e) => { e.dataTransfer.setData("text/plain", `${mid}|self`); e.dataTransfer.effectAllowed = "move"; }}
+                    aria-pressed={pick?.mid === mid} onClick={() => setPick(pick?.mid === mid ? null : { mid, where: "self" })}>{nm(mid)}</button>
+                ))}
+                {(d.self?.[dir] ?? []).length === 0 && <span className="hint">여기로 끌어 놓으면 개별 이동이에요</span>}
+              </div>
             </div>
           </div>
           <div className="cards">
@@ -349,7 +407,8 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
                   </div>
                   <span className="small">
                     {[c.kind === "rental" ? "외부 대절" : "회원 차량", c.kind === "rental" && driverOf(c) && `운전 ${driverOf(c)}`, c.plate].filter(Boolean).join(" · ")}
-                    {c.ownerId && <><br />차량 지원 · {nm(c.ownerId)}</>}
+                    {c.ownerId && c.ownerId !== c.driverId && <><br />지원 {nm(c.ownerId)}(운전 {driverOf(c) || "미정"})</>}
+                    {c.ownerId && c.ownerId === c.driverId && <><br />차량모집 지원 · {nm(c.ownerId)}</>}
                     {(leg.from || leg.to) && <><br />{`${leg.from || "?"} → ${leg.to || "?"}`}</>}
                     {/* 출발 시간은 한 줄 아래로 */}
                     {leg.departAt && <><br />{fmtDateTime(leg.departAt)} 출발</>}
@@ -400,7 +459,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
             <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
               <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={() => act("auto")}>빈 좌석 자동 배정</button>
               <span className="grow" />
-              {d.published && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={() => act("unpublish")}>확정 취소</button>}
+              {d.published && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={() => { if (window.confirm("확정을 취소할까요?\n확정된 분들에게 취소 알림이 가고 “확정 전”으로 돌아가요. 자리는 그대로이고, 다시 “확정 (알림)”을 누르면 다시 안내돼요.")) act("unpublish"); }}>확정 취소</button>}
               <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 160 }} onClick={() => act("publish")}>
                 {`확정 (알림)${unconfirmed ? ` · 확정 전 ${unconfirmed}명` : ""}`}
               </button>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
-import { applyInput, autoName, carInput, cars, conflict, inputPeople, timeIssue, toCar, toRow } from "@/lib/carpool";
+import { applyInput, autoName, carInput, carpoolState, cars, conflict, inputPeople, saveCarpoolState, seatOwner, selfOf, timeIssue, toCar, toRow } from "@/lib/carpool";
+import { askOwnerInfo } from "@/lib/car-auto";
 import { dropCar, syncRemoved } from "@/lib/car-requests";
 import { addAlerts } from "@/lib/member-alerts";
 import { getStore } from "@/lib/store";
@@ -23,6 +24,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const all = await cars(id);
   const before = toCar(row);
   const next = applyInput(toCar(row), parsed.data);
+  // 정보 수정 창에서 저장할 때(탑승자 옮기기 말고) 회원 차량은 지원 회원 필수
+  if (parsed.data.ownerId !== undefined && next.kind === "member" && !next.ownerId) return bad("회원 차량은 차량모집 지원 회원을 골라 주세요.");
+  if (next.ownerId && !members.some((m) => m.id === next.ownerId)) return bad("지원 회원이 명단에 없어요.");
+  if (parsed.data.ownerId !== undefined || parsed.data.driverId !== undefined) await seatOwner(all.filter((c) => c.id !== cid), next);
   if (!next.name) next.name = autoName(next, all, (mid) => members.find((m) => m.id === mid)?.name ?? "");
   const order = timeIssue(next);
   if (order) return bad(order);
@@ -31,6 +36,15 @@ export async function PATCH(req: Request, ctx: Ctx) {
   await s.update("Carpools", cid, toRow(next));
   // 뺀 탑승자의 신청은 취소로, 빈자리에는 대기자를 올린다(확정한 배정은 그대로 보이고, 바꾼 것은 다시 "확정"을 눌러야 알린다)
   await syncRemoved(id, before, next);
+  // 차에 넣은 사람은 그 구간 개별 이동에서 뺀다
+  const st = await carpoolState(id);
+  for (const d of ["go", "back"] as const) {
+    const added = next[d].riders.filter((m) => !before[d].riders.includes(m));
+    const self = selfOf(st, d);
+    if (added.some((m) => self.includes(m))) await saveCarpoolState(id, d === "go" ? { selfGo: self.filter((m) => !added.includes(m)) } : { selfBack: self.filter((m) => !added.includes(m)) });
+  }
+  // 정보 수정 창에서 저장했을 때만(탑승자 옮기기 말고) 빈 칸 알림
+  if (parsed.data.name !== undefined || parsed.data.ownerId !== undefined) await askOwnerInfo(id, next);
   return NextResponse.json({ ok: true });
 }
 

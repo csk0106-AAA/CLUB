@@ -89,8 +89,6 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
           )}
         </Fold>
       ))}
-      {!d.carpool.published && waitCard("카풀", "카풀 배정 전이에요. 정해지면 여기에 보여요.")}
-      {d.carpool.published && d.carpool.mine.length === 0 && waitCard("카풀", "배정된 카풀이 없어요.")}
       {!d.rooms?.published && waitCard("숙소 배정", "숙소 배정 전이에요. 정해지면 여기에 보여요.")}
       {d.rooms?.published && d.rooms.mine.length === 0 && waitCard("숙소 배정", "배정된 방이 없어요.")}
       {!noSchedule && d.schedule.length > 0 && (
@@ -112,21 +110,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
           ))}
         </Fold>
       )}
-      {/* 카풀: 한 줄 요약(갈 때 차 이름 · 운전/탑승 · 출발 시각), 장소·명단은 펼쳐서 보기 */}
-      {d.carpool.published && d.carpool.mine.length > 0 && (
-        <Fold title="카풀" summary={d.carpool.mine.map((c) => `${c.leg} ${c.name}${c.iDrive ? " · 내가 운전" : c.driver ? ` · 운전 ${c.driver}` : ""}${c.departAt ? ` · ${when(c.departAt)} 출발` : ""}`).join(" / ")}>
-          {/* 갈 때 / 올 때 구간별로 내가 탄(운전하는) 차 */}
-          {d.carpool.mine.map((c, i) => (
-            <div key={i} style={{ borderTop: i ? "1px solid var(--line)" : undefined, paddingTop: i ? 8 : 0 }}>
-              <div className="row" style={{ flexWrap: "wrap" }}><span className="pill ok">{c.leg}</span><b>{c.name}</b><span className="pill gray">{c.iDrive ? "내가 운전해요" : "탑승"}</span></div>
-              <div>운전자: <b>{c.driver || "미정"}</b>{c.plate ? ` · 차량번호 ${c.plate}` : ""}</div>
-              <div className="small">출발: {c.from || "장소 미정"}{c.departAt ? ` · ${when(c.departAt)}` : ""}</div>
-              <div className="small">도착: {c.to || "장소 미정"}{c.arriveAt ? ` · ${when(c.arriveAt)} 예상` : ""}</div>
-              {c.people ? <People label="같은 차" names={c.people} /> : <div className="small">동승자: {c.riders.length ? c.riders.join(", ") : "없음"}</div>}
-            </div>
-          ))}
-        </Fold>
-      )}
+      {/* 차량배정(내 차)은 일정 화면의 "차량배정" 칸(components/CarRequestBox.tsx)이 보여 준다 */}
     </>
   );
 }

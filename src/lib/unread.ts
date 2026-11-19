@@ -203,7 +203,7 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
         + (await joinerIssuesFor(me, groups, posts, events, members, stamps)).length
         // 차량 배정: 내 신청 결과(확정·반려·취소, 아직 안 봄) + (그 일정 관리자) 승인할 신청
         + unseenFor(carReqs, mid).length
-        + unseenAlertsIn(memberAlerts, mid).length // 차량 지원 모집·카풀 자동 배정·확정·마감 등
+        + unseenAlertsIn(memberAlerts, mid).length // 차량모집·카풀 자동 배정·확정·마감 등
         + pendingIn(carReqs, managedEventIds(me, events, groups)).length,
     });
   }

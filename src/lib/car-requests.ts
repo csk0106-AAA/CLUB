@@ -1,4 +1,4 @@
-import { cars, carpoolState, requestsOpen, riderCap, toRow, type Car, type Dir } from "./carpool";
+import { cars, carpoolState, requestsOpen, riderCap, saveCarpoolState, selfOf, toRow, type Car, type Dir } from "./carpool";
 import { addAlerts } from "./member-alerts";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
@@ -19,7 +19,7 @@ export type CarReq = {
   createdAt: string; handledAt: string; fromCarId: string; seen: boolean; note: string;
 };
 export const REQ_LABEL: Record<CarReqStatus, string> = {
-  pending: "승인 대기", approved: "승인(확정 전)", confirmed: "확정", waiting: "대기", rejected: "반려", canceled: "취소", changed: "변경됨",
+  pending: "승인 대기", approved: "배정(확정 전)", confirmed: "확정", waiting: "신청 대기", rejected: "반려", canceled: "취소", changed: "변경됨",
 };
 
 export const toReq = (r: Row): CarReq => ({
@@ -51,8 +51,8 @@ async function setStatus(id: string, patch: Partial<Record<keyof CarReq, string>
 // 회원 신청(또는 변경 요청). 자리가 있으면 승인 대기, 없으면 대기(기한 안에서만).
 export async function requestSeat(eventId: string, mid: string, carId: string, dir: Dir): Promise<{ status: CarReqStatus } | { error: string }> {
   const [all, reqs, state] = await Promise.all([cars(eventId), carRequests(eventId), carpoolState(eventId)]);
-  if (waitClosed(state.waitUntil)) return { error: "카풀신청이 마감됐어요. 차량 변경·취소는 “관리자에게 변경·취소 요청”을 눌러 주세요." };
-  if (!requestsOpen(state)) return { error: "지금은 카풀 신청을 받지 않아요." };
+  if (waitClosed(state.waitUntil)) return { error: "차량신청이 마감됐어요. 차량 변경·취소는 “관리자에게 변경·취소 요청”을 눌러 주세요." };
+  if (!requestsOpen(state)) return { error: "지금은 차량신청을 받지 않아요." };
   const car = all.find((c) => c.id === carId);
   if (!car || !car[dir].on) return { error: "이 차량은 이 구간을 운행하지 않아요." };
   if (car.kind === "member" && car.driverId === mid) return { error: "내가 운전하는 차예요." };
@@ -65,6 +65,8 @@ export async function requestSeat(eventId: string, mid: string, carId: string, d
   const from = all.find((c) => c.id !== carId && c[dir].on && (c[dir].riders.includes(mid) || (c.kind === "member" && c.driverId === mid)));
   if (from && from.kind === "member" && from.driverId === mid) return { error: "다른 차를 운전하고 있어요." };
   const s = await getStore();
+  // 개별 이동을 골랐던 회원이 차를 신청하면 개별 이동에서 뺀다
+  if (selfOf(state, dir).includes(mid)) await saveCarpoolState(eventId, dir === "go" ? { selfGo: selfOf(state, dir).filter((x) => x !== mid) } : { selfBack: selfOf(state, dir).filter((x) => x !== mid) });
   const seat = openSeats(car, dir, reqs) > 0;
   const status: CarReqStatus = seat ? "approved" : "waiting";
   const row = await s.insert("CarRequests", {
@@ -78,7 +80,7 @@ export async function requestSeat(eventId: string, mid: string, carId: string, d
 export async function cancelRequest(eventId: string, mid: string, reqId: string): Promise<string | null> {
   const [reqs0, state] = await Promise.all([carRequests(eventId), carpoolState(eventId)]);
   const r = reqs0.find((x) => x.id === reqId && x.memberId === mid);
-  if (waitClosed(state.waitUntil)) return "카풀신청이 마감돼서 직접 취소할 수 없어요. “관리자에게 변경·취소 요청”을 눌러 주세요.";
+  if (waitClosed(state.waitUntil)) return "차량신청이 마감돼서 직접 취소할 수 없어요. “관리자에게 변경·취소 요청”을 눌러 주세요.";
   if (!r || !(OPEN.includes(r.status) || SEATED.includes(r.status))) return "취소할 수 있는 신청이 없어요.";
   await setStatus(r.id, { status: "canceled" });
   if (SEATED.includes(r.status)) {
@@ -224,4 +226,23 @@ export const pendingIn = (rows: Row[], eventIds: Set<string>) => rows.filter((r)
 export async function markSeen(eventId: string, mid: string): Promise<void> {
   const s = await getStore();
   for (const r of (await s.list("CarRequests")).filter((x) => x.eventId === eventId && x.memberId === mid && x.seen === "false")) await s.update("CarRequests", r.id, { seen: "true" });
+}
+
+// 개별 이동 켜기: 그 구간에 탄 차가 있으면 빼고(자리는 대기자에게), 신청 대기도 취소. 끄기: 개별 이동에서만 뺀다(배정 대기로).
+export async function setSelf(eventId: string, mid: string, dir: Dir, on: boolean): Promise<void> {
+  const st = await carpoolState(eventId);
+  const cur = selfOf(st, dir).filter((x) => x !== mid);
+  const next = on ? [...cur, mid] : cur;
+  await saveCarpoolState(eventId, dir === "go" ? { selfGo: next } : { selfBack: next });
+  if (!on) return;
+  const s = await getStore();
+  const reqs = await carRequests(eventId);
+  for (const r of reqs.filter((x) => x.memberId === mid && x.dir === dir && (OPEN.includes(x.status) || SEATED.includes(x.status)))) {
+    await setStatus(r.id, { status: "canceled", note: "개별 이동으로 바꿨어요" });
+  }
+  for (const car of (await cars(eventId)).filter((c) => c[dir].riders.includes(mid))) {
+    car[dir].riders = car[dir].riders.filter((x) => x !== mid);
+    await s.update("Carpools", car.id, toRow(car));
+    await promote(eventId, car.id, dir);
+  }
 }

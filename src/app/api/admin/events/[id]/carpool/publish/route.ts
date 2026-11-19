@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
-import { approve, confirmAll, reject } from "@/lib/car-requests";
+import { approve, confirmAll, reject, setSelf } from "@/lib/car-requests";
 import { autoAssign, carpoolState, cars, saveCarpoolState } from "@/lib/carpool";
 import { confirmByAdmin, markDue, runCarpoolDue } from "@/lib/car-auto";
+import { addAlerts } from "@/lib/member-alerts";
 import { pushTo } from "@/lib/push";
 import { getStore } from "@/lib/store";
 
 const body = z.object({
-  action: z.enum(["publish", "unpublish", "auto", "settings", "approve", "reject"]),
-  open: z.boolean().optional(), // settings: 카풀 신청 지금 받기
-  waitUntil: z.string().max(40).optional(), // settings: 카풀신청 마감 시각("" = 없음)
-  recruitOn: z.boolean().optional(), // settings: 차량 지원 모집
-  recruitUntil: z.string().max(40).optional(), // settings: 차량 지원 모집 마감
+  action: z.enum(["publish", "unpublish", "auto", "settings", "approve", "reject", "self"]),
+  memberId: z.string().optional(), dir: z.enum(["go", "back"]).optional(), on: z.boolean().optional(), // self: 개별 이동 켜고 끄기
+  open: z.boolean().optional(), // settings: 차량신청 지금 받기
+  waitUntil: z.string().max(40).optional(), // settings: 차량신청 마감 시각("" = 없음)
+  recruitOn: z.boolean().optional(), // settings: 차량모집
+  recruitUntil: z.string().max(40).optional(), // settings: 차량모집 마감
   recruitFrom: z.string().max(40).optional(), // settings: 차량모집 시작("" = 켜는 순간부터)
-  openFrom: z.string().max(40).optional(), // settings: 카풀신청 시작("" = 켜는 순간부터)
+  adminOnly: z.boolean().optional(), // settings: 관리자배정(켜면 차량모집·차량신청을 끈다)
+  openFrom: z.string().max(40).optional(), // settings: 차량신청 시작("" = 켜는 순간부터)
   reqId: z.string().optional(), // approve / reject
   note: z.string().trim().max(200).optional(),
 });
@@ -31,21 +34,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const s = await getStore();
 
   if (d.action === "settings") {
-    if (d.waitUntil && Number.isNaN(Date.parse(d.waitUntil))) return bad("카풀 신청 마감 시각을 확인해 주세요.");
+    if (d.waitUntil && Number.isNaN(Date.parse(d.waitUntil))) return bad("차량신청 마감 시각을 확인해 주세요.");
     if (d.recruitUntil && Number.isNaN(Date.parse(d.recruitUntil))) return bad("차량 모집 마감 시각을 확인해 주세요.");
-    if (d.recruitUntil && d.waitUntil && d.recruitUntil >= d.waitUntil) return bad("차량모집 마감은 카풀신청 마감보다 앞이어야 해요.");
+    if (d.recruitUntil && d.waitUntil && d.recruitUntil >= d.waitUntil) return bad("차량모집 마감은 차량신청 마감보다 앞이어야 해요.");
     for (const x of [d.recruitFrom, d.openFrom]) if (x && Number.isNaN(Date.parse(x))) return bad("시작 일시를 확인해 주세요.");
     if (d.recruitFrom && d.recruitUntil && d.recruitFrom >= d.recruitUntil) return bad("차량모집 시작이 마감보다 앞이어야 해요.");
-    if (d.openFrom && d.waitUntil && d.openFrom >= d.waitUntil) return bad("카풀신청 시작이 마감보다 앞이어야 해요.");
+    if (d.openFrom && d.waitUntil && d.openFrom >= d.waitUntil) return bad("차량신청 시작이 마감보다 앞이어야 해요.");
     const before = await carpoolState(id);
     await saveCarpoolState(id, {
       ...(d.open === undefined ? {} : { open: d.open }),
+      ...(d.adminOnly === undefined ? {} : { adminOnly: d.adminOnly }),
+      // 관리자배정이면 차량모집·차량신청은 받지 않는다
+      ...(d.adminOnly ? { open: false, recruitOn: false } : {}),
       ...(d.waitUntil === undefined ? {} : { waitUntil: d.waitUntil, ...(d.waitUntil !== (before.waitUntil ?? "") ? { confirmDone: false } : {}) }),
       ...(d.recruitOn === undefined ? {} : { recruitOn: d.recruitOn }),
       ...(d.recruitUntil === undefined ? {} : { recruitUntil: d.recruitUntil, ...(d.recruitUntil !== (before.recruitUntil ?? "") ? { recruitDone: false } : {}) }),
       ...(d.recruitFrom === undefined ? {} : { recruitFrom: d.recruitFrom, ...(d.recruitFrom !== (before.recruitFrom ?? "") ? { recruitStarted: false } : {}) }),
       ...(d.openFrom === undefined ? {} : { openFrom: d.openFrom, ...(d.openFrom !== (before.openFrom ?? "") ? { openStarted: false } : {}) }),
     });
+    // 관리자배정이면 차량모집·차량신청은 끈다(같이 보내도 관리자배정이 이긴다)
+    if (d.adminOnly) await saveCarpoolState(id, { open: false, recruitOn: false });
     // 새로 켜면 시작 알림을 다시 보내도록(꺼져 있던 것을 켬)
     await saveCarpoolState(id, {
       ...(d.recruitOn && !before.recruitOn ? { recruitStarted: false } : {}),
@@ -65,9 +73,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     return NextResponse.json({ ok: true });
   }
+  if (d.action === "self") {
+    if (!d.memberId || !d.dir || d.on === undefined) return bad("회원과 구간을 골라 주세요.");
+    await setSelf(id, d.memberId, d.dir, d.on);
+    return NextResponse.json({ ok: true });
+  }
+  // 확정 취소: 확정된 배정을 "확정 전"으로 되돌린다(자리는 그대로). 다시 "확정(알림)"을 누르면 다시 안내된다.
   if (d.action === "unpublish") {
     await saveCarpoolState(id, { published: false, publishedAt: "" });
-    return NextResponse.json({ ok: true });
+    const rows = (await s.list("CarRequests")).filter((r) => r.eventId === id && r.status === "confirmed");
+    for (const r of rows) await s.update("CarRequests", r.id, { status: "approved", seen: "true" });
+    const ev = await s.get("Events", id);
+    const who = [...new Set(rows.map((r) => r.memberId))];
+    await addAlerts(who, { eventId: id, text: `${ev?.name ?? "일정"} 차량배정 확정이 취소됐어요. 다시 확정되면 알려 드릴게요.`, href: `/events/${id}#cars` });
+    return NextResponse.json({ ok: true, reverted: who.length });
   }
   if (d.action === "auto") {
     const [members, applies] = await Promise.all([s.list("Members"), s.list("EventApplies")]);

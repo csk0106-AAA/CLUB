@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
-import { applyInput, autoName, carInput, carpoolState, cars, conflict, freeFor, inputPeople, newCar, timeIssue, toRow } from "@/lib/carpool";
+import { applyInput, autoName, carInput, carpoolState, cars, conflict, freeFor, inputPeople, newCar, seatOwner, selfOf, timeIssue, toRow } from "@/lib/carpool";
 import { carRequests, REQ_LABEL } from "@/lib/car-requests";
-import { notifyNewCar, runCarpoolDue } from "@/lib/car-auto";
+import { askOwnerInfo, notifyNewCar, runCarpoolDue } from "@/lib/car-auto";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
 
@@ -20,13 +20,16 @@ export async function GET(_req: Request, ctx: Ctx) {
   const nm = (mid: string) => members.find((m) => m.id === mid)?.name ?? "(지운 회원)";
   const live = members.filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")));
   const att = live.filter((m) => applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")).map((m) => m.id);
-  const free = freeFor(all, att);
+  const self = { go: selfOf(state, "go").filter((m) => att.includes(m)), back: selfOf(state, "back").filter((m) => att.includes(m)) };
+  const free = freeFor(all, att, self);
   return NextResponse.json({
     published: state.published,
+    self, // 개별 이동(구간별)
     open: !!state.open, // 회원 신청 받기
-    waitUntil: state.waitUntil ?? "", // 카풀신청 마감
+    waitUntil: state.waitUntil ?? "", // 차량신청 마감
     recruitOn: !!state.recruitOn, recruitUntil: state.recruitUntil ?? "", recruitFrom: state.recruitFrom ?? "", // 차량모집
-    openFrom: state.openFrom ?? "", // 카풀신청 시작
+    openFrom: state.openFrom ?? "", // 차량신청 시작
+    adminOnly: !!state.adminOnly, // 관리자배정
     // 회원 신청: 승인 대기·대기(처리할 것) + 승인(확정 전)·확정 표시용
     requests: reqs
       .filter((r) => ["pending", "waiting", "approved", "confirmed"].includes(r.status))
@@ -55,12 +58,16 @@ export async function POST(req: Request, ctx: Ctx) {
   const existing = await cars(id);
   const car = applyInput(newCar(), parsed.data);
   // 그룹명을 비우면 차량번호 → 운전자 이름 → "카풀 N조"
+  if (car.kind === "member" && !car.ownerId) return bad("회원 차량은 차량모집 지원 회원을 골라 주세요.");
+  if (car.ownerId && !members.some((m) => m.id === car.ownerId)) return bad("지원 회원이 명단에 없어요.");
+  await seatOwner(existing, car); // 지원 회원이 운전하지 않으면 탑승자로 먼저
   if (!car.name) car.name = autoName(car, existing, (mid) => names.get(mid) ?? "");
   const order = timeIssue(car);
   if (order) return bad(order);
   const why = conflict(existing, car, names);
   if (why) return bad(why, 409);
   const row = await s.insert("Carpools", { eventId: id, ...toRow(car) });
-  await notifyNewCar(id, car.name); // 카풀신청 중이면 차 없는 참석자에게 "새 차량"
+  await notifyNewCar(id, car.name); // 차량신청 중이면 차 없는 참석자에게 "새 차량"
+  await askOwnerInfo(id, car); // 지원 회원이 있고 빈 칸이 있으면 채워 달라고
   return NextResponse.json({ id: row.id });
 }
