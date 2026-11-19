@@ -1268,3 +1268,11 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 /* 차량 목록: 신청 버튼에 인원(3/4)을 함께, 오른쪽 끝 */
 .car-ask { width: auto; min-height: 38px; padding: 0 12px; font-size: calc(14px * var(--fs, 1)); display: inline-flex; align-items: center; gap: 8px; flex: none; }
 .car-ask-n { font-variant-numeric: tabular-nums; opacity: .75; font-weight: 700; }
+
+/* 홈 "다가오는 나의 일정": 원통(드럼)이 위로 굴러가듯 돌아간다 */
+.rail-stage { position: relative; width: 100%; aspect-ratio: 4 / 3.4; perspective: 1100px; touch-action: pan-x; user-select: none; }
+.rail-stage:not(.drum) { perspective: none; }
+.rail-drum { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .8s cubic-bezier(.45, .05, .25, 1); }
+.rail-stage .rail-card { position: absolute; inset: 0; flex: none; aspect-ratio: auto; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.rail-stage.drum .rail-card:not(.front) { filter: brightness(.7); }
+@media (prefers-reduced-motion: reduce) { .rail-drum { transition: none; } }

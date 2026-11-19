@@ -4,9 +4,9 @@ import { focusStyle } from "@/lib/cover-focus";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
-import { useDragScroll } from "./useDragScroll";
 
-// 홈 맨 위 "다가오는 나의 일정" 카드: 내가 참석 신청한 일정 중 한 달 안에 시작하는, 날짜가 가장 가까운 3개까지(옆으로 넘기기 + 5초마다 자동으로 다음 카드).
+// 홈 맨 위 "다가오는 나의 일정" 카드: 내가 참석 신청한 일정 중 한 달 안에 시작하는, 날짜가 가장 가까운 3개까지.
+// 2개 이상이면 원통(드럼)이 위로 굴러가듯 5초마다 다음 카드로 돌아간다(끝에서 처음으로 끊김 없이). 위·아래(또는 옆)로 밀면 그 방향으로 돈다.
 // 자동 넘김은 손가락·마우스를 올리거나 포커스가 있으면 멈추고, 기기의 "동작 줄이기"가 켜져 있으면 하지 않는다.
 // 카드: 사진(회원 사진 → 클럽·모임 대표사진, 없으면 바탕색) 위에 라벨 줄(D-day · 유형 · 오른쪽 끝 참석 인원), 오른쪽 아래 "활동 바로가기",
 // 카드를 누르면 일정 화면, "활동 바로가기"를 누르면 지금 할 활동 화면(사전 작성 등, lib/activity-shortcut.ts).
@@ -49,11 +49,13 @@ function dday(startsAt: string, endsAt: string): string {
 
 export function EventRail() {
   const [list, setList] = useState<Ev[] | null>(null);
-  const [idx, setIdx] = useState(0);
-  const track = useRef<HTMLDivElement>(null);
+  // rot: 지금까지 돈 칸 수(음수도 됨). 지금 앞면 카드 = rot 를 개수로 나눈 나머지
+  const [rot, setRot] = useState(0);
+  const [h, setH] = useState(0); // 카드 높이(px) — 원통 반지름 계산용
+  const stage = useRef<HTMLDivElement>(null);
   const hold = useRef(false);
-  const drag = useDragScroll("center");
-
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const swiped = useRef(false);
   useEffect(() => {
     api<{ events: Ev[] }>("/api/events").then((r) => {
       if (!r.ok) return setList([]);
@@ -67,27 +69,22 @@ export function EventRail() {
     });
   }, []);
 
-  const go = useCallback((i: number) => {
-    const el = track.current;
+  // 카드 높이 재기(화면 크기가 바뀌면 다시)
+  useEffect(() => {
+    const el = stage.current;
     if (!el) return;
-    const card = el.children[i] as HTMLElement | undefined;
-    if (card) el.scrollTo({ left: card.offsetLeft - el.offsetLeft - (el.clientWidth - card.clientWidth) / 2, behavior: "smooth" });
-  }, []);
+    const ro = new ResizeObserver(() => setH(el.clientHeight));
+    ro.observe(el);
+    setH(el.clientHeight);
+    return () => ro.disconnect();
+  }, [list]);
 
-  // 스크롤 위치 → 지금 카드 번호(점 표시)
-  const onScroll = () => {
-    const el = track.current;
-    if (!el || !el.children.length) return;
-    const mid = el.scrollLeft + el.clientWidth / 2;
-    let best = 0;
-    [...el.children].forEach((c, i) => {
-      const h = c as HTMLElement;
-      const cm = h.offsetLeft - el.offsetLeft + h.clientWidth / 2;
-      const bm = (el.children[best] as HTMLElement).offsetLeft - el.offsetLeft + (el.children[best] as HTMLElement).clientWidth / 2;
-      if (Math.abs(cm - mid) < Math.abs(bm - mid)) best = i;
-    });
-    setIdx(best);
-  };
+  const n = list?.length ?? 0;
+  const idx = n ? ((rot % n) + n) % n : 0;
+  const step = n ? 360 / n : 0;
+  // 원통 반지름: 면 n개가 둘러싼 다각형. 2개면 앞·뒤로 뒤집기(반지름 0)
+  const radius = n >= 3 ? Math.round(h / 2 / Math.tan(Math.PI / n)) : 0;
+  const goTo = useCallback((i: number) => setRot((r) => { const cur = ((r % n) + n) % n; let d = i - cur; if (d > n / 2) d -= n; if (d < -n / 2) d += n; return r + d; }), [n]);
 
   // 자동 넘김
   useEffect(() => {
@@ -95,14 +92,27 @@ export function EventRail() {
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const t = window.setInterval(() => {
       if (hold.current || document.hidden) return;
-      go((idx + 1) % list.length);
+      setRot((r) => r + 1);
     }, 5000);
     return () => window.clearInterval(t);
-  }, [list, idx, go]);
+  }, [list]);
 
   if (!list || list.length === 0) return null;
   const stop = () => { hold.current = true; };
   const resume = () => { hold.current = false; };
+  // 밀어서 돌리기: 위·왼쪽으로 밀면 다음, 아래·오른쪽이면 이전. 민 뒤에는 카드 링크로 넘어가지 않게
+  const down = (x: number, y: number) => { touch.current = { x, y }; swiped.current = false; stop(); };
+  const up = (x: number, y: number) => {
+    const t0 = touch.current;
+    touch.current = null;
+    resume();
+    if (!t0 || n < 2) return;
+    const dx = x - t0.x, dy = y - t0.y;
+    const big = Math.abs(dy) > Math.abs(dx) ? dy : dx;
+    if (Math.abs(big) < 30) return;
+    swiped.current = true;
+    setRot((r) => r + (big < 0 ? 1 : -1));
+  };
 
   return (
     <section className="rail" aria-label="다가오는 나의 일정" aria-roledescription="carousel">
@@ -110,14 +120,20 @@ export function EventRail() {
         <h2 className="title" style={{ margin: 0 }}>다가오는 나의 일정</h2>
         <Link href="/events" className="rail-more">타임라인 ›</Link>
       </div>
-      {/* PC 마우스로 잡고 끌어 넘기기(가운데 맞춤, components/useDragScroll.ts). 끈 뒤에는 카드 링크로 이동하지 않는다 */}
-      <div ref={track} className="rail-track" onScroll={onScroll} {...drag}
-        onPointerEnter={stop} onPointerLeave={resume} onTouchStart={stop} onTouchEnd={resume} onFocus={stop} onBlur={resume}>
+      {/* 원통(드럼): 카드마다 원통의 한 면. 원통을 돌려 앞면을 바꾼다 */}
+      <div ref={stage} className={`rail-stage${n > 1 ? " drum" : ""}`}
+        onPointerEnter={stop} onPointerLeave={resume} onFocus={stop} onBlur={resume}
+        onTouchStart={(ev) => down(ev.touches[0].clientX, ev.touches[0].clientY)} onTouchEnd={(ev) => up(ev.changedTouches[0].clientX, ev.changedTouches[0].clientY)}
+        onMouseDown={(ev) => down(ev.clientX, ev.clientY)} onMouseUp={(ev) => up(ev.clientX, ev.clientY)}
+        onClickCapture={(ev) => { if (swiped.current) { ev.preventDefault(); ev.stopPropagation(); swiped.current = false; } }}>
+        <div className="rail-drum" style={n > 1 ? { transform: `translateZ(${-radius}px) rotateX(${rot * step}deg)` } : undefined}>
         {list.map((e, i) => {
           const dd = dday(e.startsAt, e.endsAt);
           return (
             // 카드: 전체를 덮는 일정 상세 링크(.rail-hit) 위에 라벨 줄. 라벨 줄 오른쪽 끝 "활동 바로가기"는 따로 누르는 링크
-            <div key={e.id} className={`rail-card${e.coverUrl ? " photo" : ""}`} aria-roledescription="slide" role="group" aria-label={`${i + 1}/${list.length}`}>
+            <div key={e.id} className={`rail-card${e.coverUrl ? " photo" : ""}${i === idx ? " front" : ""}`} aria-roledescription="slide" role="group" aria-label={`${i + 1}/${list.length}`}
+              aria-hidden={n > 1 && i !== idx ? true : undefined} inert={n > 1 && i !== idx ? true : undefined}
+              style={n > 1 ? { transform: `rotateX(${-i * step}deg) translateZ(${radius}px)` } : undefined}>
               {e.coverUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={e.coverUrl} alt="" loading={i < 2 ? "eager" : "lazy"} style={focusStyle(e.coverUrl)} />
@@ -142,11 +158,12 @@ export function EventRail() {
             </div>
           );
         })}
+        </div>
       </div>
       {list.length > 1 && (
         <div className="rail-dots" role="group" aria-label="일정 카드 고르기">
           {list.map((e, i) => (
-            <button key={e.id} type="button" className={i === idx ? "on" : ""} aria-label={`${i + 1}번째 일정 카드`} aria-current={i === idx ? "true" : undefined} onClick={() => go(i)} />
+            <button key={e.id} type="button" className={i === idx ? "on" : ""} aria-label={`${i + 1}번째 일정 카드`} aria-current={i === idx ? "true" : undefined} onClick={() => goTo(i)} />
           ))}
         </div>
       )}
