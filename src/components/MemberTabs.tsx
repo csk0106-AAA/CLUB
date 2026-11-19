@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { fetchUnread, UNREAD_EVERY } from "@/lib/unread-client";
 import { setBadge } from "@/lib/push-client";
 import { IconCalendar, IconGear, IconHome, IconProfileBook, IconShield } from "./Icons";
 import css from "./MemberTabs.module.css";
@@ -30,7 +31,7 @@ const countOf = (t: Tab, c: Counts): number =>
 export function MemberTabs({ on: tab }: { on: Tab }) {
   const on: Tab = tab === "org" ? "board" : tab;
 
-  // 새 글 숫자: 탭마다 숫자를 받는다(지금 연 탭은 숫자를 감춤, 1분마다 다시 확인).
+  // 새 글 숫자: 탭마다 숫자를 받는다(지금 연 탭은 숫자를 감춤, 2분마다 다시 확인 — lib/unread-client.ts).
   const [unread, setUnread] = useState<Counts>({ events: 0, posts: 0, profiles: 0, alerts: 0 });
   useEffect(() => {
     let stop = false;
@@ -39,11 +40,11 @@ export function MemberTabs({ on: tab }: { on: Tab }) {
       setUnread(r.data);
       setBadge(r.data.events + r.data.posts + r.data.profiles + (r.data.alerts ?? 0));
     };
-    const refresh = () => api<Counts>("/api/unread").then(apply);
+    const refresh = (force?: unknown) => fetchUnread(force === true || force instanceof Event).then(apply);
     refresh();
     const t = setInterval(() => {
       if (document.visibilityState === "visible") refresh();
-    }, 60_000);
+    }, UNREAD_EVERY);
     // 홈 화면 알림 창에서 읽음 처리·신청 처리를 하면 바로 다시 센다.
     window.addEventListener("club:unread", refresh);
     return () => {

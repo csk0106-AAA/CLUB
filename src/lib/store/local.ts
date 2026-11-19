@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { TABS, type TabName } from "./schema";
-import type { Row, Store } from "./types";
+import type { Row, Store, ListOpts } from "./types";
 
 // 개발용 저장소: .data/db.json 한 파일. DATABASE_URL 이 없을 때 사용한다.
 const FILE = path.join(process.cwd(), ".data", "db.json");
@@ -37,9 +37,12 @@ function normalize(tab: TabName, row: Partial<Row>): Row {
 }
 
 export class LocalStore implements Store {
-  async list(tab: TabName): Promise<Row[]> {
+  async list(tab: TabName, opts?: ListOpts): Promise<Row[]> {
     const db = await read();
-    return db[tab] ?? [];
+    let rows = db[tab] ?? [];
+    if (opts?.where) { const w = opts.where; rows = rows.filter((r) => w.in.includes(r[w.field] ?? "")); }
+    if (opts?.omit?.length) { const o = opts.omit; rows = rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !o.includes(k)))); }
+    return rows;
   }
 
   async get(tab: TabName, id: string): Promise<Row | null> {

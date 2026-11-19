@@ -170,12 +170,12 @@ export async function countsFor(mids: string[]): Promise<Map<string, Counts>> {
   await runCarpoolDue(); // 카풀 마감 시각이 지난 일정이 있으면 먼저 자동 처리(알림이 숫자에 바로 잡히게)
   const s = await getStore();
   const [members, events, posts, profiles, stamps, first, requests, groups, comments, applies, duesPays] = await Promise.all([
-    s.list("Members"), s.list("Events"), s.list("Posts"), s.list("Profiles"),
+    s.list("Members"), s.list("Events"), s.list("Posts", { omit: ["body"] }), s.list("Profiles", { omit: ["draftMd", "introMd", "readingMd"] }),
     getSetting<Stamps>("eventStamps", {}), getSetting<Stamps>("eventFirstPublished", {}), s.list("ClubRequests"), getPermGroups(),
-    s.list("PostComments"), s.list("EventApplies"), s.list("DuesPayments"),
+    s.list("PostComments", { omit: ["body"] }), s.list("EventApplies"), s.list("DuesPayments"),
   ]);
   const carReqs = await s.list("CarRequests");
-  const memberAlerts = await s.list("MemberAlerts");
+  const memberAlerts = await s.list("MemberAlerts", { where: { field: "memberId", in: mids } });
   // 모임 회비 입금 알림(확인 전): 회비를 관리하는 관리자(모임설정·모든 권한)의 종 숫자에 더한다
   const duesNotices = pendingDuesNotices(duesPays).length;
   // 승인 전 회원 신청(회원정보·모든 권한 관리자의 종 숫자에 더한다. 알림 창에서 누르면 회원신청관리로)

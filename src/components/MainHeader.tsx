@@ -12,6 +12,7 @@ import { resetTabsCache } from "./MemberTabs";
 import { OrgView } from "./OrgView";
 import { Popup } from "./Popup";
 import { api } from "@/lib/client";
+import { fetchUnread, UNREAD_EVERY } from "@/lib/unread-client";
 import { disablePush } from "@/lib/push-client";
 
 type Me = { name: string; avatar: AvatarView; perms: string[]; clubs: { name: string; role: string }[] };
@@ -49,11 +50,11 @@ export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?
     api<{ displayName: string }>("/api/public/club").then((c) => c.ok && setClub(c.data.displayName));
   }, []);
   useEffect(() => setAlertsOpen(openAlerts), [openAlerts]);
-  // 종 아이콘 숫자: 처음 한 번, 그 뒤 1분마다(화면이 보일 때만)
+  // 종 아이콘 숫자: 처음 한 번, 그 뒤 2분마다(화면이 보일 때만, 하단 메뉴와 같은 결과를 나눠 씀)
   useEffect(() => {
-    const get = () => api<{ posts: number; alerts: number }>("/api/unread").then((r) => r.ok && setBell(r.data.posts + (r.data.alerts ?? 0)));
+    const get = () => fetchUnread().then((r) => r.ok && setBell(r.data.posts + (r.data.alerts ?? 0)));
     get();
-    const t = setInterval(() => document.visibilityState === "visible" && get(), 60_000);
+    const t = setInterval(() => document.visibilityState === "visible" && get(), UNREAD_EVERY);
     return () => clearInterval(t);
   }, []);
   const onCount = useCallback((n: number) => setBell(n), []);
