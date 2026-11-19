@@ -80,6 +80,7 @@ function DuesEditor() {
         defaultTitle={`${yearOf(d)}년 ${PERIOD[d.period]} 안내`}
         defaultBody={data.template.body}
         defaultAudience={ALL}
+        membersOnly
         beforePublish={async () => (dirty ? save() : true)}
         onDone={load}
       />

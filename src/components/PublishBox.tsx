@@ -16,7 +16,8 @@ import { fs } from "@/lib/fs";
 export type PubPost = { id: string; title: string; updatedAt: string };
 type Note = { tone: "bad" | "info"; text: string } | null;
 
-export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaultBody, defaultAudience, titleHint, beforePublish, onDone }: {
+export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaultBody, defaultAudience, titleHint, beforePublish, onDone, membersOnly }: {
+  membersOnly?: boolean; // 공개 대상에서 "보여 줄 회원"만(회원 선택·일정·클럽 고르기 숨김)
   what: string; // "회비 글", "회칙 글" …
   endpoint: string;
   posts: PubPost[];
@@ -152,7 +153,7 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
             <label><input type="checkbox" checked={notice} onChange={(e) => setNotice(e.target.checked)} />공지 (목록에 공지 표시)</label>
             <label><input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />상단 고정</label>
           </div>
-          <AudiencePicker value={audience} onChange={setAudience} />
+          <AudiencePicker value={audience} onChange={setAudience} membersOnly={membersOnly} />
         </>
       )}
       {note && (

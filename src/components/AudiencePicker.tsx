@@ -26,7 +26,8 @@ const MODES: { k: "members" | "events" | "clubs"; l: string }[] = [
 const NO_KIND = "미지정";
 const REGULAR = "정회원";
 
-export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { value: Audience; onChange: (a: Audience) => void; legend?: string }) {
+// membersOnly: 회원 선택·일정 참석자 선택·클럽 선택 고르기를 숨기고 "보여 줄 회원"만(모임설정 › 회비설정)
+export function AudiencePicker({ value, onChange, legend = "공개 대상", membersOnly }: { value: Audience; onChange: (a: Audience) => void; legend?: string; membersOnly?: boolean }) {
   const uid = useId();
   const [opts, setOpts] = useState<AudienceOptions | null>(null);
   const [err, setErr] = useState("");
@@ -40,6 +41,12 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
   // "전체 회원"(mode all)은 화면에서 "회원 선택 + 모두 체크"로 보여 준다
   const tab: "members" | "events" | "clubs" = value.mode === "all" ? "members" : value.mode;
   const picked = useMemo(() => new Set(value.mode === "all" ? allIds : value.memberIds), [value.mode, value.memberIds, allIds]);
+
+  // 회원만 고르는 화면인데 예전 글이 일정·클럽 대상이면 그 회원들을 회원 선택으로 바꿔 둔다
+  useEffect(() => {
+    if (membersOnly && opts && tab !== "members") emit(picked, { mode: "members", events: [], clubs: [] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [membersOnly, opts, tab]);
 
   // 고른 회원 목록을 저장 형식으로: 회원 선택에서 모두 골랐으면 전체 회원
   function emit(ids: Iterable<string>, base: Partial<Audience> = {}) {
@@ -107,14 +114,14 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
   return (
     <fieldset className="card" style={{ display: "flex", flexDirection: "column", gap: 10, margin: 0 }}>
       <legend style={{ font: `700 ${fs(16)} var(--display)`, padding: "0 4px" }}>{legend}</legend>
-      <div className="checks" role="radiogroup" aria-label={legend}>
+      {!membersOnly && <div className="checks" role="radiogroup" aria-label={legend}>
         {MODES.map((m) => (
           <label key={m.k} style={tab === m.k ? { borderColor: "var(--blue)", background: "var(--blue-bg)", color: "var(--blue-t)" } : undefined}>
             <input type="radio" name={`${uid}-mode`} checked={tab === m.k} onChange={() => setMode(m.k)} />
             {m.l}
           </label>
         ))}
-      </div>
+      </div>}
       {err && <div className="msg bad" role="alert">{err}</div>}
       {!opts && !err && <p className="small">목록을 불러오는 중이에요…</p>}
 
@@ -149,7 +156,7 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상" }: { 
       )}
 
       {opts && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, ...(membersOnly ? {} : { borderTop: "1px solid var(--line)", paddingTop: 10 }) }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <span className="l" id={`${uid}-mem`} style={{ margin: 0 }}>
               보여 줄 회원 <b style={{ color: "var(--blue-t)" }}>{value.mode === "all" ? `전체 회원 (${allIds.length}명)` : `${picked.size}명`}</b>
