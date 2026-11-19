@@ -1265,3 +1265,6 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 /* 차량배정: 다른 차량 접어 보기 */
 .car-others > summary { cursor: pointer; font-weight: 700; font-size: calc(14px * var(--fs, 1)); padding: 6px 0; }
 .car-others[open] > summary { margin-bottom: 8px; }
+/* 차량 목록: 신청 버튼에 인원(3/4)을 함께, 오른쪽 끝 */
+.car-ask { width: auto; min-height: 38px; padding: 0 12px; font-size: calc(14px * var(--fs, 1)); display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.car-ask-n { font-variant-numeric: tabular-nums; opacity: .75; font-weight: 700; }

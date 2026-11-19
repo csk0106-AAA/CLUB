@@ -167,21 +167,25 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
             const canAsk = canAskAll && d.open && d.attending && !car.mine && !mineHere && (!full || !d.waitClosed);
             return (
               <div key={leg.dir} className="car-leg">
+                {/* 한 줄: 갈 때 · 출발지 → 도착지 ……… [신청 3/4] (신청할 수 없으면 3/4 표시만) */}
                 <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                   <b style={{ fontSize: fs(14) }}>{leg.label}</b>
                   <span className="small grow">{leg.from || leg.to ? `${leg.from || "?"} → ${leg.to || "?"}` : ""}</span>
-                  <span className={`pill ${full ? "bad" : "blue"}`}>{leg.taken}/{leg.seats}{full ? " 마감" : ""}{leg.waiting ? ` · 신청 대기 ${leg.waiting}` : ""}</span>
+                  {canAsk ? (
+                    <button type="button" className={`btn car-ask${full ? " white" : ""}`} disabled={busy} onClick={() => request(car, leg)}
+                      aria-label={`${car.name} ${leg.label} ${full ? "신청 대기" : "신청"} (${leg.taken}/${leg.seats}석)`}>
+                      <span>{full ? (openReq(leg.dir) ? "이 차로 신청 대기" : "신청 대기") : seated(leg.dir) || openReq(leg.dir) ? "이 차로 바꾸기" : "신청"}</span>
+                      <span className="car-ask-n">{leg.taken}/{leg.seats}</span>
+                    </button>
+                  ) : (
+                    <span className={`pill ${full ? "bad" : "blue"}`}>{leg.taken}/{leg.seats}{full ? " 마감" : ""}</span>
+                  )}
                 </div>
+                {leg.waiting > 0 && <span className="small">신청 대기 {leg.waiting}명</span>}
                 {leg.departAt && <span className="small">{fmtDateTime(leg.departAt)} 출발</span>}
                 {leg.memo && <span className="small">메모 · {leg.memo}</span>}
                 {d.published && leg.crewList.length > 0 && <span className="small">확정: {leg.crewList.join(", ")}</span>}
-                {mineHere ? (
-                  <span className="small" style={{ fontWeight: 700 }}>내 상태: {shown(mineHere)}</span>
-                ) : canAsk ? (
-                  <button type="button" className={`btn ${full ? "white" : ""}`} disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 40, fontSize: fs(14) }} onClick={() => request(car, leg)}>
-                    {full ? (openReq(leg.dir) ? "이 차로 신청 대기" : "신청 대기") : seated(leg.dir) || openReq(leg.dir) ? "이 차로 바꾸기" : "신청"}
-                  </button>
-                ) : null}
+                {mineHere && <span className="small" style={{ fontWeight: 700 }}>내 상태: {shown(mineHere)}</span>}
               </div>
             );
           })}
