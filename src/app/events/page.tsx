@@ -200,14 +200,7 @@ export default function EventsPage() {
       <MainHeader />
       {/* 화면 제목은 보이지 않게(화면 낭독기용). 윗줄은 달력 머리: 연도 | 오늘 · 주/월 */}
       <h1 className="sr-only">일정 타임라인</h1>
-      <WeekStrip events={shown} selected={day} onPick={pick} hrefOf={hrefOf} canOpen={(e) => !e.outside} onBlocked={outsideAlert}
-        actions={
-          <button type="button" className={`wk-filter${onlyMine ? " on" : ""}`} aria-pressed={onlyMine} onClick={toggleOnlyMine}
-            title={onlyMine ? "나에게 공개된 일정만 보는 중 · 누르면 모두 보기" : "나에게 공개된 일정만 보기"} aria-label="나에게 공개된 일정만 보기">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4 1.5v-8z" /></svg>
-            <span>{onlyMine ? "내 일정" : "전체"}</span>
-          </button>
-        } />
+      <WeekStrip events={shown} selected={day} onPick={pick} hrefOf={hrefOf} canOpen={(e) => !e.outside} onBlocked={outsideAlert} />
 
       {error && <div className="msg bad" role="alert">{error}</div>}
       {!events && !error && <p className="small">불러오는 중이에요…</p>}
@@ -215,9 +208,14 @@ export default function EventsPage() {
       {/* 일정 피드 맨 위: 왼쪽 "타임라인" 제목(게시글 제목과 같은 글꼴·크기) · 오른쪽 일정 만들기(권한이 있을 때) */}
       <div className="row tl-create" style={{ marginTop: 4 }}>
         <h2 className="title grow" style={{ margin: 0 }}>타임라인</h2>
+        {/* 공개만 보기: 나에게 공개된 일정만(이 기기에 기억) */}
+        <button type="button" className={`wk-filter${onlyMine ? " on" : ""}`} aria-pressed={onlyMine} onClick={toggleOnlyMine}
+          title={onlyMine ? "나에게 공개된 일정만 보는 중 · 누르면 모두 보기" : "나에게 공개된 일정만 보기"}>
+          {onlyMine ? "✓ " : ""}공개만 보기
+        </button>
         {canCreate && (
-          <button type="button" className="btn wk-create" aria-haspopup="dialog" disabled={locked} onClick={() => setCreating(true)}>
-            + 일정 만들기
+          <button type="button" className="btn wk-create" aria-haspopup="dialog" aria-label="일정 만들기" disabled={locked} onClick={() => setCreating(true)}>
+            + 일정
           </button>
         )}
       </div>
