@@ -152,7 +152,7 @@ a { color: var(--violet-t); }
 .chip.violet { background: var(--violet-bg); color: var(--violet-t); }
 .chip.gray { background: var(--chip); color: var(--ink2); }
 .chip.line { background: transparent; color: var(--sub); border: 1px solid var(--line); padding: 1px 6px; font-weight: 500; }
-.chip.ink { background: var(--ink); color: var(--card); }
+.chip.ink { background: var(--ink); color: var(--page); }
 .chip.warn { background: var(--orange-bg); color: var(--orange-t); }
 /* 일정 카드: 왼쪽 날짜 칸(월/일/요일) + 내용 */
 .evcard { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -272,7 +272,7 @@ label.l, span.l, legend.l { padding: 0; font-size: calc(13px * var(--fs, 1)); fo
 /* 일정 유형 칩(lib/event-types.ts TYPE_TONE) */
 .pill.red { background: var(--red-bg); color: var(--red-t); }
 .pill.violet { background: var(--violet-bg); color: var(--violet-t); }
-.pill.ink { background: var(--ink); color: var(--card); }
+.pill.ink { background: var(--ink); color: var(--page); }
 
 .pick { display: flex; flex-direction: column; gap: 8px; }
 .opt {
@@ -1323,10 +1323,15 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .att-wait .mini.on { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 800; }
 
 /* 클럽 일정 만들기: 일정 이름·장소 / 시작 일시·끝나는 일시를 폰에서도 두 칸 한 줄로 */
-.grid2.pair { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-.grid2.pair > * { grid-column: span 2; }          /* 시작 일시 · 끝나는 일시 · 사진 최대 장수 한 줄 */
-.grid2.pair > .half { grid-column: span 3; }  /* 반 칸(일정 이름 · 장소 등) */
-.grid2.pair > .full { grid-column: 1 / -1; }  /* 한 줄 전체 */
+.grid2.pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
+.grid2.pair > * { grid-column: auto; }        /* 일정 이름 · 장소 / 시작 일시 · 끝나는 일시 두 칸씩 */
+.grid2.pair > .full { grid-column: 1 / -1; }  /* 한 줄 전체(사진 최대 장수 등) */
+@media (max-width: 520px) { .grid2.pair { grid-template-columns: minmax(0, 1fr); } } /* 좁으면 한 줄에 하나씩 */
 
 /* 빠른 선택 버튼이 켜진 상태(예: 공개 대상 "클럽회원&참관회원") */
 fieldset .mini[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 800; }
+
+/* 드롭다운(select) 펼친 목록: 브라우저 기본 흰 바탕에 흰 글자가 되지 않게 어두운 바탕 + 흰 글자로 */
+select option, select optgroup { background-color: var(--page); color: var(--ink); }
+select option:checked { background-color: var(--brand); color: var(--on-brand); }
+select option:disabled { color: var(--dis); }

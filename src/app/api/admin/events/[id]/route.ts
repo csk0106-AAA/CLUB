@@ -136,7 +136,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const before = (await s.list("Events")).find((e) => e.id === id);
   if (!before) return bad("일정을 찾을 수 없어요.", 404);
   if (rest.club !== undefined) {
-    if (before.type !== "클럽") rest.club = "";
+    // 클럽이 정해진 일정은 유형(정기모임·워크숍 등)과 상관없이 클럽을 유지한다
+    if (before.type !== "클럽" && !(before.club ?? "").trim()) rest.club = "";
     else if (rest.club && rest.club !== (before.club ?? "") && !(await getLists()).clubs.includes(rest.club)) return bad("클럽을 목록에서 골라 주세요.");
   }
   const row = await s.update("Events", id, {

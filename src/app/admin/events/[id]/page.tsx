@@ -421,9 +421,17 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {/* 맨 위: 일정 목록으로 돌아가기(클럽 일정은 클럽관리 › 그 클럽 › 일정관리로) */}
-        <Link href={ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events"} className="mini" style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-          {ev.club ? `‹ ${ev.club} 일정 목록으로` : "‹ 일정 목록으로"}
-        </Link>
+        {/* 한 줄: 왼쪽 일정 목록으로 · 오른쪽 회원 화면에서 보기 */}
+        <div className="row" style={{ gap: 6 }}>
+          <Link href={ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events"} className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+            {ev.club ? `‹ ${ev.club} 일정 목록으로` : "‹ 일정 목록으로"}
+          </Link>
+          {ev.published === "true" && (
+            <Link href={`/events/${id}`} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
+              회원 화면에서 보기 ›
+            </Link>
+          )}
+        </div>
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
           <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "공개전"}</span>
@@ -432,13 +440,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button className="mini danger" type="button" disabled={busy} style={{ minHeight: 30, padding: "0 10px", fontSize: fs(13) }} title="회원 화면에서 감추고 공개전으로 돌려요"
               onClick={() => save(false)}>공개 취소</button>
           )}
-          {ev.published === "true" && (
-            <Link href={`/events/${id}`} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
-              회원 화면에서 보기 ›
-            </Link>
-          )}
         </div>
-        <h1 className="title" style={{ overflowWrap: "anywhere" }}>{ev.name}</h1>
+        <h1 className="title" style={{ overflowWrap: "anywhere" }}>{eventTitle(ev.name, ev.club)}</h1>
       </div>
 
       <div className="tabsx" role="tablist" aria-label="일정 관리 메뉴">
@@ -455,20 +458,14 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
 
       {tab === "over" && (
         <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {ev.type === "클럽" && (
+          {/* 클럽 고르기: 클럽이 아직 없는 클럽 일정만(클럽관리 › 그 클럽에서 들어오면 이미 정해져 있어 숨긴다) */}
+          {ev.type === "클럽" && !ev.club && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {/* 클럽 · 일정 이름 한 줄(회원에게는 "[클럽] 일정 이름"으로 보여요) */}
-              <div className="grid2 pair">
-                <div className="half">
-                  <label className="l" htmlFor="o-club">클럽</label>
-                  <select id="o-club" className="field" value={ev.club ?? ""} onChange={(e) => pickClub(e.target.value)}>
-                    <option value="">클럽을 고르지 않음 (전체 회원에게 보임)</option>
-                    {[...new Set([...opts.clubs.map((c) => c.name), ...(ev.club ? [ev.club] : [])])].map((c) => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="half"><label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" maxLength={80} placeholder="예) 12월 정기 라운딩" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
-              </div>
-              {ev.club && <span className="small">회원에게는 “{eventTitle(ev.name, ev.club)}”으로 보여요.</span>}
+              <label className="l" htmlFor="o-club" style={{ margin: 0 }}>클럽</label>
+              <select id="o-club" className="field" value={ev.club ?? ""} onChange={(e) => pickClub(e.target.value)}>
+                <option value="">클럽을 고르지 않음 (전체 회원에게 보임)</option>
+                {[...new Set([...opts.clubs.map((c) => c.name), ...(ev.club ? [ev.club] : [])])].map((c) => <option key={c}>{c}</option>)}
+              </select>
               {curClub && (
                 <span className="small">
                   {curClub.leaders.length ? curClub.leaders.map((l) => `${l.role}: ${l.name}`).join(" · ") : "회장을 아직 정하지 않았어요"}
@@ -502,8 +499,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           {/* 일정 이름 · 장소 한 줄, 시작 일시 · 끝나는 일시 · 사진 최대 장수 한 줄(globals.css .grid2.pair) */}
           <div className="grid2 pair">
-            {ev.type !== "클럽" && <div className="half"><label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>}
-            <div className={ev.type === "클럽" ? "full" : "half"}><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
+            <div className="half">
+              <label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" maxLength={80} value={ev.name} onChange={(e) => set("name", e.target.value)} />
+              {ev.club && <span className="small" style={{ display: "block", marginTop: 4 }}>회원에게는 “{eventTitle(ev.name, ev.club)}”으로 보여요.</span>}
+            </div>
+            <div className="half"><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
             <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
             {(() => {
@@ -514,7 +514,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               const def = defaultPhotoLimit(going, days);
               const reqs = (() => { try { const v = JSON.parse(ev.photoReqs || "[]"); return Array.isArray(v) ? v.length : 0; } catch { return 0; } })();
               return (
-                <div>
+                <div className="full">
                   <label className="l" htmlFor="o-photos">사진 최대 장수</label>
                   <input id="o-photos" className="field" inputMode="numeric" maxLength={4} placeholder={`비우면 기본값 (지금 ${def}장)`}
                     value={ev.photoLimit ?? ""} onChange={(e) => set("photoLimit", e.target.value.replace(/[^0-9]/g, ""))} aria-describedby="o-photos-h" />

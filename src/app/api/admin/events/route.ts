@@ -65,18 +65,23 @@ export async function POST(req: Request) {
   if (!parsed.success) return bad("일정 유형과 이름을 입력해 주세요. 일시는 달력에서 골라 주세요.");
   const { type, name, startsAt = "", endsAt = "", place = "" } = parsed.data;
   const allowed = creatableTypes(g.s.perms);
-  if (allowed && !allowed.includes(type)) return bad(`${type} 일정을 만들 권한이 없어요. 만들 수 있는 일정: ${allowed.join(", ")}`, 403);
+  // 클럽 일정(클럽관리 › 클럽 › 일정 만들기)은 정기모임·워크숍·회의·미팅 유형도 고를 수 있다 — 클럽 일정을 만들 수 있으면 된다
+  const forClub = !!(parsed.data.club ?? "").trim();
+  if (allowed && !allowed.includes(type) && !(forClub && allowed.includes("클럽"))) return bad(`${type} 일정을 만들 권한이 없어요. 만들 수 있는 일정: ${allowed.join(", ")}`, 403);
   if (startsAt && endsAt && endsAt < startsAt) return bad("끝나는 일시가 시작 일시보다 빨라요.");
   const photoLimit = parsed.data.photoLimit ? String(Number(parsed.data.photoLimit)) : "";
   if (photoLimit && (Number(photoLimit) < 1 || Number(photoLimit) > MAX_PHOTO_LIMIT)) return bad(`사진 최대 장수는 1~${MAX_PHOTO_LIMIT}장으로 정해 주세요.`);
-  const club = type === "클럽" ? parsed.data.club ?? "" : "";
+  const club = type === "클럽" || forClub ? (parsed.data.club ?? "").trim() : "";
   // 클럽 일정은 클럽이 꼭 있어야 한다(없으면 그 클럽의 일정관리에 안 보이고, 누구나 참석 신청할 수 있게 된다)
   if (type === "클럽" && !club) return bad("어느 클럽 일정인지 골라 주세요.");
   if (club && !(await getLists()).clubs.includes(club)) return bad("클럽을 목록에서 골라 주세요.");
   const s = await getStore();
   let audience = "";
   const a = parsed.data.audience;
-  if (!club && a && a.mode !== "all") {
+  // 클럽 일정의 "클럽회원&참관회원"(mode clubs, 그 클럽만)은 명단 없이 저장한다(클럽 명단이 바뀌면 자동 반영, lib/audience.ts)
+  if (club && a && a.mode === "clubs" && a.clubs.length === 1 && a.clubs[0] === club) {
+    audience = JSON.stringify({ mode: "clubs", events: [], clubs: [club], memberIds: [] });
+  } else if (a && a.mode !== "all") {
     const ids = new Set((await s.list("Members")).map((m) => m.id));
     const memberIds = [...new Set(a.memberIds)].filter((id) => ids.has(id));
     if (memberIds.length === 0) return bad("공개할 회원을 한 명 이상 골라 주세요.");
