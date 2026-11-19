@@ -4,7 +4,6 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, type AvatarView } from "@/components/Avatars";
-import { Mascot } from "@/components/Mascot";
 import { downloadReading, Md, OldReadingNote, SajuInfoView, type SajuInfo } from "@/components/SajuPanel";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -37,7 +36,9 @@ export default function ProfilePage({ params }: { params: Promise<{ pid: string 
       {!p && !error && <p className="small">불러오는 중이에요…</p>}
       {p && (
         <>
-          <div className="row">{p.name ? <Avatar member={{ name: p.name, avatar: p.avatar }} size={56} /> : <Mascot size={56} />}<div><h1 className="title" style={{ fontSize: fs(22) }}>{p.name || `“${p.alias}”`}</h1>{p.masked && <div className="small">“내가 누굴까요?” 참여 중 · 실명 공개 전까지 별칭으로 보여요</div>}</div></div>
+          <div className="row">{p.name ? <Avatar member={{ name: p.name, avatar: p.avatar }} size={56} />
+            /* 별칭(실명 공개 전): 사진·캐릭터 대신 프로필북 목록과 같은 물음표(마스코트는 새싹이 캐릭터와 헷갈려서 쓰지 않는다) */
+            : <span className="avatar" aria-hidden="true" style={{ width: 56, height: 56, borderRadius: 14, background: "var(--violet-bg)", color: "var(--violet)", fontSize: fs(22), flex: "none" }}>?</span>}<div><h1 className="title" style={{ fontSize: fs(22) }}>{p.name || `“${p.alias}”`}</h1>{p.masked && <div className="small">“내가 누굴까요?” 참여 중 · 실명 공개 전까지 별칭으로 보여요</div>}</div></div>
           {p.name && (
             <p style={{ margin: 0, fontWeight: 700 }}>
               {[p.name, p.company, p.title, (p.clubs ?? []).join(", ")].filter((x) => x && x.trim()).join(" / ")}
