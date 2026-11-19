@@ -22,7 +22,10 @@ export async function GET() {
       background_color: "#4c4e52",
       theme_color: "#5a5c61",
       lang: "ko",
-      icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
+      icons: [
+        { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+        { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },
+      ],
     },
     { headers: { "Content-Type": "application/manifest+json" } },
   );

@@ -18,7 +18,12 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     // 기본 이름으로
   }
-  return { title, description, manifest: "/manifest.webmanifest" };
+  // iPhone: 홈 화면에 추가할 때 아이콘(SVG 는 쓰지 않아 PNG 180×180), 주소창 없이 앱처럼 열기
+  return {
+    title, description, manifest: "/manifest.webmanifest",
+    icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
+    appleWebApp: { capable: true, title, statusBarStyle: "black-translucent" },
+  };
 }
 
 export const viewport: Viewport = {

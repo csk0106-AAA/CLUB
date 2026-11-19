@@ -1335,3 +1335,11 @@ fieldset .mini[aria-pressed="true"] { background: var(--brand); border-color: va
 select option, select optgroup { background-color: var(--page); color: var(--ink); }
 select option:checked { background-color: var(--brand); color: var(--on-brand); }
 select option:disabled { color: var(--dis); }
+
+/* iPhone(Safari): 16px 보다 작은 입력칸을 누르면 화면이 저절로 확대되고 돌아오지 않는다.
+   iPhone 에서만 입력칸 글자를 16px 이상(글자 크기 설정 반영)으로 키운다. 안드로이드·PC 는 그대로. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea {
+    font-size: max(16px, calc(16px * var(--fs, 1))) !important;
+  }
+}
