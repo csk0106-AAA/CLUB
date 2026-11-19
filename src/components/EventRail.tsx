@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
+import { eventTitle } from "@/lib/event-title";
 
 // 홈 맨 위 "다가오는 일정" 카드: 내가 참석 신청한 일정 중 한 달 안에 시작하는, 날짜가 가장 가까운 3개까지.
 // 2개 이상이면 세로 축 원통에 카드가 둘러 있고, 옆으로 밀면 원통이 손가락을 따라 돌다가 놓으면 다음·이전 카드에 멈춘다(끝에서 처음으로 끊김 없이).
@@ -172,7 +173,7 @@ export function EventRail() {
                 <img src={e.coverUrl} alt="" draggable={false} loading={i < 2 ? "eager" : "lazy"} style={focusStyle(e.coverUrl)} />
               )}
               <Link href={`/events/${e.id}`} className="rail-hit" draggable={false}
-                aria-label={`${e.name}, ${when(e.startsAt)}${dd ? `, ${dd}` : ""}${e.going ? `, ${e.going}명 참석` : ""} — 일정 보기`} />
+                aria-label={`${eventTitle(e.name, e.club)}, ${when(e.startsAt)}${dd ? `, ${dd}` : ""}${e.going ? `, ${e.going}명 참석` : ""} — 일정 보기`} />
               <span className="rail-badges">
                 {dd && <span className="rail-dday" aria-hidden="true">{dd}</span>}
                 <span className="rail-type" aria-hidden="true">{e.club ? `${e.type} · ${e.club}` : e.type}</span>
@@ -180,7 +181,7 @@ export function EventRail() {
                 {(e.going ?? 0) > 0 && <span className="evhero-going" aria-hidden="true">{e.going}명 참석</span>}
               </span>
               <span className="rail-text" aria-hidden="true">
-                <b>{e.name}</b>
+                <b>{eventTitle(e.name, e.club)}</b>
                 <span>{when(e.startsAt)}</span>
                 <span className="rail-sub">
                   {e.place}

@@ -56,6 +56,9 @@ export const TABS = {
     // photoLimit: 사진첩 최대 장수(비우면 참석 인원 × 10장 × 일정 일수, 참석자 없으면 20장, lib/event-photos.ts photoLimitOf). photoReqs: 장수를 늘려 달라는 회원 요청 [{memberId, at}] JSON
     //  — 관리자가 일정관리에서 장수를 바꿔 저장하면 비운다(처리할 일에서 사라진다)
     "photoLimit", "photoReqs",
+    // approval: 참석 확정 방식. "" = 신청하면 바로 참석 / "admin" = 관리자 승인 후 참석(lib/attend-approval.ts)
+    //  대기회원·참관회원, 다른 클럽 회원은 어느 쪽이든 참관·가입 신청(ClubRequests) 승인을 거친다.
+    "approval",
   ],
   // payNotice: 회원이 "입금했어요"를 누른 시각(관리자가 확인하기 전 알림용)
   EventApplies: [
@@ -65,6 +68,9 @@ export const TABS = {
     // 회비 돌려주기(lib/refund.ts): 입금 확인된 회원이 참석에서 빠지면 refund "wait"(송금대기) → 관리자가 송금완료 누르면 "done"
     // refundAmount: 돌려줄 금액, refundSince: 참석 해제 시각, refundRemindAt: 관리자에게 마지막으로 알린 시각(일주일마다), refundDoneAt: 송금완료 시각
     "refund", "refundAmount", "refundSince", "refundRemindAt", "refundDoneAt",
+    // 관리자 승인 후 참석(Events.approval "admin"): 회원이 참석을 신청하면 answer 는 그대로 두고 req "참석"(승인 대기), reqDays 고른 날짜, reqAt 신청 시각.
+    //  승인하면 answer "참석" + days = reqDays, 반려하면 reqResult "declined" + reqReason(회원에게 보임)
+    "req", "reqDays", "reqAt", "reqResult", "reqReason",
   ],
   // memo: 비용 메모(목록에서는 메모 아이콘을 눌러 본다), order: 목록 순서(끌어서 바꾼다)
   // spentBase: 직접 적은 집행. spent = spentBase + 같은 이름으로 연동된 준비목록의 완료된 가격 합계(lib/items.ts syncPrepToCosts)

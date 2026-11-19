@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { getStore } from "@/lib/store";
 import { refundOnAnswer } from "@/lib/refund";
+import { clearReq } from "@/lib/attend-approval";
 
 const body = z.object({
   memberId: z.string().min(1),
@@ -51,7 +52,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   // 참석 여부를 관리자가 바꾸면 "관리자 체크" 표시(누가·언제)를 남긴다. 미응답으로 되돌리면 지운다.
   const changed = (a?.answer ?? "") !== answer;
   // 참석으로 바꾸는데 날짜를 안 보냈고 기존 날짜도 없으면: 일정의 모든 날(하루 일정은 그날)
-  if (answer === "참석" && dayValue === undefined && !(a?.days)) dayValue = eventDays(ev.startsAt, ev.endsAt).join(",");
+  //  승인 대기 중이던 회원이면 회원이 고른 날짜(reqDays)를 쓴다
+  if (answer === "참석" && dayValue === undefined && !(a?.days)) dayValue = a?.reqDays || eventDays(ev.startsAt, ev.endsAt).join(",");
   // 입금 확인된 회원이 참석에서 빠지면 송금대기(알림), 송금대기 중 다시 참석하면 입금 확인으로(lib/refund.ts)
   const refund = changed ? await refundOnAnswer(ev, a, answer, members.find((m) => m.id === memberId)) : {};
   const mark = !changed ? {} : answer ? { checkedBy: g.s.mid, checkedAt: new Date().toISOString() } : { checkedBy: "", checkedAt: "" };
@@ -64,6 +66,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       ...mark,
       ...(keep ? (dayValue === undefined ? {} : { days: dayValue }) : { days: "", paid: "false", paidAt: "" }),
       ...refund,
+      // 관리자가 참석 여부를 정하면 승인 대기는 끝난다
+      ...(changed || answer === "참석" ? clearReq : {}),
     });
   } else if (answer || memo) {
     await s.insert("EventApplies", { eventId: id, memberId, answer, memo: memo ?? "", days: dayValue ?? "", paid: "false", paidAt: "", ...mark });

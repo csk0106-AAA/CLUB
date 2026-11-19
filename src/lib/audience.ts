@@ -56,15 +56,23 @@ export type Viewer = { id?: string; clubs?: string; kind?: string };
 type Ev = { published?: string; audience?: string; club?: string; observers?: string };
 
 // 회원에게 이 일정이 보이는지(읽기): 공개(published) + 대상에 포함
-//  - 클럽 일정(e.club): 로그인한 모든 회원이 읽을 수 있다(개요·일정·안내).
-//    단, 참석 신청·회비 알림·활동 참여는 eventJoinable(클럽 회원 + 참관자)만 된다.
-//    회원 정보(Members 행) 없이 id 만 주면 클럽 회원·참관자만 본다.
+//  - 클럽 일정(e.club): 공개 대상(e.audience)을 따른다. 참관자에게는 늘 보인다.
+//    · 전체(기본): 로그인한 모든 회원이 읽을 수 있다(회원 정보 없이 id 만 주면 클럽 회원·참관자만)
+//    · 클럽회원&참관회원(mode "clubs"): 지금 클럽 회원 + 참관자(클럽 명단이 바뀌면 자동 반영)
+//    · 회원 직접 고름(mode "members"): 고른 회원
+//    참석 신청·회비 알림·활동 참여는 eventJoinable(클럽 회원 + 참관자)만 된다.
 //  - 그 밖: 공개 대상(e.audience)
 export function eventVisible(e: Ev, who: Viewer | string): boolean {
   if (e.published !== "true") return false;
   const v: Viewer = typeof who === "string" ? { id: who } : who;
   const club = (e.club ?? "").trim();
-  if (club) return inClubOrObserver(e, v) || (typeof who !== "string" && !!v.id);
+  if (club) {
+    if (readObservers(e.observers).includes(v.id ?? "")) return true;
+    const a = readAudience(e.audience);
+    if (a.mode === "all") return inClubOrObserver(e, v) || (typeof who !== "string" && !!v.id);
+    if (a.mode === "clubs") return inClubOrObserver(e, v);
+    return inAudience(a, v.id ?? "");
+  }
   return inAudience(readAudience(e.audience), v.id ?? "");
 }
 

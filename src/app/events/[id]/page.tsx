@@ -20,7 +20,7 @@ import { fs } from "@/lib/fs";
 
 type Detail = {
   event: {
-    id: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
+    id: string; approval?: string; type: string; name: string; startsAt: string; endsAt: string; place: string;
     coverUrl?: string; // 맨 위 사진(목록 카드와 같은 규칙)
     preview?: boolean; draft?: boolean; // 관리하는 사람이 공개 대상 밖·공개전 일정을 회원 화면으로 보는 중
     going?: number; // 참석 인원
@@ -36,7 +36,7 @@ type Detail = {
   prep?: { id: string; item: string; owner: string; done: boolean }[] | null;
   prepFiles?: { id: string; name: string; size: number }[] | null;
   costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
-  apply: { answer: string; days: string[]; paid: boolean; payNotice: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string } | null;
+  apply: { answer: string; days: string[]; paid: boolean; payNotice: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string; req?: string; reqDays?: string[]; reqResult?: string; reqReason?: string } | null;
   feeDue: boolean;
 };
 
@@ -122,13 +122,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       && !window.confirm("다시 참석하면 돌려받기로 한 회비는 송금하지 않고, 입금 확인 상태로 되돌려요.\n다시 참석할까요?")) return;
     setBusy(true);
     setError("");
-    const r = await api(`/api/events/${id}/apply`, { body: { answer } });
+    const r = await api<{ ok: boolean; pending?: boolean }>(`/api/events/${id}/apply`, { body: { answer } });
     if (!r.ok) {
       setBusy(false);
       return setError(r.error);
     }
     await load();
     setBusy(false);
+    // 관리자 승인 후 참석: 승인 대기(워크숍은 날짜만 이어서 고른다, 회비 안내는 확정 뒤에)
+    if (r.data.pending) {
+      if (d.event.type === "워크숍") { setSel(d.apply?.reqDays ?? []); setPicking(true); }
+      return;
+    }
     if (answer === "참석" && d.event.type === "워크숍") {
       setSel(d.apply?.days ?? []);
       setPicking(true);
@@ -139,10 +144,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   async function saveDays() {
     setBusy(true);
-    const r = await api(`/api/events/${id}/apply`, { body: { answer: "참석", days: sel } });
+    const r = await api<{ ok: boolean; pending?: boolean }>(`/api/events/${id}/apply`, { body: { answer: "참석", days: sel } });
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setPicking(false);
+    if (r.data.pending) { await load(); return; } // 승인 대기: 회비 안내는 확정 뒤에
     // 참석 날짜에 따라 회비가 달라질 수 있으므로 날짜를 저장한 뒤의 내 회비로 다음 화면을 정한다.
     const fresh = await api<Detail>(`/api/events/${id}`);
     if (fresh.ok) setD(fresh.data);
@@ -304,6 +310,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <div className="msg info" role="status"><b>회비 송금완료 ✓</b> · 회비 {Number(d.apply.refundAmount || 0).toLocaleString("ko-KR")}원을 송금해 드렸어요.</div>
       )}
 
+      {/* 관리자 승인 후 참석: 승인 대기 / 반려 */}
+      {d.apply?.req === "참석" && (
+        <div className="msg info" role="status"><b>참석 신청 완료 · 승인 대기</b>{d.apply.reqDays && d.apply.reqDays.length > 0 ? ` · ${fmtDays(d.apply.reqDays)}` : ""} · 관리자가 승인하면 참석이 확정되고 알림으로 알려 드려요.</div>
+      )}
+      {d.apply?.reqResult === "declined" && !d.apply.req && answer !== "참석" && (
+        <div className="msg bad" role="status"><b>참석 신청이 반려됐어요</b>{d.apply.reqReason ? ` · 사유: ${d.apply.reqReason}` : ""}</div>
+      )}
+
       {/* 참석 신청(예전 일정 개요의 아래쪽 그대로) */}
       {answer === "참석" && e.canApply !== false && (
         <div className="msg info" role="status">
@@ -332,12 +346,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </div>
       ) : (
         <div className="footer-actions" id="apply">
-          {answer === "" && <p className="hint center">참석 여부를 알려 주세요. 나중에 바꿀 수 있어요. 참석 신청하면 활동·사진첩(올리기·좋아요·댓글)을 모두 쓸 수 있어요.</p>}
+          {answer === "" && d.apply?.req !== "참석" && <p className="hint center">참석 여부를 알려 주세요. 나중에 바꿀 수 있어요. 참석 신청하면 활동·사진첩(올리기·좋아요·댓글)을 모두 쓸 수 있어요.{e.approval === "admin" ? " 이 일정은 관리자가 승인하면 참석이 확정돼요." : ""}</p>}
           {/* 신청 완료 · 참석 안함 · (워크숍) 참석 날짜 바꾸기를 한 줄에 */}
           <div className="row" style={{ gap: 6 }}>
-            <button className="btn" type="button" disabled={busy || !!e.preview || answer === "참석"} onClick={() => apply("참석")}
+            <button className="btn" type="button" disabled={busy || !!e.preview || answer === "참석" || d.apply?.req === "참석"} onClick={() => apply("참석")}
               style={{ flex: "1 1 0", minWidth: 0, padding: "0 6px", fontSize: fs(15, 1.2), whiteSpace: "nowrap" }}>
-              {answer === "참석" ? "신청 완료 ✓" : "참석 신청하기"}
+              {answer === "참석" ? "신청 완료 ✓" : d.apply?.req === "참석" ? "승인 대기 중" : "참석 신청하기"}
             </button>
             <button className={`btn ${answer === "불참" ? "blue" : "white"}`} type="button" disabled={busy || !!e.preview || answer === "불참"} onClick={() => apply("불참")}
               style={{ flex: "1 1 0", minWidth: 0, padding: "0 6px", fontSize: fs(15, 1.2), whiteSpace: "nowrap" }}>

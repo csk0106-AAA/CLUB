@@ -23,6 +23,7 @@ import { EventDuplicate } from "@/components/EventDuplicate";
 import { EventAudience } from "./EventAudience";
 import { EventJoiners } from "./EventJoiners";
 import { matches as nameMatches } from "@/components/NameSearch";
+import { eventTitle } from "@/lib/event-title";
 import { api, fmtDate, fmtDateDow, fmtDateTime, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
 import { defaultPhotoLimit, eventDayCount } from "@/lib/photo-limit";
@@ -33,7 +34,7 @@ import { fs } from "@/lib/fs";
 
 type Ev = {
   id: string; type: string; name: string; startsAt: string; endsAt: string; place: string; booking: string;
-  status: string; published: string; pinned?: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
+  status: string; published: string; pinned?: string; approval?: string; fee: string; feeDeadline: string; account: string; accountHolder?: string;
   feeRules?: FeeRule[];
   supports?: Support[]; // 지원금(연·월회비 지원, 회원 지원) — 총 예산에 더한다
   club?: string; // 클럽 일정의 클럽
@@ -48,7 +49,10 @@ type Row = {
   clubRole?: string; observer?: boolean; // 클럽 일정: 클럽 직책, 참관자
   checkedBy?: string; checkedAt?: string; // 관리자가 대신 체크한 경우 체크한 사람 이름·시각
   refund?: "" | "wait" | "done"; refundAmount?: string; refundSince?: string; refundDoneAt?: string; // 회비 돌려주기(송금대기·송금완료, lib/refund.ts)
+  req?: string; reqDays?: string; reqAt?: string; reqResult?: string; // 관리자 승인 후 참석: req "참석" 승인 대기, reqResult "declined" 반려
 };
+// 필수 승인(대기회원·참관회원의 참관 + 참석, 다른 클럽 회원의 가입·참관 + 참석) 처리 대기 신청
+type Waiting = { id: string; memberId: string; name: string; kind: string; label: string; message: string; createdAt: string; guest: boolean };
 type ClubOpt = { name: string; account: string; holder: string; leaders: { name: string; role: string }[] };
 type Opts = { kinds: string[]; positions: string[]; clubs: ClubOpt[]; dues: { account: string; holder: string } };
 
@@ -108,6 +112,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const tabOrder = useTabOrder("event", true); // 위쪽 메뉴: 끌어서 순서 바꾸기(모든 관리자 공통)
   // 신청현황: 거르기(전체·참석·불참·미응답) · 이름 찾기 · 되돌리기 안내 · 메모 쓰는 줄 · 관리자 체크 자세히 보는 줄
   const [filter, setFilter] = useState<"all" | "참석" | "불참" | "">("all");
+  const [waiting, setWaiting] = useState<Waiting[]>([]);
   const [q, setQ] = useState("");
   const [undo, setUndo] = useState<{ text: string; back?: () => void } | null>(null);
   const undoTimer = useRef<number | undefined>(undefined);
@@ -131,7 +136,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
 
   const load = useCallback(async () => {
     const [r, a, sc] = await Promise.all([
-      api<{ event: Ev; rows: Row[]; options: Opts; canDelete?: boolean }>(`/api/admin/events/${id}`),
+      api<{ event: Ev; rows: Row[]; options: Opts; canDelete?: boolean; waiting?: Waiting[] }>(`/api/admin/events/${id}`),
       api<{ activities: { config: { name: string } }[] }>(`/api/admin/events/${id}/activities`),
       api<{ items: SchedItem[] }>(`/api/admin/events/${id}/items/schedule`),
     ]);
@@ -155,6 +160,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       setEv(e);
       setCanDelete(!!r.data.canDelete);
       setRows(r.data.rows);
+      setWaiting(r.data.waiting ?? []);
       setOpts(r.data.options);
     } else setMsg({ tone: "bad", text: r.error });
     if (a.ok) setActNames(a.data.activities.map((x) => x.config.name));
@@ -221,6 +227,48 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     router.replace(ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events");
+  }
+
+  // 참석 확정 방식: 누르면 바로 저장
+  async function setApproval(next: "" | "admin") {
+    if (!ev || (ev.approval ?? "") === next) return;
+    const pend = rows.filter((r) => r.req === "참석").length;
+    if (next === "" && pend > 0 && !window.confirm(`승인 대기 중인 회원이 ${pend}명 있어요. 바로 확정으로 바꿔도 이 회원들은 그대로 승인 대기로 남아요(신청현황에서 승인해 주세요).\n바꿀까요?`)) return;
+    setBusy(true);
+    const r = await api(`/api/admin/events/${id}`, { method: "PATCH", body: { approval: next } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setEv({ ...ev, approval: next });
+    setMsg({ tone: "info", text: next ? "이제 회원이 참석을 신청하면 관리자가 승인해야 참석이 확정돼요." : "이제 회원이 참석을 신청하면 바로 참석으로 확정돼요." });
+  }
+  // 승인 대기: 이 일정 설정(관리자 승인 후 참석) 신청 / 필수 승인(참관·가입 + 참석) 신청
+  async function decideOwn(r: Row, approve: boolean) {
+    let reason = "";
+    if (!approve) {
+      const x = window.prompt(`${r.name} 님의 참석 신청을 반려해요. 회원에게 보일 사유를 적어 주세요(비워도 돼요).`, "");
+      if (x === null) return;
+      reason = x.trim();
+    }
+    setBusy(true);
+    const res = await api(`/api/admin/events/${id}/approve`, { body: { memberId: r.memberId, decision: approve ? "approve" : "decline", reason } });
+    setBusy(false);
+    if (!res.ok) return setMsg({ tone: "bad", text: res.error });
+    setMsg({ tone: "info", text: approve ? `${r.name} 님 참석을 확정하고 알림을 보냈어요.` : `${r.name} 님 신청을 반려하고 알림을 보냈어요.` });
+    load();
+  }
+  async function decideClub(w: Waiting, approve: boolean) {
+    let reason = "";
+    if (!approve) {
+      const x = window.prompt(`${w.name} 님의 ${w.label}을 반려해요. 회원에게 보일 사유를 적어 주세요(비워도 돼요).`, "");
+      if (x === null) return;
+      reason = x.trim();
+    }
+    setBusy(true);
+    const res = await api(`/api/club-requests/${w.id}`, { method: "PATCH", body: { decision: approve ? "approve" : "decline", reason } });
+    setBusy(false);
+    if (!res.ok) return setMsg({ tone: "bad", text: res.error });
+    setMsg({ tone: "info", text: approve ? `${w.name} 님 ${w.label}을 승인했어요. 참석으로 들어가요.` : `${w.name} 님 ${w.label}을 반려했어요.` });
+    load();
   }
 
   async function togglePin(next: boolean) {
@@ -335,7 +383,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
 
   const attend = rows.filter((r) => r.answer === "참석");
   const absent = rows.filter((r) => r.answer === "불참");
-  const noAns = rows.filter((r) => r.answer === "");
+  const noAns = rows.filter((r) => r.answer === "" && r.req !== "참석"); // 승인 대기는 미응답이 아니다
+  const pendOwn = rows.filter((r) => r.req === "참석"); // 관리자 승인 후 참석: 승인 대기
   const paid = attend.filter((r) => r.paid);
   // 회비 돌려주기: 입금 확인된 뒤 참석에서 빠진 회원(송금대기 먼저)
   const refunds = rows.filter((r) => r.refund === "wait" || r.refund === "done").sort((a, b) => (a.refund === b.refund ? 0 : a.refund === "wait" ? -1 : 1));
@@ -371,6 +420,10 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* 맨 위: 일정 목록으로 돌아가기(클럽 일정은 클럽관리 › 그 클럽 › 일정관리로) */}
+        <Link href={ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events"} className="mini" style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+          {ev.club ? `‹ ${ev.club} 일정 목록으로` : "‹ 일정 목록으로"}
+        </Link>
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
           <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "공개전"}</span>
@@ -379,12 +432,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button className="mini danger" type="button" disabled={busy} style={{ minHeight: 30, padding: "0 10px", fontSize: fs(13) }} title="회원 화면에서 감추고 공개전으로 돌려요"
               onClick={() => save(false)}>공개 취소</button>
           )}
-          {/* 클럽 일정은 클럽관리 › 그 클럽 › 클럽일정관리로 돌아간다 */}
-          <Link href={ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events"} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
-            {ev.club ? `‹ ${ev.club} 일정 목록` : "‹ 일정 목록"}
-          </Link>
           {ev.published === "true" && (
-            <Link href={`/events/${id}`} style={{ fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
+            <Link href={`/events/${id}`} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
               회원 화면에서 보기 ›
             </Link>
           )}
@@ -408,11 +457,18 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
         <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {ev.type === "클럽" && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label className="l" htmlFor="o-club" style={{ margin: 0 }}>클럽</label>
-              <select id="o-club" className="field" value={ev.club ?? ""} onChange={(e) => pickClub(e.target.value)}>
-                <option value="">클럽을 고르지 않음 (전체 회원에게 보임)</option>
-                {[...new Set([...opts.clubs.map((c) => c.name), ...(ev.club ? [ev.club] : [])])].map((c) => <option key={c}>{c}</option>)}
-              </select>
+              {/* 클럽 · 일정 이름 한 줄(회원에게는 "[클럽] 일정 이름"으로 보여요) */}
+              <div className="grid2 pair">
+                <div className="half">
+                  <label className="l" htmlFor="o-club">클럽</label>
+                  <select id="o-club" className="field" value={ev.club ?? ""} onChange={(e) => pickClub(e.target.value)}>
+                    <option value="">클럽을 고르지 않음 (전체 회원에게 보임)</option>
+                    {[...new Set([...opts.clubs.map((c) => c.name), ...(ev.club ? [ev.club] : [])])].map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="half"><label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" maxLength={80} placeholder="예) 12월 정기 라운딩" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
+              </div>
+              {ev.club && <span className="small">회원에게는 “{eventTitle(ev.name, ev.club)}”으로 보여요.</span>}
               {curClub && (
                 <span className="small">
                   {curClub.leaders.length ? curClub.leaders.map((l) => `${l.role}: ${l.name}`).join(" · ") : "회장을 아직 정하지 않았어요"}
@@ -430,12 +486,26 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button type="button" role="switch" className="switch" aria-checked={ev.pinned === "true"} aria-labelledby="o-pin-l" aria-describedby="o-pin-d"
               disabled={busy} onClick={() => togglePin(ev.pinned !== "true")} />
           </div>
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <b>참석 확정 방식</b>
+            <div className="seg" role="group" aria-label="참석 확정 방식" style={{ alignSelf: "flex-start" }}>
+              <button type="button" aria-pressed={(ev.approval ?? "") === ""} disabled={busy} onClick={() => setApproval("")} style={{ minHeight: 38, padding: "0 14px" }}>바로 확정</button>
+              <button type="button" aria-pressed={ev.approval === "admin"} disabled={busy} onClick={() => setApproval("admin")} style={{ minHeight: 38, padding: "0 14px" }}>관리자 승인 후 확정</button>
+            </div>
+            <span className="small">
+              {ev.approval === "admin" ? "회원이 참석을 신청하면 “승인 대기”가 되고 관리자에게 알림이 가요. 신청현황에서 승인하면 참석이 확정되고, 반려하면 사유와 함께 회원에게 알려요." : "회원이 참석을 신청하면 바로 참석으로 확정돼요."}
+              {" "}대기회원·참관회원, 다른 클럽 회원은 어느 쪽이든 참관·가입 신청 승인을 거쳐요. 누르면 바로 저장돼요.
+            </span>
+          </div>
           {!ev.club && <EventJoiners eventId={id} onChanged={load} />}
-          {!ev.club && <EventAudience key={ev.id} eventId={id} audience={ev.audience} onSaved={load} />}
+          <EventAudience key={`${ev.id}-${ev.club ?? ""}`} eventId={id} audience={ev.audience} club={ev.club || undefined} onSaved={load} />
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
-          <div className="grid2">
-            <div><label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>
-            <div><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
+          {/* 일정 이름 · 장소 한 줄, 시작 일시 · 끝나는 일시 · 사진 최대 장수 한 줄(globals.css .grid2.pair) */}
+          <div className="grid2 pair">
+            {ev.type !== "클럽" && <div className="half"><label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" value={ev.name} onChange={(e) => set("name", e.target.value)} /></div>}
+            <div className={ev.type === "클럽" ? "full" : "half"}><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
+            <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
+            <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
             {(() => {
               // 사진 최대 장수: 비우면 참석 인원 × 10장 × 일정 일수(참석자 없으면 20장, lib/event-photos.ts 와 같은 계산).
               // 회원 요청이 있으면 강조하고, 장수를 바꿔 저장하면 요청이 처리된다.
@@ -454,8 +524,6 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                 </div>
               );
             })()}
-            <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
-            <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
           </div>
 
           <div>
@@ -509,9 +577,39 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
         const FILTERS: { k: "all" | "참석" | "불참" | ""; l: string; n: number }[] = [
           { k: "all", l: "전체", n: rows.length }, { k: "참석", l: "참석", n: attend.length }, { k: "불참", l: "불참", n: absent.length }, { k: "", l: "미응답", n: noAns.length },
         ];
-        const shown = rows.filter((r) => (filter === "all" || r.answer === filter) && nameMatches(r.name, q));
+        const shown = rows.filter((r) => (filter === "all" || (r.answer === filter && !(filter === "" && r.req === "참석"))) && nameMatches(r.name, q));
+        const waitN = pendOwn.length + waiting.length;
         return (
         <>
+          {/* 승인 대기: 이 일정 설정(관리자 승인 후 확정)으로 들어온 신청 + 필수 승인(참관·가입 + 참석) */}
+          {waitN > 0 && (
+            <section className="card att-wait" aria-label="승인 대기">
+              <b>승인 대기 {waitN}명</b>
+              <ul>
+                {pendOwn.map((r) => (
+                  <li key={`own-${r.memberId}`}>
+                    <span className="grow">
+                      <b>{r.name}</b>{tags(r)} <span className="small">참석 신청{r.reqDays ? ` · ${dayText(r.reqDays)}` : ""}{r.reqAt ? ` · ${fmtDate(r.reqAt)}` : ""}</span>
+                    </span>
+                    <button className="mini" type="button" disabled={busy} onClick={() => decideOwn(r, false)}>반려</button>
+                    <button className="mini on" type="button" disabled={busy} onClick={() => decideOwn(r, true)}>승인</button>
+                  </li>
+                ))}
+                {waiting.map((w) => (
+                  <li key={`club-${w.id}`}>
+                    <span className="grow">
+                      <b>{w.name}</b> <span className="pill blue">{w.guest ? "대기·참관회원" : "다른 클럽 회원"}</span>{" "}
+                      <span className="small">{w.label}{w.createdAt ? ` · ${fmtDate(w.createdAt)}` : ""}</span>
+                      {w.message && <span className="small" style={{ display: "block" }}>“{w.message}”</span>}
+                    </span>
+                    <button className="mini" type="button" disabled={busy} onClick={() => decideClub(w, false)}>반려</button>
+                    <button className="mini on" type="button" disabled={busy} onClick={() => decideClub(w, true)}>승인</button>
+                  </li>
+                ))}
+              </ul>
+              <span className="small">승인하면 참석으로 들어가고, 반려하면 사유와 함께 회원에게 알림이 가요.{waiting.length > 0 ? " 대기·참관회원과 다른 클럽 회원은 일정 설정과 관계없이 늘 승인을 거쳐요(클럽 일정은 클럽 직책자나 모든권한 관리자가 처리해요)." : ""}</span>
+            </section>
+          )}
           {/* 위: 누르면 그 사람들만 보는 거르기 */}
           <div className="att-filter" role="group" aria-label="신청 상태로 거르기">
             {FILTERS.map((x) => (
@@ -550,10 +648,12 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                       onClick={() => { setMemoFor(r.memberId); setMemoText(r.memo ?? ""); }}>📝</button>
                     <div className="seg att-seg" role="group" aria-label={`${r.name} 신청`}>
                       {(["참석", "불참", ""] as const).map((a) => (
-                        <button key={a || "none"} type="button" aria-pressed={r.answer === a} className={`a-${a || "none"}`} disabled={busy} onClick={() => setAnswer(r, a)}>{a || "미응답"}</button>
+                        <button key={a || "none"} type="button" aria-pressed={r.answer === a && !(a === "" && r.req === "참석")} className={`a-${a || "none"}`} disabled={busy} onClick={() => setAnswer(r, a)}>{a || "미응답"}</button>
                       ))}
                     </div>
                   </div>
+                  {r.req === "참석" && <span className="small"><span className="pill warn">승인 대기</span> 참석 신청을 했어요 · 위에서 승인하거나 “참석”을 누르면 바로 확정돼요</span>}
+                  {r.reqResult === "declined" && !r.req && r.answer !== "참석" && <span className="small"><span className="pill gray">반려됨</span> 참석 신청을 반려했어요</span>}
                   {whoFor === r.memberId && <span className="small">{r.checkedBy} 님이 {fmtDateTime(r.checkedAt ?? "")}에 대신 체크했어요. 회원이 직접 답하면 사라져요.</span>}
                   {r.answer === "참석" && evDays.length > 1 && (
                     <div className="att-days" role="group" aria-label={`${r.name} 참석일`}>

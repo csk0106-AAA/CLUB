@@ -27,7 +27,8 @@ const NO_KIND = "미지정";
 const REGULAR = "정회원";
 
 // membersOnly: 회원 선택·일정 참석자 선택·클럽 선택 고르기를 숨기고 "보여 줄 회원"만(모임설정 › 회비설정)
-export function AudiencePicker({ value, onChange, legend = "공개 대상", membersOnly }: { value: Audience; onChange: (a: Audience) => void; legend?: string; membersOnly?: boolean }) {
+// club: 클럽 일정의 클럽 이름 — "클럽회원&참관회원" 빠른 선택(mode "clubs", 클럽 명단이 바뀌면 자동 반영)을 보여 준다
+export function AudiencePicker({ value, onChange, legend = "공개 대상", membersOnly, club }: { value: Audience; onChange: (a: Audience) => void; legend?: string; membersOnly?: boolean; club?: string }) {
   const uid = useId();
   const [opts, setOpts] = useState<AudienceOptions | null>(null);
   const [err, setErr] = useState("");
@@ -40,18 +41,22 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상", memb
   const allIds = useMemo(() => (opts?.members ?? []).map((m) => m.id), [opts]);
   // "전체 회원"(mode all)은 화면에서 "회원 선택 + 모두 체크"로 보여 준다
   const tab: "members" | "events" | "clubs" = value.mode === "all" ? "members" : value.mode;
-  const picked = useMemo(() => new Set(value.mode === "all" ? allIds : value.memberIds), [value.mode, value.memberIds, allIds]);
+  // 클럽회원&참관회원(자동 반영): 지금 클럽 회원을 고른 것으로 보여 준다
+  const clubMode = !!club && value.mode === "clubs" && value.clubs.length === 1 && value.clubs[0] === club;
+  const clubIds = useMemo(() => (club ? opts?.clubs.find((c) => c.name === club)?.memberIds ?? [] : []), [club, opts]);
+  const picked = useMemo(() => new Set(value.mode === "all" ? allIds : clubMode ? clubIds : value.memberIds), [value.mode, value.memberIds, allIds, clubMode, clubIds]);
 
   // 회원만 고르는 화면인데 예전 글이 일정·클럽 대상이면 그 회원들을 회원 선택으로 바꿔 둔다
   useEffect(() => {
-    if (membersOnly && opts && tab !== "members") emit(picked, { mode: "members", events: [], clubs: [] });
+    if (membersOnly && opts && tab !== "members" && !clubMode) emit(picked, { mode: "members", events: [], clubs: [] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [membersOnly, opts, tab]);
 
   // 고른 회원 목록을 저장 형식으로: 회원 선택에서 모두 골랐으면 전체 회원
   function emit(ids: Iterable<string>, base: Partial<Audience> = {}) {
     const set = new Set(ids);
-    const mode = base.mode ?? tab;
+    // 회원만 고르는 화면에서 한 명이라도 고치면 그때 명단(회원 직접 고름)으로 저장한다
+    const mode = base.mode ?? (membersOnly ? "members" : tab);
     if (mode === "members" && allIds.length > 0 && allIds.every((id) => set.has(id))) {
       onChange({ mode: "all", events: [], clubs: [], memberIds: [] });
       return;
@@ -159,11 +164,14 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상", memb
         <div style={{ display: "flex", flexDirection: "column", gap: 8, ...(membersOnly ? {} : { borderTop: "1px solid var(--line)", paddingTop: 10 }) }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <span className="l" id={`${uid}-mem`} style={{ margin: 0 }}>
-              보여 줄 회원 <b style={{ color: "var(--blue-t)" }}>{value.mode === "all" ? `전체 회원 (${allIds.length}명)` : `${picked.size}명`}</b>
+              보여 줄 회원 <b style={{ color: "var(--blue-t)" }}>{value.mode === "all" ? `전체 회원 (${allIds.length}명)` : clubMode ? `클럽 회원 ${clubIds.length}명 + 참관자 (자동 반영)` : `${picked.size}명`}</b>
             </span>
           </div>
-          {tab === "members" && (
+          {(tab === "members" || membersOnly) && (
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }} role="group" aria-label="빠른 선택">
+              {club && (
+                <button className={`mini${clubMode ? " on" : ""}`} type="button" aria-pressed={clubMode} onClick={() => onChange({ mode: "clubs", events: [], clubs: [club], memberIds: clubIds })}>클럽회원&참관회원</button>
+              )}
               {regularIds.length > 0 && (
                 <button className="mini" type="button" onClick={() => emit(regularIds)}>정회원 선택</button>
               )}
@@ -204,7 +212,7 @@ export function AudiencePicker({ value, onChange, legend = "공개 대상", memb
             })}
             {groups.length === 0 && <span className="small">찾는 회원이 없어요.</span>}
           </div>
-          <span className="hint">회원구분 이름을 누르면 그 구분 회원을 모두 고르고, 한 번 더 누르면 모두 빼요. 작성자 본인에게는 항상 보여요.{tab === "members" ? " 모든 회원을 고르면 ‘전체 회원’으로 저장돼 나중에 들어온 회원에게도 보여요." : ""}</span>
+          <span className="hint">{clubMode ? "클럽회원&참관회원: 클럽 회원이 바뀌거나 참관자가 생기면 자동으로 반영돼요. 아래에서 한 명이라도 고치면 그때 고른 명단으로 고정돼요. " : ""}{club ? "참관자에게는 늘 보여요. " : ""}회원구분 이름을 누르면 그 구분 회원을 모두 고르고, 한 번 더 누르면 모두 빼요. 작성자 본인에게는 항상 보여요.{tab === "members" ? " 모든 회원을 고르면 ‘전체 회원’으로 저장돼 나중에 들어온 회원에게도 보여요." : ""}</span>
         </div>
       )}
     </fieldset>

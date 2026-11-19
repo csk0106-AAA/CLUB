@@ -10,7 +10,8 @@ import { clubPayAccount, duesAccount, readDues } from "@/lib/dues";
 import { getLists, memberClubs } from "@/lib/lists";
 import { notifyEvent } from "@/lib/push";
 import { fixLegacyTypes } from "@/lib/event-migrate";
-import { isWithdrawn } from "@/lib/member-kind";
+import { isGuest, isWithdrawn } from "@/lib/member-kind";
+import { isAttend, reqLabel } from "@/lib/club-requests";
 import { readSupports, supportsInput } from "@/lib/supports";
 import { getSetting, getStore } from "@/lib/store";
 
@@ -60,6 +61,8 @@ export async function GET(_req: Request, ctx: Ctx) {
         checkedAt: a?.checkedAt ?? "",
         // 회비 돌려주기: "wait" 송금대기 / "done" 송금완료(lib/refund.ts)
         refund: a?.refund ?? "", refundAmount: a?.refundAmount ?? "", refundSince: a?.refundSince ?? "", refundDoneAt: a?.refundDoneAt ?? "",
+        // 관리자 승인 후 참석: "참석" 이면 승인 대기(reqDays 고른 날짜, reqAt 신청 시각), reqResult "declined" 반려됨
+        req: a?.req ?? "", reqDays: a?.reqDays ?? "", reqAt: a?.reqAt ?? "", reqResult: a?.reqResult ?? "",
         fee: mf.known ? mf.amount : "",
         feePending: !mf.known,
         clubRole: seat?.role ?? "", // 클럽 직책(회장 등)
@@ -85,10 +88,15 @@ export async function GET(_req: Request, ctx: Ctx) {
     const p = await clubPayAccount(name, info[name]);
     return { name, account: p.account, holder: p.holder, leaders: clubLeaders(members, name).map((l) => ({ name: l.name, role: l.role })) };
   }));
+  // 필수 승인: 대기회원·참관회원의 참관 + 참석 신청, 다른 클럽 회원의 가입·참관 + 참석 신청(처리 대기 중인 것)
+  const waiting = (await s.list("ClubRequests"))
+    .filter((r) => r.eventId === id && r.status === "pending" && isAttend(r))
+    .map((r) => ({ id: r.id, memberId: r.memberId, name: members.find((m) => m.id === r.memberId)?.name ?? "회원", kind: r.kind, label: reqLabel(r), message: r.message ?? "", createdAt: r.createdAt ?? "", guest: isGuest(members.find((m) => m.id === r.memberId)?.kind) }));
   return NextResponse.json({
     event: { ...event, club, observers, feeRules: readRules(event.feeRules), supports: readSupports(event.supports) },
     canDelete: canDeleteEvent(g.s, event),
     rows,
+    waiting,
     options: { kinds, positions, clubs, dues: { account: duesAccount(dues), holder: dues.holder } },
   });
 }
@@ -113,6 +121,7 @@ const patch = z.object({
   showCosts: z.boolean().optional(), // 비용을 회원에게 보이기
   supports: supportsInput.optional(), // 지원금(연·월회비 지원, 회원 지원)
   photoLimit: z.string().regex(/^(d{1,4})?$/).optional(), // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
+  approval: z.enum(["", "admin"]).optional(), // 참석 확정 방식("" 바로 참석 / admin 관리자 승인 후, lib/attend-approval.ts)
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {

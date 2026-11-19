@@ -71,7 +71,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
   return (
     <Popup id="new-event" title={fixedClub ? `${fixedClub} 일정 만들기` : "일정 만들기"} open={open} onClose={onClose} dirty={dirty}>
       <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div className="grid2">
+        <div className={fixedClub ? "grid2 pair" : "grid2"}>
           {!fixedClub && (
             <div>
               <label className="l" htmlFor="n-type">유형</label>
@@ -80,13 +80,15 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
               </select>
             </div>
           )}
-          <div><label className="l" htmlFor="n-name">일정 이름</label><input id="n-name" className="field" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className={fixedClub ? "half" : undefined}><label className="l" htmlFor="n-name">일정 이름</label><input id="n-name" className="field" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} /></div>
+          {/* 클럽 일정 만들기(유형 칸 없음): 일정 이름 · 장소 한 줄, 그 아래 시작 일시 · 끝나는 일시 · 사진 최대 장수 한 줄(globals.css .grid2.pair) */}
+          {fixedClub && <div className="half"><label className="l" htmlFor="n-place">장소</label><input id="n-place" className="field" maxLength={120} value={place} onChange={(e) => setPlace(e.target.value)} /></div>}
           <div><label className="l" htmlFor="n-start">시작 일시</label><DateField id="n-start" mode="datetime" value={startsAt} onChange={setStartsAt} /></div>
           <div><label className="l" htmlFor="n-end">끝나는 일시 (선택)</label><DateField id="n-end" mode="datetime" value={endsAt} onChange={setEndsAt} /></div>
-          <div><label className="l" htmlFor="n-place">장소</label><input id="n-place" className="field" maxLength={120} value={place} onChange={(e) => setPlace(e.target.value)} /></div>
+          {!fixedClub && <div><label className="l" htmlFor="n-place">장소</label><input id="n-place" className="field" maxLength={120} value={place} onChange={(e) => setPlace(e.target.value)} /></div>}
           <div>
             <label className="l" htmlFor="n-photos">사진 최대 장수 (선택)</label>
-            <input id="n-photos" className="field" inputMode="numeric" maxLength={4} placeholder="비우면 참석 인원 × 10장 × 일수" value={photoLimit} onChange={(e) => setPhotoLimit(e.target.value.replace(/\D/g, ""))} />
+            <input id="n-photos" className="field" inputMode="numeric" maxLength={4} placeholder={fixedClub ? "비우면 자동" : "비우면 참석 인원 × 10장 × 일수"} title="비우면 참석 인원 × 10장 × 일수" value={photoLimit} onChange={(e) => setPhotoLimit(e.target.value.replace(/\D/g, ""))} />
           </div>
           {!fixedClub && clubs && type === "클럽" && (
             <div>
@@ -101,7 +103,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
         {type === "클럽" ? (
           <span className="hint">모든 회원이 볼 수 있지만, 참석 신청은 {club ? clubLabel(club) : "고른 클럽"} 회원과 참관자만 할 수 있어요. 클럽 회원이 아니면 “{club ? clubLabel(club) : "○○ 모임"} 신청하러 가기”가 보여요. 입금계좌는 {club ? clubLabel(club) : "그 클럽"} 회비관리의 계좌로 먼저 채워져요.</span>
         ) : (
-          <AudiencePicker value={audience} onChange={setAudience} legend="누구에게 보일까요?" />
+          <AudiencePicker value={audience} onChange={setAudience} legend="누구에게 보일까요?" membersOnly />
         )}
         <div className="checks">
           <label htmlFor="n-pin">

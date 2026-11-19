@@ -86,6 +86,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       coverUrl, // 맨 위 큰 사진(원본 크기). 없으면 ""
       going: applies.filter((x) => x.eventId === id && x.answer === "참석").length, // 참석 인원
       type: e.type,
+      approval: e.approval === "admin" ? "admin" : "", // 참석 확정 방식(admin = 관리자 승인 후 참석)
       name: e.name,
       startsAt: e.startsAt,
       endsAt: e.endsAt,
@@ -119,6 +120,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "",
       // 회비 돌려받기: "wait" 송금대기 / "done" 송금완료(lib/refund.ts)
       refund: a.refund ?? "", refundAmount: a.refundAmount ?? "", refundDoneAt: a.refundDoneAt ?? "",
+      // 관리자 승인 후 참석: req "참석" 승인 대기, reqResult "declined" 반려(reqReason 사유)
+      req: a.req ?? "", reqDays: a.reqDays ? a.reqDays.split(",") : [], reqResult: a.reqResult ?? "", reqReason: a.reqReason ?? "",
     } : null,
     feeDue: attending && fee !== "" && a?.paid !== "true",
   });

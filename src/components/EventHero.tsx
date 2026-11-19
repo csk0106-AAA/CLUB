@@ -5,6 +5,7 @@ import { useState } from "react";
 import { IconCalendar, IconNext } from "./Icons";
 import { Popup } from "./Popup";
 import { clubText } from "./EventInfoCard";
+import { eventTitle } from "@/lib/event-title";
 import { fmtDate, fmtRange } from "@/lib/client";
 
 // 회원 일정 화면 맨 위: 홈 일정 카드와 같은 둥근 사진 카드(위쪽 D-day·유형 라벨, 아래쪽 안에 일정명·일시·장소). 장소를 누르면 구글·네이버 지도 고르기.
@@ -60,7 +61,7 @@ export function EventHero({ ev, children }: { ev: HeroEvent; children?: React.Re
           {(ev.going ?? 0) > 0 && <span className="evhero-going">{ev.going}명 참석</span>}
         </span>
         <div className="evhero-text">
-          <h1 className="evhero-title">{ev.name}</h1>
+          <h1 className="evhero-title">{eventTitle(ev.name, ev.club)}</h1>
           <span className="evhero-line"><IconCalendar size={18} max={1.2} />{fmtRange(ev.startsAt, ev.endsAt)}</span>
           {place && (
             <button type="button" className="evhero-place" aria-haspopup="dialog" onClick={() => setMaps(true)} aria-label={`${place}, 지도에서 위치 찾기`}>

@@ -6,6 +6,7 @@ import { eventJoinable, eventVisible } from "@/lib/audience";
 import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 import { refundOnAnswer } from "@/lib/refund";
+import { clearReq, needsApproval, notifyRequest } from "@/lib/attend-approval";
 
 const body = z.object({
   answer: z.enum(["참석", "불참"]),
@@ -40,6 +41,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const rows = await s.list("EventApplies");
   const cur = rows.find((r) => r.eventId === id && r.memberId === g.s.mid);
 
+  // 관리자 승인 후 참석인 일정: 아직 참석이 아니면 승인 대기로(이미 참석이면 날짜 바꾸기는 그대로)
+  if (answer === "참석" && needsApproval(ev) && cur?.answer !== "참석") {
+    const reqDays = days ? [...days].sort().join(",") : cur?.reqDays ?? "";
+    const fresh = cur?.req !== "참석";
+    const fields = { req: "참석", reqDays, reqAt: fresh ? new Date().toISOString() : cur?.reqAt ?? "", reqResult: "", reqReason: "" };
+    if (cur) await s.update("EventApplies", cur.id, { ...fields, answer: "", checkedBy: "", checkedAt: "" });
+    else await s.insert("EventApplies", { eventId: id, memberId: g.s.mid, answer: "", days: "", paid: "false", ...fields });
+    if (fresh) await notifyRequest(ev, me?.name ?? "회원");
+    return NextResponse.json({ ok: true, pending: true });
+  }
+
   // 불참이면 날짜를 비운다. 참석이면 넘어온 날짜(없으면 기존 날짜)를 저장한다.
   const nextDays = answer === "불참" ? "" : days ? [...days].sort().join(",") : cur?.days ?? "";
 
@@ -47,7 +59,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // 회원이 직접 답하면 관리자 체크 표시는 지운다
     // 입금 확인된 뒤 불참으로 바꾸면 송금대기(관리자·회원 알림), 송금대기 중 다시 참석하면 입금 확인으로(lib/refund.ts)
     const refund = cur.answer !== answer ? await refundOnAnswer(ev, cur, answer, me) : {};
-    await s.update("EventApplies", cur.id, { answer, days: nextDays, checkedBy: "", checkedAt: "", ...refund });
+    await s.update("EventApplies", cur.id, { answer, days: nextDays, checkedBy: "", checkedAt: "", ...refund, ...(answer === "불참" ? clearReq : {}) });
   } else {
     await s.insert("EventApplies", { eventId: id, memberId: g.s.mid, answer, days: nextDays, paid: "false" });
   }

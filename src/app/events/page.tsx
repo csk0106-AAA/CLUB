@@ -1,6 +1,7 @@
 "use client";
 
 import { focusStyle } from "@/lib/cover-focus";
+import { eventTitle } from "@/lib/event-title";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApplyNotice } from "@/components/ApplyNotice";
@@ -158,7 +159,7 @@ export default function EventsPage() {
                 {e.outside && <span className="chip line">공개 대상 아님</span>}
                 {e.draft && <span className="chip gray">공개전 · 회원에게 안 보임</span>}
               </span>
-              <span className="n">{e.name}</span>
+              <span className="n">{eventTitle(e.name, e.club)}</span>
               <span className="s">{fmtRange(e.startsAt, e.endsAt)}</span>
               {(status || extra) && (
                 <span className="s tl-meta">
