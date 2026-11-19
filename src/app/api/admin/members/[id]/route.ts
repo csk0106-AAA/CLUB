@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
 import { removeMemberPhotos } from "@/lib/avatar";
 import { withGenderEdit } from "@/lib/gender-edit";
+import { withHistory } from "@/lib/member-history";
+import { isGuest } from "@/lib/member-kind";
 import { fieldValues, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
 import { ageGroupOf, tidyBirth } from "@/lib/age-group";
@@ -43,6 +45,13 @@ export async function PATCH(req: Request, ctx: Ctx) {
   // fields 를 보내지 않으면 추가 항목 값은 그대로 둔다.
   // 회원 수정 화면에서 저장(fields 포함)하면 관리자가 성별을 확인한 것으로 보고 "회원 수정" 기록을 지운다.
   if (fields) patch.extra = withGenderEdit(withFields(cur.extra, fields), null);
+  // 회원구분을 바꾸면 이력에 남긴다(설정 › 회원 정보의 최신 상태, 회원 수정의 이력에 보임)
+  if (rest.kind !== undefined && (rest.kind ?? "") !== (cur.kind ?? "")) {
+    const at = new Date().toISOString();
+    const by = all.find((m) => m.id === g.s.mid)?.name ?? "";
+    patch.extra = withHistory(patch.extra ?? cur.extra, { at, what: "관리자 구분 변경", from: cur.kind ?? "", to: rest.kind ?? "", by });
+    if (isGuest(cur.kind) && !isGuest(rest.kind)) patch.memberSince = at;
+  }
 
   // 직책·클럽 직책·개인 권한이 바뀌어 최종 권한이 달라지면 "모든 권한" 관리자만 할 수 있고,
   // 모든 권한 회원이 한 명도 없게 되면 막는다.

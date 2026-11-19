@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { approvedAtOf } from "@/lib/member-kind";
+import { latestStatus } from "@/lib/member-history";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { appHandlers, changeOption, isEdu, myApply } from "@/lib/member-apps";
@@ -17,7 +18,8 @@ export async function GET() {
   const me = members.find((m) => m.id === g.s.mid);
   if (!me) return bad("회원 정보를 찾을 수 없어요.", 404);
   // approvedAt: 관리자가 회원 승인한 마지막 시각(관리자가 직접 넣은 회원은 넣은 시각). 설정 › 회원 정보에 보인다
-  return NextResponse.json({ ...myApply(me, apps), approvedAt: approvedAtOf(me) });
+  // latest: 회원 정보의 가장 최근 일(승인·탈퇴·구분 변경 등)과 날짜(설정 › 회원 정보 오른쪽 끝)
+  return NextResponse.json({ ...myApply(me, apps), approvedAt: approvedAtOf(me), latest: latestStatus(me, apps, approvedAtOf(me)) });
 }
 
 const body = z.union([

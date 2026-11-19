@@ -65,7 +65,7 @@ export function timelineOf(m: Row, apps: Row[], nameOf: (id: string) => string):
     }
   }
   // 탈퇴·탈퇴 해지(재가입 신청·구분 변경은 위 신청 기록에 있다)
-  for (const h of historyOf(m)) if (h.what === "탈퇴" || h.what === "탈퇴 해지") out.push(h);
+  for (const h of historyOf(m)) if (h.what === "탈퇴" || h.what === "탈퇴 해지" || h.what === "관리자 구분 변경") out.push(h);
   return out.filter((x) => x.at).sort((a, b) => a.at.localeCompare(b.at));
 }
 
@@ -74,4 +74,29 @@ export async function ensureWithdrawnKind(): Promise<void> {
   const kinds = await getSetting<{ value: string; definition?: string }[]>("memberKinds", []);
   if (!Array.isArray(kinds) || kinds.some((k) => k.value === WITHDRAWN)) return;
   await setSetting("memberKinds", [...kinds, { value: WITHDRAWN, definition: "회원이 설정에서 직접 탈퇴한 회원. 로그인할 수 없고 프로필 북에 나오지 않아요. 활동 기록은 남아 있고, 회원 수정에서 ‘탈퇴 해지’로 되돌릴 수 있어요." }]);
+}
+
+// 설정 › 회원 정보 오른쪽 끝: 회원 정보의 가장 최근 일(승인·반려·신청 대기·탈퇴·탈퇴 해지·구분 변경)과 날짜.
+// 기록이 하나도 없으면 회원 승인일(예전 회원은 2026/11/18)로 "가입승인".
+export type LatestStatus = { label: string; at: string; tone: "ok" | "warn" | "bad" };
+const SHORT: Record<string, string> = { member: "가입", observe: "참관", change: "회원구분변경", rejoin: "재가입" };
+export function latestStatus(m: Row, apps: Row[], fallbackAt: string): LatestStatus | null {
+  type Ev = LatestStatus & { key: number };
+  const evs: Ev[] = [];
+  let k = 0;
+  const kinds = (from?: string, to?: string) => (from && to && from !== to ? ` (${from}→${to})` : "");
+  for (const a of apps.filter((x) => x.memberId === m.id)) {
+    const name = SHORT[a.type] ?? "신청";
+    if (a.status === "pending") evs.push({ key: k++, at: a.createdAt ?? "", tone: "warn", label: `${name} 신청 · 승인 대기` });
+    else if (a.status === "approved") evs.push({ key: k++, at: a.handledAt || a.createdAt || "", tone: "ok", label: `${name === "가입" ? "가입승인" : `${name} 승인`}${a.type === "change" ? kinds(a.fromKind, a.toKind) : ""}` });
+    else if (a.status === "rejected") evs.push({ key: k++, at: a.handledAt || a.createdAt || "", tone: "bad", label: `${name} 신청 반려` });
+  }
+  for (const h of historyOf(m)) {
+    if (h.what === "탈퇴") evs.push({ key: k++, at: h.at, tone: "bad", label: "탈퇴" });
+    else if (h.what === "탈퇴 해지") evs.push({ key: k++, at: h.at, tone: "ok", label: `탈퇴 해지${kinds(h.from, h.to)}` });
+    else if (h.what === "관리자 구분 변경") evs.push({ key: k++, at: h.at, tone: "ok", label: `회원구분변경${kinds(h.from, h.to)}` });
+  }
+  const last = evs.filter((e) => e.at).sort((a, b) => a.at.localeCompare(b.at) || a.key - b.key).at(-1);
+  if (last) return { label: last.label, at: last.at, tone: last.tone };
+  return fallbackAt ? { label: "가입승인", at: fallbackAt, tone: "ok" } : null;
 }

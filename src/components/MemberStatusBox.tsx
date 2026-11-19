@@ -16,18 +16,7 @@ const koDate = (iso: string) => {
   const d = new Date(t + 9 * 3600_000);
   return `${d.getUTCFullYear()}년${d.getUTCMonth() + 1}월${d.getUTCDate()}일`;
 };
-const DONE: Record<string, string> = { member: "가입승인", observe: "참관승인", change: "구분변경 승인", rejoin: "재가입 승인" };
-const ASK: Record<string, string> = { member: "가입 신청", observe: "참관 신청", change: "구분변경 신청", rejoin: "재가입 신청" };
-// 회원 정보의 최신 상태: 가장 최근 신청(승인·반려·승인 대기), 신청 기록이 없으면 회원 승인일(예전 회원은 2026/11/18)
-function latestUpdate(d: Apply): { label: string; at: string; tone: "ok" | "warn" | "bad" } | null {
-  const a = d.app;
-  if (a && a.status === "pending") return { label: `${ASK[a.type] ?? "신청"} · 승인 대기`, at: a.createdAt, tone: "warn" };
-  if (a && a.status === "rejected") return { label: `${ASK[a.type] ?? "신청"} 반려`, at: a.handledAt || a.createdAt, tone: "bad" };
-  if (a && a.status === "approved") return { label: DONE[a.type] ?? "승인", at: a.handledAt || a.createdAt, tone: "ok" };
-  return d.approvedAt ? { label: "가입승인", at: d.approvedAt, tone: "ok" } : null;
-}
-
-type Apply = MyApply & { change?: { to: string; label: string } | null; approvedAt?: string };
+type Apply = MyApply & { change?: { to: string; label: string } | null; approvedAt?: string; latest?: { label: string; at: string; tone: "ok" | "warn" | "bad" } | null };
 
 // 설정 › 회원 정보: 지금 회원구분과 신청 상태, "회원 권한 수정"(관리자 승인 요청), "회원 탈퇴".
 //  회원 권한 수정: 정회원·준회원 → 대기회원으로 변경 / 대기회원 → 정회원 신청 / 참관회원 → 준회원 신청
@@ -82,7 +71,7 @@ export function MemberStatusBox() {
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
           <b className="grow" style={{ fontSize: fs(15) }}>{d.kind || "미지정"}</b>
           {(() => {
-            const u = latestUpdate(d);
+            const u = d.latest; // 서버: 승인·반려·신청 대기·탈퇴·탈퇴 해지·구분 변경 중 가장 최근 것(lib/member-history.ts latestStatus)
             return u && <span className="small" style={{ flex: "none", fontWeight: 700, color: u.tone === "warn" ? "var(--blue-t)" : u.tone === "bad" ? "var(--red-t)" : undefined }}>{u.label} {koDate(u.at)}</span>;
           })()}
         </div>
