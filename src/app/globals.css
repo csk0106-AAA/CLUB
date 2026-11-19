@@ -1121,3 +1121,8 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .name-search-list li { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: calc(16px * var(--fs, 1)); }
 .name-search-list li.on { background: var(--brand); color: #1a1a1a; }
 .name-search-list li.more { cursor: default; font-weight: 400; font-size: calc(13px * var(--fs, 1)); color: var(--muted, inherit); opacity: .8; }
+/* 위쪽 메뉴 끌어서 순서 바꾸기: 끄는 탭은 흐리게, 놓을 자리는 왼쪽 레몬 선 */
+.tabsx > [draggable="true"] { cursor: grab; }
+.tabsx > [data-dragging] { opacity: .4; }
+.tabsx > [data-over="before"] { box-shadow: inset 3px 0 0 var(--brand); }
+.tabsx > [data-over="after"] { box-shadow: inset -3px 0 0 var(--brand); }

@@ -11,6 +11,7 @@ import { EventMinutes } from "@/components/EventMinutes";
 import { EventPhotos } from "@/components/EventPhotos";
 import { GroupsPanel } from "@/components/GroupsPanel";
 import { RoomsPanel } from "@/components/RoomsPanel";
+import { useTabOrder } from "@/components/useTabOrder";
 import { DateField } from "@/components/DateField";
 import { ObserversCard } from "@/app/events/[id]/ObserversCard";
 import { EventPreview, eventInfoLines } from "@/components/EventInfoCard";
@@ -100,6 +101,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [canEditActs, setCanEditActs] = useState(false);
+  const tabOrder = useTabOrder("event", true); // 위쪽 메뉴: 끌어서 순서 바꾸기(모든 관리자 공통)
   const [editRow, setEditRow] = useState<{ memberId: string; answer: string; memo: string; days: string[] } | null>(null);
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
@@ -345,9 +347,13 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       </div>
 
       <div className="tabsx" role="tablist" aria-label="일정 관리 메뉴">
-        {tabsFor(ev.type).map((t) => (
-          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)}>{t.label}</button>
-        ))}
+        {(() => {
+          const list = tabOrder.sort(tabsFor(ev.type));
+          const keys = list.map((t) => t.key);
+          return list.map((t) => (
+            <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)} {...tabOrder.drag(t.key, keys)}>{t.label}</button>
+          ));
+        })()}
       </div>
 
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}

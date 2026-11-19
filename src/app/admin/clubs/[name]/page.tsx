@@ -14,6 +14,7 @@ import { api, fmtWhen } from "@/lib/client";
 import { removeClub, renameClub } from "@/lib/club-list-client";
 import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
+import { useTabOrder } from "@/components/useTabOrder";
 
 type Info = { intro: string; cycle: string; place: string; bank: string; account: string; holder: string; feeAmount: string; feeText: string; policy: string };
 type M = { id: string; name: string; kind: string; position: string };
@@ -265,6 +266,7 @@ function Club({ name, initialTab }: { name: string; initialTab: Tab }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>(initialTab);
+  const tabOrder = useTabOrder("club", true); // 위쪽 메뉴: 끌어서 순서 바꾸기(모든 관리자 공통)
 
   const load = useCallback(async () => {
     const r = await api<Data>(`/api/admin/clubs/${encodeURIComponent(name)}`);
@@ -291,10 +293,14 @@ function Club({ name, initialTab }: { name: string; initialTab: Tab }) {
         <Link href="/admin/clubs" className="mini" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", flex: "none" }}>‹ 클럽 목록</Link>
       </div>
       <div className="tabsx ctabs" role="tablist" aria-label={`${name} 관리`}>
-        {TABS.map((t) => (
-          <button key={t.key} type="button" role="tab" id={`ct-${t.key}`} aria-selected={tab === t.key} aria-controls={`cp-${t.key}`}
-            className={tab === t.key ? "on" : ""} onClick={() => pick(t.key)}>{t.label}</button>
-        ))}
+        {(() => {
+          const list = tabOrder.sort(TABS);
+          const keys = list.map((t) => t.key);
+          return list.map((t) => (
+            <button key={t.key} type="button" role="tab" id={`ct-${t.key}`} aria-selected={tab === t.key} aria-controls={`cp-${t.key}`}
+              className={tab === t.key ? "on" : ""} onClick={() => pick(t.key)} {...tabOrder.drag(t.key, keys)}>{t.label}</button>
+          ));
+        })()}
       </div>
       <div role="tabpanel" id={`cp-${tab}`} aria-labelledby={`ct-${tab}`} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {(tab === "overview" || tab === "members") && (data ? <Overview data={data} onSaved={load} part={tab === "overview" ? "info" : "members"} /> : error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>)}
