@@ -1126,3 +1126,8 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .tabsx > [data-dragging] { opacity: .4; }
 .tabsx > [data-over="before"] { box-shadow: inset 3px 0 0 var(--brand); }
 .tabsx > [data-over="after"] { box-shadow: inset -3px 0 0 var(--brand); }
+/* 관리자 위쪽 메뉴·하위 메뉴도 끌어서 순서 바꾸기 */
+.modes > [draggable="true"], .subnav.menu > [draggable="true"] { cursor: grab; -webkit-user-drag: element; }
+.modes > [data-dragging], .subnav.menu > [data-dragging] { opacity: .4; }
+.modes > [data-over="before"], .subnav.menu > [data-over="before"] { box-shadow: inset 3px 0 0 var(--brand); }
+.modes > [data-over="after"], .subnav.menu > [data-over="after"] { box-shadow: inset -3px 0 0 var(--brand); }

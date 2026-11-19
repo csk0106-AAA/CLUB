@@ -110,7 +110,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
           </label>
         </div>
         <span className="small">
-          만들면 초안으로 시작하고 일정 관리 화면으로 이동해요. 내용을 채우고 “공개 및 회원전달”을 눌러야 회원에게 보여요.
+          만들면 공개전 상태로 시작하고 일정 관리 화면으로 이동해요. 내용을 채우고 “공개 및 회원전달”을 눌러야 회원에게 보여요.
           {type === "회의" ? " 회의 일정에는 회의록을 쓸 수 있어요." : isLight(type) ? "" : type !== "클럽" ? " 입금계좌는 모임회비관리의 계좌로 먼저 채워져요." : ""}
         </span>
         {needPass && (

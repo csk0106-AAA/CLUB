@@ -195,7 +195,9 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg({ tone: "info", text: published === true ? (ev?.published === "true" ? "저장했어요. 공개 상태 그대로 회원 화면에 반영돼요." : "공개하고 회원에게 전달했어요. 이제 회원 화면에 보여요.") : published === false ? "공개를 취소했어요. 다시 초안이에요." : "저장했어요." });
+    // 공개·공개 취소는 다시 불러오기를 기다리지 않고 라벨을 바로 바꾼다
+    if (published !== undefined) setEv((cur) => (cur ? { ...cur, published: String(published), status: published ? "공개" : "초안" } : cur));
+    setMsg({ tone: "info", text: published === true ? (ev?.published === "true" ? "저장했어요. 공개 상태 그대로 회원 화면에 반영돼요." : "공개하고 회원에게 전달했어요. 이제 회원 화면에 보여요.") : published === false ? "공개를 취소했어요. 다시 공개전이에요." : "저장했어요." });
     load();
   }
 
@@ -332,7 +334,12 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
           <span className={`chip ${TYPE_TONE[ev.type] === "gray" || !TYPE_TONE[ev.type] ? "line" : TYPE_TONE[ev.type]}`}>{ev.type}</span>
-          <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "초안"}</span>
+          <span className={`chip ${ev.published === "true" ? "violet" : "gray"}`}>{ev.published === "true" ? "공개" : "공개전"}</span>
+          {/* 공개 취소: 공개 라벨 바로 옆(일정은 지우지 않고 초안으로 돌린다) */}
+          {ev.published === "true" && (
+            <button className="mini danger" type="button" disabled={busy} style={{ minHeight: 30, padding: "0 10px", fontSize: fs(13) }} title="회원 화면에서 감추고 공개전으로 돌려요"
+              onClick={() => save(false)}>공개 취소</button>
+          )}
           {/* 클럽 일정은 클럽관리 › 그 클럽 › 클럽일정관리로 돌아간다 */}
           <Link href={ev.club ? `/admin/clubs/${encodeURIComponent(ev.club)}?tab=events` : "/admin/events"} style={{ marginLeft: "auto", fontSize: fs(13), textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>
             {ev.club ? `‹ ${ev.club} 일정 목록` : "‹ 일정 목록"}
@@ -427,7 +434,6 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }} onClick={() => save(true)}>
               {ev.published === "true" ? "저장 (공개 유지)" : "공개 및 회원전달"}
             </button>
-            {ev.published === "true" && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minWidth: 160 }} onClick={() => save(false)}>공개 취소</button>}
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
           </div>
           <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회원마다 회비가 다르면 금액과 계좌 대신 “앱 접속 후 내 회비 확인”으로 나가요.</span>

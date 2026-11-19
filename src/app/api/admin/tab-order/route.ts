@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 const body = z.object({ page, keys: z.array(z.string().regex(/^[a-z0-9-]{1,30}$/)).max(40) });
 
 export async function PUT(req: Request) {
-  const g = await guard(["events", "clubs"]);
+  const g = await guard(["all", "events", "clubs", "evMain", "evClub", "group", "members", "templates"]); // 관리 권한이 하나라도 있으면
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("메뉴 순서를 확인해 주세요.");

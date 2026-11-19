@@ -7,6 +7,10 @@ import { api } from "@/lib/client";
 import { IconBack, IconExport } from "./Icons";
 import { MemberTabs } from "./MemberTabs";
 import { PasswordField } from "./PasswordField";
+import { useTabOrder } from "./useTabOrder";
+
+// 하위 메뉴 주소를 순서 저장용 key 로("/admin/dues/payments" → "dues-payments")
+const subKey = (href: string) => href.replace(/^\/admin\/?/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "home";
 
 type Me = { name: string; perms: string[]; admin: boolean; consent: boolean; clubOfficerOf?: string[] };
 
@@ -38,6 +42,9 @@ export function AdminGate(props: {
   const [error, setError] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  // 위쪽 메뉴(관리자 구분)와 하위 메뉴: 끌어서 순서 바꾸기(모든 관리자 공통)
+  const modeOrder = useTabOrder("admin", true);
+  const subOrder = useTabOrder(`sub-${props.mode ?? "none"}`, true);
 
   async function loadMe() {
     const r = await api<Me>("/api/me");
@@ -155,15 +162,23 @@ export function AdminGate(props: {
           )}
         </div>
         <nav className="modes" aria-label="관리자 구분">
-          {modes.map((m) => (
-            <Link key={m.key} href={m.href} className={props.mode === m.key ? "on" : ""} aria-current={props.mode === m.key ? "true" : undefined}>{m.label}</Link>
-          ))}
+          {(() => {
+            const list = modeOrder.sort(modes);
+            const keys = list.map((m) => m.key);
+            return list.map((m) => (
+              <Link key={m.key} href={m.href} className={props.mode === m.key ? "on" : ""} aria-current={props.mode === m.key ? "true" : undefined} {...modeOrder.drag(m.key, keys)}>{m.label}</Link>
+            ));
+          })()}
         </nav>
       </header>
       {/* 하위 메뉴가 하나뿐이면(일정 목록·클럽 목록) 위쪽 메뉴와 같은 곳이라 보여 주지 않는다 */}
       {sub.length > 1 && !props.hideSub && (
         <nav className="subnav menu" aria-label="하위 메뉴">
-          {sub.map((s) => <Link key={s.href} href={s.href} className={props.active === s.href ? "on" : ""} aria-current={props.active === s.href ? "page" : undefined}>{s.label}</Link>)}
+          {(() => {
+            const list = subOrder.sort(sub.map((x) => ({ ...x, key: subKey(x.href) })));
+            const keys = list.map((x) => x.key);
+            return list.map((x) => <Link key={x.href} href={x.href} className={props.active === x.href ? "on" : ""} aria-current={props.active === x.href ? "page" : undefined} {...subOrder.drag(x.key, keys)}>{x.label}</Link>);
+          })()}
         </nav>
       )}
       {asOfficer && <p className="small" style={{ margin: 0 }}>클럽 직책자로 들어왔어요 ({officerOf.join(", ")}).</p>}

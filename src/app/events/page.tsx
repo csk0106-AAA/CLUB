@@ -142,7 +142,7 @@ export default function EventsPage() {
                 {e.feeDue && (e.payNotice ? <span className="chip warn">₩ 입금 확인 중</span> : <span className="chip red">₩ 회비 미입금</span>)}
                 {e.feePaid && <span className="chip violet">회비 입금 ✓</span>}
                 {e.outside && <span className="chip line">공개 대상 아님</span>}
-                {e.draft && <span className="chip gray">초안 · 회원에게 안 보임</span>}
+                {e.draft && <span className="chip gray">공개전 · 회원에게 안 보임</span>}
               </span>
               <span className="n">{e.name}</span>
               <span className="s">{fmtRange(e.startsAt, e.endsAt)}</span>
@@ -240,8 +240,8 @@ export default function EventsPage() {
       )}
 
       {drafts.length > 0 && (
-        <section aria-label="공개 전 초안" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <b style={{ font: `700 ${fs(16)} var(--display)` }}>공개 전 초안 {drafts.length}개</b>
+        <section aria-label="공개전 일정" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <b style={{ font: `700 ${fs(16)} var(--display)` }}>공개전 일정 {drafts.length}개</b>
           <span className="small">관리 권한이 있는 회원에게만 보여요. 누르면 일정 관리 화면에서 내용을 채우고 “공개 및 회원전달”을 누를 수 있어요.</span>
           <div className="evlist">{drafts.map(item)}</div>
         </section>

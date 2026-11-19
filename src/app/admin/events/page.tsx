@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { EventCreate } from "@/components/EventCreate";
-import { EventRowActions } from "@/components/EventRowActions";
+import { EventRowActions, UnpublishButton } from "@/components/EventRowActions";
 import { IconPin } from "@/components/Icons";
 import { api, fmtWhen, TYPE_TONE } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -61,15 +61,18 @@ function EventsAdmin() {
     const pub = e.published === "true";
     return (
       <li key={e.id} className="card" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <Link href={`/admin/events/${e.id}`} aria-label={`${e.name} 일정 관리`}
-          style={{ display: "flex", flexDirection: "column", gap: 6, color: "inherit", textDecoration: "none", flex: 1, minWidth: 0 }}>
+        {/* 라벨 줄은 링크 밖(공개 라벨 옆 "공개 취소" 버튼을 눌러도 일정 화면으로 넘어가지 않게) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
           <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
             {e.pinned === "true" && <span className="chip red"><IconPin size={12} />고정</span>}
             <span className={`chip ${TYPE_CHIP[TYPE_TONE[e.type] ?? "gray"] ?? "line"}`}>{e.club ? `${e.type} · ${e.club}` : e.type}</span>
-            <span className={`chip ${pub ? "violet" : "gray"}`}>{pub ? "공개" : "초안"}</span>
+            <span className={`chip ${pub ? "violet" : "gray"}`}>{pub ? "공개" : "공개전"}</span>
+            {pub && <UnpublishButton ev={e} onUnpublished={(id) => setEvents((l) => (l ?? []).map((x) => (x.id === id ? { ...x, published: "false", status: "초안" } : x)))} />}
             {/* 클럽 유형인데 클럽이 비어 있으면(예전에 만든 일정) 열어서 클럽을 골라 주면 그 클럽 화면으로 옮겨 간다 */}
-            {e.type === "클럽" && !e.club && <span className="chip red">클럽 미지정 · 눌러서 클럽 고르기</span>}
+            {e.type === "클럽" && !e.club && <Link href={`/admin/events/${e.id}`} className="chip red" style={{ textDecoration: "none" }}>클럽 미지정 · 눌러서 클럽 고르기</Link>}
           </span>
+          <Link href={`/admin/events/${e.id}`} aria-label={`${e.name} 일정 관리`}
+            style={{ display: "flex", flexDirection: "column", gap: 6, color: "inherit", textDecoration: "none" }}>
           <b style={{ font: `700 ${fs(17)} var(--display)`, overflowWrap: "anywhere" }}>{e.name}</b>
           <span className="small">{fmtWhen(e.startsAt, e.endsAt, e.place) || "일시·장소를 아직 정하지 않았어요"}</span>
           {pub && (
@@ -78,10 +81,10 @@ function EventsAdmin() {
               {e.attend > 0 ? ` · 입금 ${e.paid}/${e.attend}` : ""}
             </span>
           )}
-        </Link>
+          </Link>
+        </div>
         <EventRowActions ev={e} href={`/admin/events/${e.id}`}
-          onDeleted={(id) => setEvents((l) => (l ?? []).filter((x) => x.id !== id))}
-          onUnpublished={(id) => setEvents((l) => (l ?? []).map((x) => (x.id === id ? { ...x, published: "false", status: "초안" } : x)))} />
+          onDeleted={(id) => setEvents((l) => (l ?? []).filter((x) => x.id !== id))} />
       </li>
     );
   };
@@ -96,7 +99,7 @@ function EventsAdmin() {
         )}
       </div>
       <p className="small" style={{ margin: 0 }}>
-        만든 일정이 모두 보여요{drafts ? ` (초안 ${drafts}개는 아직 회원에게 안 보여요)` : ""}. 일정을 누르면 관리 화면에서 개요·참석 신청·회비·활동 등을 다뤄요. 클럽 일정은 클럽관리에서 만들고 관리해요.
+        만든 일정이 모두 보여요{drafts ? ` (공개전 ${drafts}개는 아직 회원에게 안 보여요)` : ""}. 일정을 누르면 관리 화면에서 개요·참석 신청·회비·활동 등을 다뤄요. 클럽 일정은 클럽관리에서 만들고 관리해요.
         {!canCreate && " 새 일정은 일정관리 권한이 있는 관리자가 만들어요."}
       </p>
       {msg && <div className="msg bad" role="alert">{msg}</div>}
