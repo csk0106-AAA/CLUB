@@ -1,7 +1,8 @@
 import { readAudience } from "./audience";
 import { readEditors } from "./editors";
 import { isGuest, isWithdrawn } from "./member-kind";
-import { effectivePerms, type getPermGroups } from "./perms";
+import { effectivePerms, isClubOfficer, type getPermGroups } from "./perms";
+import { creatableTypes } from "./perm-keys";
 import { canManage, manageHref, managedOf } from "./published";
 import type { Row } from "./store/types";
 
@@ -33,17 +34,23 @@ export async function joinerIssuesFor(me: Row | undefined, groups: Awaited<Retur
   if (!me || isGuest(me.kind)) return [];
   const perms = effectivePerms(me, groups);
   const all = perms.includes("all");
+  // 화면과 같은 기준(고칠 수 있는 사람에게만 알린다)
+  //  글 편집자: 지금도 글쓰기 권한(모든권한·게시글_글쓰기·클럽 직책자)이 있어야 한다(board/_lib/server.ts isEditorOf)
+  //  일정 만든 사람·편집자: 그 일정 종류를 만들 권한이 지금도 있어야 한다(lib/api.ts guardEv)
+  const canWrite = all || perms.includes("write") || isClubOfficer(me);
+  const types = creatableTypes(perms); // null = 모든 종류
   const out: JoinerIssue[] = [];
   for (const p of posts) {
     const managed = managedOf(p);
-    const mine = managed ? await canManage(me, perms, managed) : all || p.authorId === me.id || readEditors(p.editors).includes(me.id);
+    const mine = managed ? await canManage(me, perms, managed) : all || p.authorId === me.id || (canWrite && readEditors(p.editors).includes(me.id));
     if (!mine) continue;
     const n = postJoiners(p, members).length;
     if (n) out.push({ kind: "post", id: p.id, title: p.title ?? "", count: n, href: managed ? manageHref(managed, perms) : `/board/${p.id}` });
   }
   const evAll = all || perms.includes("events");
   for (const e of events) {
-    if (!(evAll || e.createdBy === me.id || readEditors(e.editors).includes(me.id))) continue;
+    const own = (e.createdBy === me.id || readEditors(e.editors).includes(me.id)) && (types === null || types.includes(e.type));
+    if (!(evAll || own)) continue;
     const n = eventJoiners(e, members, stamps).length;
     if (n) out.push({ kind: "event", id: e.id, title: e.name ?? "", count: n, href: `/admin/events/${e.id}` });
   }
