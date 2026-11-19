@@ -124,6 +124,8 @@ export const publishInput = z.object({
   audience: audienceInput.default(ALL),
   notice: z.boolean().default(false),
   pinned: z.boolean().default(false),
+  postFrom: z.string().max(40).default(""), // 게시 기간(비면 계속 게시, lib/post-period.ts)
+  postUntil: z.string().max(40).default(""),
 });
 export type PublishInput = z.infer<typeof publishInput>;
 
@@ -140,6 +142,9 @@ export async function cleanAudience(a: Audience): Promise<Audience | string> {
 export async function publish(m: Managed, input: PublishInput, data: Record<string, unknown>, authorId: string): Promise<{ id: string } | { error: string; status?: number }> {
   const aud = await cleanAudience(input.audience);
   if (typeof aud === "string") return { error: aud };
+  const { postFrom, postUntil } = input;
+  if ((postFrom && Number.isNaN(Date.parse(postFrom))) || (postUntil && Number.isNaN(Date.parse(postUntil)))) return { error: "게시 기간을 확인해 주세요." };
+  if (postFrom && postUntil && postFrom >= postUntil) return { error: "게시 기간의 시작이 끝보다 앞이어야 해요." };
   const s = await getStore();
   let title = input.title;
   if (m.kind === "club" && !title.includes(`[${m.club}]`)) title = `[${m.club}] ${title}`.slice(0, 100);
@@ -148,6 +153,7 @@ export async function publish(m: Managed, input: PublishInput, data: Record<stri
     form: m.kind === "rules" ? "rules" : "fee",
     title, body: input.body, data: JSON.stringify(data), audience: JSON.stringify(aud),
     notice: String(input.notice), pinned: String(input.pinned), authorId, updatedAt: now,
+    postFrom, postUntil,
   };
   let id: string;
   if (input.mode === "update") {

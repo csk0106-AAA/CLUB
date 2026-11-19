@@ -25,7 +25,7 @@ function Posts() {
   const period = (p: P) => (!p.postFrom && !p.postUntil ? "계속 게시" : `${p.postFrom ? fmtDateTime(p.postFrom) : "올린 때"} ~ ${p.postUntil ? fmtDateTime(p.postUntil) : "계속"}`);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <span className="small">게시 기간이 지난 글도 모두 보여요. 회원 게시판에는 “게시 중”인 글만 보여요. 글을 누르면 열어 보고, 수정에서 게시 기간을 다시 정할 수 있어요.</span>
+      <span className="small">게시 기간이 지난 글도 모두 보여요. 회원 게시판에는 “게시 중”인 글만 보여요. 글을 누르면 열어 봐요. 게시 종료·게시 전 글은 “다시 게시”에서 게시 기간·내용을 고치고, 투표·좋아요·댓글을 초기화할지 골라 다시 올릴 수 있어요.</span>
       <div className="seg" role="group" aria-label="게시 상태" style={{ alignSelf: "flex-start" }}>
         {(["all", "live", "before", "ended"] as const).map((k) => (
           <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)} style={{ minHeight: 38, padding: "0 12px" }}>
@@ -47,6 +47,11 @@ function Posts() {
               <b style={{ font: `700 ${fs(16)} var(--display)`, overflowWrap: "anywhere" }}>{p.title}</b>
               <span className="small">{p.authorName || "운영진"} · {fmtDate(p.createdAt)} 작성 · 게시 기간 {period(p)}</span>
             </Link>
+            {p.status !== "live" && (
+              <span className="row" style={{ padding: "0 14px 10px", justifyContent: "flex-end" }}>
+                <Link className="btn" href={`/board/${p.id}/edit?repost=1`} style={{ width: "auto", minHeight: 36, padding: "0 14px", textDecoration: "none" }}>다시 게시</Link>
+              </span>
+            )}
           </li>
         ))}
       </ul>

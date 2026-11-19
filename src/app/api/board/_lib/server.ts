@@ -7,6 +7,7 @@ import { DEFAULT_TEMPLATES, isForm, type FileMeta, type Form, type Template } fr
 import { readEditors } from "@/lib/editors";
 import { effectivePerms, getPermGroups, isClubOfficer } from "@/lib/perms";
 import { managedOf } from "@/lib/published";
+import { postLive } from "@/lib/post-period";
 import { getSetting, getStore, setSetting } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
 
@@ -45,7 +46,8 @@ export const canSee = (me: Me, p: Row) => inAudience(audienceOf(p), me.row.id, p
 // 게시판에서 고치기: 작성자, 작성자가 추가한 편집자, 모든권한.
 // 게시글_글쓰기 권한자도 다른 사람이 쓴 글은 편집자로 추가되어야 고칠 수 있다.
 // 회칙·회비·클럽 회비 글은 게시판에서 고치지 않는다(관리 화면에서 다시 올린다 — lib/published.ts 의 canManage).
-export const canEdit = (me: Me, p: Row) => !managedOf(p) && (me.isAll || p.authorId === me.row.id || isEditorOf(me, p));
+// 게시 기간이 지났거나 아직 안 된 글은 게시글 관리자(manage)도 고칠 수 있다(관리자 › 게시글관리에서 다시 게시)
+export const canEdit = (me: Me, p: Row) => !managedOf(p) && (me.isAll || p.authorId === me.row.id || isEditorOf(me, p) || (me.manage && !postLive(p)));
 // 지우기·편집자 바꾸기: 작성자와 모든권한만
 export const canOwn = (me: Me, p: Row) => !managedOf(p) && (me.isAll || p.authorId === me.row.id);
 // 응답 전체(결과)를 볼 수 있는 사람

@@ -37,9 +37,19 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return forbid(`이 글은 ${where} 화면에서 고쳐서 다시 올려 주세요.`);
   }
   if (!canEdit(m.me, p)) return forbid("작성자나 작성자가 추가한 편집자만 수정할 수 있어요.");
-  const parsed = await parsePost(await req.json().catch(() => null), m.me, p.form);
+  const raw = await req.json().catch(() => null);
+  const parsed = await parsePost(raw, m.me, p.form);
   if (!parsed.ok) return bad(parsed.error, parsed.status);
-  await (await getStore()).update("Posts", p.id, { ...parsed.v, updatedAt: new Date().toISOString() });
+  const s = await getStore();
+  await s.update("Posts", p.id, { ...parsed.v, updatedAt: new Date().toISOString() });
+  // 다시 게시(관리자 › 게시글관리): 고른 것만 초기화 — 투표·설문 응답 / 좋아요 등 반응 / 댓글
+  const reset = raw && typeof raw === "object" && "reset" in raw ? (raw as { reset?: Record<string, unknown> }).reset : undefined;
+  if (reset && typeof reset === "object") {
+    const wipe = async (table: "PostResponses" | "PostReactions" | "PostComments") => { for (const r of (await s.list(table)).filter((r) => r.postId === p.id)) await s.remove(table, r.id); };
+    if (reset.responses === true) await wipe("PostResponses");
+    if (reset.reactions === true) await wipe("PostReactions");
+    if (reset.comments === true) await wipe("PostComments");
+  }
   await notifyPost(p.id, "update").catch(() => undefined);
   return NextResponse.json({ id: p.id });
 }

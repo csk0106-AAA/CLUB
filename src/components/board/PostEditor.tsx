@@ -131,8 +131,9 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 // 글쓰기·수정 화면(회칙·회비 글은 관리 화면에서 올린다). 양식을 고르면 그 양식의 기본 템플릿(제목·내용·양식 내용)을 불러온다.
 // 팝업 창 안에서 쓸 때: onDone(저장 후 글 id), onCancel(취소), onDirty(작성 중인지) 를 넘긴다.
-export function PostEditor({ initial, onDone, onCancel, onDirty }: {
+export function PostEditor({ initial, onDone, onCancel, onDirty, repost }: {
   initial?: PostFull;
+  repost?: boolean; // 다시 게시(관리자 › 게시글관리): 지난 기간은 비우고, 투표·좋아요·댓글 초기화를 묻는다
   onDone?: (id: string) => void;
   onCancel?: () => void;
   onDirty?: (dirty: boolean) => void;
@@ -149,9 +150,13 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
   const [notice, setNotice] = useState(initial?.notice ?? false);
   const [pinned, setPinned] = useState(initial?.pinned ?? false);
   // 게시 기간: 계속 게시 / 기간 설정(시작 ~ 종료). 종료가 지나면 회원 게시판에서 안 보여요
-  const [periodOn, setPeriodOn] = useState(!!(initial?.postFrom || initial?.postUntil));
-  const [postFrom, setPostFrom] = useState(initial?.postFrom ?? "");
-  const [postUntil, setPostUntil] = useState(initial?.postUntil ?? "");
+  // 다시 게시: 이미 지난 기간은 비우고 시작(계속 게시부터). 아직 안 지난 종료 일시는 그대로
+  const pastUntil = !!initial?.postUntil && Date.parse(initial.postUntil) <= Date.now();
+  const [periodOn, setPeriodOn] = useState(repost ? !pastUntil && !!initial?.postUntil : !!(initial?.postFrom || initial?.postUntil));
+  const [postFrom, setPostFrom] = useState(repost ? "" : initial?.postFrom ?? "");
+  const [postUntil, setPostUntil] = useState(repost && pastUntil ? "" : initial?.postUntil ?? "");
+  // 다시 게시할 때 지울 것: 투표·설문 응답 / 좋아요 등 반응 / 댓글
+  const [reset, setReset] = useState({ responses: false, reactions: false, comments: false });
   const [files, setFiles] = useState<FileMeta[]>(initial?.files ?? []);
   const [pending, setPending] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -233,7 +238,10 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
     setBusy(true);
     setNote(null);
     if (periodOn && !postUntil) { setBusy(false); setNote({ tone: "bad", text: "게시 기간의 종료 일시를 정해 주세요." }); return; }
-    const payload = { form, title, body, data, audience, notice, pinned, postFrom: periodOn ? postFrom : "", postUntil: periodOn ? postUntil : "" };
+    if (repost && periodOn && Date.parse(postUntil) <= Date.now()) { setBusy(false); setNote({ tone: "bad", text: "다시 게시하려면 종료 일시를 지금보다 뒤로 정해 주세요." }); return; }
+    const picked = [reset.responses && "투표·설문 응답", reset.reactions && "좋아요", reset.comments && "댓글"].filter(Boolean);
+    if (repost && picked.length && !window.confirm(`${picked.join(", ")}을(를) 모두 지우고 다시 게시할까요? 지운 것은 되돌릴 수 없어요.`)) { setBusy(false); return; }
+    const payload = { form, title, body, data, audience, notice, pinned, postFrom: periodOn ? postFrom : "", postUntil: periodOn ? postUntil : "", ...(repost ? { reset } : {}) };
     const r = savedId
       ? await api<{ id: string }>(`/api/board/${encodeURIComponent(savedId)}`, { method: "PATCH", body: payload })
       : await api<{ id: string }>("/api/board", { body: payload });
@@ -322,6 +330,19 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
             <span className="small">{periodOn ? "시작을 비우면 올리는 순간부터예요. 종료 일시가 지나면 회원 게시판에서 보이지 않고, 관리자 › 게시글관리에서 볼 수 있어요." : "기간 없이 계속 게시해요."}</span>
           </div>
 
+          {/* 다시 게시: 지난 반응을 초기화할지 */}
+          {repost && (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <b>다시 게시할 때 초기화</b>
+              <div className="checks" role="group" aria-label="초기화할 것">
+                <label><input type="checkbox" checked={reset.responses} onChange={(e) => setReset({ ...reset, responses: e.target.checked })} />투표·설문 응답 지우기</label>
+                <label><input type="checkbox" checked={reset.reactions} onChange={(e) => setReset({ ...reset, reactions: e.target.checked })} />좋아요 지우기</label>
+                <label><input type="checkbox" checked={reset.comments} onChange={(e) => setReset({ ...reset, comments: e.target.checked })} />댓글 지우기</label>
+              </div>
+              <span className="small">고르지 않으면 지난 투표·좋아요·댓글이 그대로 남아요.</span>
+            </div>
+          )}
+
           <div className="checks" role="group" aria-label="게시 옵션">
             <label><input type="checkbox" checked={notice} onChange={(e) => touch(setNotice)(e.target.checked)} />공지 (목록에 공지 표시)</label>
             <label><input type="checkbox" checked={pinned} onChange={(e) => touch(setPinned)(e.target.checked)} />상단 고정</label>
@@ -380,7 +401,7 @@ export function PostEditor({ initial, onDone, onCancel, onDirty }: {
 
           {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
           <div className="footer-actions">
-            <button className="btn" type="button" disabled={busy || !title.trim()} onClick={save}>{busy ? "저장하는 중…" : savedId ? "저장" : "올리기"}</button>
+            <button className="btn" type="button" disabled={busy || !title.trim()} onClick={save}>{busy ? "저장하는 중…" : repost ? "다시 게시" : savedId ? "저장" : "올리기"}</button>
             <button className="btn white" type="button" onClick={() => (onCancel ? onCancel() : router.push(savedId ? `/board/${savedId}` : "/board"))}>{savedId ? "글로 돌아가기" : "취소"}</button>
           </div>
         </>

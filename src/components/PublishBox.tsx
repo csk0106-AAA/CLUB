@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { AudiencePicker } from "@/components/AudiencePicker";
+import { DateField } from "@/components/DateField";
 import type { PostDetail } from "@/components/board/types";
 import type { Audience } from "@/lib/audience";
 import { api, fmtDateTime } from "@/lib/client";
@@ -36,6 +37,10 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
   const [audience, setAudience] = useState<Audience>(defaultAudience);
   const [notice, setNotice] = useState(true);
   const [pinned, setPinned] = useState(true);
+  // 게시 기간: 계속 게시 / 기간 설정(시작 ~ 종료). 기존 글은 그 글의 기간을 불러온다(비어 있으면 계속 게시)
+  const [periodOn, setPeriodOn] = useState(false);
+  const [postFrom, setPostFrom] = useState("");
+  const [postUntil, setPostUntil] = useState("");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Note>(null);
@@ -52,6 +57,7 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
       setAudience(defaultAudience);
       setNotice(true);
       setPinned(true);
+      setPeriodOn(false); setPostFrom(""); setPostUntil("");
       return;
     }
     let stop = false;
@@ -65,6 +71,8 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
       setAudience(r.data.post.audience);
       setNotice(r.data.post.notice);
       setPinned(r.data.post.pinned);
+      setPostFrom(r.data.post.postFrom ?? ""); setPostUntil(r.data.post.postUntil ?? "");
+      setPeriodOn(!!(r.data.post.postFrom || r.data.post.postUntil));
       setJoiners(r.data.newJoiners ?? []);
     });
     return () => { stop = true; };
@@ -76,10 +84,11 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
     setNote(null);
     setDoneId("");
     if (mode === "update" && !postId) return setNote({ tone: "bad", text: "고칠 글을 골라 주세요." });
+    if (periodOn && !postUntil) return setNote({ tone: "bad", text: "게시 기간의 종료 일시를 정해 주세요." });
     if (!window.confirm(mode === "new" ? `지금 저장된 내용으로 새 ${what}을 올릴까요?` : `고른 ${what}을 지금 저장된 내용으로 바꿀까요?`)) return;
     setBusy(true);
     if (beforePublish && !(await beforePublish())) return setBusy(false);
-    const r = await api<{ id: string }>(endpoint, { body: { mode, postId: mode === "update" ? postId : "", title, body, audience, notice, pinned } });
+    const r = await api<{ id: string }>(endpoint, { body: { mode, postId: mode === "update" ? postId : "", title, body, audience, notice, pinned, postFrom: periodOn ? postFrom : "", postUntil: periodOn ? postUntil : "" } });
     setBusy(false);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setJoiners([]); // 업데이트했으니 새 회원 안내는 지운다
@@ -122,6 +131,22 @@ export function PublishBox({ what, endpoint, posts, linked, defaultTitle, defaul
           <div>
             <label className="l" htmlFor={`${uid}-b`}>안내 문구</label>
             <textarea id={`${uid}-b`} className="field" rows={4} maxLength={10000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }} value={body} onChange={(e) => setBody(e.target.value)} />
+          </div>
+          {/* 게시 기간 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span className="l" style={{ margin: 0 }}>게시 기간</span>
+            <div className="seg" role="group" aria-label="게시 기간" style={{ alignSelf: "flex-start" }}>
+              <button type="button" aria-pressed={!periodOn} onClick={() => setPeriodOn(false)} style={{ minHeight: 38, padding: "0 14px", fontSize: fs(13) }}>계속 게시</button>
+              <button type="button" aria-pressed={periodOn} onClick={() => setPeriodOn(true)} style={{ minHeight: 38, padding: "0 14px", fontSize: fs(13) }}>기간 설정</button>
+            </div>
+            {periodOn && (
+              <div className="cp-range">
+                <div><DateField id={`${uid}-pf`} mode="datetime" ariaLabel="게시 시작" value={postFrom} onChange={setPostFrom} /></div>
+                <span aria-hidden="true">~</span>
+                <div><DateField id={`${uid}-pu`} mode="datetime" ariaLabel="게시 종료" value={postUntil} onChange={setPostUntil} /></div>
+              </div>
+            )}
+            <span className="small" style={{ fontSize: fs(12) }}>{periodOn ? "시작을 비우면 올리는 순간부터예요. 종료 일시가 지나면 회원 게시판에서 보이지 않고, 관리자 › 게시글관리에서 볼 수 있어요." : "기간 없이 계속 게시해요."}</span>
           </div>
           <div className="checks" role="group" aria-label="게시 옵션">
             <label><input type="checkbox" checked={notice} onChange={(e) => setNotice(e.target.checked)} />공지 (목록에 공지 표시)</label>
