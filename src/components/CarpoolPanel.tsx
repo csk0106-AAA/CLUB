@@ -64,7 +64,7 @@ function CarForm({ idp, v, set, members }: { idp: string; v: Form; set: (p: Part
         {v.kind === "member" ? (
           <>
             {/* 차량모집 지원 회원: 회원 대신 먼저 등록할 때. 그 회원이 일정 화면에서 빈 칸을 채울 수 있고, 빈 칸이 있으면 알림이 가요 */}
-            <div style={{ gridColumn: "1 / -1" }}><label className="l" htmlFor={`${idp}-ow`}>차량모집 지원 회원 <span style={{ color: "var(--brand)" }}>(필수)</span></label>
+            <div style={{ gridColumn: "1 / -1" }}><label className="l" htmlFor={`${idp}-ow`}>차량모집 지원 회원 <span style={{ color: "var(--accent-ink)" }}>(필수)</span></label>
               <NameSearch id={`${idp}-ow`} members={members} value={v.ownerId ?? ""} onChange={(id) => set({ ownerId: id, ...(mode === "owner" ? { driverId: id, driverName: "" } : {}) })} /></div>
             <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="l" style={{ margin: 0 }}>운전자</span>

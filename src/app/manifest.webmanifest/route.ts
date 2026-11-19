@@ -25,6 +25,10 @@ export async function GET() {
       icons: [
         { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
         { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },
+        // 안드로이드 Chrome 은 192·512 PNG 가 있어야 "앱 설치"를 띄운다
+        { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/icon-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
       ],
     },
     { headers: { "Content-Type": "application/manifest+json" } },

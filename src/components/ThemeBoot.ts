@@ -1,8 +1,10 @@
 // 화면 모드(서버·클라이언트 공용, "use client" 아님): layout.tsx 의 <head> 스크립트와 설정 화면이 함께 쓴다.
-// "system"(기기 설정) | "light" | "dark". <html data-theme> 로 적용하고(시스템이면 속성 없음),
+// "dark"(어두운 화면, 기본) | "light"(밝은 화면) | "system"(폰 설정 따라). 밝게 보일 때만 <html data-theme="light"> 를 붙이고(어두우면 속성 없음),
+// 진행자 화면(/host)은 늘 어두운 화면.
 // 다음에 열 때 서버 응답 전에 바로 적용되도록 이 기기(localStorage)에도 적어 둔다.
 export type ThemeChoice = "system" | "light" | "dark";
-export const THEME_KEY = "club-theme";
+export const THEME_KEY = "club-screen";
+const OLD_THEME_KEY = "club-theme"; // 예전 화면 모드(지금 화면과 달라 쓰지 않는다)
 
 // 글자 크기(설정 > 글자 크기): 1~10 단계, 5가 보통(100%). 이 기기에만 저장. 글자와 아이콘만 바뀌고 화면 틀은 그대로.
 // <html data-scale="단계"> + --fs(배율) → CSS 의 calc(Npx * var(--fs, 1)) 글자·아이콘 크기. 폭 400px 미만 휴대폰은 넘치지 않게 최대 130%.
@@ -16,7 +18,7 @@ export const APP_W_KEY = "club-app-w";
 export const ADMIN_W_KEY = "club-admin-w";
 
 // 첫 화면을 그리기 전에 이 기기에 저장된 모드·글자 크기·앱 너비를 적용하는 짧은 스크립트(깜빡임 방지)
-export const THEME_BOOT = `try{var d=document.documentElement,t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t==="light"||t==="dark")d.dataset.theme=t;var L=${JSON.stringify(SCALE_LEVELS)},o={"0.9":3,"1.15":7,"1.3":8}[localStorage.getItem(${JSON.stringify(OLD_SCALE_KEY)})||""],s=parseInt(localStorage.getItem(${JSON.stringify(SCALE_KEY)})||(o?String(o):""),10);if(s>=1&&s<=10&&s!==${SCALE_DEFAULT}){var z=L[s-1];if(window.innerWidth<400&&z>${SCALE_NARROW_MAX})z=${SCALE_NARROW_MAX};d.dataset.scale=String(s);d.style.setProperty("--fs",String(z));}var a=parseInt(localStorage.getItem(${JSON.stringify(APP_W_KEY)})||"",10);if(a>=420)d.style.setProperty("--app-w",a+"px");var m=parseInt(localStorage.getItem(${JSON.stringify(ADMIN_W_KEY)})||"",10);if(m>=420)d.style.setProperty("--admin-w",m+"px");}catch(e){}`;
+export const THEME_BOOT = `try{var d=document.documentElement,t=localStorage.getItem(${JSON.stringify(THEME_KEY)});localStorage.removeItem(${JSON.stringify(OLD_THEME_KEY)});if(location.pathname.indexOf("/host")!==0&&(t==="light"||(t==="system"&&matchMedia("(prefers-color-scheme: light)").matches))){d.dataset.theme="light";var c=document.querySelector('meta[name="theme-color"]');if(c)c.setAttribute("content","#F7F7F4");}var L=${JSON.stringify(SCALE_LEVELS)},o={"0.9":3,"1.15":7,"1.3":8}[localStorage.getItem(${JSON.stringify(OLD_SCALE_KEY)})||""],s=parseInt(localStorage.getItem(${JSON.stringify(SCALE_KEY)})||(o?String(o):""),10);if(s>=1&&s<=10&&s!==${SCALE_DEFAULT}){var z=L[s-1];if(window.innerWidth<400&&z>${SCALE_NARROW_MAX})z=${SCALE_NARROW_MAX};d.dataset.scale=String(s);d.style.setProperty("--fs",String(z));}var a=parseInt(localStorage.getItem(${JSON.stringify(APP_W_KEY)})||"",10);if(a>=420)d.style.setProperty("--app-w",a+"px");var m=parseInt(localStorage.getItem(${JSON.stringify(ADMIN_W_KEY)})||"",10);if(m>=420)d.style.setProperty("--admin-w",m+"px");}catch(e){}`;
 
 // 브라우저에서만 부른다
 export function readScale(): number {
@@ -48,12 +50,27 @@ export function applyScale(level: number): void {
 }
 
 // 브라우저에서만 부른다
+let follow: { mq: MediaQueryList; fn: () => void } | null = null;
 export function applyTheme(theme: ThemeChoice): void {
   const root = document.documentElement;
-  if (theme === "light" || theme === "dark") root.dataset.theme = theme;
-  else delete root.dataset.theme;
+  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  const paint = () => {
+    const light = !location.pathname.startsWith("/host") && (theme === "light" || (theme === "system" && mq.matches));
+    if (light) root.dataset.theme = "light";
+    else delete root.dataset.theme;
+    // 주소창·상태 표시줄 색도 바탕에 맞춘다
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#F7F7F4" : "#5a5c61");
+  };
+  paint();
+  // 폰 설정 따라: 폰의 밝은/다크 모드가 바뀌면 바로 따라간다
+  if (follow) follow.mq.removeEventListener("change", follow.fn);
+  follow = null;
+  if (theme === "system") {
+    mq.addEventListener("change", paint);
+    follow = { mq, fn: paint };
+  }
   try {
-    if (theme === "system") localStorage.removeItem(THEME_KEY);
+    if (theme === "dark") localStorage.removeItem(THEME_KEY);
     else localStorage.setItem(THEME_KEY, theme);
   } catch {
     // 저장소를 못 쓰는 환경(사생활 보호 모드 등): 이번 화면에만 적용

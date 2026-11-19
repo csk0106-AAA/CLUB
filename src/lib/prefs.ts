@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 // 회원 개인 설정(Members.prefs JSON): 화면 모드와 알림.
-//  theme:    "system"(기기 설정 따름) | "light"(기본) | "dark"
+//  screen:   화면 모드 "dark"(어두운 화면, 기본 — 그래파이트 & 레몬) | "light"(밝은 화면) | "system"(폰 설정 따라)
+//            (예전 theme 값은 지금 화면과 달라 읽지 않는다)
 //  notify:   받을 알림 종류 — 일정(events) / 공지(notices: 게시글을 꺼도 공지는 받음) / 게시글(posts: 공지 포함 모든 글)
 //            / 프로필 북(profiles) / 신청 피드백(feedback: 내가 낸 신청의 결과) / 신청(requests: 처리할 신청, 관리자만 화면에 보임)
 //  notifyOn: 알림 전체 켜기·끄기
@@ -10,7 +11,7 @@ import { z } from "zod";
 // 알림 발송 쪽에서도 readPrefs 로 읽어서 같은 규칙을 쓴다.
 export type Theme = "system" | "light" | "dark";
 export type Prefs = {
-  theme: Theme;
+  screen: Theme;
   notify: { events: boolean; notices: boolean; posts: boolean; profiles: boolean; feedback: boolean; requests: boolean };
   notifyOn: boolean;
   sound: boolean;
@@ -20,7 +21,7 @@ export type Prefs = {
 export const THEMES: readonly Theme[] = ["system", "light", "dark"];
 
 export const DEFAULT_PREFS: Prefs = {
-  theme: "system",
+  screen: "dark",
   notify: { events: true, notices: true, posts: true, profiles: true, feedback: true, requests: true },
   notifyOn: true,
   sound: true,
@@ -50,7 +51,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
   const q = o.quiet && typeof o.quiet === "object" ? (o.quiet as Record<string, unknown>) : {};
   const notifyOn = bool(o.notifyOn, DEFAULT_PREFS.notifyOn);
   return {
-    theme: THEMES.includes(o.theme as Theme) ? (o.theme as Theme) : DEFAULT_PREFS.theme,
+    screen: THEMES.includes(o.screen as Theme) ? (o.screen as Theme) : DEFAULT_PREFS.screen,
     notify: {
       events: bool(n.events, DEFAULT_PREFS.notify.events),
       notices: bool(n.notices, DEFAULT_PREFS.notify.notices),
@@ -72,7 +73,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
 // 바꿀 항목만 보내도 된다(부분 수정). 서버는 기존 값에 덮어쓴 뒤 sanitizePrefs 로 규칙을 적용한다.
 export const prefsInput = z
   .object({
-    theme: z.enum(["system", "light", "dark"]),
+    screen: z.enum(["system", "light", "dark"]),
     notify: z.object({ events: z.boolean(), notices: z.boolean(), posts: z.boolean(), profiles: z.boolean(), feedback: z.boolean(), requests: z.boolean() }).partial().strict(),
     notifyOn: z.boolean(),
     sound: z.boolean(),

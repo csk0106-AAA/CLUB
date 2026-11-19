@@ -57,13 +57,18 @@ export function AddToHome() {
           </ol>
         </details>
         <details key={`a-${os}`} open={os === "android"}>
-          <summary style={sum}>안드로이드 (Chrome){os === "android" ? <span className="small"> · 지금 쓰는 폰</span> : null}</summary>
+          <summary style={sum}>안드로이드 (Chrome · 삼성 인터넷){os === "android" ? <span className="small"> · 지금 쓰는 폰</span> : null}</summary>
           <ol style={step}>
-            <li>Chrome 주소창에 {addr} 를 입력해 열어요.</li>
-            <li>오른쪽 위 <b>⋮</b> (점 세 개) 메뉴를 눌러요.</li>
-            <li><b>“홈 화면에 추가”</b> 또는 <b>“앱 설치”</b>를 눌러요.</li>
+            <li>Chrome 에서 {addr} 를 열어요.</li>
+            <li><b>⋮</b> (점 세 개) 메뉴를 눌러요. 폰에 따라 화면 <b>오른쪽 위</b> 또는 주소창이 아래에 있으면 <b>오른쪽 아래</b>에 있어요.</li>
+            <li><b>“홈 화면에 추가”</b> 또는 <b>“앱 설치”</b>를 눌러요. 안 보이면 <b>“전송, 저장, 공유”</b>(또는 “공유”)를 누른 안쪽에 있어요.</li>
             <li><b>“추가”</b> 또는 <b>“설치”</b>를 누르면 홈 화면에 아이콘이 생겨요.</li>
-            <li>삼성 인터넷이면 아래 <b>≡</b> 메뉴 › <b>“현재 페이지 추가”</b> › <b>“홈 화면”</b>을 눌러요.</li>
+          </ol>
+          <b style={{ fontSize: fs(13), marginTop: 8, display: "block" }}>삼성 인터넷 (오른쪽 아래 ≡ 메뉴)</b>
+          <ol style={step}>
+            <li>오른쪽 아래 <b>≡</b> (줄 세 개) 메뉴를 눌러요.</li>
+            <li><b>“현재 페이지 추가”</b>(또는 “페이지 추가”)를 누르고 <b>“홈 화면”</b>을 골라요.</li>
+            <li>주소창 옆에 <b>설치 아이콘(↓)</b>이 보이면 그걸 눌러 <b>“설치”</b>해도 돼요.</li>
           </ol>
         </details>
         <span className="small" style={{ fontSize: fs(12) }}>이미 추가했는데 아이콘이 예전 모양이면, 홈 화면에서 지우고 다시 추가해 주세요.</span>

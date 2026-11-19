@@ -121,7 +121,7 @@ export default function SettingsPage() {
       if (r.ok) {
         setMe(r.data);
         setForm({ company: r.data.company, title: r.data.title, phone: r.data.phone });
-        applyTheme(r.data.prefs.theme);
+        applyTheme(r.data.prefs.screen);
       } else if (r.status === 401) router.replace("/");
       else setError(r.error);
     });
@@ -178,11 +178,11 @@ export default function SettingsPage() {
     const before = me;
     const next = mergePrefs(me.prefs, p);
     setMe({ ...me, prefs: next });
-    if (p.theme) applyTheme(p.theme);
+    if (p.screen) applyTheme(p.screen);
     const d = await patch({ prefs: p });
     if (!d) {
       setMe(before);
-      if (p.theme) applyTheme(before.prefs.theme);
+      if (p.screen) applyTheme(before.prefs.screen);
     }
   }
 
@@ -345,7 +345,25 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* 2. 화면: 글자 크기(이 기기만). 화면 모드는 하나(그래파이트)라 고르는 칸이 없다 */}
+          {/* 2. 화면 모드: 어두운 화면(기본) / 밝은 화면 / 폰 설정 따라. 누르면 바로 바뀌고 회원 설정에 저장(다른 기기에서도 같게) */}
+          <section className="sect" aria-labelledby="s-mode">
+            <h2 id="s-mode">화면 모드</h2>
+            <div className="sect-body" style={{ gap: 8 }}>
+              <div className="mode-pick" role="radiogroup" aria-labelledby="s-mode">
+                {([["dark", "어두운 화면"], ["light", "밝은 화면"], ["system", "폰 설정 따라"]] as const).map(([k, label]) => (
+                  <button key={k} type="button" role="radio" aria-checked={pr.screen === k} className={`mode-opt ${k}`} onClick={() => pr.screen !== k && savePrefs({ screen: k })}>
+                    <span className="mode-sw" aria-hidden="true"><i /></span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <span className="small" style={{ fontSize: fs(12) }}>
+                {pr.screen === "light" ? "밝은 바탕에 레몬 포인트로 보여요." : pr.screen === "system" ? "폰이 다크 모드면 어두운 화면, 아니면 밝은 화면으로 바뀌어요." : "그래파이트 바탕에 레몬 포인트(기본)로 보여요."} 내 계정에 저장돼서 다른 기기에서 로그인해도 같게 보여요.
+              </span>
+            </div>
+          </section>
+
+          {/* 3. 화면: 글자 크기(이 기기만) */}
           <section className="sect" aria-labelledby="s-scale">
             <h2 id="s-scale">글자 크기</h2>
             <div className="sect-body" style={{ gap: 6 }}>

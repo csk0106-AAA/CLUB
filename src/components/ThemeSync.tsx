@@ -19,8 +19,8 @@ export function ThemeSync() {
     let alive = true;
     fetch("/api/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { prefs?: { theme?: string } } | null) => {
-        const t = d?.prefs?.theme;
+      .then((d: { prefs?: { screen?: string } } | null) => {
+        const t = d?.prefs?.screen;
         if (!alive || (t !== "system" && t !== "light" && t !== "dark")) return;
         done.current = true;
         applyTheme(t);

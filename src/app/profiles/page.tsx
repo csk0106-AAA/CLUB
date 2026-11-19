@@ -103,7 +103,7 @@ export default function ProfilesPage() {
               <button key={p.key} type="button" className="opt" onClick={() => router.push(`/profiles/${p.key}`)}
                 style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 {/* 별칭 회원은 사진·캐릭터를 내려받지 않는다(주인을 알아챌 수 있어서) */}
-                {p.masked ? <span className="avatar" aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 12, background: "var(--violet-bg)", color: "var(--violet)", fontSize: fs(18) }}>?</span>
+                {p.masked ? <span className="avatar" aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 12, background: "var(--violet-bg)", color: "var(--accent-ink)", fontSize: fs(18) }}>?</span>
                   : <Avatar member={{ name: p.name, avatar: p.avatar ?? null }} size={44} />}
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 0 }}>
                   <span className="name">
