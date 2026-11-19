@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { getStore } from "@/lib/store";
+import { refundOnAnswer } from "@/lib/refund";
 
 const body = z.object({
   memberId: z.string().min(1),
   answer: z.enum(["참석", "불참", ""]),
-  memo: z.string().max(200).default(""),
+  memo: z.string().max(200).optional(), // 보내지 않으면 기존 메모 그대로
   // 참석 날짜(YYYY-MM-DD). 보내지 않으면 기존 날짜를 그대로 둔다.
   days: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(7).optional(),
 });
@@ -49,18 +50,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const a = applies.find((x) => x.eventId === id && x.memberId === memberId);
   // 참석 여부를 관리자가 바꾸면 "관리자 체크" 표시(누가·언제)를 남긴다. 미응답으로 되돌리면 지운다.
   const changed = (a?.answer ?? "") !== answer;
+  // 참석으로 바꾸는데 날짜를 안 보냈고 기존 날짜도 없으면: 일정의 모든 날(하루 일정은 그날)
+  if (answer === "참석" && dayValue === undefined && !(a?.days)) dayValue = eventDays(ev.startsAt, ev.endsAt).join(",");
+  // 입금 확인된 회원이 참석에서 빠지면 송금대기(알림), 송금대기 중 다시 참석하면 입금 확인으로(lib/refund.ts)
+  const refund = changed ? await refundOnAnswer(ev, a, answer, members.find((m) => m.id === memberId)) : {};
   const mark = !changed ? {} : answer ? { checkedBy: g.s.mid, checkedAt: new Date().toISOString() } : { checkedBy: "", checkedAt: "" };
   if (a) {
     // 참석이 아니게 되면 날짜와 입금 확인은 의미가 없으므로 비운다.
     const keep = answer === "참석";
     await s.update("EventApplies", a.id, {
       answer,
-      memo,
+      ...(memo === undefined ? {} : { memo }),
       ...mark,
       ...(keep ? (dayValue === undefined ? {} : { days: dayValue }) : { days: "", paid: "false", paidAt: "" }),
+      ...refund,
     });
   } else if (answer || memo) {
-    await s.insert("EventApplies", { eventId: id, memberId, answer, memo, days: dayValue ?? "", paid: "false", paidAt: "", ...mark });
+    await s.insert("EventApplies", { eventId: id, memberId, answer, memo: memo ?? "", days: dayValue ?? "", paid: "false", paidAt: "", ...mark });
   }
   return NextResponse.json({ ok: true });
 }

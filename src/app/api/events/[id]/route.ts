@@ -115,7 +115,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     prep, // null = 회원에게 안 보임
     prepFiles,
     costs,
-    apply: a ? { answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "" } : null,
+    apply: a ? {
+      answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "",
+      // 회비 돌려받기: "wait" 송금대기 / "done" 송금완료(lib/refund.ts)
+      refund: a.refund ?? "", refundAmount: a.refundAmount ?? "", refundDoneAt: a.refundDoneAt ?? "",
+    } : null,
     feeDue: attending && fee !== "" && a?.paid !== "true",
   });
 }

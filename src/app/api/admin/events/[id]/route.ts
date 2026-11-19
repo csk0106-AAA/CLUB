@@ -58,6 +58,8 @@ export async function GET(_req: Request, ctx: Ctx) {
         // 관리자가 대신 체크한 경우: 체크한 사람 이름·시각
         checkedBy: a?.checkedBy ? members.find((x) => x.id === a.checkedBy)?.name ?? "관리자" : "",
         checkedAt: a?.checkedAt ?? "",
+        // 회비 돌려주기: "wait" 송금대기 / "done" 송금완료(lib/refund.ts)
+        refund: a?.refund ?? "", refundAmount: a?.refundAmount ?? "", refundSince: a?.refundSince ?? "", refundDoneAt: a?.refundDoneAt ?? "",
         fee: mf.known ? mf.amount : "",
         feePending: !mf.known,
         clubRole: seat?.role ?? "", // 클럽 직책(회장 등)

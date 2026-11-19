@@ -36,7 +36,7 @@ type Detail = {
   prep?: { id: string; item: string; owner: string; done: boolean }[] | null;
   prepFiles?: { id: string; name: string; size: number }[] | null;
   costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
-  apply: { answer: string; days: string[]; paid: boolean; payNotice: string } | null;
+  apply: { answer: string; days: string[]; paid: boolean; payNotice: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string } | null;
   feeDue: boolean;
 };
 
@@ -114,6 +114,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   async function apply(answer: "참석" | "불참") {
     if (!d) return;
+    // 회비 입금이 확인된 뒤 참석을 취소하면: 관리자가 회비를 돌려준다(송금대기 → 송금완료 알림). 먼저 알려 주고 묻는다
+    if (answer === "불참" && d.apply?.answer === "참석" && d.apply.paid
+      && !window.confirm(`회비 입금이 확인된 일정이에요.\n참석을 취소하면 관리자에게 알림이 가고, 관리자가 회비${d.event.fee ? ` ${Number(d.event.fee).toLocaleString("ko-KR")}원` : ""}을 송금해 드려요(송금하면 알림으로 알려 드려요).\n참석을 취소할까요?`)) return;
+    // 송금대기 중 다시 참석: 회비를 돌려받지 않고 입금 확인 상태로 돌아간다
+    if (answer === "참석" && d.apply?.refund === "wait"
+      && !window.confirm("다시 참석하면 돌려받기로 한 회비는 송금하지 않고, 입금 확인 상태로 되돌려요.\n다시 참석할까요?")) return;
     setBusy(true);
     setError("");
     const r = await api(`/api/events/${id}/apply`, { body: { answer } });
@@ -289,6 +295,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {/* 차량 신청: 관리자가 신청을 받거나 확정했을 때(참석 신청자만 신청할 수 있다) */}
       {!e.preview && <CarRequestBox eventId={id} />}
       {e.canObserve && <ObserversCard eventId={id} />}
+
+      {/* 참석을 취소해서 회비를 돌려받는 중 / 돌려받음 */}
+      {d.apply?.refund === "wait" && (
+        <div className="msg info" role="status"><b>회비 송금 예정</b> · 일정에 참석하지 않아 회비 {Number(d.apply.refundAmount || 0).toLocaleString("ko-KR")}원을 관리자가 송금해 드릴 예정이에요.</div>
+      )}
+      {d.apply?.refund === "done" && (
+        <div className="msg info" role="status"><b>회비 송금완료 ✓</b> · 회비 {Number(d.apply.refundAmount || 0).toLocaleString("ko-KR")}원을 송금해 드렸어요.</div>
+      )}
 
       {/* 참석 신청(예전 일정 개요의 아래쪽 그대로) */}
       {answer === "참석" && e.canApply !== false && (

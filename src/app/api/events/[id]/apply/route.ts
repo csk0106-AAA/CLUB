@@ -5,6 +5,7 @@ import { bad, guard } from "@/lib/api";
 import { eventJoinable, eventVisible } from "@/lib/audience";
 import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
+import { refundOnAnswer } from "@/lib/refund";
 
 const body = z.object({
   answer: z.enum(["참석", "불참"]),
@@ -44,7 +45,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   if (cur) {
     // 회원이 직접 답하면 관리자 체크 표시는 지운다
-    await s.update("EventApplies", cur.id, { answer, days: nextDays, checkedBy: "", checkedAt: "" });
+    // 입금 확인된 뒤 불참으로 바꾸면 송금대기(관리자·회원 알림), 송금대기 중 다시 참석하면 입금 확인으로(lib/refund.ts)
+    const refund = cur.answer !== answer ? await refundOnAnswer(ev, cur, answer, me) : {};
+    await s.update("EventApplies", cur.id, { answer, days: nextDays, checkedBy: "", checkedAt: "", ...refund });
   } else {
     await s.insert("EventApplies", { eventId: id, memberId: g.s.mid, answer, days: nextDays, paid: "false" });
   }

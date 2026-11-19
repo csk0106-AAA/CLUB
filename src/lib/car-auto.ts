@@ -2,6 +2,8 @@ import { carOwners, carRequests, confirmAll } from "./car-requests";
 import { carpoolState, cars, driverLabel, DIRS, missingInfo, requestsOpen, saveCarpoolState, selfOf } from "./carpool";
 import { kstTime } from "./kst-time";
 import { addAlerts } from "./member-alerts";
+import { managersOf } from "./event-managers";
+import { remindRefunds } from "./refund";
 import { pushTo } from "./push";
 import { getSetting, getStore, setSetting } from "./store";
 import { effectivePerms, getPermGroups } from "./perms";
@@ -33,6 +35,7 @@ async function run(): Promise<void> {
   const s = await getStore();
   await remindUnconfirmed();
   await remindUnassigned();
+  await remindRefunds(); // 회비 송금대기: 일주일마다 관리자에게
   if (ids.length === 0) return;
   let changed = false;
   for (const eventId of ids) {
@@ -97,16 +100,6 @@ export async function confirmByAdmin(eventId: string, eventName: string, href: s
 }
 
 // 이 일정을 관리하는 사람(일정관리·모든 권한, 클럽 일정이면 클럽관리, 만든 사람·편집자)
-async function managersOf(eventId: string): Promise<string[]> {
-  const s = await getStore();
-  const [members, ev, groups] = await Promise.all([s.list("Members"), s.get("Events", eventId), getPermGroups()]);
-  if (!ev) return [];
-  return members.filter((m) => {
-    if (isGuest(m.kind)) return false;
-    const p = effectivePerms(m, groups);
-    return p.includes("all") || p.includes("events") || (p.includes("clubs") && !!(ev.club ?? "").trim()) || ev.createdBy === m.id || readEditors(ev.editors).includes(m.id);
-  }).map((m) => m.id);
-}
 
 // 일정 시작 3일 전까지 카풀을 확정하지 않았으면(배정했는데 확정 전 사람이 있거나 한 번도 확정하지 않음) 관리자에게 리마인드 — 일정마다 한 번
 const REMIND = "carpoolReminded";

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState, useRef } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { CarpoolPanel } from "@/components/CarpoolPanel";
 import { EventActivities } from "@/components/EventActivities";
@@ -22,6 +22,7 @@ import { EditorsBox } from "@/components/EditorsBox";
 import { EventDuplicate } from "@/components/EventDuplicate";
 import { EventAudience } from "./EventAudience";
 import { EventJoiners } from "./EventJoiners";
+import { matches as nameMatches } from "@/components/NameSearch";
 import { api, fmtDate, fmtDateDow, fmtDateTime, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
 import { defaultPhotoLimit, eventDayCount } from "@/lib/photo-limit";
@@ -46,6 +47,7 @@ type Row = {
   fee: string; feePending: boolean; // 이 회원이 낼 회비(조건 반영), 날짜를 골라야 정해지면 feePending
   clubRole?: string; observer?: boolean; // 클럽 일정: 클럽 직책, 참관자
   checkedBy?: string; checkedAt?: string; // 관리자가 대신 체크한 경우 체크한 사람 이름·시각
+  refund?: "" | "wait" | "done"; refundAmount?: string; refundSince?: string; refundDoneAt?: string; // 회비 돌려주기(송금대기·송금완료, lib/refund.ts)
 };
 type ClubOpt = { name: string; account: string; holder: string; leaders: { name: string; role: string }[] };
 type Opts = { kinds: string[]; positions: string[]; clubs: ClubOpt[]; dues: { account: string; holder: string } };
@@ -104,7 +106,14 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const [busy, setBusy] = useState(false);
   const [canEditActs, setCanEditActs] = useState(false);
   const tabOrder = useTabOrder("event", true); // 위쪽 메뉴: 끌어서 순서 바꾸기(모든 관리자 공통)
-  const [editRow, setEditRow] = useState<{ memberId: string; answer: string; memo: string; days: string[] } | null>(null);
+  // 신청현황: 거르기(전체·참석·불참·미응답) · 이름 찾기 · 되돌리기 안내 · 메모 쓰는 줄 · 관리자 체크 자세히 보는 줄
+  const [filter, setFilter] = useState<"all" | "참석" | "불참" | "">("all");
+  const [q, setQ] = useState("");
+  const [undo, setUndo] = useState<{ text: string; back?: () => void } | null>(null);
+  const undoTimer = useRef<number | undefined>(undefined);
+  const [memoFor, setMemoFor] = useState<string | null>(null);
+  const [memoText, setMemoText] = useState("");
+  const [whoFor, setWhoFor] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
   const [actNames, setActNames] = useState<string[]>([]);
@@ -231,30 +240,55 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     load();
   }
 
-  // 신청현황의 "참석" 체크: 누르면 그 줄이 고치기 모양으로 열린다(참석이면 참석일을 고르고 "저장").
-  // 하루 일정은 그날이 미리 골라져 있다. 체크를 풀면 미응답으로 고쳐 두고 "저장"을 누르면 반영된다.
-  function quickAttend(r: Row, on: boolean) {
-    const cur = r.days ? r.days.split(",").filter(Boolean) : [];
-    setEditRow({
-      memberId: r.memberId,
-      answer: on ? "참석" : "",
-      memo: r.memo,
-      days: on ? (cur.length ? cur : evDays.length === 1 ? evDays : []) : [],
-    });
-    setMsg(null);
+  // 신청현황: 참석·불참·미응답을 누르면 바로 저장(잠깐 "되돌리기"가 보인다). 여러 날 일정에서 참석이면 모든 날로 저장되고 날짜를 눌러 뺀다.
+  // 입금이 확인된 회원을 참석에서 빼면 송금대기가 되고 관리자·회원에게 알림이 가서 한 번 묻는다(lib/refund.ts).
+  function showUndo(text: string, back?: () => void) {
+    setUndo({ text, back });
+    window.clearTimeout(undoTimer.current);
+    undoTimer.current = window.setTimeout(() => setUndo(null), 6000);
   }
-
-  async function saveRow() {
-    if (!editRow) return;
-    if (editRow.answer === "참석" && evDays.length > 1 && editRow.days.length === 0) {
-      return window.alert("참석 날짜를 하나 이상 골라 주세요.");
-    }
+  async function sendApply(body: { memberId: string; answer: string; days?: string[]; memo?: string }): Promise<boolean> {
     setBusy(true);
-    const r = await api(`/api/admin/events/${id}/apply`, { body: editRow });
+    const r = await api(`/api/admin/events/${id}/apply`, { body });
     setBusy(false);
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg({ tone: "info", text: "참석 신청을 고쳤어요." });
-    setEditRow(null);
+    if (!r.ok) { setMsg({ tone: "bad", text: r.error }); load(); return false; }
+    return true;
+  }
+  async function setAnswer(r: Row, answer: string) {
+    if (answer === r.answer || busy) return;
+    const refunding = r.answer === "참석" && answer !== "참석" && r.paid;
+    if (refunding && !window.confirm(`${r.name} 님은 회비 입금이 확인됐어요.\n참석에서 빼면 “송금대기”가 되고, 관리자에게는 회비를 돌려주라는 알림, 회원에게는 송금해 드릴 예정이라는 알림이 가요.\n바꿀까요?`)) return;
+    const prev = { answer: r.answer, days: r.days ? r.days.split(",").filter(Boolean) : undefined };
+    setRows(rows.map((x) => (x.memberId === r.memberId ? { ...x, answer } : x))); // 바로 보이게
+    setMsg(null);
+    if (!(await sendApply({ memberId: r.memberId, answer }))) return;
+    const label = answer || "미응답";
+    // 송금대기가 생긴 변경은 알림이 이미 갔으니 되돌리기 대신 안내만
+    showUndo(refunding ? `${r.name} 님을 ${label}(으)로 바꿨어요. 회비 탭에 송금대기로 올라갔어요.` : `${r.name} 님을 ${label}(으)로 바꿨어요.`,
+      refunding ? undefined : async () => { setUndo(null); if (await sendApply({ memberId: r.memberId, answer: prev.answer, ...(prev.answer === "참석" && prev.days ? { days: prev.days } : {}) })) load(); });
+    load();
+  }
+  async function toggleDay(r: Row, d: string) {
+    const cur = r.days ? r.days.split(",").filter(Boolean) : [];
+    const next = cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort();
+    if (next.length === 0) return setMsg({ tone: "bad", text: "참석일은 하루 이상이어야 해요. 모두 빠지면 “불참”을 눌러 주세요." });
+    setRows(rows.map((x) => (x.memberId === r.memberId ? { ...x, days: next.join(",") } : x)));
+    if (await sendApply({ memberId: r.memberId, answer: "참석", days: next })) load();
+  }
+  async function saveMemo(r: Row) {
+    const text = memoText.trim();
+    setMemoFor(null);
+    if (text === (r.memo ?? "")) return;
+    setRows(rows.map((x) => (x.memberId === r.memberId ? { ...x, memo: text } : x)));
+    if (await sendApply({ memberId: r.memberId, answer: r.answer, memo: text })) load();
+  }
+  async function refundDone(r: Row) {
+    if (!window.confirm(`${r.name} 님에게 회비 ${won(r.refundAmount ?? "0")}을 송금했나요?\n“송금완료”로 바꾸고 ${r.name} 님에게 바로 알림을 보내요.`)) return;
+    setBusy(true);
+    const res = await api(`/api/admin/events/${id}/refund`, { body: { memberId: r.memberId } });
+    setBusy(false);
+    if (!res.ok) return setMsg({ tone: "bad", text: res.error });
+    setMsg({ tone: "info", text: `${r.name} 님 회비 송금완료로 바꾸고 알림을 보냈어요.` });
     load();
   }
 
@@ -303,6 +337,9 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const absent = rows.filter((r) => r.answer === "불참");
   const noAns = rows.filter((r) => r.answer === "");
   const paid = attend.filter((r) => r.paid);
+  // 회비 돌려주기: 입금 확인된 뒤 참석에서 빠진 회원(송금대기 먼저)
+  const refunds = rows.filter((r) => r.refund === "wait" || r.refund === "done").sort((a, b) => (a.refund === b.refund ? 0 : a.refund === "wait" ? -1 : 1));
+  const refundWait = refunds.filter((r) => r.refund === "wait");
   const rules = ev.feeRules ?? [];
   // 회원 화면과 같은 정보 카드용(클럽 일정이면 회장 등 직책자도 함께)
   const infoEv = { ...ev, clubLeaders: curClub?.leaders };
@@ -468,81 +505,76 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       {tab === "room" && <RoomsPanel eventId={id} canEdit />}
       {tab === "photo" && <EventPhotos eventId={id} admin />}
 
-      {tab === "apply" && (
+      {tab === "apply" && (() => {
+        const FILTERS: { k: "all" | "참석" | "불참" | ""; l: string; n: number }[] = [
+          { k: "all", l: "전체", n: rows.length }, { k: "참석", l: "참석", n: attend.length }, { k: "불참", l: "불참", n: absent.length }, { k: "", l: "미응답", n: noAns.length },
+        ];
+        const shown = rows.filter((r) => (filter === "all" || r.answer === filter) && nameMatches(r.name, q));
+        return (
         <>
-          <MiniStats items={[
-            ["참석", `${attend.length}명`, undefined, "var(--green-t)"],
-            ["불참", `${absent.length}명`],
-            ["미응답", `${noAns.length}명`, undefined, "var(--orange-t)"],
-          ]} />
-          {noAns.length > 0 && (
-            <div className="card row" style={{ flexWrap: "wrap" }}>
-              <span className="grow small">미응답 {noAns.length}명: {noAns.map((r) => r.name).join(", ")}</span>
+          {/* 위: 누르면 그 사람들만 보는 거르기 */}
+          <div className="att-filter" role="group" aria-label="신청 상태로 거르기">
+            {FILTERS.map((x) => (
+              <button key={x.l} type="button" aria-pressed={filter === x.k} className={x.k === "" && x.n > 0 ? "warn" : ""} onClick={() => setFilter(x.k)}>
+                {x.l} <b>{x.n}</b>
+              </button>
+            ))}
+          </div>
+          <input className="field" type="search" aria-label="이름으로 찾기" placeholder="이름으로 찾기 (초성도 돼요: ㅎㄱㄷ)" value={q} onChange={(e) => setQ(e.target.value)} />
+          {filter === "" && noAns.length > 0 && (
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <span className="small grow">미응답 {noAns.length}명에게 보낼 안내 문구를 복사해 단체 대화방에 붙여 넣을 수 있어요.</span>
               <button className="mini" type="button" onClick={() => copyReminder(noAns.map((r) => r.name))}>{copied ? "복사했어요 ✓" : "알림 문구 복사"}</button>
             </div>
           )}
-          <div className="tblw">
-            <table className="tbl compact stack" style={{ minWidth: 600 }}>
-              <thead><tr><th>참석</th><th>이름</th><th>신청</th><th>참석 날짜</th><th>메모</th><th></th></tr></thead>
-              <tbody>
-                {rows.map((r) =>
-                  editRow?.memberId === r.memberId ? (
-                    <tr key={r.memberId} style={{ background: "var(--soft)" }}>
-                      <td className="center" data-label="">
-                        <input type="checkbox" checked={editRow.answer === "참석"} style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`}
-                          onChange={(e) => setEditRow({ ...editRow, answer: e.target.checked ? "참석" : "", days: e.target.checked ? (evDays.length === 1 ? evDays : editRow.days) : [] })} />
-                      </td>
-                      <td data-label=""><b>{r.name}</b>{tags(r)}</td>
-                      <td data-label="신청">
-                        <select className="field" style={{ minWidth: 100 }} aria-label={`${r.name} 신청`} value={editRow.answer}
-                          onChange={(e) => setEditRow({ ...editRow, answer: e.target.value })}>
-                          <option value="참석">참석</option><option value="불참">불참</option><option value="">미응답</option>
-                        </select>
-                      </td>
-                      <td className="wide" data-label="참석 날짜">
-                        {editRow.answer === "참석" ? (
-                          <div className="checks" role="group" aria-label={`${r.name} 참석 날짜`} style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                            {evDays.map((d) => (
-                              <label key={d} style={{ minHeight: 40 }}>
-                                <input type="checkbox" checked={editRow.days.includes(d)}
-                                  onChange={(e) => setEditRow({ ...editRow, days: e.target.checked ? [...editRow.days, d].sort() : editRow.days.filter((x) => x !== d) })} />
-                                {fmtDateDow(d)}
-                              </label>
-                            ))}
-                            {evDays.length > 1 && editRow.days.length === 0 && <span className="small" style={{ color: "var(--red-t)" }}>참석일을 골라 주세요</span>}
-                          </div>
-                        ) : <span className="small">-</span>}
-                      </td>
-                      <td className="wide" data-label="메모"><input className="field" aria-label={`${r.name} 메모`} maxLength={200} value={editRow.memo} onChange={(e) => setEditRow({ ...editRow, memo: e.target.value })} /></td>
-                      <td className="act" data-label="" style={{ whiteSpace: "nowrap" }}>
-                        <button className="mini" type="button" disabled={busy} onClick={saveRow}>저장</button>{" "}
-                        <button className="mini" type="button" onClick={() => setEditRow(null)}>취소</button>
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr key={r.memberId}>
-                      <td className="center" data-label="">
-                        <input type="checkbox" checked={r.answer === "참석"} disabled={busy || !!editRow} onChange={(e) => quickAttend(r, e.target.checked)}
-                          style={{ width: 22, height: 22, cursor: "pointer" }} aria-label={`${r.name} 참석 체크`} />
-                      </td>
-                      <td data-label=""><b>{r.name}</b>{tags(r)}</td>
-                      <td data-label="" style={{ whiteSpace: "nowrap" }}>
-                        <span className={`pill ${r.answer === "참석" ? "ok" : r.answer === "불참" ? "gray" : "warn"}`}>{r.answer || "미응답"}</span>
-                        {r.checkedBy && r.answer && (
-                          <span className="pill blue" style={{ marginLeft: 4 }} title={`${r.checkedBy} 님이 ${fmtDateTime(r.checkedAt ?? "")}에 체크했어요`}>✓ 관리자 체크</span>
-                        )}
-                        {r.checkedBy && r.answer && <span className="small" style={{ display: "block", marginTop: 2 }}>{r.checkedBy} · {fmtDate(r.checkedAt ?? "")}</span>}
-                      </td>
-                      <td className="num" data-label="참석일">{dayText(r.days) || "-"}</td>
-                      <td data-label="메모">{r.memo || <span className="small">-</span>}</td>
-                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => setEditRow({ memberId: r.memberId, answer: r.answer, memo: r.memo, days: r.days ? r.days.split(",").filter(Boolean) : [] })}>수정</button></td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
-          <span className="small">맨 앞 “참석” 칸을 체크하면 그 줄이 열려요. 참석일을 고르고(하루 일정은 미리 골라져 있어요) “저장”을 누르면 반영돼요. 체크를 풀고 저장하면 미응답으로 돌아가요. 전화나 메시지로 들은 답은 “수정”으로 대신 입력할 수 있어요. 관리자가 바꾼 답에는 “✓ 관리자 체크”(체크한 사람·날짜)가 붙고, 회원이 직접 다시 답하면 사라져요. 참석이 아니게 바꾸면 참석 날짜와 입금 확인이 지워져요.</span>
+          {undo && (
+            <div className="msg info att-undo" role="status">
+              <span className="grow">{undo.text}</span>
+              {undo.back && <button className="mini" type="button" onClick={undo.back}>되돌리기</button>}
+            </div>
+          )}
+          {shown.length === 0 && <div className="msg info">해당하는 회원이 없어요.</div>}
+          <ul className="att-list">
+            {shown.map((r) => {
+              const days = r.days ? r.days.split(",").filter(Boolean) : [];
+              return (
+                <li key={r.memberId} className="att-row">
+                  <div className="att-top">
+                    <span className="att-name">
+                      <b>{r.name}</b>{tags(r)}
+                      {r.checkedBy && r.answer && (
+                        <button type="button" className="att-by" aria-expanded={whoFor === r.memberId} onClick={() => setWhoFor(whoFor === r.memberId ? null : r.memberId)}>·관리자</button>
+                      )}
+                    </span>
+                    <button type="button" className={`att-memo${r.memo ? " on" : ""}`} aria-label={`${r.name} 메모${r.memo ? ` (${r.memo})` : " 쓰기"}`} title={r.memo || "메모 쓰기"}
+                      onClick={() => { setMemoFor(r.memberId); setMemoText(r.memo ?? ""); }}>📝</button>
+                    <div className="seg att-seg" role="group" aria-label={`${r.name} 신청`}>
+                      {(["참석", "불참", ""] as const).map((a) => (
+                        <button key={a || "none"} type="button" aria-pressed={r.answer === a} className={`a-${a || "none"}`} disabled={busy} onClick={() => setAnswer(r, a)}>{a || "미응답"}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {whoFor === r.memberId && <span className="small">{r.checkedBy} 님이 {fmtDateTime(r.checkedAt ?? "")}에 대신 체크했어요. 회원이 직접 답하면 사라져요.</span>}
+                  {r.answer === "참석" && evDays.length > 1 && (
+                    <div className="att-days" role="group" aria-label={`${r.name} 참석일`}>
+                      <span className="small">참석일</span>
+                      {evDays.map((d) => (
+                        <button key={d} type="button" aria-pressed={days.includes(d)} disabled={busy} onClick={() => toggleDay(r, d)}>{fmtDateDow(d)}</button>
+                      ))}
+                    </div>
+                  )}
+                  {r.refund === "wait" && <span className="small"><span className="pill warn">송금대기</span> 회비 {won(r.refundAmount ?? "0")}을 돌려줘야 해요 · 회비 탭에서 “송금완료”</span>}
+                  {r.refund === "done" && <span className="small"><span className="pill gray">송금완료</span> 회비 {won(r.refundAmount ?? "0")} 돌려줌 · {fmtDate(r.refundDoneAt ?? "")}</span>}
+                  {memoFor === r.memberId ? (
+                    <input className="field" autoFocus aria-label={`${r.name} 메모`} maxLength={200} placeholder="메모 (Enter 또는 칸 밖을 누르면 저장)" value={memoText}
+                      onChange={(e) => setMemoText(e.target.value)} onBlur={() => saveMemo(r)}
+                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") setMemoFor(null); }} />
+                  ) : r.memo ? <span className="small att-memo-text">메모: {r.memo}</span> : null}
+                </li>
+              );
+            })}
+          </ul>
+          <span className="small">누르면 바로 저장돼요. 참석이 아니게 바꾸면 참석일이 지워지고, 입금이 확인된 회원은 송금대기가 돼요.</span>
           {ev.club && (
             <>
               <span className="small">클럽 일정이라 참석 신청 명단에는 {clubLabel(ev.club)} 회원과 참관자만 보여요(다른 회원은 일정을 읽기만 할 수 있어요). 일정 개요에서 클럽을 바꾸면 저장 후 반영돼요.</span>
@@ -550,7 +582,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             </>
           )}
         </>
-      )}
+        );
+      })()}
 
       {tab === "fee" && (
         <>
@@ -680,7 +713,30 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           <MiniStats items={[
             ["입금 완료", `${paid.length}명 · ${won(totalPaid)} / ${won(totalOwed)}`, undefined, "var(--green-t)"],
             ["미입금", `${attend.length - paid.length}명`, undefined, "var(--red-t)"],
+            ...(refundWait.length ? [["송금대기", `${refundWait.length}명 · ${won(refundWait.reduce((n, r) => n + (Number(r.refundAmount) || 0), 0))}`, "참석에서 빠진 회원에게 돌려줄 회비", "var(--orange-t)"] as [string, string, string, string]] : []),
           ]} />
+          {refunds.length > 0 && (
+            <section className="card" aria-label="회비 돌려주기" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <b style={{ font: `700 ${fs(15)} var(--display)` }}>회비 돌려주기</b>
+              <span className="small" style={{ fontSize: fs(12) }}>입금이 확인된 뒤 참석에서 빠진 회원이에요(참석자 회비 합계에서는 빠졌어요). 송금했으면 “송금완료”를 눌러 주세요. 그 회원에게 바로 알림이 가요. 송금대기인 동안 참석 해제일부터 일주일마다 관리자에게 알림이 가요.</span>
+              <div className="tblw">
+                <table className="tbl compact stack" style={{ minWidth: 460 }}>
+                  <thead><tr><th>이름</th><th>금액</th><th>상태</th><th>날짜</th><th></th></tr></thead>
+                  <tbody>
+                    {refunds.map((r) => (
+                      <tr key={r.memberId}>
+                        <td data-label=""><b>{r.name}</b></td>
+                        <td className="num" data-label="금액">{won(r.refundAmount ?? "0")}</td>
+                        <td data-label=""><span className={`pill ${r.refund === "wait" ? "warn" : "gray"}`}>{r.refund === "wait" ? "송금대기" : "송금완료"}</span></td>
+                        <td className="num" data-label="날짜">{r.refund === "wait" ? `${fmtDate(r.refundSince ?? "")} 참석 해제` : `${fmtDate(r.refundDoneAt ?? "")} 송금`}</td>
+                        <td className="act" data-label="">{r.refund === "wait" && <button className="mini" type="button" disabled={busy} onClick={() => refundDone(r)}>송금완료</button>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
           <span className="small" style={{ fontSize: fs(12) }}>“입금 확인”을 누르면 그 회원 화면의 회비 알림이 바로 사라져요. 미입금 회원에게는 알림이 계속 보여요.</span>
           {attend.length === 0 && <div className="msg info">아직 참석을 신청한 회원이 없어요.</div>}
           {attend.length > 0 && (

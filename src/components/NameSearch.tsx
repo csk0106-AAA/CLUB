@@ -14,7 +14,7 @@ const chosung = (s: string) =>
 const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
 const isCho = (s: string) => /^[ㄱ-ㅎ]+$/.test(s);
 
-function matches(name: string, q: string): boolean {
+export function matches(name: string, q: string): boolean {
   const n = norm(name);
   const k = norm(q);
   if (!k) return true;

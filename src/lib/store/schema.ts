@@ -62,6 +62,9 @@ export const TABS = {
     "id", "eventId", "memberId", "answer", "days", "paid", "paidAt", "memo", "payNotice",
     // checkedBy/checkedAt: 관리자(일정 작성자·편집자 포함)가 신청현황에서 대신 체크한 경우 그 사람 id·시각. 회원이 직접 답하면 지운다.
     "checkedBy", "checkedAt",
+    // 회비 돌려주기(lib/refund.ts): 입금 확인된 회원이 참석에서 빠지면 refund "wait"(송금대기) → 관리자가 송금완료 누르면 "done"
+    // refundAmount: 돌려줄 금액, refundSince: 참석 해제 시각, refundRemindAt: 관리자에게 마지막으로 알린 시각(일주일마다), refundDoneAt: 송금완료 시각
+    "refund", "refundAmount", "refundSince", "refundRemindAt", "refundDoneAt",
   ],
   // memo: 비용 메모(목록에서는 메모 아이콘을 눌러 본다), order: 목록 순서(끌어서 바꾼다)
   // spentBase: 직접 적은 집행. spent = spentBase + 같은 이름으로 연동된 준비목록의 완료된 가격 합계(lib/items.ts syncPrepToCosts)
