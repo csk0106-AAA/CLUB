@@ -194,6 +194,13 @@ export default function EventsPage() {
       {manageLinks(list)}
     </div>
   );
+  // 일정마다 따로: 같은 날짜여도 일정마다 날짜 줄(+ 그 일정의 "일정 관리 ›")을 붙인다
+  const each = (label: React.ReactNode, list: Ev[]) => list.map((e) => (
+    <div key={e.id} className="tl-one">
+      {head(label, [e])}
+      <div className="evlist">{item(e)}</div>
+    </div>
+  ));
 
   return (
     <main className="app with-tabs">
@@ -223,8 +230,7 @@ export default function EventsPage() {
 
       {pinned.length > 0 && (
         <section aria-label="고정 일정" className="tl-group">
-          {head(<><IconPin size={14} /> 고정</>, pinned)}
-          <div className="evlist">{pinned.map(item)}</div>
+          {each(<><IconPin size={14} /> 고정</>, pinned)}
         </section>
       )}
 
@@ -232,15 +238,13 @@ export default function EventsPage() {
 
       {byDay.map(([k, list]) => (
         <section key={k} id={`tl-${k}`} aria-label={dayLabel(k)} className={`tl-group${day && k === day ? " on" : ""}`}>
-          {head(<>{dayLabel(k)}{dday(k) && <span className="tl-dday">{dday(k)}</span>}</>, list)}
-          <div className="evlist">{list.map(item)}</div>
+          {each(<>{dayLabel(k)}{dday(k) && <span className="tl-dday">{dday(k)}</span>}</>, list)}
         </section>
       ))}
 
       {undated.length > 0 && (
         <section aria-label="날짜 미정" className="tl-group">
-          {head("날짜 미정", undated)}
-          <div className="evlist">{undated.map(item)}</div>
+          {each("날짜 미정", undated)}
         </section>
       )}
 
@@ -250,8 +254,7 @@ export default function EventsPage() {
           {/* 지난 일정도 날짜 줄로 묶는다(최근 날짜 먼저) */}
           {groupByDay(past.slice(0, pastShown)).map(([k, list]) => (
             <div key={k} className="tl-group">
-              {head(k ? dayLabel(k) : "날짜 미정", list)}
-              <div className="evlist">{list.map(item)}</div>
+              {each(k ? dayLabel(k) : "날짜 미정", list)}
             </div>
           ))}
           {past.length > pastShown && (

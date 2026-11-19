@@ -868,7 +868,10 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .tl-group { display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 12px; }
 .tl-h { margin: 6px 2px 0; display: flex; align-items: center; gap: 8px; font: 700 calc(15px * var(--fs, 1)) var(--display); color: var(--ink); }
 .tl-group.on .tl-h { color: var(--violet-t); }
-.tl-dday { padding: 1px 8px; border-radius: 999px; background: var(--red-bg); color: var(--red-t); font: 700 calc(11px * var(--fs, 1)) var(--body); }
+.tl-one { display: flex; flex-direction: column; gap: 8px; } /* 일정 하나(날짜 줄 + 카드) */
+.tl-group:has(> .tl-one + .tl-one) { gap: 14px; }
+.tl-hrow .tl-h { white-space: nowrap; }
+.tl-dday { flex: none; white-space: nowrap; padding: 1px 8px; border-radius: 999px; background: var(--red-bg); color: var(--red-t); font: 700 calc(11px * var(--fs, 1)) var(--body); }
 .tl-sep { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; color: var(--sub); font-size: calc(13px * var(--fs, 1)); }
 .tl-sep::before, .tl-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .evcard.tl { border-radius: 16px; }

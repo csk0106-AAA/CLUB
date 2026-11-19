@@ -13,6 +13,7 @@ import { api } from "@/lib/client";
 import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
 import { disablePush, enablePush, pushSupported } from "@/lib/push-client";
 import { fs } from "@/lib/fs";
+import { AddToHome } from "@/components/AddToHome";
 import { typePhone } from "@/lib/phone";
 
 type Me = {
@@ -418,7 +419,7 @@ export default function SettingsPage() {
               <div className="sect-body" style={{ paddingTop: 0, paddingBottom: 12 }}>
                 {device === "off"
                   ? <button type="button" className="btn white" style={{ minHeight: 44, fontSize: fs(14) }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
-                  : <span className="small" style={{ fontSize: fs(12) }}>이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 공유 버튼 → “홈 화면에 추가”로 설치한 앱에서 켜 주세요. 하단 아이콘 숫자는 그대로 보여요.</span>}
+                  : <span className="small" style={{ fontSize: fs(12) }}>이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 아래 “홈 화면에 추가” 방법대로 설치한 앱에서 켜 주세요. 하단 아이콘 숫자는 그대로 보여요.</span>}
               </div>
             )}
             <Switch id="sw-sound" label="소리" sub={pr.notifyOn ? undefined : "알림을 켜면 고를 수 있어요"} on={pr.sound} disabled={!pr.notifyOn} onChange={(v) => savePrefs({ sound: v })} />
@@ -432,6 +433,9 @@ export default function SettingsPage() {
             )}
             <p className="small" style={{ fontSize: fs(12), margin: 0, padding: "10px var(--pr) 12px var(--pl)", borderTop: "1px solid var(--line2)" }}>휴대폰 화면에는 내용 없이 새 게시물 수와 새 게시물 안내만 보여요.</p>
           </section>
+
+          {/* 5. 홈 화면에 추가(앱처럼 설치) */}
+          <AddToHome />
         </>
       )}
       <MemberTabs on="settings" />
