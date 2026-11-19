@@ -41,7 +41,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (!isWithdrawn(who.kind)) return bad("이미 탈퇴회원이 아니에요. 반려로 처리해 주세요.", 409);
     const p = restorePatch(who, now, byName, "재가입 신청 승인");
     toKind = p.kind;
-    await s.update("Members", who.id, p);
+    await s.update("Members", who.id, { ...p, approvedAt: now, ...(isGuest(toKind) ? {} : { memberSince: now }) });
   } else if (decision === "approve") {
     toKind = targetKind(a);
     if (toKind && toKind !== who.kind) {
@@ -53,8 +53,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       const patch: Record<string, string> = { kind: toKind, extra: withHistory(who.extra, { at: now, what: "구분 변경", from: who.kind ?? "", to: toKind, by: byName, note: TYPE_LABEL[a.type as AppType] ?? "" }) };
       // 회원 권한 수정: 대기회원이 되면 프로필 북에서 빼고, 정회원·준회원이 되면 프로필 북에 공개한다
       if (a.type === "change") patch.bookHidden = isGuest(toKind) ? "true" : "";
+      // 대기·참관에서 회원이 되면 그때부터 신규 회원(프로필 북 맨 위 한 달)
+      if (isGuest(who.kind) && !isGuest(toKind)) patch.memberSince = now;
       await s.update("Members", who.id, patch);
     }
+    // 승인한 마지막 시각(설정·회원관리에 보임)
+    await s.update("Members", who.id, { approvedAt: now });
   }
   await s.update("MemberApps", id, {
     status: decision === "approve" ? "approved" : "rejected",

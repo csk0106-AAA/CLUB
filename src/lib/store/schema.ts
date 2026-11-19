@@ -12,6 +12,9 @@ export const TABS = {
     "avatar",
     // joinedAt: 명단에 들어온 시각(ISO). 게시 뒤 새로 가입한 회원을 글 작성자에게 알릴 때 쓴다(예전 회원은 비어 있음).
     "joinedAt",
+    // approvedAt: 관리자가 회원 신청을 승인한 마지막 시각(설정·회원관리에 보임). 관리자가 직접 넣은 회원은 joinedAt 이 승인일.
+    // memberSince: 대기·참관·탈퇴에서 회원(정회원 등)이 된 시각 — 프로필 북 "신규 회원"(한 달 동안 맨 위) 기준
+    "approvedAt", "memberSince",
     // edu: 교육 이수 여부("true"면 이수). 회원 신청 승인 때 정회원(이수) / 준회원(비이수)을 가른다(lib/member-apps.ts).
     // memo: 관리자 메모(예: 명예회원 등록 사유). 관리자에게만 보인다.
     "edu", "memo",

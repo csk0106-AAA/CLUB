@@ -13,7 +13,8 @@ import { fs } from "@/lib/fs";
 type Data = {
   // key: 상세 화면 주소, masked: '내가 누굴까요?' 참여 중이라 별칭으로 보임(이름 칸에 별칭, 회사·사진 없음)
   // hasIntro: 공개된 소개가 있는지, fresh: 마지막으로 본 뒤 처음 공개(NEW) / 다시 공개·수정(UP)
-  items: { key: string; masked: boolean; name: string; hasIntro: boolean; mine: boolean; hiddenMine?: boolean; fresh?: Fresh | null; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
+  // isNew: 신규 회원(승인 후 한 달, 맨 위)
+  items: { key: string; masked: boolean; name: string; hasIntro: boolean; mine: boolean; hiddenMine?: boolean; isNew?: boolean; fresh?: Fresh | null; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
   maskedCount: number;
 };
 
@@ -111,6 +112,7 @@ export default function ProfilesPage() {
                     {!p.masked && details(p) && <span style={{ font: `400 ${fs(13)} var(--body)`, color: "var(--sub)" }}> / {details(p)}</span>}
                   </span>
                   <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                    {p.isNew && <span className="chip red">신규 회원</span>}
                     {p.mine && <span className="chip violet">나</span>}
                     {p.mine && p.hiddenMine && <span className="chip gray" title="설정 › 프로필 북에서 바꿀 수 있어요">다른 회원에게 숨김</span>}
                     {p.masked && <span className="chip line">내가 누굴까요?</span>}

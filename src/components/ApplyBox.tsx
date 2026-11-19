@@ -42,7 +42,7 @@ export function ApplyBox() {
       <h2 id="s-apply">회원 신청</h2>
       <div className="sect-body" style={{ gap: 10 }}>
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <span className="grow" style={{ fontSize: fs(14) }}>지금 회원구분: <b>{d.kind || "미지정"}</b>{d.edu ? " · 교육 이수" : ""}</span>
+          <span className="grow" style={{ fontSize: fs(14) }}>회원구분: <b>{d.kind || "미지정"}</b>{d.edu ? " · 교육 이수" : ""}</span>
           {pending && <span className="pill warn">승인 전</span>}
           {rejected && <span className="pill bad">반려</span>}
         </div>

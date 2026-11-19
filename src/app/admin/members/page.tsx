@@ -24,6 +24,7 @@ type M = {
   effective: string[]; // 최종 권한(그룹 ∪ 개인)
   fields: Record<string, string>; // 관리자가 만든 추가 항목(열)의 값
   genderEdit?: { from: string; to: string; at: string } | null; // 회원이 직접 바꾼 성별 기록
+  approvedAt?: string; // 관리자가 회원 승인한 마지막 날짜(직접 넣은 회원은 넣은 날짜)
   avatar?: AvatarView; // 프로필 사진·캐릭터(없으면 이름 첫 글자)
   edu?: boolean; // 교육 이수
   memo?: string; // 관리자 메모(명예회원 등록 사유 등)
@@ -755,6 +756,7 @@ function Members() {
                   </span>
                 )}
                 {m.app && <span style={{ marginTop: 2 }}><AppLabel app={m.app} /></span>}
+                {m.approvedAt && <span className="small">승인 {fmtDate(m.approvedAt)}</span>}
               </span>
               {/* 한 줄: 회원구분 · 프로필 북 체크 · 삭제 · 수정(맨 오른쪽) */}
               <span className={`chip ${isWithdrawn(m.kind) ? "red" : "line"}`} style={{ flex: "none", whiteSpace: "nowrap" }}>{m.kind || "미지정"}</span>
@@ -779,7 +781,7 @@ function Members() {
       {shown.length > 0 && (
         <div className="tblw only-wide">
           <table className="tbl" style={{ minWidth: 1200 + custom.length * 110 }}>
-            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>클럽</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
+            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>승인일</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>클럽</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
             <tbody>
               {shown.map((m, i) => (
                 <Fragment key={m.id}>
@@ -789,6 +791,7 @@ function Members() {
                   </td>
                   <td><b>{m.name}</b></td>
                   <td>{isWithdrawn(m.kind) ? <span className="chip red">탈퇴회원</span> : m.kind}{m.kind && !isWithdrawn(m.kind) && !kinds.some((k) => k.value === m.kind) && <span className="small">{OFF}</span>}{m.app && <> {m.app && <AppLabel app={m.app} />}</>}</td>
+                  <td className="num" style={{ whiteSpace: "nowrap" }}>{m.approvedAt ? fmtDate(m.approvedAt) : <span className="small">-</span>}</td>
                   <td className="center">{m.edu ? "YES" : "NO"}</td>
                   <td className="center">
                     <input type="checkbox" checked={inBook(m)} onChange={() => toggleBook(m)} style={{ width: 18, height: 18, cursor: "pointer" }}

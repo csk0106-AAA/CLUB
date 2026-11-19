@@ -3,7 +3,7 @@ import { guard } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
 import { consentRequired, hasConsent } from "@/lib/consent";
 import { memberClubs } from "@/lib/lists";
-import { bookHidden, inBook, isGuest } from "@/lib/member-kind";
+import { bookHidden, inBook, isGuest, isNewMember, memberSinceOf } from "@/lib/member-kind";
 import { ensureAlias, maskedMembers } from "@/lib/profile-book";
 import { getStore } from "@/lib/store";
 import { profileFreshness } from "@/lib/unread";
@@ -31,17 +31,22 @@ export async function GET() {
     const p = profiles.find((x) => x.memberId === m.id);
     const hasIntro = p?.introStatus === "approved";
     const fresh = hasIntro && p ? freshness.get(p.id) ?? null : null;
+    // 신규 회원(승인 후 한 달): 맨 위에 "신규 회원" 표시. 별칭으로 가린 회원은 드러나지 않게 표시·순서를 바꾸지 않는다
+    const isNew = !masked.has(m.id) && isNewMember(m);
+    const since = isNew ? memberSinceOf(m) : "";
     if (masked.has(m.id) && p) {
-      return { key: p.id, masked: true, name: p.alias, hasIntro, mine: m.id === g.s.mid, fresh };
+      return { key: p.id, masked: true, name: p.alias, hasIntro, mine: m.id === g.s.mid, fresh, isNew: false, since: "" };
     }
     return {
       key: `m-${m.id}`, masked: false, name: m.name, hasIntro, mine: m.id === g.s.mid, fresh, hiddenMine: bookHidden(m),
       company: m.company ?? "", title: m.title ?? "", clubs: memberClubs(m).map((c) => c.name), avatar: avatarView(m),
+      isNew, since,
     };
   });
 
   return NextResponse.json({
-    items: items.sort((a, b) => a.name.localeCompare(b.name, "ko")),
+    // 신규 회원(승인 후 한 달)이 맨 위(최근 승인 먼저), 그다음 이름순
+    items: items.sort((a, b) => Number(b.isNew) - Number(a.isNew) || (a.isNew && b.isNew ? b.since.localeCompare(a.since) : 0) || a.name.localeCompare(b.name, "ko")),
     maskedCount: items.filter((i) => i.masked).length,
   });
 }

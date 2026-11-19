@@ -20,3 +20,18 @@ export const isGuest = (kind?: string) => isWaiting(kind) || isObserverKind(kind
 // 프로필 북에 나오는 회원: 대기회원·참관회원이 아니고, 프로필 북 노출을 끄지 않은 회원
 export const bookHidden = (m: { bookHidden?: string }) => m.bookHidden === "true";
 export const inBook = (m: { kind?: string; bookHidden?: string }) => !isGuest(m.kind) && !bookHidden(m);
+
+// 회원이 된 시각: 대기·참관에서 승인된 시각(memberSince), 없으면 명단에 들어온 시각(관리자가 직접 넣은 회원, joinedAt)
+export const memberSinceOf = (m: { kind?: string; memberSince?: string; joinedAt?: string }): string => m.memberSince || (isGuest(m.kind) ? "" : m.joinedAt ?? "");
+// 관리자가 회원 승인한 마지막 시각(설정·회원관리에 보임). 관리자가 직접 넣은 회원은 넣은 시각.
+// 승인일을 기록하기 전(2026/11/19)부터 있던 회원은 기록이 없어 2026/11/18 로 본다(대기·참관·탈퇴회원은 빈칸).
+// 프로필 북 "신규 회원"(memberSinceOf)에는 쓰지 않는다 — 예전 회원이 한꺼번에 신규로 뜨지 않게.
+export const LEGACY_APPROVED_AT = "2026-11-18T00:00:00+09:00";
+export const approvedAtOf = (m: { kind?: string; approvedAt?: string; joinedAt?: string }): string =>
+  m.approvedAt || m.joinedAt || (isGuest(m.kind) ? "" : LEGACY_APPROVED_AT);
+// 신규 회원: 회원이 된 지 30일 안(프로필 북 맨 위)
+export const NEW_MEMBER_DAYS = 30;
+export const isNewMember = (m: { kind?: string; memberSince?: string; joinedAt?: string }, now = Date.now()): boolean => {
+  const at = Date.parse(memberSinceOf(m));
+  return !Number.isNaN(at) && now - at < NEW_MEMBER_DAYS * 86_400_000;
+};

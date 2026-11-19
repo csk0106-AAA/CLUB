@@ -10,7 +10,7 @@ import { fieldValues, readFields, withFields } from "@/lib/member-fields";
 import { uniqueName } from "@/lib/member-name";
 import { sortByNo } from "@/lib/member-order";
 import { ensureWithdrawnKind, timelineOf } from "@/lib/member-history";
-import { isWithdrawn } from "@/lib/member-kind";
+import { approvedAtOf, isGuest, isWithdrawn } from "@/lib/member-kind";
 import { checkPermChange, effectivePerms, getPermGroups, groupKeysOf, isAllNow, isPermsCustom, ownPerms } from "@/lib/perms";
 import { clubsJson, memberBody } from "@/lib/schemas";
 import { getStore } from "@/lib/store";
@@ -44,6 +44,7 @@ export async function GET() {
     birth: tidyBirth(m.birth), // 예전에 700101·1970.1.1 처럼 넣은 생년월일도 1970-01-01 로 보여 준다
     ageGroup: memberAgeGroup(m), // 생년월일이 있으면 생년월일로 계산
     app: appMark(apps, m.id), // 회원 신청 "승인 전" / "반려"(사유)
+    approvedAt: approvedAtOf(m), // 관리자가 회원 승인한 마지막 시각(직접 넣은 회원은 넣은 시각). 예전 회원은 ""
     history: timelineOf({ ...m, extra: _extra ?? "" }, apps, nameOf), // 가입·탈퇴 이력(회원 수정 화면)
   }));
   return NextResponse.json({ members });
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
   const err = checkPermChange(all, groups, [...all, { ...row, id: "__new__" }], groups, await isAllNow(g.s.mid));
   if (err) return bad(err[0], err[1]);
   const no = String(all.reduce((n, m) => Math.max(n, Number(m.no) || 0), 0) + 1);
-  const saved = await s.insert("Members", { ...row, no, joinedAt: new Date().toISOString() });
+  const at = new Date().toISOString();
+  const saved = await s.insert("Members", { ...row, no, joinedAt: at, ...(isGuest(row.kind) ? {} : { memberSince: at }) });
   return NextResponse.json({ member: saved, ...(name !== d.name.trim() ? { renamed: { from: d.name.trim(), to: name } } : {}) });
 }

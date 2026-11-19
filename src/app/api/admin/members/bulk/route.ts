@@ -1,3 +1,4 @@
+import { isGuest } from "@/lib/member-kind";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
   const err = checkPermChange(all, groups, [...all, ...rows.map((r, i) => ({ ...r, id: `__new${i}` }))], groups, await isAllNow(g.s.mid));
   if (err) return bad(`${err[0]} (권한이 있는 직책의 회원이 들어 있어요)`, err[1]);
   const joinedAt = new Date().toISOString();
-  for (const r of rows) await s.insert("Members", { ...r, joinedAt });
+  for (const r of rows) await s.insert("Members", { ...r, joinedAt, ...(isGuest(r.kind) ? {} : { memberSince: joinedAt }) });
   for (const f of phoneFix) await s.update("Members", f.id, { phone: f.phone });
   return NextResponse.json({ added: rows.length, skipped, renamed, updated });
 }
