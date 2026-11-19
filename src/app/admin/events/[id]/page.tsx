@@ -24,6 +24,7 @@ import { EventAudience } from "./EventAudience";
 import { EventJoiners } from "./EventJoiners";
 import { matches as nameMatches } from "@/components/NameSearch";
 import { eventTitle } from "@/lib/event-title";
+import { MapButton } from "@/components/MapButton";
 import { api, fmtDate, fmtDateDow, fmtDateTime, fmtDays, TYPE_TONE, won } from "@/lib/client";
 import { isLight } from "@/lib/event-types";
 import { defaultPhotoLimit, eventDayCount } from "@/lib/photo-limit";
@@ -503,7 +504,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               <label className="l" htmlFor="o-name">일정 이름</label><input id="o-name" className="field" maxLength={80} value={ev.name} onChange={(e) => set("name", e.target.value)} />
               {ev.club && <span className="small" style={{ display: "block", marginTop: 4 }}>회원에게는 “{eventTitle(ev.name, ev.club)}”으로 보여요.</span>}
             </div>
-            <div className="half"><label className="l" htmlFor="o-place">장소</label><input id="o-place" className="field" value={ev.place} onChange={(e) => set("place", e.target.value)} /></div>
+            <div className="half"><label className="l" htmlFor="o-place">장소</label><div style={{ display: "flex", gap: 6 }}><input id="o-place" className="field" style={{ flex: 1, minWidth: 0 }} value={ev.place} onChange={(e) => set("place", e.target.value)} />{ev.place.trim() && (
+              <MapButton place={ev.place} style={{ flex: "none", width: 46, minHeight: 46, padding: 0, display: "grid", placeItems: "center" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              </MapButton>
+            )}</div></div>
             <div><label className="l" htmlFor="o-start">시작 일시</label><DateField id="o-start" mode="datetime" value={ev.startsAt} onChange={(v) => set("startsAt", v)} /></div>
             <div><label className="l" htmlFor="o-end">끝나는 일시</label><DateField id="o-end" mode="datetime" value={ev.endsAt} onChange={(v) => set("endsAt", v)} /></div>
             {(() => {

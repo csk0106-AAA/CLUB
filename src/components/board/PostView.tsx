@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MapButton } from "@/components/MapButton";
 import { fmtSize, isClosed, resultsToOf, type FeeSnap, type FileMeta, type MinutesData, type PollData, type QuizData, type SurveyData } from "@/lib/board";
 import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
 import { agendaTone } from "./FormFields";
@@ -197,7 +198,7 @@ export function MinutesView({ data, labels }: { data: MinutesData; labels: Recor
     <>
       <dl className="card" style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 12px" }}>
         {rows.filter(([, v]) => v).map(([k, v]) => (
-          <div key={k} style={{ display: "contents" }}><dt className="small" style={{ fontWeight: 700 }}>{k}</dt><dd style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{v}</dd></div>
+          <div key={k} style={{ display: "contents" }}><dt className="small" style={{ fontWeight: 700 }}>{k}</dt><dd style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{v}{k === "장소" && <> <MapButton place={v} style={{ minHeight: 28, marginLeft: 6, verticalAlign: "middle" }} /></>}</dd></div>
         ))}
       </dl>
       {(data.agenda ?? []).filter((a) => a.title || a.note).map((a, i) => (

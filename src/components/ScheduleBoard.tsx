@@ -6,6 +6,7 @@ import { api, fmtDateDow } from "@/lib/client";
 import { readDayPlaces, type DayPlaces } from "@/lib/day-places";
 import { DragHandle, useDragSort } from "./DragSort";
 import { Popup } from "./Popup";
+import { MapLinks } from "./MapButton";
 import { fs } from "@/lib/fs";
 
 // 세부일정 한 줄: 시간(at), 내용(title, 여러 줄 가능), 위치(place), 메모(memo)
@@ -23,8 +24,6 @@ const FIELD: Record<Field, { label: string; ph: string; max: number }> = {
   place: { label: "위치", ph: "예) 강원도 평창군 ○○리조트 본관 2층 그랜드홀", max: 200 },
   memo: { label: "메모", ph: "예) 편한 복장, 개인 텀블러 지참", max: 1000 },
 };
-// 위치를 지도에서 찾아보는 링크(네이버 지도 검색)
-const mapUrl = (place: string) => `https://map.naver.com/p/search/${encodeURIComponent(place)}`;
 const validTime = (t: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 
 // 일정 기간의 날짜 목록(최대 7일)
@@ -128,7 +127,7 @@ export function ScheduleView({ items, dayPlaces = {} }: { items: SchedItem[]; da
             <span className="small" style={{ whiteSpace: "pre-wrap" }}>{show.head}</span>
             <p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: fs(16), lineHeight: 1.6 }}>{show.text}</p>
             {show.field === "place" && (
-              <a className="btn white" href={mapUrl(show.text)} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>지도에서 보기</a>
+              <MapLinks place={show.text} />
             )}
           </div>
         )}
@@ -416,7 +415,7 @@ export function ScheduleBoard({ eventId, canEdit }: { eventId: string; canEdit: 
             ) : (
               <textarea id="sf-v" className="field" rows={5} maxLength={FIELD.memo.max} style={{ padding: 12, lineHeight: 1.5, resize: "vertical" }} placeholder={FIELD.memo.ph} value={edit.value} onChange={(e) => setEdit({ ...edit, value: e.target.value })} />
             )}
-            {editField === "place" && edit.value.trim() && <a className="small" href={mapUrl(edit.value.trim())} target="_blank" rel="noopener noreferrer">지도에서 확인하기 ›</a>}
+            {editField === "place" && edit.value.trim() && <MapLinks small place={edit.value.trim()} />}
             <span className="hint" style={{ fontSize: fs(12) }}>
               {edit.kind === "day" ? "저장하면 회원 일정 화면의 날짜 옆에 보여요." : `저장하면 회원 일정 화면에 ${editLabel} 아이콘으로 보여요. 비우고 저장하면 아이콘이 사라져요.`}
             </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MapButton } from "./MapButton";
 import { api, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 import { Fold } from "./EventInfoCard";
@@ -170,7 +171,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
                 {/* 한 줄: 갈 때 · 출발지 → 도착지 ……… [신청 3/4] (신청할 수 없으면 3/4 표시만) */}
                 <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                   <b style={{ fontSize: fs(14) }}>{leg.label}</b>
-                  <span className="small grow">{leg.from || leg.to ? `${leg.from || "?"} → ${leg.to || "?"}` : ""}</span>
+                  <span className="small grow">{leg.from || leg.to ? <>{leg.from || "?"}{leg.from && <MapButton place={leg.from} label={`출발지 ${leg.from} 지도 보기`} style={{ minHeight: 26, padding: "0 6px", marginLeft: 4 }}>지도</MapButton>} → {leg.to || "?"}{leg.to && <MapButton place={leg.to} label={`도착지 ${leg.to} 지도 보기`} style={{ minHeight: 26, padding: "0 6px", marginLeft: 4 }}>지도</MapButton>}</> : ""}</span>
                   {canAsk ? (
                     <button type="button" className={`btn car-ask${full ? " white" : ""}`} disabled={busy} onClick={() => request(car, leg)}
                       aria-label={`${car.name} ${leg.label} ${full ? "신청 대기" : "신청"} (${leg.taken}/${leg.seats}석)`}>

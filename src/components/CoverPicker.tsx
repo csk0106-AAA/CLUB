@@ -155,7 +155,8 @@ export function CoverPicker({ scope, club, title, help }: { scope: "org" | "club
     <section className="card" aria-label={title} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>{title}</b>
       <span className="small">{help}</span>
-      <div className="row" style={{ gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+      {/* 넓으면 사진 오른쪽에 버튼(세로), 휴대폰 폭이면 사진 가운데 + 버튼 두 개 같은 크기 한 줄(globals.css .cover-row) */}
+      <div className="cover-row">
         <div className="cover-box" onDoubleClick={() => url && setAdjust(cur)} title={url ? "더블클릭해서 보이는 영역 조정" : undefined} style={{ cursor: url ? "zoom-in" : undefined, position: "relative" }}>
           {url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -171,14 +172,14 @@ export function CoverPicker({ scope, club, title, help }: { scope: "org" | "club
             </button>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="cover-acts">
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files?.[0])} />
           {/* 사진 업로드: (있으면 지금 사진이 지워진다는 확인 뒤) 회원 사진에서 고르기 / 내 파일에서 고르기 */}
-          <button type="button" className="btn" style={{ width: "auto", minWidth: 150, minHeight: 44 }} disabled={busy || url === null} aria-haspopup="dialog"
+          <button type="button" className="btn" style={{ minHeight: 44 }} disabled={busy || url === null} aria-haspopup="dialog"
             onClick={() => { if (url && !window.confirm("새 사진을 올리면 지금 대표사진은 지워져요. 계속할까요?")) return; setChoose(true); }}>
             {busy && !adjust ? "준비하는 중…" : "사진 업로드"}
           </button>
-          {url && <button type="button" className="btn white" style={{ width: "auto", minWidth: 150, minHeight: 44 }} disabled={busy} onClick={() => setAdjust(cur)}>보이는 영역 조정</button>}
+          {url && <button type="button" className="btn white" style={{ minHeight: 44 }} disabled={busy} onClick={() => setAdjust(cur)}>보이는 영역 조정</button>}
         </div>
       </div>
       <Popup id={`cover-choose-${scope}`} width={420} title="사진 업로드" open={choose} onClose={() => setChoose(false)}>

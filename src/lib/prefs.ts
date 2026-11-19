@@ -10,8 +10,10 @@ import { z } from "zod";
 //  quiet:    방해 금지 시간 (알림이 꺼져 있으면 항상 꺼짐). from/to 는 "HH:mm", 밤을 넘길 수 있다(22:00~08:00).
 // 알림 발송 쪽에서도 readPrefs 로 읽어서 같은 규칙을 쓴다.
 export type Theme = "system" | "light" | "dark";
+export type MapChoice = "ask" | "google" | "naver";
 export type Prefs = {
   screen: Theme;
+  map: MapChoice; // 지도 보기: ask(매번 고르기, 기본) | google | naver (lib/map-pref.ts)
   notify: { events: boolean; notices: boolean; posts: boolean; profiles: boolean; feedback: boolean; requests: boolean };
   notifyOn: boolean;
   sound: boolean;
@@ -22,6 +24,7 @@ export const THEMES: readonly Theme[] = ["system", "light", "dark"];
 
 export const DEFAULT_PREFS: Prefs = {
   screen: "dark",
+  map: "ask",
   notify: { events: true, notices: true, posts: true, profiles: true, feedback: true, requests: true },
   notifyOn: true,
   sound: true,
@@ -52,6 +55,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
   const notifyOn = bool(o.notifyOn, DEFAULT_PREFS.notifyOn);
   return {
     screen: THEMES.includes(o.screen as Theme) ? (o.screen as Theme) : DEFAULT_PREFS.screen,
+    map: o.map === "google" || o.map === "naver" ? o.map : "ask",
     notify: {
       events: bool(n.events, DEFAULT_PREFS.notify.events),
       notices: bool(n.notices, DEFAULT_PREFS.notify.notices),
@@ -74,6 +78,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
 export const prefsInput = z
   .object({
     screen: z.enum(["system", "light", "dark"]),
+    map: z.enum(["ask", "google", "naver"]),
     notify: z.object({ events: z.boolean(), notices: z.boolean(), posts: z.boolean(), profiles: z.boolean(), feedback: z.boolean(), requests: z.boolean() }).partial().strict(),
     notifyOn: z.boolean(),
     sound: z.boolean(),

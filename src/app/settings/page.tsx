@@ -14,6 +14,7 @@ import { mergePrefs, type Prefs, type PrefsInput } from "@/lib/prefs";
 import { disablePush, enablePush, pushSupported } from "@/lib/push-client";
 import { fs } from "@/lib/fs";
 import { AddToHome } from "@/components/AddToHome";
+import { writeMapPref } from "@/lib/map-pref";
 import { typePhone } from "@/lib/phone";
 
 type Me = {
@@ -360,6 +361,19 @@ export default function SettingsPage() {
               <span className="small" style={{ fontSize: fs(12) }}>
                 {pr.screen === "light" ? "밝은 바탕에 레몬 포인트로 보여요." : pr.screen === "system" ? "폰이 다크 모드면 어두운 화면, 아니면 밝은 화면으로 바뀌어요." : "그래파이트 바탕에 레몬 포인트(기본)로 보여요."} 내 계정에 저장돼서 다른 기기에서 로그인해도 같게 보여요.
               </span>
+            </div>
+          </section>
+
+          {/* 지도 보기: 위치를 누르면 열 지도(매번 고르기 / 구글 / 네이버) */}
+          <section className="sect" aria-labelledby="s-map">
+            <h2 id="s-map">지도 보기</h2>
+            <div className="sect-body" style={{ gap: 8 }}>
+              <div className="seg" role="radiogroup" aria-labelledby="s-map">
+                {([["ask", "매번 고르기"], ["google", "구글 지도"], ["naver", "네이버 지도"]] as const).map(([k, label]) => (
+                  <button key={k} type="button" role="radio" aria-checked={pr.map === k} aria-pressed={pr.map === k} onClick={() => { if (pr.map !== k) { writeMapPref(k); savePrefs({ map: k }); } }}>{label}</button>
+                ))}
+              </div>
+              <span className="small" style={{ fontSize: fs(12) }}>{pr.map === "ask" ? "일정 장소·세부일정 위치 등에서 “지도 보기”를 누르면 구글 지도와 네이버 지도 중 고를 수 있어요." : `“지도 보기”를 누르면 바로 ${pr.map === "google" ? "구글 지도" : "네이버 지도"}로 열려요.`}</span>
             </div>
           </section>
 

@@ -1,9 +1,8 @@
 "use client";
 
 import { focusStyle } from "@/lib/cover-focus";
-import { useState } from "react";
 import { IconCalendar, IconNext } from "./Icons";
-import { Popup } from "./Popup";
+import { MapButton } from "./MapButton";
 import { clubText } from "./EventInfoCard";
 import { eventTitle } from "@/lib/event-title";
 import { fmtDate, fmtRange } from "@/lib/client";
@@ -15,10 +14,6 @@ export type HeroEvent = {
   club?: string; clubLeaders?: { name: string; role: string }[]; coverUrl?: string; going?: number;
 };
 
-const mapLinks = (place: string) => [
-  { label: "구글 지도", href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}` },
-  { label: "네이버 지도", href: `https://map.naver.com/p/search/${encodeURIComponent(place)}` },
-];
 
 function IconPlace({ size = 20 }: { size?: number }) {
   return (
@@ -43,7 +38,6 @@ function dday(startsAt: string, endsAt: string): string {
 }
 
 export function EventHero({ ev, children }: { ev: HeroEvent; children?: React.ReactNode }) {
-  const [maps, setMaps] = useState(false);
   const place = ev.place.trim();
   const dd = dday(ev.startsAt, ev.endsAt);
   return (
@@ -64,26 +58,15 @@ export function EventHero({ ev, children }: { ev: HeroEvent; children?: React.Re
           <h1 className="evhero-title">{eventTitle(ev.name, ev.club)}</h1>
           <span className="evhero-line"><IconCalendar size={18} max={1.2} />{fmtRange(ev.startsAt, ev.endsAt)}</span>
           {place && (
-            <button type="button" className="evhero-place" aria-haspopup="dialog" onClick={() => setMaps(true)} aria-label={`${place}, 지도에서 위치 찾기`}>
-              <IconPlace size={18} /><span className="grow">{place}</span><IconNext size={16} />
-            </button>
+            <MapButton place={place} className="evhero-place" label={`${place}, 지도 보기`}>
+              <IconPlace size={18} /><span className="grow">{place}</span><span className="evhero-map">지도 보기</span><IconNext size={16} />
+            </MapButton>
           )}
         </div>
       </div>
       {ev.club && <div className="small" style={{ padding: "0 2px" }}>클럽: {clubText(ev.club, ev.clubLeaders)}</div>}
       {children}
 
-      <Popup id="event-map" open={maps} onClose={() => setMaps(false)} title="지도에서 위치 찾기" width={420}>
-        <p className="small" style={{ margin: 0 }}>{place}</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {mapLinks(place).map((m) => (
-            <a key={m.label} className="btn white" href={m.href} target="_blank" rel="noopener noreferrer" onClick={() => setMaps(false)}
-              style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {m.label}에서 보기
-            </a>
-          ))}
-        </div>
-      </Popup>
     </section>
   );
 }
