@@ -72,7 +72,8 @@ export function PostTalk({ postId, initial }: { postId: string; initial: Talk })
   return (
     <section aria-label="반응과 댓글" style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
       {/* 반응: 누르면 켜고, 다시 누르면 꺼요 */}
-      <div className="row" role="group" aria-label="반응 남기기" style={{ gap: 6, flexWrap: "wrap" }}>
+      {/* 반응 네 개는 한 줄에 같은 폭으로 */}
+      <div role="group" aria-label="반응 남기기" style={{ display: "grid", gridTemplateColumns: `repeat(${talk.reactions.length || 4}, minmax(0, 1fr))`, gap: 6 }}>
         {talk.reactions.map((r) => {
           const m = meta(r.type);
           if (!m) return null;
@@ -82,7 +83,7 @@ export function PostTalk({ postId, initial }: { postId: string; initial: Talk })
               aria-label={`${m.label} ${r.count}명${r.mine ? ", 내가 남김" : ""}`}
               onClick={() => react(r.type, m.label, r.mine)}
               style={{
-                display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40, padding: "0 12px", borderRadius: 20, cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3, minHeight: 40, padding: "0 4px", borderRadius: 20, cursor: "pointer", whiteSpace: "nowrap", minWidth: 0,
                 font: `500 ${fs(14)} var(--body)`,
                 border: `1px solid ${r.mine ? "var(--violet-line)" : "var(--line)"}`,
                 background: r.mine ? "var(--violet-bg)" : "var(--card)",
@@ -95,12 +96,12 @@ export function PostTalk({ postId, initial }: { postId: string; initial: Talk })
             </button>
           );
         })}
-        {total > 0 && (
-          <button type="button" className="mini" aria-haspopup="dialog" onClick={() => setWho(true)}>
-            반응한 사람 보기
-          </button>
-        )}
       </div>
+      {total > 0 && (
+        <button type="button" className="mini" aria-haspopup="dialog" style={{ alignSelf: "flex-start" }} onClick={() => setWho(true)}>
+          반응한 사람 보기
+        </button>
+      )}
 
       {/* 댓글: 오래된 것부터 */}
       <div id="comments" style={{ display: "flex", flexDirection: "column", gap: 10, scrollMarginTop: 16 }}>

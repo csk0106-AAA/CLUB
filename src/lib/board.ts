@@ -68,10 +68,10 @@ export const RESPONSE_FORMS: Form[] = ["survey", "poll", "quiz"];
 // 관리 화면에서 올린 회칙·회비(클럽 회비 포함) 글은 받지 않는다(lib/published.ts managedOf 와 같은 기준).
 export const talkable = (form: string) => form !== "rules" && form !== "fee";
 export const REACTIONS = [
-  { key: "like", emoji: "👍", label: "좋아요" },
-  { key: "congrats", emoji: "👏", label: "축하해요" },
-  { key: "thanks", emoji: "🙏", label: "감사해요" },
-  { key: "cheer", emoji: "💪", label: "응원해요" },
+  { key: "like", emoji: "👍", label: "좋아" },
+  { key: "congrats", emoji: "👏", label: "축하" },
+  { key: "thanks", emoji: "🙏", label: "감사" },
+  { key: "cheer", emoji: "💪", label: "응원" },
 ] as const;
 export type ReactionKey = (typeof REACTIONS)[number]["key"];
 export const isReaction = (k: unknown): k is ReactionKey => REACTIONS.some((r) => r.key === k);
