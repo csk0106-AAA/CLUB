@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Swipe } from "./Swipe";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate } from "@/lib/client";
 import { FreshChip } from "./FreshChip";
@@ -49,6 +50,12 @@ export function AlertsPanel({ onCount, onNavigate }: { onCount: (n: number) => v
   const [busy, setBusy] = useState("");
   const [note, setNote] = useState("");
 
+  // 밀어서 지운 항목(이 창에서 바로 숨김). 나에게 온 알림·처리 끝난 내 신청은 서버에서도 지운다.
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const hide = (key: string, server?: { kind: "alert" | "request"; id: string }) => {
+    setHidden((h) => new Set(h).add(key));
+    if (server) api("/api/alerts", { body: { dismiss: server } });
+  };
   const load = useCallback(async (markSeen: boolean) => {
     const r = await api<AlertsData>("/api/alerts");
     if (!r.ok) return setError(r.error);
@@ -95,15 +102,17 @@ export function AlertsPanel({ onCount, onNavigate }: { onCount: (n: number) => v
   }
 
   if (!d) return error ? <div className="msg bad" role="alert">{error}</div> : <p className="small">불러오는 중이에요…</p>;
-  const comments = d.comments ?? [];
+  const comments = (d.comments ?? []).filter((c) => !hidden.has(`m-${c.id}`));
+  const posts = d.posts.filter((p) => !hidden.has(`p-${p.id}`));
+  const mine = d.mine.filter((m) => !hidden.has(`r-${m.id}`));
   const apps = d.memberApps ?? 0;
   const pays = d.payNotices ?? [];
   const duesN = d.duesNotices ?? [];
   const joins = d.joinerIssues ?? [];
-  const carR = d.carResults ?? [];
-  const mAl = d.memberAlerts ?? [];
+  const carR = (d.carResults ?? []).filter((r) => !hidden.has(`c-${r.id}`));
+  const mAl = (d.memberAlerts ?? []).filter((a) => !hidden.has(`a-${a.id}`));
   const carP = d.carPending ?? [];
-  const empty = mAl.length === 0 && joins.length === 0 && carR.length === 0 && carP.length === 0 && apps === 0 && pays.length === 0 && duesN.length === 0 && d.posts.length === 0 && d.toHandle.length === 0 && d.mine.length === 0 && comments.length === 0;
+  const empty = mAl.length === 0 && joins.length === 0 && carR.length === 0 && carP.length === 0 && apps === 0 && pays.length === 0 && duesN.length === 0 && posts.length === 0 && d.toHandle.length === 0 && mine.length === 0 && comments.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -115,10 +124,12 @@ export function AlertsPanel({ onCount, onNavigate }: { onCount: (n: number) => v
         <section aria-labelledby="al-m" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-m" style={sectionTitle}>새 알림 {mAl.length}건</h3>
           {mAl.map((a) => (
-            <Link onClick={() => onNavigate?.()} key={a.id} href={a.href || "/events"} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
-              <span className="ic" aria-hidden="true">!</span>
-              <span className="grow"><b>{a.text}</b><span className="t">{fmtDate(a.at)} · 확인하기 ›</span></span>
-            </Link>
+            <Swipe key={a.id} label={a.text} onDismiss={() => hide(`a-${a.id}`, { kind: "alert", id: a.id })}>
+              <Link onClick={() => onNavigate?.()} href={a.href || "/events"} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+                <span className="ic" aria-hidden="true">!</span>
+                <span className="grow"><b>{a.text}</b><span className="t">{fmtDate(a.at)} · 확인하기 ›</span></span>
+              </Link>
+            </Swipe>
           ))}
         </section>
       )}
@@ -127,10 +138,12 @@ export function AlertsPanel({ onCount, onNavigate }: { onCount: (n: number) => v
         <section aria-labelledby="al-car" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-car" style={sectionTitle}>차량 배정 {carR.length}건</h3>
           {carR.map((r) => (
-            <Link onClick={() => onNavigate?.()} key={r.id} href={`/events/${r.eventId}#cars`} className={`fb ${r.status === "confirmed" ? "info" : "bad"}`} style={{ textDecoration: "none", alignItems: "center" }}>
+            <Swipe key={r.id} label={`${r.eventName} 차량 배정`} onDismiss={() => hide(`c-${r.id}`)}>
+            <Link onClick={() => onNavigate?.()} href={`/events/${r.eventId}#cars`} className={`fb ${r.status === "confirmed" ? "info" : "bad"}`} style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">{r.status === "confirmed" ? "✓" : "!"}</span>
               <span className="grow"><b>{r.eventName} · {r.dir} {r.car} {r.label}</b><span className="t">{fmtDate(r.at)} · 일정에서 확인하기 ›</span></span>
             </Link>
+            </Swipe>
           ))}
         </section>
       )}
@@ -213,24 +226,25 @@ export function AlertsPanel({ onCount, onNavigate }: { onCount: (n: number) => v
           <h3 id="al-h4" style={sectionTitle}>내 글에 달린 댓글 {comments.length}개</h3>
           <ul className="rows">
             {comments.map((c) => (
-              <li key={c.id}>
+              <li key={c.id}><Swipe label={`${c.name} 님의 댓글`} onDismiss={() => hide(`m-${c.id}`)}>
                 <Link onClick={() => onNavigate?.()} href={`/board/${c.postId}#comments`} className="opt rowopt" style={{ textDecoration: "none" }}>
                   <span aria-hidden="true" style={{ flex: "none" }}>💬</span>
                   <span className="name grow" style={{ overflowWrap: "anywhere" }}>{c.name} 님이 ‘{c.title}’에 댓글을 남겼어요</span>
                   <span className="small" style={{ flex: "none" }}>{fmtDate(c.at)}</span>
                 </Link>
-              </li>
+              </Swipe></li>
             ))}
           </ul>
         </section>
       )}
 
-      {d.mine.length > 0 && (
+      {mine.length > 0 && (
         <section aria-labelledby="al-h2" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-h2" style={sectionTitle}>내가 보낸 신청</h3>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-            {d.mine.map((m) => (
-              <li key={m.id} className="row" style={{ gap: 8, alignItems: "flex-start" }}>
+            {mine.map((m) => {
+              const row = (
+              <div className="row" style={{ gap: 8, alignItems: "flex-start" }}>
                 <span className="grow">
                   <b style={{ display: "block" }}>{what(m)}</b>
                   <span className="small">
@@ -243,24 +257,26 @@ export function AlertsPanel({ onCount, onNavigate }: { onCount: (n: number) => v
                 {m.status === "pending" && (
                   <button className="mini" type="button" disabled={!!busy} onClick={() => cancelMine(m)} aria-label={`${what(m)} 취소`}>신청 취소</button>
                 )}
-              </li>
-            ))}
+              </div>
+              );
+              return <li key={m.id}>{m.status === "pending" ? row : <Swipe label={what(m)} onDismiss={() => hide(`r-${m.id}`, { kind: "request", id: m.id })}>{row}</Swipe>}</li>;
+            })}
           </ul>
         </section>
       )}
 
-      {d.posts.length > 0 && (
+      {posts.length > 0 && (
         <section aria-labelledby="al-h3" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h3 id="al-h3" style={sectionTitle}>새 글·수정된 글 {d.posts.length}개</h3>
+          <h3 id="al-h3" style={sectionTitle}>새 글·수정된 글 {posts.length}개</h3>
           <ul className="rows">
-            {d.posts.map((p) => (
-              <li key={p.id}>
+            {posts.map((p) => (
+              <li key={p.id}><Swipe label={p.title} onDismiss={() => hide(`p-${p.id}`)}>
                 <Link onClick={() => onNavigate?.()} href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none" }}>
                   <FreshChip fresh={p.fresh} style={{ flex: "none" }} />
                   <span className="name grow" style={{ overflowWrap: "anywhere" }}>{p.title}</span>
                   <span className="small" style={{ flex: "none" }}>{fmtDate(p.at)}</span>
                 </Link>
-              </li>
+              </Swipe></li>
             ))}
           </ul>
         </section>

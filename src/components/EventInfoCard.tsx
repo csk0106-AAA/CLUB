@@ -125,10 +125,31 @@ export function FeeDetail({ ev, fee }: { ev: InfoEvent; fee: FeeView }) {
   return (
     <>
       {feeLines(ev, fee).map((x) => (
-        <div key={x.label} className="small"><span aria-hidden="true">{x.icon}</span> {x.label}: {x.value}</div>
+        <div key={x.label} className="small" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span><span aria-hidden="true">{x.icon}</span> {x.label}: {x.value}</span>
+          {/* 계좌 줄: 계좌번호 복사 */}
+          {x.label === "계좌" && ev.account && <CopyAccount account={ev.account} />}
+        </div>
       ))}
     </>
   );
+}
+
+// 계좌번호 복사 버튼(누르면 잠깐 "복사했어요 ✓")
+function CopyAccount({ account }: { account: string }) {
+  const [done, setDone] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(account);
+    } catch {
+      // 복사가 막힌 브라우저: 잠깐 고를 수 있게 알려 준다
+      window.prompt("아래 계좌번호를 길게 눌러 복사해 주세요.", account);
+      return;
+    }
+    setDone(true);
+    setTimeout(() => setDone(false), 2000);
+  }
+  return <button type="button" className="mini" style={{ minHeight: 28, padding: "0 8px" }} onClick={copy} aria-label={`계좌번호 ${account} 복사`}>{done ? "복사했어요 ✓" : "복사"}</button>;
 }
 
 // 안내 칸 내용(줄바꿈 그대로)

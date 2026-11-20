@@ -40,7 +40,7 @@ export async function GET() {
       memberName: name(r.memberId), message: r.message, createdAt: r.createdAt,
     }));
   const mine = rows
-    .filter((r) => r.memberId === mid)
+    .filter((r) => r.memberId === mid && !(r.memberHidden === "true" && r.status !== "pending"))
     .sort(recent)
     .slice(0, 20)
     .map((r) => ({
@@ -99,12 +99,28 @@ export async function GET() {
 }
 
 const body = z.object({ seen: z.literal(true) });
+// 밀어서 지우기: 나에게 온 알림(MemberAlerts)은 지우고, 처리 끝난 내 신청은 목록에서 숨긴다
+const dismiss = z.object({ dismiss: z.object({ kind: z.enum(["alert", "request"]), id: z.string().min(1).max(64) }) });
 
 // 알림 창을 열어 본 뒤: 새 글, 내 글에 달린 댓글, 내 신청 결과를 "봤음"으로 표시한다(처리할 신청은 처리해야 숫자에서 빠진다).
 export async function POST(req: Request) {
   const g = await guard();
   if ("err" in g) return g.err;
-  if (!body.safeParse(await req.json().catch(() => null)).success) return bad("요청을 확인해 주세요.");
+  const raw = await req.json().catch(() => null);
+  const dm = dismiss.safeParse(raw);
+  if (dm.success) {
+    const s = await getStore();
+    const { kind, id } = dm.data.dismiss;
+    if (kind === "alert") {
+      const a = await s.get("MemberAlerts", id);
+      if (a?.memberId === g.s.mid) await s.remove("MemberAlerts", id);
+    } else {
+      const r = await s.get("ClubRequests", id);
+      if (r?.memberId === g.s.mid && r.status !== "pending") await s.update("ClubRequests", id, { memberHidden: "true", resultSeen: "true" });
+    }
+    return NextResponse.json({ ok: true });
+  }
+  if (!body.safeParse(raw).success) return bad("요청을 확인해 주세요.");
   const s = await getStore();
   await markSeen(g.s.mid, "posts");
   await markCommentsSeen(g.s.mid);
