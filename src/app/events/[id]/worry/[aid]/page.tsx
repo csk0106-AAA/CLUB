@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState, useRef } from "react";
 import { ActivityLiveBox } from "@/components/LiveActivities";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
@@ -33,6 +33,19 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
   const [body, setBody] = useState("");
   const [cat, setCat] = useState("경영");
   const [anon, setAnon] = useState<boolean | null>(null); // null: 아직 고르지 않음(새 고민은 꼭 골라야 저장)
+  // 받아 적은 글 다듬기(AI): 저장을 누르면 먼저 다듬어 보여 주고, 읽어 본 뒤 [이대로 저장]
+  const [polishing, setPolishing] = useState(false);
+  const [checked, setChecked] = useState(""); // 다듬기를 거친(또는 고칠 것이 없던) 글
+  const [before, setBefore] = useState<string | null>(null); // 다듬기 전 글
+  const [pmsg, setPmsg] = useState("");
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  // 고민 칸: 글이 길어지면 아래로 커진다(화면 높이의 60%까지)
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight + 4, Math.round(window.innerHeight * 0.6))}px`;
+  }, [body]);
 
   const load = useCallback(async () => {
     const r = await api<Data>(`/api/worry/${aid}`);
@@ -47,6 +60,9 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
   function reset() {
     setEdit(null);
     setBody("");
+    setChecked("");
+    setBefore(null);
+    setPmsg("");
     setCat(d?.categories[0] ?? "경영");
     setAnon(null);
   }
@@ -73,6 +89,21 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
     if (anon === null) return;
     setBusy(true);
     setNote(null);
+    // 아직 다듬기를 거치지 않은 글이면 먼저 다듬어 보여 준다(고칠 것이 없거나 AI를 못 쓰면 바로 저장)
+    if (body !== checked) {
+      setPolishing(true);
+      const p = await api<{ text: string; changed: boolean }>("/api/ai/polish", { body: { text: body, question: "모임에서 함께 이야기 나눌 고민 또는 조언을 구하고 싶은 질문" } });
+      setPolishing(false);
+      if (p.ok) {
+        setChecked(p.data.text);
+        if (p.data.changed && p.data.text.length <= 500) {
+          setBefore(body);
+          setBody(p.data.text);
+          setPmsg("문맥에 맞게 오타를 다듬었어요. 한 번 읽어 보고, 고칠 곳은 고친 뒤 [이대로 저장]을 눌러 주세요.");
+          return setBusy(false);
+        }
+      } else setChecked(body);
+    }
     const payload = { body, category: cat, anonymous: anon };
     const r = edit ? await api(`/api/worry/${aid}/${edit}`, { method: "PATCH", body: payload }) : await api(`/api/worry/${aid}`, { body: payload });
     setBusy(false);
@@ -153,8 +184,11 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
           <div className="lcard-b">
           <div>
             <label className="l" htmlFor="w-body">고민 또는 조언을 구하고 싶은 질문</label>
-            <textarea id="w-body" className="field" rows={5} style={{ padding: 10, lineHeight: 1.6, fontSize: fs(15) }} maxLength={500} value={body} onChange={(e) => setBody(e.target.value)} />
+            <textarea id="w-body" ref={bodyRef} className="field" rows={5} style={{ padding: 10, lineHeight: 1.6, fontSize: fs(16), minHeight: 130, resize: "vertical" }} maxLength={500} value={body} readOnly={polishing} onChange={(e) => setBody(e.target.value)} />
             <span className="hint num" style={{ fontSize: fs(12), display: "block", textAlign: "right" }}>{body.length}/500자</span>
+            {(polishing || pmsg) && <p className="small" role="status" style={{ margin: "4px 0 0", color: before !== null ? "var(--accent-ink)" : undefined }}>{polishing ? "AI가 문맥을 보고 오타를 다듬는 중이에요…" : pmsg}</p>}
+            {before !== null && <button className="mini" type="button" style={{ marginTop: 6 }} disabled={busy || polishing} onClick={() => { setBody(before); setBefore(null); setPmsg("다듬기 전 글로 되돌렸어요."); }}>다듬기 전으로</button>}
+            <span className="hint" style={{ fontSize: fs(12), display: "block", marginTop: 6 }}>고민 칸을 누르면 나오는 키보드의 🎤(마이크) 버튼을 누르고 말씀하시면 글자로 받아 적어요. 저장을 누르면 AI가 오타를 먼저 다듬어 보여 드려요.</span>
           </div>
           <div>
             <label className="l" htmlFor="w-cat">카테고리</label>
@@ -178,7 +212,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
           </div>
           <div className="lcard-f" style={{ justifyContent: "flex-end" }}>
             {edit && <button className="btn white" type="button" onClick={reset} style={{ width: "auto", minWidth: 80, minHeight: 44, fontSize: fs(14) }}>취소</button>}
-            <button className="btn" type="submit" disabled={busy || body.trim().length < 2 || anon === null} style={{ width: "auto", minWidth: 120, minHeight: 44, fontSize: fs(14) }}>{edit ? "저장" : "저장하기"}</button>
+            <button className="btn" type="submit" disabled={busy || polishing || body.trim().length < 2 || anon === null} style={{ width: "auto", minWidth: 120, minHeight: 44, fontSize: fs(14) }}>{polishing ? "다듬는 중…" : before !== null && body === checked ? "이대로 저장" : edit ? "저장" : "저장하기"}</button>
           </div>
         </form>
       )}

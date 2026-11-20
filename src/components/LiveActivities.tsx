@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDate, fmtDateTime, fmtRange } from "@/lib/client";
-import { IconBook, IconChat, IconLock, IconQuestion, IconStar } from "./Icons";
+import { IconChat, IconLock, IconQuestion, IconStar } from "./Icons";
 import { fs } from "@/lib/fs";
 
 type Worry = {
@@ -42,12 +42,14 @@ type Live = {
   worry: Worry | null;
 };
 
+// 현장 진행 중 회원 휴대폰에 열린 화면별로 "지금 무엇을 하면 되는지"
 const SCREEN_NOTE: Record<string, string> = {
-  write: "작성 화면이 열렸어요",
-  vote: "투표 화면이 열렸어요",
-  iam_button: "“저예요” 버튼이 열렸어요",
-  pick_person: "사람을 고르는 화면이 열렸어요",
-  view: "결과를 볼 수 있어요",
+  wait: "진행자 안내에 따라 잠시 기다려 주세요.",
+  write: "작성 화면이 열렸어요. 이 화면에서 작성해 주세요.",
+  vote: "투표 화면이 열렸어요. 이 화면에서 골라 주세요.",
+  iam_button: "소개의 주인공이라면 “저예요” 버튼을 눌러 주세요.",
+  pick_person: "사람을 고르는 화면이 열렸어요. 이 화면에서 골라 주세요.",
+  view: "결과를 이 화면에서 볼 수 있어요.",
 };
 
 function preBadge(p: Live["pre"]): { tone: string; text: string } {
@@ -118,10 +120,6 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
     return (
       <>
         <section aria-label="활동 길" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div className="unit">
-            <div><span>이번 일정</span><b>함께할 활동 {list.length}가지</b></div>
-            <span style={{ color: "var(--red-t)", display: "inline-flex" }}><IconBook size={26} /></span>
-          </div>
           {offline && <div className="msg info" role="status">연결이 불안정해요. 다시 연결하는 중이에요…</div>}
           <div className="path">
             {nodes.map(({ a, n }, i) => {
@@ -239,8 +237,8 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
             ) : (
               a.live.active && (
                 <div className={`msg ${a.live.unlocked ? "" : "info"}`} role="status" style={a.live.unlocked ? { background: "var(--green-bg)", color: "var(--green-t)" } : undefined}>
-                  진행 중: {a.live.stepLabel}
-                  {a.live.unlocked ? ` · ${SCREEN_NOTE[a.live.memberScreen] ?? "화면이 열렸어요"}` : " · 진행자가 열면 시작돼요"}
+                  지금 현장 진행 중이에요 · <b>{a.live.stepLabel}</b> 차례예요.{" "}
+                  {a.live.unlocked ? SCREEN_NOTE[a.live.memberScreen] ?? "휴대폰 화면이 열렸어요." : "진행자가 열면 휴대폰 화면이 바뀌어요."}
                 </div>
               )
             )}
