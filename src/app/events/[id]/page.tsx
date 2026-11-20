@@ -117,6 +117,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return () => document.removeEventListener("visibilitychange", again);
   }, [id]);
 
+  // 입금 알리기·취소: 회비 안내 화면의 "입금했어요"와 같은 요청(관리자에게 알림이 간다)
+  async function payNotice(sent: boolean) {
+    if (sent && !window.confirm("입금했다고 관리자에게 알릴까요?\n관리자가 통장을 확인한 뒤 입금 확인을 해요.")) return;
+    setBusy(true);
+    const r = await api(`/api/events/${id}/pay-notice`, { body: { sent } });
+    setBusy(false);
+    if (!r.ok) return void window.alert(r.error);
+    const again = await api<Detail>(`/api/events/${id}`);
+    if (again.ok) setD(again.data);
+  }
+
   // 신청을 마친 뒤: 회비가 있으면 회비 안내, 없으면 이 화면 그대로
   const next = (fee: string) => {
     if (fee) router.push(`/events/${id}/fee`);
@@ -240,10 +251,17 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         <Fold title="내 참가비" summary={feeSummary(e, fee)}>
           <FeeDetail ev={e} fee={fee} />
           {d.apply?.paid && <div className="small" style={{ color: "var(--green-t)" }}>회비 입금 확인됨 ✓</div>}
+          {/* 입금 안내 보기(회비 안내 화면) · 입금 알리기(회비 안내의 "입금했어요"와 같은 동작) */}
           {d.feeDue && (
-            <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minWidth: 180 }} onClick={() => router.push(`/events/${id}/fee`)}>
-              {d.apply?.payNotice ? "입금 확인 기다리는 중 · 안내 보기" : "입금 안내 보기 · 입금 알리기"}
-            </button>
+            <>
+              {d.apply?.payNotice && <div className="small" style={{ color: "var(--blue-t)" }}>입금 확인을 기다리고 있어요.</div>}
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <button className="btn white" type="button" style={{ width: "auto", minWidth: 140 }} onClick={() => router.push(`/events/${id}/fee`)}>입금 안내 보기</button>
+                {d.apply?.payNotice
+                  ? <button className="btn white" type="button" style={{ width: "auto", minWidth: 140 }} disabled={busy} onClick={() => payNotice(false)}>입금 알림 취소</button>
+                  : <button className="btn" type="button" style={{ width: "auto", minWidth: 140 }} disabled={busy} onClick={() => payNotice(true)}>입금 알리기</button>}
+              </div>
+            </>
           )}
         </Fold>
       )}
