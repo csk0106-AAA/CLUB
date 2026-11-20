@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // 관리자 › 회비입금 › 과거 내역 보기: 올해 전 연도들의 입금 합계, 엑셀 내려받기용 내역, 내려받기 기록.
 //  GET            → { pastYears: [{ year, total, paid }], logs }
 //  GET ?year=2025 → 그 해 엑셀 내용({ year, summary: [...회차], rows: [...회원별] })
-//  POST { year, kind } → 내려받기 기록 남기기(누가·언제·어느 해, 회비입금 payments / 회비내역 ledger)
+//  POST { year, kind } → 내려받기 기록 남기기(누가·언제·어느 해, 회비입금 payments / 회비현황 ledger)
 const LOG_KEY = "duesDownloads";
 type Log = { year: string; by: string; byName: string; at: string; kind?: "payments" | "ledger" };
 

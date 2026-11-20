@@ -20,7 +20,7 @@ type Data = {
 const today = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 const BLANK = { date: today(), kind: "out" as "in" | "out" | "event", item: "", amount: "", memo: "", eventId: "" };
 
-// 관리자 › 모임설정 › 회비내역: 연도별 모임 회비 장부. 회비 입금(회비입금에서 확인한 금액) + 기타 수입 - 지출 = 잔액.
+// 관리자 › 모임설정 › 회비현황: 연도별 모임 회비 장부. 회비 입금(회비입금에서 확인한 금액) + 기타 수입 - 지출 = 잔액.
 // 일정에서 "모임회비 지원"으로 쓴 돈은 지출로 자동으로 들어온다(일정 회비 탭에서 고친다).
 function Ledger() {
   const [year, setYear] = useState("");
@@ -36,14 +36,14 @@ function Ledger() {
     const r = await api<{ logs: { year: string; byName: string; at: string; kind?: string }[] }>("/api/admin/dues/history");
     if (r.ok) setLogs(r.data.logs);
   }, []);
-  // 지난 연도 회비내역을 엑셀로: 요약 + 수입·지출 줄(내려받기 기록이 남는다)
+  // 지난 연도 회비현황을 엑셀로: 요약 + 수입·지출 줄(내려받기 기록이 남는다)
   async function excel(y: string) {
     setDl(y);
     const r = await api<Data>(`/api/admin/dues/ledger?year=${y}`);
     if (!r.ok) { setDl(""); return setMsg({ tone: "bad", text: r.error }); }
     const x = r.data;
     const s = x.summary;
-    downloadXlsx(`모임회비_${y}년_회비내역.xlsx`, [
+    downloadXlsx(`모임회비_${y}년_회비현황.xlsx`, [
       { name: "요약", boldFirst: true, widths: [22, 16], rows: [["항목", "금액"],
         [`${s.prevYear}년 잔액`, String(s.prev)], [`${y} 회비 입금`, String(s.paid)], [`${y}년 기타 수입`, String(s.income)],
         ["전체 입금 총액", String(s.totalIn)], [`${y}년 지출`, String(s.spend)], [`${y}년 지원`, String(s.support)], [`${y}년 잔액`, String(s.balance)]] },
@@ -108,7 +108,7 @@ function Ledger() {
         모임 회비의 수입과 지출을 적고 잔액을 확인해요. <b>회비 입금</b>은 <Link href="/admin/dues/payments">회비입금</Link>에서 확인한 금액이 자동으로 들어오고, 일정의 <b>모임회비 지원</b>은 지출로 자동으로 들어와요.
       </p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      {/* 올해 회비내역이 기본. 지난 연도는 "과거내역"에서(보기·엑셀) */}
+      {/* 올해 회비현황이 기본. 지난 연도는 "과거내역"에서(보기·엑셀) */}
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <b style={{ fontSize: fs(15) }}>{d.year}년</b>
         {d.year < thisYear && <><span className="pill gray">과거 내역</span><button className="mini" type="button" onClick={() => setYear(thisYear)}>올해({thisYear}년)로</button></>}
@@ -117,7 +117,7 @@ function Ledger() {
       </div>
       <Popup id="ledger-history" width={520} title="과거내역" open={histOpen} onClose={() => setHistOpen(false)}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <span className="small">지난 연도의 회비내역이에요. “보기”는 그 해 회비내역으로 가고, “엑셀”은 요약과 수입·지출 줄을 내려받아요.</span>
+          <span className="small">지난 연도의 회비현황이에요. “보기”는 그 해 회비현황으로 가고, “엑셀”은 요약과 수입·지출 줄을 내려받아요.</span>
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
             {d.years.filter((y) => y < thisYear).map((y) => (
               <li key={y} className="row" style={{ gap: 8, padding: "10px 4px", borderBottom: "1px solid var(--line2)" }}>
@@ -131,7 +131,7 @@ function Ledger() {
             <b style={{ fontSize: fs(13) }}>내려받기 기록</b>
             {logs.length === 0 ? <span className="small">아직 내려받은 기록이 없어요.</span> : (
               <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2, fontSize: fs(12) }}>
-                {logs.map((l, i) => <li key={i}>{fmtDateTime(l.at)} · {l.byName} · {l.year}년 {l.kind === "ledger" ? "회비내역" : "입금 내역"}</li>)}
+                {logs.map((l, i) => <li key={i}>{fmtDateTime(l.at)} · {l.byName} · {l.year}년 {l.kind === "ledger" ? "회비현황" : "입금 내역"}</li>)}
               </ul>
             )}
           </section>

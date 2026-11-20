@@ -105,7 +105,7 @@ function PastHistory({ hist, onView, onDownloaded }: { hist: History; onView: (y
         <b style={{ fontSize: fs(13) }}>내려받기 기록</b>
         {hist.logs.length === 0 ? <span className="small">아직 내려받은 기록이 없어요.</span> : (
           <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2, fontSize: fs(12) }}>
-            {hist.logs.map((l, i) => <li key={i}>{fmtDateTime(l.at)} · {l.byName} · {l.year}년 {l.kind === "ledger" ? "회비내역" : "입금 내역"}</li>)}
+            {hist.logs.map((l, i) => <li key={i}>{fmtDateTime(l.at)} · {l.byName} · {l.year}년 {l.kind === "ledger" ? "회비현황" : "입금 내역"}</li>)}
           </ul>
         )}
       </section>
@@ -114,7 +114,7 @@ function PastHistory({ hist, onView, onDownloaded }: { hist: History; onView: (y
 }
 
 // 관리자 › 모임설정 › 회비입금: 기간별(한 회차를 자세히, 처음 보기)과 누적(그 해 회차별 합산).
-//  "누적" 칸은 월회비(달마다 내는 회비)일 때만 보인다. 연회비면 칸은 숨기지만, 회비내역에서 누르면 주소(?view=total)로 그대로 열린다.
+//  "누적" 칸은 월회비(달마다 내는 회비)일 때만 보인다. 연회비면 칸은 숨기지만, 회비현황에서 누르면 주소(?view=total)로 그대로 열린다.
 function PaymentsPage({ initial, initView, initYear }: { initial: string; initView: string; initYear: string }) {
   const [view, setView] = useState<"total" | "period">(initView === "total" ? "total" : "period");
   const [pick, setPick] = useState(initial);
@@ -301,7 +301,7 @@ function Payments({ initial, onType, thisYear, pastBtn, onAccount }: { initial: 
   );
 }
 
-// 주소: ?period=2026-11(그 회차의 기간별) · ?view=total&year=2025(그 해 누적, 회비내역에서 누름)
+// 주소: ?period=2026-11(그 회차의 기간별) · ?view=total&year=2025(그 해 누적, 회비현황에서 누름)
 export default function DuesPaymentsPage({ searchParams }: { searchParams: Promise<{ period?: string; view?: string; year?: string }> }) {
   const { period, view, year } = use(searchParams);
   return <AdminGate mode="group" need={["group"]} active="/admin/dues/payments"><PaymentsPage initial={period ?? ""} initView={view ?? ""} initYear={/^\d{4}$/.test(year ?? "") ? year! : ""} /></AdminGate>;

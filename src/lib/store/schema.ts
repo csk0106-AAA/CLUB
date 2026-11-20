@@ -83,7 +83,7 @@ export const TABS = {
   //  amount: 낼 금액(확인할 때의 금액), paid: "true", paidAt, notice: 회원이 "입금했어요"를 누른 시각, memo, checkedBy: 확인한 관리자
   // undoAt/undoReason: 관리자가 입금 확인을 취소했거나 입금 알림을 "입금 안 됨"으로 돌려보낸 시각·사유(회원 화면에 보인다, 다시 알리거나 확인되면 지움)
   DuesPayments: ["id", "period", "memberId", "amount", "paid", "paidAt", "notice", "memo", "checkedBy", "undoAt", "undoReason"],
-  // 모임 회비 장부(관리자 › 모임설정 › 회비내역). kind: in(기타 수입·이월금) | out(지출). date: YYYY-MM-DD
+  // 모임 회비 장부(관리자 › 모임설정 › 회비현황). kind: in(기타 수입·이월금) | out(지출). date: YYYY-MM-DD
   DuesLedger: ["id", "date", "kind", "item", "amount", "memo", "createdBy", "createdAt"],
   // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.
   EventFiles: ["id", "eventId", "name", "type", "size", "data", "uploadedBy", "createdAt"],
