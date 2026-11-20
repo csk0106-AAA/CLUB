@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { IconMic } from "@/components/Icons";
+import { useEffect, useRef, useState, useCallback } from "react";
+
 import { Mascot } from "@/components/Mascot";
 import { SajuPanel, type SajuInfo } from "@/components/SajuPanel";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
-import { useVoice } from "@/lib/voice";
 import { fs } from "@/lib/fs";
 
 // skipped: "답변안함"으로 넘긴 질문
@@ -55,7 +54,6 @@ function Marked({ text, hits }: { text: string; hits: string[] }) {
 const hasHit = (text: string, hits: string[]) => { const re = hitRegex(hits); return !!re && re.test(text); };
 
 function AnswerEdit({ idx, q, value, skipped, onChange }: { idx: number; q: string; value: string; skipped?: boolean; onChange: (v: string) => void }) {
-  const voice = useVoice(() => value, onChange);
   return (
     <li className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div className="say" style={{ alignItems: "flex-start" }}>
@@ -65,14 +63,7 @@ function AnswerEdit({ idx, q, value, skipped, onChange }: { idx: number; q: stri
       <label className="l" htmlFor={`ea-${idx}`} style={{ margin: 0 }}>내 답변 {idx + 1}{skipped ? " · 답변안함으로 넘겼어요" : ""}</label>
       <textarea id={`ea-${idx}`} className="field" rows={3} maxLength={2000} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={value}
         placeholder={skipped ? "비워 두면 계속 답변안함이에요. 적으면 답한 것으로 바뀌어요." : undefined} onChange={(e) => onChange(e.target.value)} />
-      <div className="row" style={{ gap: 8 }}>
-        {voice.supported && (
-          <button type="button" className={`mic ${voice.listening ? "on" : ""}`} aria-label={voice.listening ? `답변 ${idx + 1} 음성 입력 멈추기` : `답변 ${idx + 1} 음성으로 덧붙이기`} aria-pressed={voice.listening} onClick={voice.toggle}>
-            <IconMic />
-          </button>
-        )}
-        <span className="small grow">{voice.note || (voice.listening ? "듣고 있어요. 끝나면 마이크를 한 번 더 눌러 주세요." : voice.supported ? "마이크를 누르면 말한 내용이 답변 끝에 이어 붙어요." : "")}</span>
-      </div>
+      <span className="small">답변 칸을 누르면 나오는 키보드의 🎤(마이크) 버튼을 누르고 말씀하시면 글자로 받아 적어요.</span>
     </li>
   );
 }
@@ -115,7 +106,37 @@ export function WhoWrite(props: {
     chatEnd.current?.scrollIntoView({ block: "end" });
   }, [st.interview.messages.length]);
 
-  const voice = useVoice(() => answer, setAnswer);
+  // 답변 칸: 글이 길어지면 아래로 커진다. 화면 높이의 60%까지(폰 키보드가 올라와도 쓴 글이 잘 보이게).
+  const ansRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ansRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight + 4, Math.round(window.innerHeight * 0.6))}px`;
+  }, [answer]);
+  // 오타 다듬기(AI): [보내기]를 누르면 먼저 문맥에 맞게 다듬어 칸에 보여 주고, 읽어 본 뒤 [이대로 보내기]로 보낸다.
+  //  키보드 마이크(STT)로 받아 적은 글이든 직접 쓴 글이든 똑같이. checked: 다듬기를 거친(또는 고칠 것이 없던) 글
+  const [polishing, setPolishing] = useState(false);
+  const [polished, setPolished] = useState<{ before: string } | null>(null);
+  const [polishMsg, setPolishMsg] = useState("");
+  const [checked, setChecked] = useState("");
+  const lastQ = [...st.interview.messages].reverse().find((m) => m.role === "ai")?.text ?? "";
+  // 다듬기: 바뀐 것이 있으면 칸에 넣고 true(읽어 보게), 없거나 실패하면 false
+  const polish = useCallback(async (text: string): Promise<boolean> => {
+    if (!text.trim() || !st.aiEnabled) return false;
+    setPolishing(true);
+    setPolishMsg("");
+    const r = await api<{ text: string; changed: boolean }>(`/api/who/${aid}/polish`, { body: { text, question: lastQ } });
+    setPolishing(false);
+    if (!r.ok) { setPolishMsg(`${r.error} 그대로 보내도 돼요.`); setChecked(text); return false; }
+    setChecked(r.data.text);
+    if (!r.data.changed) return false;
+    setPolished({ before: text });
+    setAnswer(r.data.text);
+    setPolishMsg("문맥에 맞게 오타를 다듬었어요. 한 번 읽어 보고, 고칠 곳은 고친 뒤 [이대로 보내기]를 눌러 주세요.");
+    return true;
+  }, [aid, lastQ, st.aiEnabled]);
+  const reviewing = !!polished && answer === checked;
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -145,7 +166,6 @@ export function WhoWrite(props: {
 
   // 답변안함: 이 질문을 넘긴다(템플릿에서 허용한 질문만)
   const skipQuestion = () => run(async () => {
-    if (voice.listening) voice.toggle();
     const r = await api(`/api/who/${aid}/interview`, { body: { skip: true } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setAnswer("");
@@ -153,10 +173,14 @@ export function WhoWrite(props: {
   });
 
   const sendAnswer = () => run(async () => {
-    if (voice.listening) voice.toggle();
+    // 아직 다듬기를 거치지 않은 글이면 먼저 다듬어 보여 준다(고칠 것이 없으면 바로 보낸다)
+    if (st.aiEnabled && answer.trim() !== checked.trim() && answer !== checked && (await polish(answer))) return;
     const r = await api(`/api/who/${aid}/interview`, { body: { answer } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setAnswer("");
+    setPolished(null);
+    setPolishMsg("");
+    setChecked("");
     await reload();
   });
 
@@ -387,20 +411,18 @@ export function WhoWrite(props: {
               </div>
               <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <label className="l" htmlFor="ans">내 답변</label>
-                <textarea id="ans" className="field" rows={3} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={answer} onChange={(e) => setAnswer(e.target.value)} />
-                <p className="hint" role="status" style={{ fontSize: fs(12) }}>
-                  {voice.note || (voice.supported
-                    ? voice.listening ? "듣고 있어요. 말씀이 끝나면 마이크를 한 번 더 눌러 주세요." : "마이크를 누르고 말씀하세요. 말한 내용이 위 입력창에 글자로 나와요. 확인하고 고친 뒤 보내 주세요."
-                    : "이 기기에서는 음성 입력을 쓸 수 없어요. 키보드로 입력해 주세요.")}
+                <textarea id="ans" ref={ansRef} className="field" rows={3} style={{ padding: 10, lineHeight: 1.6, fontSize: fs(16), minHeight: 110, resize: "vertical" }} value={answer} onChange={(e) => setAnswer(e.target.value)} readOnly={polishing} />
+                {/* AI 오타 다듬기: 상태·되돌리기·다시 다듬기 */}
+                {(polishing || polishMsg) && <p className="small" role="status" style={{ margin: 0, color: polished ? "var(--accent-ink)" : undefined }}>{polishing ? "AI가 문맥을 보고 오타를 다듬는 중이에요…" : polishMsg}</p>}
+                {polished && (
+                  <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                    {polished && <button className="mini" type="button" disabled={busy || polishing} onClick={() => { setAnswer(polished.before); setPolished(null); setPolishMsg("다듬기 전 글로 되돌렸어요."); }}>다듬기 전으로</button>}
+                  </div>
+                )}
+                <p className="hint" style={{ fontSize: fs(12) }}>
+                  답변 칸을 누르면 나오는 키보드의 🎤(마이크) 버튼을 누르고 말씀하시면 글자로 받아 적어요.{st.aiEnabled ? " [보내기]를 누르면 AI가 문맥에 맞게 오타를 먼저 다듬어 보여 드려요. 읽어 보고 보내 주세요." : " 받아 적은 글을 읽어 보고 고친 뒤 보내 주세요."}
                 </p>
-                <div className="row">
-                  {voice.supported && (
-                    <button type="button" className={`mic ${voice.listening ? "on" : ""}`} aria-label={voice.listening ? "음성 입력 멈추기" : "음성으로 입력"} aria-pressed={voice.listening} onClick={voice.toggle}>
-                      <IconMic />
-                    </button>
-                  )}
-                  <button className="btn" type="button" disabled={busy || !answer.trim()} onClick={sendAnswer}>보내기</button>
-                </div>
+                <button className="btn" type="button" disabled={busy || polishing || !answer.trim()} onClick={sendAnswer}>{polishing ? "다듬는 중…" : reviewing ? "이대로 보내기" : "보내기"}</button>
                 {iv.canSkip && (
                   <button className="btn white" type="button" disabled={busy} onClick={skipQuestion}>답변안함 (이 질문 넘기기)</button>
                 )}
