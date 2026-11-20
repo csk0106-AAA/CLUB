@@ -247,6 +247,8 @@ function Payments({ initial, onType, thisYear, pastBtn, onAccount }: { initial: 
           <input type="month" className="field" aria-label="다른 달 고르기" style={{ width: "auto", minHeight: 36, fontSize: fs(13) }} value={/^\d{4}-\d{2}$/.test(d.period) ? d.period : ""}
             onChange={(e) => e.target.value && setPeriod(e.target.value)} />
         )}
+        {/* 과거내역: 줄 오른쪽 끝 */}
+        <span className="grow" />
         {pastBtn}
       </div>
 
