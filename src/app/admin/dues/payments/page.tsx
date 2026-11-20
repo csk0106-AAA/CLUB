@@ -2,7 +2,9 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
-import { api, fmtDate, won } from "@/lib/client";
+import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
+import { Popup } from "@/components/Popup";
+import { downloadXlsx } from "@/lib/xlsx";
 import { fs } from "@/lib/fs";
 
 type Row = {
@@ -14,118 +16,146 @@ type Data = {
   duesPeriod: "annual" | "monthly"; account: string; holder: string; rows: Row[];
 };
 
-type Grid = {
-  periods: { value: string; label: string }[]; current: string; duesPeriod: "annual" | "monthly";
-  rows: { memberId: string; name: string; kind: string; amount: string; target: boolean; cells: { period: string; status: "paid" | "notice" | "none"; amount: string; at: string }[] }[];
+type Total = {
+  year: string; years: string[]; current: string; duesPeriod: "annual" | "monthly";
+  rows: { period: string; label: string; paid: number; targets: number; amount: number }[]; total: number;
 };
 
-// 누적 현황: 회원 × 기간 표. 칸을 누르면 그 기간 입금 확인·취소. 연회비는 해마다, 월회비는 달마다 한 칸.
-function GridView({ onPick }: { onPick: (period: string) => void }) {
-  const [g, setG] = useState<Grid | null>(null);
+// 누적: 그 해의 회차(월회비는 달마다)별 입금 인원·입금액을 더해 보여 준다. 회차를 누르면 그 회차의 기간별로 간다.
+function TotalView({ year, onYear, onPick, onType, thisYear }: { year: string; onYear: (y: string) => void; onPick: (period: string) => void; onType: (t: "annual" | "monthly") => void; thisYear: string }) {
+  const [t, setT] = useState<Total | null>(null);
   const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [q, setQ] = useState("");
-  const load = useCallback(async () => {
-    const r = await api<Grid>("/api/admin/dues/payments?view=grid");
-    if (r.ok) setG(r.data);
-    else setErr(r.error);
-  }, []);
   useEffect(() => {
-    load();
-  }, [load]);
-  async function toggle(row: Grid["rows"][number], c: Grid["rows"][number]["cells"][number], label: string) {
-    const paid = c.status !== "paid";
-    let reason: string | undefined;
-    if (paid) { if (!window.confirm(`${row.name} 님의 ${label} 입금을 확인할까요?`)) return; }
-    else {
-      const v = window.prompt(`${row.name} 님의 ${label} 입금 확인을 취소할까요?\n회원에게 알림이 가요. 사유를 적어 주세요(비워도 돼요).`, "입금 내역이 확인되지 않아요");
-      if (v === null) return;
-      reason = v.trim();
-    }
-    setBusy(true);
-    const r = await api("/api/admin/dues/payments", { body: { period: c.period, memberId: row.memberId, paid, ...(reason !== undefined ? { reason } : {}) } });
-    setBusy(false);
-    if (!r.ok) return setErr(r.error);
-    load();
-  }
-  if (!g) return err ? <div className="msg bad" role="alert">{err}</div> : <p className="small">불러오는 중이에요…</p>;
-  const short = (p: string) => (/^\d{4}-\d{2}$/.test(p) ? `${p.slice(2, 4)}.${p.slice(5)}` : p);
-  const rows = g.rows.filter((r) => !q.trim() || r.name.includes(q.trim()));
-  // 기간마다 입금 인원
-  const paidCount = g.periods.map((_, i) => g.rows.filter((r) => r.cells[i]?.status === "paid").length);
-  const targetCount = g.rows.filter((r) => r.target).length;
+    api<Total>(`/api/admin/dues/payments?view=total${year ? `&year=${year}` : ""}`).then((r) => {
+      if (r.ok) { setT(r.data); onType(r.data.duesPeriod); } else setErr(r.error);
+    });
+  }, [year, onType]);
+  if (!t) return err ? <div className="msg bad" role="alert">{err}</div> : <p className="small">불러오는 중이에요…</p>;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span className="small" style={{ fontSize: fs(12) }}>
-        {g.duesPeriod === "monthly" ? "월회비는 달마다(최근 12개월)" : "연회비는 해마다"} 한 칸이에요. <b style={{ color: "var(--green-t)" }}>✓</b> 입금 · <b style={{ color: "var(--blue-t)" }}>₩</b> 입금 알림(확인 전) · <b style={{ color: "var(--sub)" }}>–</b> 미입금. 칸을 누르면 입금 확인·취소, 기간 이름을 누르면 그 기간을 자세히 봐요.
-      </span>
-      {err && <div className="msg bad" role="alert">{err}</div>}
-      <input className="field" type="search" placeholder="이름 찾기" aria-label="이름으로 찾기" style={{ minHeight: 34, fontSize: fs(13) }} value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="tblw" style={{ overflowX: "auto" }}>
-        <table className="tbl compact" style={{ minWidth: 120 + g.periods.length * 52 }}>
-          <thead>
-            <tr>
-              <th style={{ position: "sticky", left: 0, background: "var(--soft)", zIndex: 1 }}>이름</th>
-              {g.periods.map((p, i) => (
-                <th key={p.value} style={{ textAlign: "center", padding: "4px 2px" }}>
-                  <button type="button" className="mini" style={{ minHeight: 26, padding: "0 4px", fontSize: fs(11), fontWeight: p.value === g.current ? 800 : 600 }} title={`${p.label} 자세히 보기`} onClick={() => onPick(p.value)}>{short(p.value)}</button>
-                  <span style={{ display: "block", fontSize: fs(10), fontWeight: 400 }}>{paidCount[i]}/{targetCount}</span>
-                </th>
-              ))}
-              <th style={{ textAlign: "center" }}>미납</th>
-            </tr>
-          </thead>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {thisYear && t.year < thisYear && (
+        <div className="msg info row" role="status" style={{ gap: 8, flexWrap: "wrap" }}>
+          <span className="grow"><b>{t.year}년 과거 내역</b>이에요.</span>
+          <button className="mini" type="button" onClick={() => onYear(thisYear)}>올해({thisYear}년)로</button>
+        </div>
+      )}
+      <section className="card" style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }} aria-label="합계">
+        <b style={{ fontSize: fs(14) }}>{t.year}년 회비 입금 합계</b>
+        <b className="num" style={{ fontSize: fs(18), color: "var(--accent-ink)" }}>{won(t.total)}</b>
+      </section>
+      <div className="tblw">
+        <table className="tbl compact" style={{ minWidth: 0 }}>
+          <thead><tr><th>회차</th><th style={{ textAlign: "center" }}>입금 인원</th><th style={{ textAlign: "right" }}>입금액</th></tr></thead>
           <tbody>
-            {rows.map((r) => {
-              const unpaid = r.target ? r.cells.filter((c) => c.status !== "paid").length : 0;
-              return (
-                <tr key={r.memberId}>
-                  <td style={{ position: "sticky", left: 0, background: "var(--card, #fff)", zIndex: 1, whiteSpace: "nowrap" }}>
-                    <b>{r.name}</b>{r.amount && <span className="small" style={{ display: "block", fontSize: fs(10) }}>{won(r.amount)}</span>}
-                  </td>
-                  {r.cells.map((c, i) => {
-                    const label = g.periods[i].label;
-                    const mark = c.status === "paid" ? "✓" : c.status === "notice" ? "₩" : "–";
-                    const color = c.status === "paid" ? "var(--green-t)" : c.status === "notice" ? "var(--blue-t)" : "var(--sub)";
-                    return (
-                      <td key={c.period} style={{ textAlign: "center", padding: 2 }}>
-                        <button type="button" disabled={busy} onClick={() => toggle(r, c, label)}
-                          title={`${label}: ${c.status === "paid" ? `입금 ${c.amount ? won(c.amount) : ""} (${fmtDate(c.at)})` : c.status === "notice" ? `입금 알림 ${fmtDate(c.at)}` : "미입금"}`}
-                          aria-label={`${r.name} ${label} ${c.status === "paid" ? "입금" : c.status === "notice" ? "입금 알림" : "미입금"}`}
-                          style={{ width: 40, height: 30, border: "1px solid var(--line)", borderRadius: 6, background: c.status === "paid" ? "var(--green-bg, #e9f7ef)" : c.status === "notice" ? "var(--blue-bg)" : "transparent", color, fontWeight: 800, cursor: "pointer" }}>
-                          {mark}
-                        </button>
-                      </td>
-                    );
-                  })}
-                  <td className="num" style={{ textAlign: "center", fontWeight: 700, color: unpaid ? "var(--red-t)" : "var(--green-t)" }}>{r.target ? unpaid : "-"}</td>
-                </tr>
-              );
-            })}
+            {t.rows.map((r) => (
+              <tr key={r.period} style={{ cursor: "pointer" }} onClick={() => onPick(r.period)}>
+                <td><button type="button" className="mini" style={{ minHeight: 30, fontWeight: r.period === t.current ? 800 : 500 }} onClick={(e) => { e.stopPropagation(); onPick(r.period); }} aria-label={`${r.label} 기간별로 보기`}>{r.label}{r.period === t.current ? " (지금)" : ""} ›</button></td>
+                <td className="num" style={{ textAlign: "center" }}>{r.paid} / {r.targets}명</td>
+                <td className="num" style={{ textAlign: "right", fontWeight: 700 }}>{won(r.amount)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+      <span className="small" style={{ fontSize: fs(12) }}>회차를 누르면 그 회차의 기간별(회원마다 입금 확인)로 가요.</span>
     </div>
   );
 }
 
-// 관리자 › 모임설정 › 회비입금: 기간별(한 기간을 자세히, 처음 보기)과 누적 현황(회원 × 기간) 두 가지로 본다.
-function PaymentsPage({ initial }: { initial: string }) {
-  const [view, setView] = useState<"grid" | "period">("period"); // 처음은 기간별(지금 기간)
-  const [pick, setPick] = useState(initial);
+type History = { thisYear: string; pastYears: { year: string; total: number; paid: number }[]; logs: { year: string; byName: string; at: string; kind?: string }[] };
+type HistoryYear = {
+  year: string; total: number;
+  summary: { period: string; label: string; paid: number; amount: number }[];
+  rows: { period: string; name: string; kind: string; position: string; amount: string; status: string; paidAt: string; checkedBy: string; memo: string }[];
+};
+
+// 과거 내역: 지난 연도별 입금 합계. "보기"는 그 해 누적으로, "엑셀"은 그 해 회차별 합계 + 회원별 내역을 내려받는다(내려받기 기록이 남는다).
+function PastHistory({ hist, onView, onDownloaded }: { hist: History; onView: (year: string) => void; onDownloaded: () => void }) {
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  async function excel(year: string) {
+    setBusy(year);
+    setErr("");
+    const r = await api<HistoryYear>(`/api/admin/dues/history?year=${year}`);
+    if (!r.ok) { setBusy(""); return setErr(r.error); }
+    const d = r.data;
+    downloadXlsx(`모임회비_${year}년_입금내역.xlsx`, [
+      { name: "누적", boldFirst: true, widths: [22, 12, 16], rows: [["회차", "입금 인원", "입금액"], ...d.summary.map((x) => [x.label, `${x.paid}명`, String(x.amount)]), ["합계", "", String(d.total)]] },
+      { name: "회원별 내역", boldFirst: true, widths: [20, 12, 10, 12, 12, 18, 12, 10, 24], rows: [["회차", "이름", "구분", "직책", "금액", "상태", "확인일", "확인자", "메모"], ...d.rows.map((x) => [x.period, x.name, x.kind, x.position, x.amount, x.status, x.paidAt, x.checkedBy, x.memo])] },
+    ]);
+    await api("/api/admin/dues/history", { body: { year } });
+    setBusy("");
+    onDownloaded();
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="seg" role="group" aria-label="보기 방식" style={{ width: 220, flex: "none" }}>
-        <button type="button" aria-pressed={view === "period"} onClick={() => setView("period")} style={{ minHeight: 36, fontSize: fs(13) }}>기간별</button>
-        <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")} style={{ minHeight: 36, fontSize: fs(13) }}>누적 현황</button>
+      <span className="small">지난 연도의 회비 입금 내역이에요. “보기”는 그 해 누적(회차별 합산)으로 가고, 회차를 누르면 회원별 내역을 볼 수 있어요. 엑셀로 내려받으면 회차별 합계와 회원별 내역이 함께 들어 있어요.</span>
+      {err && <div className="msg bad" role="alert">{err}</div>}
+      <ul className="rows" style={{ margin: 0, padding: 0, listStyle: "none" }}>
+        {hist.pastYears.map((y) => (
+          <li key={y.year} className="row" style={{ gap: 8, padding: "10px 4px", borderBottom: "1px solid var(--line2)", flexWrap: "wrap" }}>
+            <b className="grow">{y.year}년</b>
+            <span className="num small">{y.paid}건 · <b style={{ color: "var(--accent-ink)" }}>{won(y.total)}</b></span>
+            <button className="mini" type="button" onClick={() => onView(y.year)}>보기</button>
+            <button className="mini" type="button" disabled={busy === y.year} onClick={() => excel(y.year)}>{busy === y.year ? "만드는 중…" : "엑셀"}</button>
+          </li>
+        ))}
+      </ul>
+      <section style={{ display: "flex", flexDirection: "column", gap: 4 }} aria-label="내려받기 기록">
+        <b style={{ fontSize: fs(13) }}>내려받기 기록</b>
+        {hist.logs.length === 0 ? <span className="small">아직 내려받은 기록이 없어요.</span> : (
+          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2, fontSize: fs(12) }}>
+            {hist.logs.map((l, i) => <li key={i}>{fmtDateTime(l.at)} · {l.byName} · {l.year}년 {l.kind === "ledger" ? "회비내역" : "입금 내역"}</li>)}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// 관리자 › 모임설정 › 회비입금: 기간별(한 회차를 자세히, 처음 보기)과 누적(그 해 회차별 합산).
+//  "누적" 칸은 월회비(달마다 내는 회비)일 때만 보인다. 연회비면 칸은 숨기지만, 회비내역에서 누르면 주소(?view=total)로 그대로 열린다.
+function PaymentsPage({ initial, initView, initYear }: { initial: string; initView: string; initYear: string }) {
+  const [view, setView] = useState<"total" | "period">(initView === "total" ? "total" : "period");
+  const [pick, setPick] = useState(initial);
+  const [year, setYear] = useState(initYear);
+  const [type, setType] = useState<"annual" | "monthly" | "">("");
+  const onType = useCallback((t: "annual" | "monthly") => setType(t), []);
+  const showTabs = type === "monthly" || view === "total";
+  const [hist, setHist] = useState<History | null>(null);
+  const [histOpen, setHistOpen] = useState(false);
+  const loadHist = useCallback(async () => {
+    const r = await api<History>("/api/admin/dues/history");
+    if (r.ok) setHist(r.data);
+  }, []);
+  useEffect(() => {
+    loadHist();
+  }, [loadHist]);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+        {showTabs && (
+          <div className="seg" role="group" aria-label="보기 방식" style={{ width: 200, flex: "none" }}>
+            <button type="button" aria-pressed={view === "period"} onClick={() => setView("period")} style={{ minHeight: 36, fontSize: fs(13) }}>기간별</button>
+            <button type="button" aria-pressed={view === "total"} onClick={() => setView("total")} style={{ minHeight: 36, fontSize: fs(13) }}>누적</button>
+          </div>
+        )}
+        <span className="grow" />
+        {/* 해가 바뀌어 지난 연도 기록이 생기면 보인다 */}
+        {hist && hist.pastYears.length > 0 && <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { loadHist(); setHistOpen(true); }}>과거 내역 보기</button>}
       </div>
-      {view === "grid" ? <GridView onPick={(p) => { setPick(p); setView("period"); }} /> : <Payments key={pick} initial={pick} />}
+      {view === "total"
+        ? <TotalView year={year} onYear={setYear} onPick={(p) => { setPick(p); setView("period"); }} onType={onType} thisYear={hist?.thisYear ?? ""} />
+        : <Payments key={pick} initial={pick} onType={onType} thisYear={hist?.thisYear} />}
+      <Popup id="dues-history" width={560} title="과거 내역 보기" open={histOpen} onClose={() => setHistOpen(false)}>
+        {hist && <PastHistory hist={hist} onView={(y) => { setHistOpen(false); setYear(y); setView("total"); }} onDownloaded={loadHist} />}
+      </Popup>
     </div>
   );
 }
 
 // 기간별: 한 기간(연회비 연도·월회비 월)의 회원마다 낼 금액·입금 확인·입금 알림
-function Payments({ initial }: { initial: string }) {
+function Payments({ initial, onType, thisYear }: { initial: string; onType?: (t: "annual" | "monthly") => void; thisYear?: string }) {
   const [period, setPeriod] = useState(initial);
   const [d, setD] = useState<Data | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
@@ -137,7 +167,8 @@ function Payments({ initial }: { initial: string }) {
     const r = await api<Data>(`/api/admin/dues/payments${period ? `?period=${encodeURIComponent(period)}` : ""}`);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setD(r.data);
-  }, [period]);
+    onType?.(r.data.duesPeriod);
+  }, [period, onType]);
   useEffect(() => {
     load();
   }, [load]);
@@ -201,7 +232,7 @@ function Payments({ initial }: { initial: string }) {
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <label className="small" htmlFor="dp-period" style={{ fontSize: fs(12) }}>기간</label>
         <select id="dp-period" className="field" style={{ width: "auto", minHeight: 36, fontSize: fs(13) }} value={d.period} onChange={(e) => setPeriod(e.target.value)}>
-          {d.periods.map((p) => <option key={p.value} value={p.value}>{p.label}{p.value === d.current ? " (지금)" : ""}</option>)}
+          {d.periods.filter((p) => !thisYear || p.value.slice(0, 4) >= thisYear || p.value === d.period).map((p) => <option key={p.value} value={p.value}>{p.label}{p.value === d.current ? " (지금)" : ""}{thisYear && p.value.slice(0, 4) < thisYear ? " · 과거 내역" : ""}</option>)}
           {d.duesPeriod === "monthly" && !d.periods.some((p) => p.value === d.period) && <option value={d.period}>{d.periodLabel}</option>}
         </select>
         {d.duesPeriod === "monthly" && (
@@ -260,7 +291,8 @@ function Payments({ initial }: { initial: string }) {
   );
 }
 
-export default function DuesPaymentsPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
-  const { period } = use(searchParams);
-  return <AdminGate mode="group" need={["group"]} active="/admin/dues/payments"><PaymentsPage initial={period ?? ""} /></AdminGate>;
+// 주소: ?period=2026-11(그 회차의 기간별) · ?view=total&year=2025(그 해 누적, 회비내역에서 누름)
+export default function DuesPaymentsPage({ searchParams }: { searchParams: Promise<{ period?: string; view?: string; year?: string }> }) {
+  const { period, view, year } = use(searchParams);
+  return <AdminGate mode="group" need={["group"]} active="/admin/dues/payments"><PaymentsPage initial={period ?? ""} initView={view ?? ""} initYear={/^\d{4}$/.test(year ?? "") ? year! : ""} /></AdminGate>;
 }

@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 // 관리자 › 모임설정 › 회비내역: 연도별 장부(회비 입금 합계·기타 수입·지출)와 잔액.
 //  회비 입금: 회비입금에서 확인한 금액(기간의 연도 기준)
 //  기타 수입·지출: 여기서 적는 줄(+ 일정의 "모임회비 지원"은 지출로 자동)
-//  잔액: 올해 = 올해 입금 + 올해 수입 - 올해 지출 / 전체 = 지금까지 모두 더한 값
+//  해마다 12월 31일 24:00(그 해 끝)에 마감하고, 그 해 잔액이 다음 해의 "전년도 잔액"으로 넘어간다.
+//  그 해 잔액 = 전년도 잔액 + 회비 입금 + 기타 수입 - 지출 - 일정 지원(모임회비 지원)
 export async function GET(req: Request) {
   const g = await guard("group");
   if ("err" in g) return g.err;
@@ -25,12 +26,16 @@ export async function GET(req: Request) {
   const sum = (xs: { amount?: string | number }[]) => xs.reduce((n, x) => n + (Number(x.amount) || 0), 0);
   const inYear = (d: string) => (d ?? "").startsWith(year);
 
-  const paidYear = sum(paid.filter((p) => inYear(p.period)));
   const inc = ledger.filter((l) => l.kind === "in");
   const out = ledger.filter((l) => l.kind === "out");
+  // 그 해 것만 / 그 해 전 것 모두(전년도까지 마감된 잔액)
+  const before = (d: string) => /^\d{4}/.test(d ?? "") && (d ?? "").slice(0, 4) < year;
+  const paidYear = sum(paid.filter((p) => inYear(p.period)));
   const incomeYear = sum(inc.filter((l) => inYear(l.date)));
-  const spendYear = sum(out.filter((l) => inYear(l.date))) + sum(auto.filter((a) => inYear(a.date)));
-  const balanceAll = sum(paid) + sum(inc) - sum(out) - sum(auto);
+  const spendYear = sum(out.filter((l) => inYear(l.date)));
+  const supportYear = sum(auto.filter((a) => inYear(a.date)));
+  const prev = sum(paid.filter((p) => before(p.period))) + sum(inc.filter((l) => before(l.date))) - sum(out.filter((l) => before(l.date))) - sum(auto.filter((a) => before(a.date)));
+  const totalIn = prev + paidYear + incomeYear;
 
   const rows = [
     ...ledger.filter((l) => inYear(l.date)).map((l) => ({
@@ -47,7 +52,9 @@ export async function GET(req: Request) {
     .map((e) => ({ id: e.id, name: e.name, date: (e.startsAt || "").slice(0, 10), club: e.club ?? "" }));
   return NextResponse.json({
     year, years,
-    summary: { paid: paidYear, income: incomeYear, spend: spendYear, balanceYear: paidYear + incomeYear - spendYear, balanceAll },
+    // prev: 전년도 잔액(prevYear 12월 31일 마감) · paid: 그 해 회비 입금 · income: 기타 수입 · totalIn: 전체 입금 총액
+    // spend: 지출(직접 적은 것) · support: 일정 지원 · balance: 그 해 잔액
+    summary: { prevYear: String(Number(year) - 1), prev, paid: paidYear, income: incomeYear, totalIn, spend: spendYear, support: supportYear, balance: totalIn - spendYear - supportYear },
     rows,
     events: eventOptions,
   });

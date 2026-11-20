@@ -15,39 +15,30 @@ export async function GET(req: Request) {
   if ("err" in g) return g.err;
   const { dues, period: cur } = await duesNow();
   const sp = new URL(req.url).searchParams;
-  // 누적 현황: 회원 × 기간(연회비는 기록이 있는 해부터 올해까지 최대 6년, 월회비는 최근 12개월)
-  if (sp.get("view") === "grid") {
+  // 누적: 그 해의 회차(연회비는 한 번, 월회비는 달마다)별 입금 인원·입금액과 그 해 합계. 회차를 누르면 기간별로 간다.
+  if (sp.get("view") === "total") {
     const s = await getStore();
     const [members, payments] = await Promise.all([s.list("Members"), s.list("DuesPayments")]);
-    let periods: string[];
-    if (dues.period === "monthly") {
-      const [y, m] = cur.split("-").map(Number);
-      periods = Array.from({ length: 12 }, (_, i) => {
-        const d = new Date(Date.UTC(y, m - 1 - i, 1));
-        return d.toISOString().slice(0, 7);
-      });
-    } else {
-      const years = payments.map((p) => Number(p.period.slice(0, 4))).filter((n) => n > 2000);
-      const from = Math.max(Math.min(Number(cur), ...years), Number(cur) - 5);
-      periods = Array.from({ length: Number(cur) - from + 1 }, (_, i) => String(Number(cur) - i));
-    }
-    const targets = duesTargets(members, dues);
-    const ids = new Set(targets.map((t) => t.member.id));
-    const extra = members.filter((m) => !ids.has(m.id) && payments.some((p) => p.memberId === m.id && periods.includes(p.period) && (p.paid === "true" || p.notice)));
-    const rows = [...targets.map((t) => ({ m: t.member, amount: t.amount, target: true })), ...extra.map((m) => ({ m, amount: "", target: false }))]
-      .map(({ m, amount, target }) => ({
-        memberId: m.id, name: m.name, kind: m.kind ?? "", amount, target,
-        cells: periods.map((p) => {
-          const x = payments.find((q) => q.period === p && q.memberId === m.id);
-          return { period: p, status: x?.paid === "true" ? "paid" : x?.notice ? "notice" : "none", amount: x?.paid === "true" ? x.amount : "", at: x?.paid === "true" ? x.paidAt : x?.notice ?? "" };
-        }),
-      }));
-    return NextResponse.json({ periods: periods.map((p) => ({ value: p, label: periodLabel(p) })), current: cur, duesPeriod: dues.period, rows });
+    const wantYear = sp.get("year") ?? "";
+    const year = /^\d{4}$/.test(wantYear) ? wantYear : cur.slice(0, 4);
+    const paid = payments.filter((p) => p.paid === "true");
+    // 회차: 지금 회비 방식의 회차 + 그 해에 입금 기록이 있는 회차(방식이 바뀐 경우)
+    const base = dues.period === "monthly" ? Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`) : [year];
+    const periods = [...new Set([...base, ...payments.filter((p) => p.period.startsWith(year)).map((p) => p.period)])].sort();
+    const targets = duesTargets(members, dues).length;
+    const rows = periods.map((p) => {
+      const got = paid.filter((x) => x.period === p);
+      return { period: p, label: periodLabel(p), paid: got.length, targets, amount: got.reduce((n, x) => n + (Number(x.amount) || 0), 0) };
+    });
+    const years = [...new Set([cur.slice(0, 4), ...payments.map((p) => p.period.slice(0, 4))])].filter((y) => /^\d{4}$/.test(y)).sort((a, b) => b.localeCompare(a));
+    return NextResponse.json({ year, years, current: cur, duesPeriod: dues.period, rows, total: rows.reduce((n, r) => n + r.amount, 0) });
   }
   const want = sp.get("period") ?? "";
-  const period = /^\d{4}(-\d{2})?$/.test(want) ? want : cur;
   const s = await getStore();
   const [members, payments] = await Promise.all([s.list("Members"), s.list("DuesPayments")]);
+  // 처음 열 때(회차를 고르지 않음): 가장 최신 회차(지금 회차와 기록이 있는 회차 중 가장 늦은 것)
+  const latest = [cur, ...payments.map((p) => p.period)].filter((p) => /^\d{4}(-\d{2})?$/.test(p)).sort((a, b) => b.localeCompare(a))[0] ?? cur;
+  const period = /^\d{4}(-\d{2})?$/.test(want) ? want : latest;
   const mine = payments.filter((p) => p.period === period);
   const name = (id: string) => members.find((m) => m.id === id)?.name ?? "(지운 회원)";
   const targets = duesTargets(members, dues);

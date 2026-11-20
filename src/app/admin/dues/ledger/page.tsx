@@ -5,13 +5,15 @@ import { RowDelete } from "@/components/RowDelete";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { DateField } from "@/components/DateField";
-import { api, fmtDate, won } from "@/lib/client";
+import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
+import { Popup } from "@/components/Popup";
+import { downloadXlsx } from "@/lib/xlsx";
 import { fs } from "@/lib/fs";
 
 type Row = { id: string; date: string; kind: "in" | "out"; item: string; amount: number; memo: string; by: string; auto: boolean; eventId: string };
 type Data = {
   year: string; years: string[];
-  summary: { paid: number; income: number; spend: number; balanceYear: number; balanceAll: number };
+  summary: { prevYear: string; prev: number; paid: number; income: number; totalIn: number; spend: number; support: number; balance: number };
   rows: Row[];
   events: { id: string; name: string; date: string; club: string }[]; // "일정 지원"으로 고를 일정
 };
@@ -26,6 +28,32 @@ function Ledger() {
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [add, setAdd] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
+  const [histOpen, setHistOpen] = useState(false);
+  const [logs, setLogs] = useState<{ year: string; byName: string; at: string; kind?: string }[]>([]);
+  const [dl, setDl] = useState("");
+  const thisYear = String(new Date(Date.now() + 9 * 3600_000).getUTCFullYear());
+  const loadLogs = useCallback(async () => {
+    const r = await api<{ logs: { year: string; byName: string; at: string; kind?: string }[] }>("/api/admin/dues/history");
+    if (r.ok) setLogs(r.data.logs);
+  }, []);
+  // 지난 연도 회비내역을 엑셀로: 요약 + 수입·지출 줄(내려받기 기록이 남는다)
+  async function excel(y: string) {
+    setDl(y);
+    const r = await api<Data>(`/api/admin/dues/ledger?year=${y}`);
+    if (!r.ok) { setDl(""); return setMsg({ tone: "bad", text: r.error }); }
+    const x = r.data;
+    const s = x.summary;
+    downloadXlsx(`모임회비_${y}년_회비내역.xlsx`, [
+      { name: "요약", boldFirst: true, widths: [22, 16], rows: [["항목", "금액"],
+        [`${s.prevYear}년 잔액`, String(s.prev)], [`${y} 회비 입금`, String(s.paid)], [`${y}년 기타 수입`, String(s.income)],
+        ["전체 입금 총액", String(s.totalIn)], [`${y}년 지출`, String(s.spend)], [`${y}년 지원`, String(s.support)], [`${y}년 잔액`, String(s.balance)]] },
+      { name: "수입·지출", boldFirst: true, widths: [12, 8, 34, 14, 28, 10], rows: [["날짜", "구분", "내용", "금액", "메모", "적은 사람"],
+        ...x.rows.map((row) => [row.date, row.kind === "in" ? "수입" : row.auto ? "지원" : "지출", row.item, String(row.kind === "in" ? row.amount : -row.amount), row.memo, row.by])] },
+    ]);
+    await api("/api/admin/dues/history", { body: { year: y, kind: "ledger" } });
+    setDl("");
+    loadLogs();
+  }
 
   const load = useCallback(async () => {
     const r = await api<Data>(`/api/admin/dues/ledger${year ? `?year=${year}` : ""}`);
@@ -59,13 +87,20 @@ function Ledger() {
 
   if (!d) return msg ? <div className="msg bad" role="alert">{msg.text}</div> : <p className="small">불러오는 중이에요…</p>;
   const s = d.summary;
-  const stat = (k: string, v: number, c?: string, sub?: string) => (
-    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "0 8px", borderBottom: "1px solid var(--line)", paddingBottom: 4 }}>
-      <dt className="small" style={{ margin: 0, fontSize: fs(12) }}>{k}</dt>
-      <dd className="num" style={{ margin: "0 0 0 auto", fontWeight: 700, color: c, whiteSpace: "nowrap" }}>{won(v)}</dd>
-      {sub && <span className="small" style={{ flexBasis: "100%", fontSize: fs(11) }}>{sub}</span>}
-    </div>
-  );
+  // 요약 한 줄. href 를 주면 누를 수 있다(회비입금 › 그 해 "누적"으로)
+  const YELLOW = "var(--accent-ink)";
+  const APRICOT = "var(--apricot-t)";
+  const stat = (k: string, v: number, c: string, href?: string) => {
+    const inner = (
+      <>
+        <dt className="small" style={{ margin: 0, fontSize: fs(12), color: c }}>{k}{href ? " ›" : ""}</dt>
+        <dd className="num" style={{ margin: "0 0 0 auto", fontWeight: 700, color: c, whiteSpace: "nowrap" }}>{won(v)}</dd>
+      </>
+    );
+    const style = { display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "0 8px", borderBottom: "1px solid var(--line)", paddingBottom: 4 } as const;
+    return href ? <Link href={href} style={{ ...style, textDecoration: "none" }} aria-label={`${k} ${won(v)}, 누적 보기`}>{inner}</Link> : <div style={style}>{inner}</div>;
+  };
+  const totalHref = (y: string) => `/admin/dues/payments?view=total&year=${y}`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -73,21 +108,52 @@ function Ledger() {
         모임 회비의 수입과 지출을 적고 잔액을 확인해요. <b>회비 입금</b>은 <Link href="/admin/dues/payments">회비입금</Link>에서 확인한 금액이 자동으로 들어오고, 일정의 <b>모임회비 지원</b>은 지출로 자동으로 들어와요.
       </p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      <div className="row" style={{ gap: 8 }}>
-        <label className="small" htmlFor="dl-year" style={{ fontSize: fs(12) }}>연도</label>
-        <select id="dl-year" className="field" style={{ width: "auto", minHeight: 36, fontSize: fs(13) }} value={d.year} onChange={(e) => setYear(e.target.value)}>
-          {d.years.map((y) => <option key={y} value={y}>{y}년</option>)}
-        </select>
+      {/* 올해 회비내역이 기본. 지난 연도는 "과거 내역 보기"에서(보기·엑셀) */}
+      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+        <b style={{ fontSize: fs(15) }}>{d.year}년</b>
+        {d.year < thisYear && <><span className="pill gray">과거 내역</span><button className="mini" type="button" onClick={() => setYear(thisYear)}>올해({thisYear}년)로</button></>}
+        <span className="grow" />
+        {d.years.some((y) => y < thisYear) && <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { loadLogs(); setHistOpen(true); }}>과거 내역 보기</button>}
       </div>
+      <Popup id="ledger-history" width={520} title="과거 내역 보기" open={histOpen} onClose={() => setHistOpen(false)}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <span className="small">지난 연도의 회비내역이에요. “보기”는 그 해 회비내역으로 가고, “엑셀”은 요약과 수입·지출 줄을 내려받아요.</span>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+            {d.years.filter((y) => y < thisYear).map((y) => (
+              <li key={y} className="row" style={{ gap: 8, padding: "10px 4px", borderBottom: "1px solid var(--line2)" }}>
+                <b className="grow">{y}년</b>
+                <button className="mini" type="button" onClick={() => { setHistOpen(false); setYear(y); }}>보기</button>
+                <button className="mini" type="button" disabled={dl === y} onClick={() => excel(y)}>{dl === y ? "만드는 중…" : "엑셀"}</button>
+              </li>
+            ))}
+          </ul>
+          <section style={{ display: "flex", flexDirection: "column", gap: 4 }} aria-label="내려받기 기록">
+            <b style={{ fontSize: fs(13) }}>내려받기 기록</b>
+            {logs.length === 0 ? <span className="small">아직 내려받은 기록이 없어요.</span> : (
+              <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2, fontSize: fs(12) }}>
+                {logs.map((l, i) => <li key={i}>{fmtDateTime(l.at)} · {l.byName} · {l.year}년 {l.kind === "ledger" ? "회비내역" : "입금 내역"}</li>)}
+              </ul>
+            )}
+          </section>
+        </div>
+      </Popup>
 
       <section className="card" style={{ padding: 12 }} aria-label="잔액 요약">
-        <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 12px", fontSize: fs(13) }}>
-          {stat(`${d.year}년 회비 입금`, s.paid, "var(--green-t)")}
-          {stat(`${d.year}년 기타 수입`, s.income, "var(--green-t)")}
-          {stat(`${d.year}년 지출`, s.spend, "var(--red-t)")}
-          {stat(`${d.year}년 잔액`, s.balanceYear, s.balanceYear < 0 ? "var(--red-t)" : "var(--blue-t)", "입금 + 수입 - 지출")}
-          {stat("전체 잔액", s.balanceAll, s.balanceAll < 0 ? "var(--red-t)" : "var(--blue-t)", "지금까지 모든 연도")}
-        </dl>
+        {/* 왼쪽: 들어온 돈(전년도 잔액 · 회비 입금 · 기타 수입) / 오른쪽: 전체 입금 총액 · 지출 · 지원 · 잔액 */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 14px", fontSize: fs(13) }}>
+          <dl style={{ margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+            {stat(`${s.prevYear}년 잔액`, s.prev, YELLOW, totalHref(s.prevYear))}
+            {stat(`${d.year} 회비 입금`, s.paid, YELLOW, totalHref(d.year))}
+            {stat(`${d.year}년 기타 수입`, s.income, YELLOW)}
+          </dl>
+          <dl style={{ margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+            {stat("전체 입금 총액", s.totalIn, YELLOW)}
+            {stat(`${d.year}년 지출`, s.spend, APRICOT)}
+            {stat(`${d.year}년 지원`, s.support, APRICOT)}
+            {stat(`${d.year}년 잔액`, s.balance, s.balance < 0 ? APRICOT : YELLOW)}
+          </dl>
+        </div>
+        <span className="small" style={{ display: "block", marginTop: 8, fontSize: fs(11) }}>해마다 12월 31일 24:00에 마감하고, 그 해 잔액이 다음 해의 “전년도 잔액”으로 넘어가요. 잔액 = 전체 입금 총액 - 지출 - 지원(일정의 모임회비 지원)</span>
       </section>
 
       <form onSubmit={create} className="card compact-form" aria-label="장부 적기" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>

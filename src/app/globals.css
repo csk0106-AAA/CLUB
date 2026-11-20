@@ -68,6 +68,7 @@
   --knob-ring: rgba(255, 255, 255, 0.75);
   --sun: #ff8a8a;           /* 달력 일요일 */
   --sat: #8ab4ff;           /* 달력 토요일 */
+  --apricot-t: #ffb38a;     /* 살구색 글자(회비내역 지출·지원·마이너스 잔액) */
   --display: "Noto Sans KR", system-ui, sans-serif;
   --body: "Noto Sans KR", system-ui, sans-serif;
   color-scheme: dark;
@@ -118,6 +119,7 @@
   --tabbar-bg: rgba(255, 255, 255, 0.88);
   --sun: #C62F2F;
   --sat: #2F5BB7;
+  --apricot-t: #B5541C;
   color-scheme: light;
 }
 
