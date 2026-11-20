@@ -33,6 +33,7 @@ export function SaveChoices(props: {
 }) {
   const { busy, disabled, version, nextVersion, baseName, suggestName, otherEvents, inEvent, onSave, onCancel } = props;
   const [asking, setAsking] = useState(false);
+  const [help, setHelp] = useState(false); // 저장 방법 설명 펼치기
   const [name, setName] = useState(suggestName);
   const id = useId();
   const sameName = name.trim() === baseName.trim();
@@ -87,19 +88,26 @@ export function SaveChoices(props: {
     },
   ];
 
+  // 창 아래쪽을 작게: 버튼 한 줄(수정 · 새 버전 · 새 활동 · 취소), 설명은 "?"를 눌러 펼친다(본문이 잘 보이게)
+  const short: Record<SaveMode, string> = { fix: "수정", version: `새 버전(v${nextVersion})`, new: "새 활동" };
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
-      <div role="group" aria-label="저장 방법" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8 }}>
+      <div role="group" aria-label="저장 방법" style={{ display: "flex", gap: 6, alignItems: "center" }}>
         {items.map((it) => (
-          <div key={it.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <button className={`btn ${it.primary ? "" : "white"}`} type="button" disabled={busy || disabled} style={btn} aria-describedby={`${id}-${it.key}`} onClick={it.onClick}>
-              {busy ? "저장 중…" : it.label}
-            </button>
-            <span className="small" id={`${id}-${it.key}`} style={{ lineHeight: 1.45 }}>{it.note}</span>
-          </div>
+          <button key={it.key} className={`btn ${it.primary ? "" : "white"}`} type="button" disabled={busy || disabled} title={it.note}
+            style={{ flex: "1 1 0", minWidth: 0, width: "auto", minHeight: 40, padding: "0 6px", fontSize: fs(13), whiteSpace: "nowrap" }}
+            aria-describedby={help ? `${id}-${it.key}` : undefined} onClick={it.onClick}>
+            {busy ? "저장 중…" : short[it.key]}
+          </button>
         ))}
+        <button className="mini" type="button" aria-expanded={help} aria-label="저장 방법 설명" style={{ flex: "none", minHeight: 40, width: 40, padding: 0 }} onClick={() => setHelp(!help)}>?</button>
+        <button className="mini" type="button" disabled={busy} style={{ flex: "none", minHeight: 40 }} onClick={onCancel}>취소</button>
       </div>
-      <button className="mini" type="button" disabled={busy} style={{ alignSelf: "flex-end" }} onClick={onCancel}>취소</button>
+      {help && (
+        <ul className="small" style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2, lineHeight: 1.45 }}>
+          {items.map((it) => <li key={it.key} id={`${id}-${it.key}`}><b>{it.label}</b>: {it.note}</li>)}
+        </ul>
+      )}
     </div>
   );
 }
