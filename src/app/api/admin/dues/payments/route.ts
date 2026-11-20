@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { addAlerts } from "@/lib/member-alerts";
+import { pushTo } from "@/lib/push";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { duesAccount, duesAmount } from "@/lib/dues";
@@ -83,6 +85,9 @@ const body = z.object({
   memberId: z.string().min(1).max(64),
   paid: z.boolean().optional(),
   memo: z.string().trim().max(200).optional(),
+  // reject: 회원이 보낸 입금 알림을 "입금 안 됨"으로 돌려보낸다(입금 확인 전). reason: 취소·돌려보낼 때 회원에게 보일 사유
+  reject: z.boolean().optional(),
+  reason: z.string().trim().max(200).optional(),
 });
 
 export async function POST(req: Request) {
@@ -90,7 +95,7 @@ export async function POST(req: Request) {
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청을 확인해 주세요.");
-  const { period, memberId, paid, memo } = parsed.data;
+  const { period, memberId, paid, memo, reject, reason } = parsed.data;
   const s = await getStore();
   const m = (await s.list("Members")).find((x) => x.id === memberId);
   if (!m) return bad("회원을 찾을 수 없어요.", 404);
@@ -104,10 +109,26 @@ export async function POST(req: Request) {
     patch.checkedBy = paid ? g.s.mid : "";
     // 확인할 때의 금액을 남긴다(나중에 회비 설정이 바뀌어도 장부가 그대로)
     if (paid) patch.amount = cur?.amount && cur.paid === "true" ? cur.amount : duesAmount(dues, m) || "0";
-    if (paid) patch.notice = "";
+    // 확인하든 취소하든 회원의 입금 알림은 끝난다(취소하면 회원이 다시 "입금했어요"를 누를 수 있다)
+    patch.notice = "";
+    if (paid) { patch.undoAt = ""; patch.undoReason = ""; }
+    else if (cur?.paid === "true") { patch.undoAt = now; patch.undoReason = reason ?? ""; }
   }
+  // 입금 알림 돌려보내기(입금 안 됨)
+  if (reject && cur?.notice && cur.paid !== "true") { patch.notice = ""; patch.undoAt = now; patch.undoReason = reason ?? ""; }
   if (memo !== undefined) patch.memo = memo;
   if (cur) await s.update("DuesPayments", cur.id, patch);
   else await s.insert("DuesPayments", { period, memberId, amount: patch.amount ?? "", paid: "", paidAt: "", notice: "", memo: "", checkedBy: "", ...patch });
+  // 회원에게 바로 알림(종·휴대폰)
+  const label = periodLabel(period);
+  const why = reason ? ` 사유: ${reason}` : "";
+  const text = paid === true && cur?.paid !== "true" ? `${label} 모임 회비 입금이 확인됐어요.`
+    : paid === false && cur?.paid === "true" ? `${label} 모임 회비 입금 확인이 취소됐어요.${why} 입금했다면 다시 “입금했어요”를 눌러 주세요.`
+    : reject && cur?.notice && cur.paid !== "true" ? `${label} 모임 회비 입금이 확인되지 않았어요.${why} 입금했다면 다시 “입금했어요”를 눌러 주세요.`
+    : "";
+  if (text) {
+    await addAlerts([memberId], { eventId: "", text, href: "/board" });
+    await pushTo([memberId], "alerts").catch(() => undefined);
+  }
   return NextResponse.json({ ok: true });
 }

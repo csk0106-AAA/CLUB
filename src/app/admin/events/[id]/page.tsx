@@ -282,10 +282,18 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     setMsg({ tone: "info", text: next ? "회원 일정 목록 맨 위에 고정했어요." : "맨 위 고정을 풀었어요." });
   }
 
-  async function pay(memberId: string, paid: boolean) {
-    const r = await api(`/api/admin/events/${id}/pay`, { body: { memberId, paid } });
+  // 입금 확인·확인 취소·입금 알림 돌려보내기(입금 안 됨). 취소·돌려보낼 때는 회원에게 보일 사유를 받고, 회원에게 바로 알림이 간다.
+  async function pay(memberId: string, paid: boolean, reject?: boolean) {
+    let reason: string | undefined;
+    if (!paid || reject) {
+      const who = rows.find((x) => x.memberId === memberId)?.name ?? "회원";
+      const v = window.prompt(reject ? `${who} 님의 입금 알림을 “입금 안 됨”으로 돌려보낼까요?\n회원에게 알림이 가요. 사유를 적어 주세요(비워도 돼요).` : `${who} 님의 입금 확인을 취소할까요?\n회원에게 알림이 가요. 사유를 적어 주세요(비워도 돼요).`, "입금 내역이 확인되지 않아요");
+      if (v === null) return;
+      reason = v.trim();
+    }
+    const r = await api(`/api/admin/events/${id}/pay`, { body: reject ? { memberId, reject: true, reason } : { memberId, paid, ...(reason !== undefined ? { reason } : {}) } });
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg({ tone: "info", text: paid ? "입금을 확인했어요. 회원 화면의 회비 알림이 사라져요." : "입금 확인을 취소했어요." });
+    setMsg({ tone: "info", text: reject ? "입금 알림을 돌려보내고 회원에게 알렸어요." : paid ? "입금을 확인했어요. 회원에게 알림을 보냈어요." : "입금 확인을 취소하고 회원에게 알렸어요." });
     load();
   }
 
@@ -858,7 +866,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                         {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {fmtDate(r.payNotice)}</span>}
                       </td>
                       <td className="num" data-label="확인일">{fmtDate(r.paidAt) || "-"}</td>
-                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "취소" : "입금 확인"}</button></td>
+                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{!r.paid && r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}</td>
                     </tr>
                   ))}
                 </tbody>

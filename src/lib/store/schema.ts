@@ -71,6 +71,8 @@ export const TABS = {
     // 관리자 승인 후 참석(Events.approval "admin"): 회원이 참석을 신청하면 answer 는 그대로 두고 req "참석"(승인 대기), reqDays 고른 날짜, reqAt 신청 시각.
     //  승인하면 answer "참석" + days = reqDays, 반려하면 reqResult "declined" + reqReason(회원에게 보임)
     "req", "reqDays", "reqAt", "reqResult", "reqReason",
+    // payUndoAt/payUndoReason: 관리자가 입금 확인을 취소했거나 입금 알림을 "입금 안 됨"으로 돌려보낸 시각·사유(회원 화면에 보인다)
+    "payUndoAt", "payUndoReason",
   ],
   // memo: 비용 메모(목록에서는 메모 아이콘을 눌러 본다), order: 목록 순서(끌어서 바꾼다)
   // spentBase: 직접 적은 집행. spent = spentBase + 같은 이름으로 연동된 준비목록의 완료된 가격 합계(lib/items.ts syncPrepToCosts)
@@ -79,7 +81,8 @@ export const TABS = {
   EventPrep: ["id", "eventId", "item", "owner", "done", "category", "price"],
   // 모임 회비 입금(관리자 › 모임설정 › 회비입금). period: 연회비 "2026" / 월회비 "2026-11"
   //  amount: 낼 금액(확인할 때의 금액), paid: "true", paidAt, notice: 회원이 "입금했어요"를 누른 시각, memo, checkedBy: 확인한 관리자
-  DuesPayments: ["id", "period", "memberId", "amount", "paid", "paidAt", "notice", "memo", "checkedBy"],
+  // undoAt/undoReason: 관리자가 입금 확인을 취소했거나 입금 알림을 "입금 안 됨"으로 돌려보낸 시각·사유(회원 화면에 보인다, 다시 알리거나 확인되면 지움)
+  DuesPayments: ["id", "period", "memberId", "amount", "paid", "paidAt", "notice", "memo", "checkedBy", "undoAt", "undoReason"],
   // 모임 회비 장부(관리자 › 모임설정 › 회비내역). kind: in(기타 수입·이월금) | out(지출). date: YYYY-MM-DD
   DuesLedger: ["id", "date", "kind", "item", "amount", "memo", "createdBy", "createdAt"],
   // 준비목록 파일(일정관리 › 준비목록에서 올림). data: base64. 준비목록을 회원에게 보이면 회원도 내려받는다.

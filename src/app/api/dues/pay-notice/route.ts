@@ -22,6 +22,8 @@ export async function GET() {
     period, periodLabel: periodLabel(period),
     amount: me && !isGuest(me.kind) ? duesAmount(dues, me) : "",
     paid: p?.paid === "true", paidAt: p?.paidAt ?? "", notice: p?.paid === "true" ? "" : p?.notice ?? "",
+    // 관리자가 입금 확인을 취소했거나 입금 알림을 돌려보냈으면(그 뒤 다시 알리지 않았을 때) 시각·사유
+    undoAt: p?.paid !== "true" && !p?.notice ? p?.undoAt ?? "" : "", undoReason: p?.paid !== "true" && !p?.notice ? p?.undoReason ?? "" : "",
   });
 }
 
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
   const cur = (await s.list("DuesPayments")).find((x) => x.period === period && x.memberId === me.id);
   if (cur?.paid === "true") return bad("이미 입금이 확인됐어요.");
   const at = parsed.data.sent ? new Date().toISOString() : "";
-  if (cur) await s.update("DuesPayments", cur.id, { notice: at });
+  if (cur) await s.update("DuesPayments", cur.id, { notice: at, ...(at ? { undoAt: "", undoReason: "" } : {}) });
   else await s.insert("DuesPayments", { period, memberId: me.id, amount: "", paid: "", paidAt: "", notice: at, memo: "", checkedBy: "" });
   // 회비를 관리하는 관리자에게 종·휴대폰 알림
   if (at) {

@@ -118,6 +118,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     costs,
     apply: a ? {
       answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "",
+      // 관리자가 입금 확인을 취소했거나 입금 알림을 돌려보냈으면(그 뒤 다시 알리지 않았을 때) 시각·사유
+      payUndoAt: a.paid !== "true" && !a.payNotice ? a.payUndoAt ?? "" : "", payUndoReason: a.paid !== "true" && !a.payNotice ? a.payUndoReason ?? "" : "",
       // 회비 돌려받기: "wait" 송금대기 / "done" 송금완료(lib/refund.ts)
       refund: a.refund ?? "", refundAmount: a.refundAmount ?? "", refundDoneAt: a.refundDoneAt ?? "",
       // 관리자 승인 후 참석: req "참석" 승인 대기, reqResult "declined" 반려(reqReason 사유)

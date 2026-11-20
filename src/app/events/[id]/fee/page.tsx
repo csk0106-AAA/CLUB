@@ -8,7 +8,7 @@ import { fs } from "@/lib/fs";
 
 type Detail = {
   event: { name: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string };
-  apply: { answer: string; paid: boolean; payNotice: string } | null;
+  apply: { answer: string; paid: boolean; payNotice: string; payUndoAt?: string; payUndoReason?: string } | null;
   feeDue: boolean;
 };
 
@@ -30,8 +30,13 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
     else if (r.status === 401) router.replace("/");
     else setError(r.error);
   }, [id, router]);
+  // 화면으로 돌아올 때마다 다시 읽는다(관리자가 그사이 입금을 확인·취소했을 수 있다)
   useEffect(() => {
     load();
+    const again = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", again);
+    window.addEventListener("focus", again);
+    return () => { document.removeEventListener("visibilitychange", again); window.removeEventListener("focus", again); };
   }, [load]);
 
   async function copy(text: string) {
@@ -98,6 +103,8 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
             <div className="fb good"><span className="ic" aria-hidden="true">✓</span><div><b>입금이 확인됐어요</b><span className="t">회비 알림이 사라졌어요. 고맙습니다!</span></div></div>
           ) : noticed ? (
             <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>입금 알림을 보냈어요</b><span className="t">{md(d.apply?.payNotice ?? "")}에 알렸어요. 관리자가 확인하면 회비 알림이 사라져요.</span></div></div>
+          ) : d.apply?.payUndoAt ? (
+            <div className="fb bad"><span className="ic" aria-hidden="true">!</span><div><b>입금이 확인되지 않았어요</b><span className="t">{md(d.apply.payUndoAt)}{d.apply.payUndoReason ? ` · 사유: ${d.apply.payUndoReason}` : ""}. 입금했다면 “입금했어요”를 다시 눌러 주세요.</span></div></div>
           ) : (
             <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>입금한 뒤 “입금했어요”를 눌러 주세요</b><span className="t">관리자에게 알림이 가고, 확인이 끝나면 회비 알림이 사라져요.</span></div></div>
           )}

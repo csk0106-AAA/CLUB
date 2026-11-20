@@ -31,7 +31,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (a.paid === "true") return bad("이미 입금이 확인됐어요.");
 
   const at = parsed.data.sent ? new Date().toISOString() : "";
-  await s.update("EventApplies", a.id, { payNotice: at });
+  await s.update("EventApplies", a.id, { payNotice: at, ...(at ? { payUndoAt: "", payUndoReason: "" } : {}) });
   // 입금 알림을 보내면: 이 일정의 회비를 확인할 사람(일정 관리자·작성자·편집자)에게 종·휴대폰 알림
   if (at) {
     try {

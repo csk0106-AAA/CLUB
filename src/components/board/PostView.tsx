@@ -95,15 +95,20 @@ function dueLabel(d: FeeSnap): string {
 // 모임 회비 입금 확인 요청(일정 회비의 "입금했어요"와 같은 방식). 관리자가 회비입금에서 확인하면 "입금 확인됨".
 // "내 연회비" 금액 카드 안, 금액 바로 아래에 붙여서 보여 준다(따로 카드를 만들지 않음).
 function DuesPayNotice() {
-  const [s, setS] = useState<{ periodLabel: string; amount: string; paid: boolean; paidAt: string; notice: string } | null>(null);
+  const [s, setS] = useState<{ periodLabel: string; amount: string; paid: boolean; paidAt: string; notice: string; undoAt?: string; undoReason?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const load = useCallback(async () => {
-    const r = await api<{ periodLabel: string; amount: string; paid: boolean; paidAt: string; notice: string }>("/api/dues/pay-notice");
+    const r = await api<{ periodLabel: string; amount: string; paid: boolean; paidAt: string; notice: string; undoAt?: string; undoReason?: string }>("/api/dues/pay-notice");
     if (r.ok) setS(r.data);
   }, []);
+  // 화면으로 돌아올 때마다 다시 읽는다(관리자가 그사이 입금을 확인·취소했을 수 있다)
   useEffect(() => {
     load();
+    const again = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", again);
+    window.addEventListener("focus", again);
+    return () => { document.removeEventListener("visibilitychange", again); window.removeEventListener("focus", again); };
   }, [load]);
   async function send(sent: boolean) {
     if (sent && !window.confirm("입금했다고 관리자에게 알릴까요?\n관리자가 통장을 확인한 뒤 입금 확인을 해요.")) return;
@@ -127,6 +132,13 @@ function DuesPayNotice() {
         </>
       ) : (
         <>
+          {s.undoAt && (
+            <div className="msg bad" role="status" style={{ textAlign: "left" }}>
+              <b>입금이 확인되지 않았어요</b> <span className="small">({fmtDate(s.undoAt)})</span>
+              {s.undoReason && <><br />사유: {s.undoReason}</>}
+              <br /><span className="small">입금했다면 아래 “입금했어요”를 다시 눌러 주세요.</span>
+            </div>
+          )}
           <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 42, fontSize: fs(14) }} onClick={() => send(true)}>입금했어요 (입금 확인 요청)</button>
           <span className="small">입금한 뒤 누르면 관리자에게 입금 확인을 요청해요.</span>
         </>

@@ -36,7 +36,7 @@ type Detail = {
   prep?: { id: string; item: string; owner: string; done: boolean }[] | null;
   prepFiles?: { id: string; name: string; size: number }[] | null;
   costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
-  apply: { answer: string; days: string[]; paid: boolean; payNotice: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string; req?: string; reqDays?: string[]; reqResult?: string; reqReason?: string } | null;
+  apply: { answer: string; days: string[]; paid: boolean; payNotice: string; payUndoAt?: string; payUndoReason?: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string; req?: string; reqDays?: string[]; reqResult?: string; reqReason?: string } | null;
   feeDue: boolean;
 };
 
@@ -106,6 +106,16 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     load();
   }, [load]);
+  // 화면으로 돌아오면 일정 정보(회비·입금 상태 등)만 다시 읽는다
+  useEffect(() => {
+    const again = async () => {
+      if (document.visibilityState !== "visible") return;
+      const r = await api<Detail>(`/api/events/${id}`);
+      if (r.ok) setD(r.data);
+    };
+    document.addEventListener("visibilitychange", again);
+    return () => document.removeEventListener("visibilitychange", again);
+  }, [id]);
 
   // 신청을 마친 뒤: 회비가 있으면 회비 안내, 없으면 이 화면 그대로
   const next = (fee: string) => {
@@ -189,7 +199,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         ) : (
           <button className="fb bad" type="button" style={{ alignItems: "center" }} onClick={() => router.push(`/events/${id}/fee`)}>
             <span className="ic" style={{ fontSize: fs(15) }} aria-hidden="true">₩</span>
-            <span className="grow"><b>회비를 아직 안 내셨어요</b><span className="t">{won(e.fee)} · 안내 보기 ›</span></span>
+            <span className="grow"><b>{d.apply?.payUndoAt ? "입금이 확인되지 않았어요" : "회비를 아직 안 내셨어요"}</b><span className="t">{d.apply?.payUndoAt && d.apply.payUndoReason ? `사유: ${d.apply.payUndoReason} · ` : ""}{won(e.fee)} · 안내 보기 ›</span></span>
           </button>
         )
       )}

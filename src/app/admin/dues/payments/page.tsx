@@ -35,9 +35,15 @@ function GridView({ onPick }: { onPick: (period: string) => void }) {
   }, [load]);
   async function toggle(row: Grid["rows"][number], c: Grid["rows"][number]["cells"][number], label: string) {
     const paid = c.status !== "paid";
-    if (!window.confirm(paid ? `${row.name} 님의 ${label} 입금을 확인할까요?` : `${row.name} 님의 ${label} 입금 확인을 취소할까요?`)) return;
+    let reason: string | undefined;
+    if (paid) { if (!window.confirm(`${row.name} 님의 ${label} 입금을 확인할까요?`)) return; }
+    else {
+      const v = window.prompt(`${row.name} 님의 ${label} 입금 확인을 취소할까요?\n회원에게 알림이 가요. 사유를 적어 주세요(비워도 돼요).`, "입금 내역이 확인되지 않아요");
+      if (v === null) return;
+      reason = v.trim();
+    }
     setBusy(true);
-    const r = await api("/api/admin/dues/payments", { body: { period: c.period, memberId: row.memberId, paid } });
+    const r = await api("/api/admin/dues/payments", { body: { period: c.period, memberId: row.memberId, paid, ...(reason !== undefined ? { reason } : {}) } });
     setBusy(false);
     if (!r.ok) return setErr(r.error);
     load();
@@ -136,14 +142,33 @@ function Payments({ initial }: { initial: string }) {
     load();
   }, [load]);
 
-  async function mark(r: Row, paid: boolean) {
+  // 회원이 보낸 입금 알림을 돌려보낸다(통장에 입금이 없을 때). 회원에게 사유와 함께 알림이 가고, 회원은 다시 알릴 수 있다.
+  async function rejectNotice(r: Row) {
     if (!d) return;
-    if (!paid && !window.confirm(`${r.name} 님의 입금 확인을 취소할까요?`)) return;
+    const v = window.prompt(`${r.name} 님의 입금 알림을 “입금 안 됨”으로 돌려보낼까요?\n회원에게 알림이 가요. 사유를 적어 주세요(비워도 돼요).`, "입금 내역이 확인되지 않아요");
+    if (v === null) return;
     setBusy(r.memberId);
-    const res = await api("/api/admin/dues/payments", { body: { period: d.period, memberId: r.memberId, paid } });
+    const res = await api("/api/admin/dues/payments", { body: { period: d.period, memberId: r.memberId, reject: true, reason: v.trim() } });
     setBusy("");
     if (!res.ok) return setMsg({ tone: "bad", text: res.error });
-    setMsg({ tone: "info", text: paid ? `${r.name} 님 입금을 확인했어요.` : `${r.name} 님 입금 확인을 취소했어요.` });
+    setMsg({ tone: "info", text: `${r.name} 님 입금 알림을 돌려보내고 회원에게 알렸어요.` });
+    load();
+  }
+
+  async function mark(r: Row, paid: boolean) {
+    if (!d) return;
+    // 취소할 때는 회원에게 보일 사유를 받는다(비워도 됨). 회원에게 바로 알림이 간다.
+    let reason: string | undefined;
+    if (!paid) {
+      const v = window.prompt(`${r.name} 님의 입금 확인을 취소할까요?\n회원에게 알림이 가요. 사유를 적어 주세요(비워도 돼요).`, "입금 내역이 확인되지 않아요");
+      if (v === null) return;
+      reason = v.trim();
+    }
+    setBusy(r.memberId);
+    const res = await api("/api/admin/dues/payments", { body: { period: d.period, memberId: r.memberId, paid, ...(reason !== undefined ? { reason } : {}) } });
+    setBusy("");
+    if (!res.ok) return setMsg({ tone: "bad", text: res.error });
+    setMsg({ tone: "info", text: paid ? `${r.name} 님 입금을 확인했어요. 회원에게 알림을 보냈어요.` : `${r.name} 님 입금 확인을 취소하고 회원에게 알렸어요.` });
     load();
   }
 
@@ -223,6 +248,7 @@ function Payments({ initial }: { initial: string }) {
                     <button className={r.paid ? "mini" : "btn"} type="button" disabled={busy === r.memberId}
                       style={r.paid ? { minHeight: 32, fontSize: fs(12) } : { width: "auto", minHeight: 32, padding: "0 10px", fontSize: fs(12) }}
                       onClick={() => mark(r, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>
+                    {!r.paid && r.notice && <button className="mini danger" type="button" disabled={busy === r.memberId} style={{ minHeight: 32, fontSize: fs(12), marginLeft: 4 }} onClick={() => rejectNotice(r)}>입금 안 됨</button>}
                   </td>
                 </tr>
               ))}
