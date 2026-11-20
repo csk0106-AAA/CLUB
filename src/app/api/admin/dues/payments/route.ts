@@ -79,6 +79,14 @@ export async function GET(req: Request) {
   });
 }
 
+// 회원 알림에서 열 곳: 가장 최근에 올린 모임 회비 공지(클럽 회비 글 제외). 없으면 홈
+async function duesPostHref(): Promise<string> {
+  const posts = await (await getStore()).list("Posts", { omit: ["body"] });
+  const club = (p: { data?: string }) => { try { return String(JSON.parse(p.data || "{}").club ?? ""); } catch { return ""; } };
+  const fee = posts.filter((p) => p.form === "fee" && !club(p)).sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || ""))[0];
+  return fee ? `/board/${fee.id}` : "/board";
+}
+
 // 입금 확인·취소, 메모: 그 기간·회원의 입금 기록을 고친다(없으면 만든다)
 const body = z.object({
   period: z.string().regex(/^\d{4}(-\d{2})?$/),
@@ -127,7 +135,7 @@ export async function POST(req: Request) {
     : reject && cur?.notice && cur.paid !== "true" ? `${label} 모임 회비 입금이 확인되지 않았어요.${why} 입금했다면 다시 “입금했어요”를 눌러 주세요.`
     : "";
   if (text) {
-    await addAlerts([memberId], { eventId: "", text, href: "/board" });
+    await addAlerts([memberId], { eventId: "", text, href: await duesPostHref() });
     await pushTo([memberId], "alerts").catch(() => undefined);
   }
   return NextResponse.json({ ok: true });

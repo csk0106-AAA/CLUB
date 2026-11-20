@@ -43,7 +43,7 @@ const what = (r: { kindLabel: string; club: string; eventName: string }) =>
 
 // 홈 화면 종 아이콘을 누르면 뜨는 알림 목록.
 // 열면(불러온 뒤) 새 글, 내 글에 달린 댓글, 내 신청 결과를 "봤음"으로 표시한다. 처리할 신청은 승인·거절해야 숫자에서 빠진다.
-export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
+export function AlertsPanel({ onCount, onNavigate }: { onCount: (n: number) => void; onNavigate?: () => void }) {
   const [d, setD] = useState<AlertsData | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
@@ -115,7 +115,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
         <section aria-labelledby="al-m" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-m" style={sectionTitle}>새 알림 {mAl.length}건</h3>
           {mAl.map((a) => (
-            <Link key={a.id} href={a.href || "/events"} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+            <Link onClick={() => onNavigate?.()} key={a.id} href={a.href || "/events"} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">!</span>
               <span className="grow"><b>{a.text}</b><span className="t">{fmtDate(a.at)} · 확인하기 ›</span></span>
             </Link>
@@ -127,7 +127,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
         <section aria-labelledby="al-car" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-car" style={sectionTitle}>차량 배정 {carR.length}건</h3>
           {carR.map((r) => (
-            <Link key={r.id} href={`/events/${r.eventId}#cars`} className={`fb ${r.status === "confirmed" ? "info" : "bad"}`} style={{ textDecoration: "none", alignItems: "center" }}>
+            <Link onClick={() => onNavigate?.()} key={r.id} href={`/events/${r.eventId}#cars`} className={`fb ${r.status === "confirmed" ? "info" : "bad"}`} style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">{r.status === "confirmed" ? "✓" : "!"}</span>
               <span className="grow"><b>{r.eventName} · {r.dir} {r.car} {r.label}</b><span className="t">{fmtDate(r.at)} · 일정에서 확인하기 ›</span></span>
             </Link>
@@ -138,7 +138,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
         <section aria-labelledby="al-carp" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-carp" style={sectionTitle}>승인할 차량 신청 {carP.reduce((n, x) => n + x.count, 0)}건</h3>
           {carP.map((p) => (
-            <Link key={p.eventId} href={`/admin/events/${p.eventId}?tab=car`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+            <Link onClick={() => onNavigate?.()} key={p.eventId} href={`/admin/events/${p.eventId}?tab=car`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">!</span>
               <span className="grow"><b>{p.eventName} · 승인 대기 {p.count}건</b><span className="t">일정 관리 › 차량배정에서 승인하기 ›</span></span>
             </Link>
@@ -150,7 +150,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
         <section aria-labelledby="al-join" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-join" style={sectionTitle}>신규 회원 확인 필요 {joins.length}건</h3>
           {joins.map((j) => (
-            <Link key={`${j.kind}-${j.id}`} href={j.href} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+            <Link onClick={() => onNavigate?.()} key={`${j.kind}-${j.id}`} href={j.href} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">!</span>
               <span className="grow"><b>{j.kind === "event" ? "일정" : "게시글"} · {j.title}</b><span className="t">올린 뒤 가입한 회원 {j.count}명이 공개 대상에 없어요 · 확인하고 업데이트하기 ›</span></span>
             </Link>
@@ -159,7 +159,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
       )}
 
       {apps > 0 && (
-        <Link href="/admin/member-apps" className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+        <Link onClick={() => onNavigate?.()} href="/admin/member-apps" className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
           <span className="ic" aria-hidden="true">!</span>
           <span className="grow"><b>승인 전 회원 신청 {apps}건</b><span className="t">회원관리 › 회원신청관리에서 확인하기 ›</span></span>
         </Link>
@@ -169,7 +169,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
         <section aria-labelledby="al-dues" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-dues" style={sectionTitle}>확인할 모임 회비 입금 알림 {duesN.length}건</h3>
           {duesN.map((p) => (
-            <Link key={p.id} href={`/admin/dues/payments?period=${encodeURIComponent(p.period)}`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+            <Link onClick={() => onNavigate?.()} key={p.id} href={`/admin/dues/payments?period=${encodeURIComponent(p.period)}`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">₩</span>
               <span className="grow"><b>{p.memberName} 님이 모임 회비를 입금했다고 알렸어요</b><span className="t">{p.periodLabel} · {fmtDate(p.at)} · 회비입금에서 확인하기 ›</span></span>
             </Link>
@@ -181,7 +181,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
         <section aria-labelledby="al-pay" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <h3 id="al-pay" style={sectionTitle}>확인할 입금 알림 {pays.length}건</h3>
           {pays.map((p) => (
-            <Link key={p.id} href={`/admin/events/${p.eventId}?tab=fee${p.club ? `&club=${encodeURIComponent(p.club)}` : ""}`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
+            <Link onClick={() => onNavigate?.()} key={p.id} href={`/admin/events/${p.eventId}?tab=fee${p.club ? `&club=${encodeURIComponent(p.club)}` : ""}`} className="fb info" style={{ textDecoration: "none", alignItems: "center" }}>
               <span className="ic" aria-hidden="true">₩</span>
               <span className="grow"><b>{p.memberName} 님이 입금했다고 알렸어요</b><span className="t">{p.eventName} · {fmtDate(p.at)} · 회비 탭에서 입금 확인하기 ›</span></span>
             </Link>
@@ -214,7 +214,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
           <ul className="rows">
             {comments.map((c) => (
               <li key={c.id}>
-                <Link href={`/board/${c.postId}#comments`} className="opt rowopt" style={{ textDecoration: "none" }}>
+                <Link onClick={() => onNavigate?.()} href={`/board/${c.postId}#comments`} className="opt rowopt" style={{ textDecoration: "none" }}>
                   <span aria-hidden="true" style={{ flex: "none" }}>💬</span>
                   <span className="name grow" style={{ overflowWrap: "anywhere" }}>{c.name} 님이 ‘{c.title}’에 댓글을 남겼어요</span>
                   <span className="small" style={{ flex: "none" }}>{fmtDate(c.at)}</span>
@@ -255,7 +255,7 @@ export function AlertsPanel({ onCount }: { onCount: (n: number) => void }) {
           <ul className="rows">
             {d.posts.map((p) => (
               <li key={p.id}>
-                <Link href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none" }}>
+                <Link onClick={() => onNavigate?.()} href={`/board/${p.id}`} className="opt rowopt" style={{ textDecoration: "none" }}>
                   <FreshChip fresh={p.fresh} style={{ flex: "none" }} />
                   <span className="name grow" style={{ overflowWrap: "anywhere" }}>{p.title}</span>
                   <span className="small" style={{ flex: "none" }}>{fmtDate(p.at)}</span>

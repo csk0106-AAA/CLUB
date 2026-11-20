@@ -98,7 +98,7 @@ export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?
         </div>
       </header>
       <Popup id="alerts" title="알림" open={alertsOpen} onClose={() => { setAlertsOpen(false); onAlertsClosed?.(); }}>
-        {alertsOpen && <AlertsPanel onCount={onCount} />}
+        {alertsOpen && <AlertsPanel onCount={onCount} onNavigate={() => { setAlertsOpen(false); onAlertsClosed?.(); }} />}
       </Popup>
       <Popup id="org" width={760} title="조직도" open={orgOpen} onClose={() => setOrgOpen(false)}>
         {orgOpen && <div style={{ display: "flex", flexDirection: "column", gap: 12 }}><OrgView /></div>}
