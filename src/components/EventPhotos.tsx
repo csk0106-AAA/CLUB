@@ -181,13 +181,8 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
   // 사진 크게 보기 창(두 모양이 함께 쓴다)
   const viewer = (
     <Popup id="event-photo" open={!!cur} onClose={() => setOpen(null)} title={cur ? `${cur.name} 님의 사진` : "사진"} width={720}
-      footer={cur && (
+      footer={cur && (cur.mine || list.manager) && (
         <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-          <button type="button" className={`btn ${cur.liked ? "" : "white"}`} style={{ width: "auto", minWidth: 96 }} aria-pressed={cur.liked} onClick={() => like(cur)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
-            {cur.liked ? "♥" : "♡"} {cur.likes}
-          </button>
-          <a className="btn white" style={{ width: "auto", minWidth: 96, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-            href={`${src(eventId, cur.id)}?dl=1`} download>내려받기</a>
           {(cur.mine || list.manager) && <button type="button" className="btn white" style={{ width: "auto" }} onClick={() => caption(cur)}>설명 {cur.caption ? "고치기" : "쓰기"}</button>}
           {(cur.mine || list.manager) && <button type="button" className="btn white" style={{ width: "auto", color: "var(--red-t)" }} onClick={() => remove(cur)}>지우기</button>}
         </div>
@@ -199,6 +194,15 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
             <img src={src(eventId, cur.id)} alt={cur.caption || `${cur.name} 님이 올린 사진`} />
             {curIdx > 0 && <button type="button" className="ph-nav l" aria-label="이전 사진" onClick={() => setOpen(photos[curIdx - 1].id)}>‹</button>}
             {curIdx < photos.length - 1 && <button type="button" className="ph-nav r" aria-label="다음 사진" onClick={() => setOpen(photos[curIdx + 1].id)}>›</button>}
+            {/* 사진 오른쪽 아래: 좋아요 · 내려받기(목록 사진과 같은 아이콘) */}
+            <div className="ph-acts">
+              <button type="button" className={`ph-act${cur.liked ? " on" : ""}`} aria-pressed={cur.liked} aria-label={`좋아요 ${cur.likes}개${cur.liked ? ", 누름" : ""}`} onClick={() => like(cur)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
+                <span aria-hidden="true">{cur.liked ? "♥" : "♡"}</span>{cur.likes > 0 && <span>{cur.likes}</span>}
+              </button>
+              <a className="ph-act" href={`${src(eventId, cur.id)}?dl=1`} download aria-label={`${cur.name} 님의 사진 내려받기`}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+              </a>
+            </div>
           </div>
           {cur.caption && <p style={{ margin: 0, overflowWrap: "anywhere" }}>{cur.caption}</p>}
           <span className="small">{cur.name} · {when(cur.createdAt)} · {curIdx + 1}/{photos.length}</span>
