@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { DEFAULT_TEMPLATES } from "../template-schema";
-import { migrateRevealLabel, migrateTemplateHost, migrateTemplateVersions } from "../template-versions";
+import { migrateReadingSplit, migrateRevealLabel, migrateTemplateHost, migrateTemplateVersions } from "../template-versions";
 import type { Row, Store } from "./types";
 import { LocalStore } from "./local";
 
@@ -31,6 +31,7 @@ async function seed(s: Store): Promise<void> {
   await migrateTemplateVersions(s);
   await migrateTemplateHost(s);
   await migrateRevealLabel(s);
+  await migrateReadingSplit(s);
   await migrateClubType(s);
 }
 

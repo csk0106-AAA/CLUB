@@ -12,7 +12,7 @@ type Point = { key: string; label: string; hint: string };
 
 // 이 활동 설정에서 AI가 쓰이는 지점 — lib/ai-guides.ts aiPointsFor 와 같은 규칙
 export const aiPointKeys = (c: { preEvent: { steps: string[] } }): string[] =>
-  c.preEvent.steps.includes("ai_interview") ? ["followup", "draft", "truthlies", "revise", "reading"]
+  c.preEvent.steps.includes("ai_interview") ? ["followup", "draft", "truthlies", "revise", "reading", "readingFull"]
   : c.preEvent.steps.includes("worry_write") ? ["worry"]
   : [];
 

@@ -203,6 +203,35 @@ export async function migrateRevealLabel(s: Store): Promise<{ templates: number;
   return out;
 }
 
+// 한 번만: 명리학 풀이 지침을 "공개 성격·성향 글"(reading)과 "본인용 생애주기 풀이"(readingFull)로 나눴다.
+// 나누기 전 reading 지침은 두 글 모두에 적용됐으므로, 본인용이 비어 있으면 같은 글을 복사해 결과가 바뀌지 않게 한다.
+export async function migrateReadingSplit(s: Store): Promise<{ templates: number; acts: number; setting: boolean } | null> {
+  const flag = "readingSplitMigrated";
+  if (await s.get("Settings", flag)) return null;
+  const out = { templates: 0, acts: 0, setting: false };
+  const fix = (json: string | undefined): string | null => {
+    const cfg = readConfig(json) as (ReturnType<typeof readConfig> & { aiGuides?: Record<string, string> }) | null;
+    const g = cfg?.aiGuides;
+    if (!cfg || !g?.reading?.trim() || g.readingFull?.trim()) return null;
+    return JSON.stringify({ ...cfg, aiGuides: { ...g, readingFull: g.reading } });
+  };
+  for (const r of await s.list("ActivityTemplates")) {
+    const next = fix(r.config);
+    if (next) { await s.update("ActivityTemplates", r.id, { config: next }); out.templates++; }
+  }
+  for (const a of await s.list("EventActivities")) {
+    const next = fix(a.config);
+    if (next) { await s.update("EventActivities", a.id, { config: next }); out.acts++; }
+  }
+  // AI 설정 화면의 전체 지점 지침(Settings aiGuide:reading)
+  const g = await s.get("Settings", "aiGuide:reading");
+  const gf = await s.get("Settings", "aiGuide:readingFull");
+  const val = (() => { try { return String(JSON.parse(g?.value ?? '""')); } catch { return ""; } })();
+  if (val.trim() && !gf) { await s.insert("Settings", { id: "aiGuide:readingFull", value: JSON.stringify(val) }); out.setting = true; }
+  await s.insert("Settings", { id: flag, value: JSON.stringify({ at: new Date().toISOString(), ...out }) });
+  return out;
+}
+
 // 지울 수 있는지: 일정 활동이 쓰는 버전은 지울 수 없고, v1 은 다른 버전이 없는 직접 만든 템플릿만 지운다.
 export function deleteBlock(rows: Row[], acts: Row[], r: Row): string | null {
   if (r.origin === "default") return "기본 템플릿은 지울 수 없어요. 복제해서 쓰세요.";

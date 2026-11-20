@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ask, extractJson, isAiEnabled, readingPrompt } from "@/lib/ai";
-import { guidelinesFor } from "@/lib/ai-guides";
+import { commonGuide, pointGuide } from "@/lib/ai-guides";
 import { bad, guard } from "@/lib/api";
 import { memberGenderPatch } from "@/lib/gender-edit";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
@@ -79,7 +79,8 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const terms = termsFrom(await s.list("Members"));
-  const p = readingPrompt(await guidelinesFor("reading", w.act), sajuSummary(saju, gender));
+  // 공통 지침 + 공개 성격·성향 글 지침(reading) + 본인용 생애주기 풀이 지침(readingFull)을 각 글에 따로
+  const p = readingPrompt(await commonGuide(w.act), sajuSummary(saju, gender), await pointGuide("reading", w.act), await pointGuide("readingFull", w.act));
   const messages = [...p.messages];
   let result: { traits: string; full: string } | null = null;
   for (let attempt = 0; attempt < 2 && !result; attempt++) {
