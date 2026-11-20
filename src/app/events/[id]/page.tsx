@@ -5,7 +5,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EventHero } from "@/components/EventHero";
 import { FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, type FeeView } from "@/components/EventInfoCard";
-import { LiveActivities } from "@/components/LiveActivities";
+import { LiveActivities, LiveNowBanner } from "@/components/LiveActivities";
 import { EventMinutes } from "@/components/EventMinutes";
 import { EventPhotos } from "@/components/EventPhotos";
 import { MemberTabs } from "@/components/MemberTabs";
@@ -214,6 +214,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </button>
         )
       )}
+
+      {/* 현장 진행 중인 활동이 있으면: 들어가기(저예요·투표 등은 활동 화면에서) */}
+      <LiveNowBanner eventId={id} />
 
       <div className="row" style={{ justifyContent: "space-between" }}>
         <Link href="/events" className="small" style={{ fontWeight: 700, color: "var(--blue-t)", textDecoration: "none", minHeight: 32, display: "inline-flex", alignItems: "center" }}>‹ 일정 목록으로</Link>

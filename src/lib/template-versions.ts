@@ -175,6 +175,34 @@ export async function migrateTemplateHost(s: Store): Promise<{ templates: number
   return out;
 }
 
+// 한 번만: '내가 누굴까요?'의 현장 단계 'reveal'(당사자 휴대폰에 "저예요" 버튼) 이름이 "이름 공개"라서
+// 진행자 화면의 [이름 공개] 버튼(진행자가 대신 밝히기)과 헷갈렸다 → 단계 이름 "저예요", 진행자 버튼 이름 "“저예요” 열기".
+// 템플릿의 모든 버전과 이미 만든 일정 활동을 같이 고친다(관리자가 다른 이름으로 바꿔 둔 경우는 그대로).
+export async function migrateRevealLabel(s: Store): Promise<{ templates: number; acts: number } | null> {
+  const flag = "revealLabelMigrated";
+  if (await s.get("Settings", flag)) return null;
+  const out = { templates: 0, acts: 0 };
+  const fix = (json: string | undefined): string | null => {
+    const cfg = readConfig(json) as (ReturnType<typeof readConfig> & { onsite?: { steps?: { key: string; label: string; memberScreen: string; hostButton?: string }[] } }) | null;
+    const steps = cfg?.onsite?.steps;
+    if (!cfg || !steps?.some((st) => st.key === "reveal" && st.memberScreen === "iam_button" && st.label === "이름 공개")) return null;
+    const next = steps.map((st) => (st.key === "reveal" && st.memberScreen === "iam_button" && st.label === "이름 공개"
+      ? { ...st, label: "저예요", ...(st.hostButton === "이름 공개" || !st.hostButton ? { hostButton: "“저예요” 열기" } : {}) }
+      : st));
+    return JSON.stringify({ ...cfg, onsite: { ...cfg.onsite, steps: next } });
+  };
+  for (const r of await s.list("ActivityTemplates")) {
+    const next = fix(r.config);
+    if (next) { await s.update("ActivityTemplates", r.id, { config: next }); out.templates++; }
+  }
+  for (const a of await s.list("EventActivities")) {
+    const next = fix(a.config);
+    if (next) { await s.update("EventActivities", a.id, { config: next }); out.acts++; }
+  }
+  await s.insert("Settings", { id: flag, value: JSON.stringify({ at: new Date().toISOString(), ...out }) });
+  return out;
+}
+
 // 지울 수 있는지: 일정 활동이 쓰는 버전은 지울 수 없고, v1 은 다른 버전이 없는 직접 만든 템플릿만 지운다.
 export function deleteBlock(rows: Row[], acts: Row[], r: Row): string | null {
   if (r.origin === "default") return "기본 템플릿은 지울 수 없어요. 복제해서 쓰세요.";

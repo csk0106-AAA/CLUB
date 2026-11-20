@@ -121,7 +121,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
     onsite: {
       steps: [
         { key: "intro", label: "소개 페이지 열기", memberScreen: "wait", unlock: "host_click", hostButton: "소개 열기" },
-        { key: "reveal", label: "이름 공개", memberScreen: "iam_button", unlock: "host_click", hostButton: "이름 공개" },
+        { key: "reveal", label: "저예요", memberScreen: "iam_button", unlock: "host_click", hostButton: "“저예요” 열기" },
         { key: "vote", label: "거짓 투표", memberScreen: "vote", unlock: "host_click", hostButton: "투표" },
         { key: "result", label: "정답 공개", memberScreen: "view", unlock: "host_click", hostButton: "정답 공개" },
       ],

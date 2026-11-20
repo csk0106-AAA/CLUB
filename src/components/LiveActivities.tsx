@@ -154,6 +154,50 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
   );
 }
 
+// 일정 화면 맨 위 알림 줄: 현장 진행 중인 활동이 있으면 "들어가기"(누르면 그 활동 화면, 거기서 저예요·투표 등).
+//  내 소개 차례에 "저예요" 버튼이 열렸으면 더 눈에 띄게 알려 준다. 10초마다(화면이 보일 때만) 확인한다.
+export function LiveNowBanner({ eventId }: { eventId: string }) {
+  const [list, setList] = useState<Live[]>([]);
+  useEffect(() => {
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function tick() {
+      if (document.visibilityState === "visible") {
+        const r = await api<{ activities: Live[] }>(`/api/events/${eventId}/live`);
+        if (r.ok && !stop) setList(r.data.activities);
+      }
+      if (!stop) timer = setTimeout(tick, 10_000);
+    }
+    tick();
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
+  }, [eventId]);
+  const now = list.filter((a) => a.round || a.worry || a.live.active);
+  if (now.length === 0) return null;
+  return (
+    <>
+      {now.map((a) => {
+        const href = nodeOf(eventId, a).href;
+        const mine = !!a.round && a.round.isTarget && a.round.screen === "iam_button" && a.round.state === "reveal" && !a.round.nameRevealed;
+        const inner = (
+          <>
+            <span className="ic" aria-hidden="true">{mine ? "!" : "●"}</span>
+            <span className="grow">
+              <b>{mine ? "내 소개 차례예요! 들어가서 “저예요”를 눌러 주세요" : `지금 현장 진행 중이에요 · ${a.name}`}</b>
+              <span className="t">{href ? "들어가기 ›" : "진행자 안내를 기다려 주세요"}</span>
+            </span>
+          </>
+        );
+        return href
+          ? <Link key={a.id} href={href} className={`fb ${mine ? "bad" : "info"}`} style={{ textDecoration: "none", alignItems: "center" }}>{inner}</Link>
+          : <div key={a.id} className="fb info" style={{ alignItems: "center" }}>{inner}</div>;
+      })}
+    </>
+  );
+}
+
 // 활동 화면 맨 위 박스: 이 활동의 설명·시간·참여 대상·진행 상황(진행자가 연 화면, 2진실 1거짓 라운드, 뽑힌 고민).
 // 일정의 활동 길에서 아이콘을 눌러 들어오면 여기서 본다. 2초마다 진행 상황을 다시 읽는다.
 export function ActivityLiveBox({ eventId, activityId }: { eventId: string; activityId: string }) {
