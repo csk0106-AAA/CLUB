@@ -60,7 +60,7 @@ function GridView({ onPick }: { onPick: (period: string) => void }) {
         {g.duesPeriod === "monthly" ? "월회비는 달마다(최근 12개월)" : "연회비는 해마다"} 한 칸이에요. <b style={{ color: "var(--green-t)" }}>✓</b> 입금 · <b style={{ color: "var(--blue-t)" }}>₩</b> 입금 알림(확인 전) · <b style={{ color: "var(--sub)" }}>–</b> 미입금. 칸을 누르면 입금 확인·취소, 기간 이름을 누르면 그 기간을 자세히 봐요.
       </span>
       {err && <div className="msg bad" role="alert">{err}</div>}
-      <input className="field" type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기" style={{ minHeight: 34, fontSize: fs(13) }} value={q} onChange={(e) => setQ(e.target.value)} />
+      <input className="field" type="search" placeholder="이름 찾기" aria-label="이름으로 찾기" style={{ minHeight: 34, fontSize: fs(13) }} value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="tblw" style={{ overflowX: "auto" }}>
         <table className="tbl compact" style={{ minWidth: 120 + g.periods.length * 52 }}>
           <thead>
@@ -109,15 +109,15 @@ function GridView({ onPick }: { onPick: (period: string) => void }) {
   );
 }
 
-// 관리자 › 모임설정 › 회비입금: 누적 현황(회원 × 기간)과 기간별(한 기간을 자세히) 두 가지로 본다.
+// 관리자 › 모임설정 › 회비입금: 기간별(한 기간을 자세히, 처음 보기)과 누적 현황(회원 × 기간) 두 가지로 본다.
 function PaymentsPage({ initial }: { initial: string }) {
-  const [view, setView] = useState<"grid" | "period">(initial ? "period" : "grid");
+  const [view, setView] = useState<"grid" | "period">("period"); // 처음은 기간별(지금 기간)
   const [pick, setPick] = useState(initial);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="seg" role="group" aria-label="보기 방식" style={{ width: 220, flex: "none" }}>
-        <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")} style={{ minHeight: 36, fontSize: fs(13) }}>누적 현황</button>
         <button type="button" aria-pressed={view === "period"} onClick={() => setView("period")} style={{ minHeight: 36, fontSize: fs(13) }}>기간별</button>
+        <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")} style={{ minHeight: 36, fontSize: fs(13) }}>누적 현황</button>
       </div>
       {view === "grid" ? <GridView onPick={(p) => { setPick(p); setView("period"); }} /> : <Payments key={pick} initial={pick} />}
     </div>
@@ -130,7 +130,7 @@ function Payments({ initial }: { initial: string }) {
   const [d, setD] = useState<Data | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState("");
-  const [only, setOnly] = useState<"all" | "unpaid" | "notice">("all");
+  const [only, setOnly] = useState<"all" | "paid" | "unpaid" | "notice">("all");
   const [q, setQ] = useState("");
 
   const load = useCallback(async () => {
@@ -180,7 +180,7 @@ function Payments({ initial }: { initial: string }) {
   const got = d.rows.filter((r) => r.paid).reduce((n, r) => n + (Number(r.amount) || 0), 0);
   const word = q.trim();
   const shown = d.rows
-    .filter((r) => (only === "unpaid" ? !r.paid : only === "notice" ? !r.paid && !!r.notice : true))
+    .filter((r) => (only === "paid" ? r.paid : only === "unpaid" ? !r.paid : only === "notice" ? !r.paid && !!r.notice : true))
     .filter((r) => !word || r.name.includes(word))
     // 입금 알림 먼저, 그다음 미입금, 입금 순
     .sort((a, b) => Number(!!b.notice && !b.paid) - Number(!!a.notice && !a.paid) || Number(a.paid) - Number(b.paid) || a.name.localeCompare(b.name, "ko"));
@@ -213,20 +213,19 @@ function Payments({ initial }: { initial: string }) {
 
       <section className="card" style={{ padding: 12 }} aria-label="입금 요약">
         <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 12px", fontSize: fs(13) }}>
-          {stat("입금 완료", `${paid.length} / ${targets.length}명`, "var(--green-t)")}
-          {stat("입금 알림(확인 전)", `${notices.length}건`, notices.length ? "var(--blue-t)" : undefined)}
           {stat("입금액", won(got), "var(--green-t)")}
-          {stat("남은 회비", won(Math.max(0, total - paid.reduce((n, r) => n + (Number(r.amount) || 0), 0))), "var(--red-t)")}
+          {/* 미입금 총액: 입금이 확인되지 않은 대상 회원의 회비를 더한 것 */}
+          {stat("미입금 총액", `${won(targets.filter((r) => !r.paid).reduce((n, r) => n + (Number(r.amount) || 0), 0))} (${targets.filter((r) => !r.paid).length}명)`, "var(--red-t)")}
         </dl>
       </section>
 
       <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
         <div className="seg" role="group" aria-label="보기" style={{ width: "auto", flex: "none" }}>
-          {([["all", `전체 ${d.rows.length}`], ["unpaid", `미입금 ${d.rows.filter((r) => !r.paid).length}`], ["notice", `입금 알림 ${notices.length}`]] as const).map(([k, l]) => (
+          {([["all", `전체 ${d.rows.length}`], ["paid", `입금 ${d.rows.filter((r) => r.paid).length}`], ["unpaid", `미입금 ${d.rows.filter((r) => !r.paid).length}`], ["notice", `입금 알림 ${notices.length}`]] as const).map(([k, l]) => (
             <button key={k} type="button" aria-pressed={only === k} onClick={() => setOnly(k)} style={{ minHeight: 34, fontSize: fs(12), padding: "0 10px" }}>{l}</button>
           ))}
         </div>
-        <input className="field" type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기" style={{ flex: "1 1 120px", width: "auto", minHeight: 34, fontSize: fs(13) }} value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="field" type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기" style={{ flex: "0 1 130px", width: "auto", minWidth: 90, minHeight: 34, fontSize: fs(13) }} value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       {targets.length === 0 && <div className="msg info">회비를 낼 회원이 없어요. 회비설정에서 금액을 정해 주세요.</div>}
