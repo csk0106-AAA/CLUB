@@ -92,7 +92,15 @@ export function WhoWrite(props: {
   const [editing, setEditing] = useState<{ q: string; a: string; skipped?: boolean }[] | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
   // 인터뷰 중 앞 답 다시 쓰기: 몇 번째 내 답(0부터)과 고치는 글
-  const [reAns, setReAns] = useState<{ k: number; text: string } | null>(null);
+  const [reAns, setReAns] = useState<{ k: number; text: string; q?: string; before?: string; checked?: string; msg?: string } | null>(null);
+  const reRef = useRef<HTMLTextAreaElement>(null);
+  // 다시 쓰기 칸도 글이 길어지면 커진다(답변 칸과 같게)
+  useEffect(() => {
+    const el = reRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight + 4, Math.round(window.innerHeight * 0.6))}px`;
+  }, [reAns?.text, reAns?.k]);
 
   // 다시 불러오면(새 초안·배포) 화면 값도 맞춘다
   useEffect(() => {
@@ -187,6 +195,14 @@ export function WhoWrite(props: {
   // 인터뷰 중 앞 질문의 답을 다시 쓴다(다음 질문은 그대로 이어서). 빈칸이면 "답변안함"으로 둔다.
   const saveRedo = () => run(async () => {
     if (!reAns) return;
+    const text = reAns.text.trim();
+    if (st.aiEnabled && text && reAns.text !== reAns.checked) {
+      setPolishing(true);
+      const p = await api<{ text: string; changed: boolean }>(`/api/who/${aid}/polish`, { body: { text, question: reAns.q ?? "" } });
+      setPolishing(false);
+      if (!p.ok) return setReAns({ ...reAns, checked: reAns.text, msg: `${p.error} 그대로 저장해도 돼요.` });
+      if (p.data.changed) return setReAns({ ...reAns, text: p.data.text, before: reAns.text, checked: p.data.text, msg: "문맥에 맞게 오타를 다듬었어요. 한 번 읽어 보고, 고칠 곳은 고친 뒤 [이대로 저장]을 눌러 주세요." });
+    }
     const mine = st.interview.messages.filter((m) => m.role === "me");
     const answers = mine.map((m, i) => (i === reAns.k ? reAns.text.trim() : m.skipped ? "" : m.text));
     if (!answers[reAns.k] && !mine[reAns.k]?.skipped) return setNote({ tone: "bad", text: "답을 적어 주세요." });
@@ -393,9 +409,14 @@ export function WhoWrite(props: {
                   if (reAns?.k === k) return (
                     <div key={i} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignSelf: "stretch" }}>
                       <label className="l" htmlFor={`redo-${k}`} style={{ margin: 0 }}>이 질문의 답 다시 쓰기</label>
-                      <textarea id={`redo-${k}`} className="field" rows={3} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={reAns.text} onChange={(e) => setReAns({ k, text: e.target.value })} />
+                      <textarea id={`redo-${k}`} ref={reRef} className="field" rows={3} style={{ padding: 10, lineHeight: 1.6, fontSize: fs(16), minHeight: 110, resize: "vertical" }} value={reAns.text} readOnly={polishing} onChange={(e) => setReAns({ ...reAns, text: e.target.value })} />
+                      {(polishing || reAns.msg) && <p className="small" role="status" style={{ margin: 0, color: reAns.before !== undefined ? "var(--accent-ink)" : undefined }}>{polishing ? "AI가 문맥을 보고 오타를 다듬는 중이에요…" : reAns.msg}</p>}
+                      {reAns.before !== undefined && (
+                        <button className="mini" type="button" style={{ alignSelf: "flex-start" }} disabled={busy || polishing} onClick={() => setReAns({ ...reAns, text: reAns.before ?? "", before: undefined, msg: "다듬기 전 글로 되돌렸어요." })}>다듬기 전으로</button>
+                      )}
+                      <span className="hint" style={{ fontSize: fs(12) }}>답변 칸을 누르면 나오는 키보드의 🎤(마이크) 버튼을 누르고 말씀하시면 글자로 받아 적어요.{st.aiEnabled ? " [저장]을 누르면 AI가 오타를 먼저 다듬어 보여 드려요." : ""}</span>
                       <div className="row" style={{ gap: 6 }}>
-                        <button className="btn" type="button" style={{ flex: 1 }} disabled={busy} onClick={saveRedo}>고친 답 저장</button>
+                        <button className="btn" type="button" style={{ flex: 1 }} disabled={busy || polishing} onClick={saveRedo}>{polishing ? "다듬는 중…" : reAns.before !== undefined && reAns.text === reAns.checked ? "이대로 저장" : "고친 답 저장"}</button>
                         <button className="btn white" type="button" style={{ flex: 1 }} disabled={busy} onClick={() => setReAns(null)}>취소</button>
                       </div>
                     </div>
@@ -403,7 +424,7 @@ export function WhoWrite(props: {
                   return (
                     <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                       <div className="mine" style={m.skipped ? { opacity: 0.6, fontStyle: "italic" } : undefined}>{m.skipped ? "답변안함" : m.text}</div>
-                      <button type="button" className="mini" style={{ minHeight: 28, padding: "0 8px", fontSize: fs(12) }} disabled={busy || !!reAns} onClick={() => setReAns({ k, text: m.skipped ? "" : m.text })} aria-label={`${k + 1}번째 답 다시 쓰기`}>{m.skipped ? "답하기" : "다시 쓰기"}</button>
+                      <button type="button" className="mini" style={{ minHeight: 28, padding: "0 8px", fontSize: fs(12) }} disabled={busy || !!reAns} onClick={() => setReAns({ k, text: m.skipped ? "" : m.text, q: iv.messages[i - 1]?.role === "ai" ? iv.messages[i - 1].text : "" })} aria-label={`${k + 1}번째 답 다시 쓰기`}>{m.skipped ? "답하기" : "다시 쓰기"}</button>
                     </div>
                   );
                 })}
