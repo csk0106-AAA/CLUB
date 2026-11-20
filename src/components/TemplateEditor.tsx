@@ -1,6 +1,7 @@
 "use client";
 
 import { kstText, preWindowTimes, type PreWindow, type TemplateConfig } from "@/lib/template-schema";
+import { NumField } from "./NumField";
 import { DateField } from "./DateField";
 import { DragHandle, useDragSort } from "./DragSort";
 import { fs } from "@/lib/fs";
@@ -166,8 +167,8 @@ export function TemplateEditor({ value, onChange, eventStartsAt }: { value: Edit
           </select>
           {value.reveal?.mode === "after" && (
             <div><label className="l" htmlFor="t-reveal-h">끝나고 몇 시간 뒤</label>
-              <input id="t-reveal-h" className="field" type="number" min={0} max={2000} style={{ maxWidth: 160 }} value={value.reveal?.hours ?? 0}
-                onChange={(e) => onChange({ ...value, reveal: { mode: "after", ...value.reveal, hours: Math.max(0, Number(e.target.value) || 0) } })} /></div>
+              <NumField id="t-reveal-h" className="field" min={0} max={2000} style={{ maxWidth: 160 }} value={value.reveal?.hours ?? 0}
+                onChange={(n) => onChange({ ...value, reveal: { mode: "after", ...value.reveal, hours: n } })} /></div>
           )}
           {value.reveal?.mode === "at" && (
             <div><span className="l">공개 일시 (한국 시간)</span>

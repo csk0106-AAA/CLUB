@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NumField } from "./NumField";
 import { RowDelete } from "./RowDelete";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -115,7 +116,7 @@ export function AiGuidesEditor(props: {
           <button className="btn white" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 44, fontSize: fs(15) }} onClick={() => setItems([...items, { q: "", skip: false }])}>+ 질문 추가</button>
           <div style={{ maxWidth: 240 }}>
             <label className="l" htmlFor="ag-fu">AI 후속 질문 최대 개수</label>
-            <input id="ag-fu" className="field" type="number" min={0} max={12} value={followUpMax} onChange={(e) => setFollowUpMax(Math.max(0, Math.min(12, Number(e.target.value) || 0)))} />
+            <NumField id="ag-fu" className="field" min={0} max={12} value={followUpMax} onChange={setFollowUpMax} />
           </div>
         </div>
       )}

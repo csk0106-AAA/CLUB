@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { NumField } from "./NumField";
 import { api, fmtDate } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -287,8 +288,8 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
                   {editable && (
                     <div className="row" style={{ gap: 6 }}>
                       <label className="small" htmlFor={`cp-${c.key}`} style={{ flex: "none" }}>정원</label>
-                      <input id={`cp-${c.key}`} className="field" type="number" min={1} max={20} style={{ width: 64, minHeight: 36, padding: "0 6px", textAlign: "center" }} value={c.capacity}
-                        onChange={(e) => edit(c.key, { capacity: Math.max(1, Math.min(20, Number(e.target.value) || 1)) })} />
+                      <NumField id={`cp-${c.key}`} className="field" min={1} max={20} style={{ width: 64, minHeight: 36, padding: "0 6px", textAlign: "center" }} value={c.capacity}
+                        onChange={(n) => edit(c.key, { capacity: n })} />
                       {/* 메모: 평소엔 한 줄(길면 …), 더블클릭하면 전체를 보고 고친다 */}
                       {memoKey === c.key ? (
                         <textarea className="field" aria-label={`${c.name} 메모`} placeholder="메모작성" maxLength={100} rows={3} autoFocus
