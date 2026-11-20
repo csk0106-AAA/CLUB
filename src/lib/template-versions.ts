@@ -232,6 +232,40 @@ export async function migrateReadingSplit(s: Store): Promise<{ templates: number
   return out;
 }
 
+// 한 번만: 예전 코드에 박혀 있던 명리학 풀이 규칙을 지침 칸 기본값으로 채운다(AI 지침 화면에서 보고 고칠 수 있게).
+//  AI 인터뷰가 있는 템플릿(모든 버전)·일정 활동과 AI 설정 화면의 전체 지침 중 비어 있는 칸만.
+export async function migrateReadingDefaults(s: Store): Promise<{ templates: number; acts: number; settings: number } | null> {
+  const flag = "readingDefaultsFilled";
+  if (await s.get("Settings", flag)) return null;
+  const { DEFAULT_READING_PUB, DEFAULT_READING_FULL } = await import("./ai-guides");
+  const out = { templates: 0, acts: 0, settings: 0 };
+  const fix = (json: string | undefined): string | null => {
+    const cfg = readConfig(json) as (ReturnType<typeof readConfig> & { aiGuides?: Record<string, string> }) | null;
+    if (!cfg || !cfg.preEvent?.steps?.includes("ai_interview")) return null;
+    const g = cfg.aiGuides ?? {};
+    if (g.reading?.trim() && g.readingFull?.trim()) return null;
+    return JSON.stringify({ ...cfg, aiGuides: { ...g, reading: g.reading?.trim() || DEFAULT_READING_PUB, readingFull: g.readingFull?.trim() || DEFAULT_READING_FULL } });
+  };
+  for (const r of await s.list("ActivityTemplates")) {
+    const next = fix(r.config);
+    if (next) { await s.update("ActivityTemplates", r.id, { config: next }); out.templates++; }
+  }
+  for (const a of await s.list("EventActivities")) {
+    const next = fix(a.config);
+    if (next) { await s.update("EventActivities", a.id, { config: next }); out.acts++; }
+  }
+  for (const [id, v] of [["aiGuide:reading", DEFAULT_READING_PUB], ["aiGuide:readingFull", DEFAULT_READING_FULL]] as const) {
+    const cur = await s.get("Settings", id);
+    const val = (() => { try { return String(JSON.parse(cur?.value ?? '""')); } catch { return ""; } })();
+    if (val.trim()) continue;
+    if (cur) await s.update("Settings", id, { value: JSON.stringify(v) });
+    else await s.insert("Settings", { id, value: JSON.stringify(v) });
+    out.settings++;
+  }
+  await s.insert("Settings", { id: flag, value: JSON.stringify({ at: new Date().toISOString(), ...out }) });
+  return out;
+}
+
 // 지울 수 있는지: 일정 활동이 쓰는 버전은 지울 수 없고, v1 은 다른 버전이 없는 직접 만든 템플릿만 지운다.
 export function deleteBlock(rows: Row[], acts: Row[], r: Row): string | null {
   if (r.origin === "default") return "기본 템플릿은 지울 수 없어요. 복제해서 쓰세요.";

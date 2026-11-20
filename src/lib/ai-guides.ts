@@ -17,6 +17,22 @@ export const AI_POINTS = [
 ] as const;
 export type AiPoint = (typeof AI_POINTS)[number]["key"];
 
+// 명리학 풀이 기본 지침(관리자가 AI 지침 화면에서 보고 고친다. 칸을 비우면 이 값을 쓴다)
+export const DEFAULT_READING_PUB = [
+  "5~8문장으로 쓴다.",
+  "장점과 강점 중심으로 쓰고, 단점으로 읽힐 수 있는 표현은 최대한 피한다. 필요하면 “이런 면을 살리면 좋다” 식으로 긍정적으로 바꿔 쓴다.",
+  "띠(동물), 태어난 연도·월·일, 나이, 간지 글자, 성별은 쓰지 않는다(신원을 짐작할 수 있다). 오행 이미지(예: 큰 나무, 따뜻한 햇살) 정도의 비유는 괜찮다.",
+].join("\n");
+export const DEFAULT_READING_FULL = [
+  "마크다운으로 약 2~3페이지 분량으로 쓴다.",
+  "첫머리에 사주 원국과 오행의 특징을 쉽게 설명한다.",
+  "대운 흐름을 따라 생애주기(청년기, 중년기, 장년기, 노년기와 지금 시기)를 나누어 설명한다.",
+  "건강, 재물, 직업, 성격, 성향, 연애, 결혼, 인간관계를 각각 소제목으로 다룬다.",
+  "단정적인 예언, 불안을 키우는 표현, 특정 질병·사고 단정은 쓰지 않고 “경향”, “조심하면 좋은 점” 정도로 쓴다.",
+  "마지막에 “명리학 풀이는 재미와 자기 성찰을 위한 참고용”이라는 한 줄을 붙인다.",
+].join("\n");
+const POINT_DEFAULT: Partial<Record<string, string>> = { reading: DEFAULT_READING_PUB, readingFull: DEFAULT_READING_FULL };
+
 const keyOf = (p: AiPoint) => `aiGuide:${p}`;
 
 // 이 활동 설정에서 AI가 쓰이는 지점
@@ -60,7 +76,8 @@ export async function commonGuide(act?: Row): Promise<string> {
 }
 export async function pointGuide(point: AiPoint, act?: Row): Promise<string> {
   const cfg = await activityAiConfig(act);
-  return cfg?.aiGuides?.[point]?.trim() || (await getSetting<string>(keyOf(point), "")).trim();
+  // 활동 템플릿 → AI 설정 화면 → 기본값(명리학 풀이)
+  return cfg?.aiGuides?.[point]?.trim() || (await getSetting<string>(keyOf(point), "")).trim() || (POINT_DEFAULT[point] ?? "");
 }
 
 // 템플릿 AI 설정 저장 입력(지점별 지침, 활동 공통 지침, 인터뷰 질문)
