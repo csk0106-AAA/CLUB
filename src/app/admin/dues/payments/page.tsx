@@ -215,7 +215,7 @@ function Payments({ initial }: { initial: string }) {
         <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 12px", fontSize: fs(13) }}>
           {stat("입금액", won(got), "var(--green-t)")}
           {/* 미입금 총액: 입금이 확인되지 않은 대상 회원의 회비를 더한 것 */}
-          {stat("미입금 총액", `${won(targets.filter((r) => !r.paid).reduce((n, r) => n + (Number(r.amount) || 0), 0))} (${targets.filter((r) => !r.paid).length}명)`, "var(--red-t)")}
+          {stat("미입금 총액", won(targets.filter((r) => !r.paid).reduce((n, r) => n + (Number(r.amount) || 0), 0)), "var(--red-t)")}
         </dl>
       </section>
 
