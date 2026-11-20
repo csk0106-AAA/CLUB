@@ -104,12 +104,15 @@ export function AiGuidesEditor(props: {
               <div className="row" style={{ gap: 6 }}>
                 {items.length > 1 && <DragHandle {...qds.handle(i, `질문 ${i + 1}`)} />}
                 <span className="num small" aria-hidden="true" style={{ minWidth: 18, textAlign: "right" }}>{i + 1}</span>
-                <input className="field" aria-label={`질문 ${i + 1}`} maxLength={300} value={it.q} onChange={(e) => setQ(i, { q: e.target.value })} />
+                <textarea className="field" aria-label={`질문 ${i + 1}`} maxLength={300} rows={2} value={it.q} onChange={(e) => setQ(i, { q: e.target.value })}
+                  ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight + 2}px`; } }}
+                  onInput={(e) => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = `${el.scrollHeight + 2}px`; }}
+                  style={{ flex: 1, minWidth: 0, padding: "8px 10px", lineHeight: 1.5, resize: "vertical", minHeight: 60 }} />
                 <RowDelete label={`질문 ${i + 1} 삭제`} disabled={items.length <= 1} onClick={() => setItems(items.filter((_, j) => j !== i))} />
               </div>
               <label className="row" style={{ gap: 8, minHeight: 32, fontSize: fs(13), cursor: "pointer", paddingLeft: items.length > 1 ? 50 : 0 }}>
                 <input type="checkbox" checked={it.skip} onChange={(e) => setQ(i, { skip: e.target.checked })} style={{ width: 18, height: 18 }} />
-                <span>답변안함 허용 (회원이 “답변안함”을 누르면 이 질문은 넘어가요)</span>
+                <span>답변안함 허용</span>
               </label>
             </div>
           ))}

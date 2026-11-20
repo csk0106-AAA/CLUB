@@ -92,10 +92,10 @@ export function SaveChoices(props: {
   const short: Record<SaveMode, string> = { fix: "수정", version: `새 버전(v${nextVersion})`, new: "새 활동" };
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
-      <div role="group" aria-label="저장 방법" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <div role="group" aria-label="저장 방법" style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "stretch" }}>
         {items.map((it) => (
           <button key={it.key} className={`btn ${it.primary ? "" : "white"}`} type="button" disabled={busy || disabled} title={it.note}
-            style={{ flex: "1 1 0", minWidth: 0, width: "auto", minHeight: 40, padding: "0 6px", fontSize: fs(13), whiteSpace: "nowrap" }}
+            style={{ flex: "1 1 72px", minWidth: 0, width: "auto", minHeight: 40, padding: "4px 6px", fontSize: fs(13), lineHeight: 1.25, whiteSpace: "normal", wordBreak: "keep-all", overflowWrap: "anywhere" }}
             aria-describedby={help ? `${id}-${it.key}` : undefined} onClick={it.onClick}>
             {busy ? "저장 중…" : short[it.key]}
           </button>
