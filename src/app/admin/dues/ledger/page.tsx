@@ -113,7 +113,7 @@ function Ledger() {
         <b style={{ fontSize: fs(15) }}>{d.year}년</b>
         {d.year < thisYear && <><span className="pill gray">과거 내역</span><button className="mini" type="button" onClick={() => setYear(thisYear)}>올해({thisYear}년)로</button></>}
         <span className="grow" />
-        {d.years.some((y) => y < thisYear) && <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { loadLogs(); setHistOpen(true); }}>과거 내역 보기</button>}
+        <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { if (!d.years.some((y) => y < thisYear)) return window.alert("과거 내역이 없습니다."); loadLogs(); setHistOpen(true); }}>과거 내역 보기</button>
       </div>
       <Popup id="ledger-history" width={520} title="과거 내역 보기" open={histOpen} onClose={() => setHistOpen(false)}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

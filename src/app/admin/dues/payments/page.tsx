@@ -141,8 +141,8 @@ function PaymentsPage({ initial, initView, initYear }: { initial: string; initVi
           </div>
         )}
         <span className="grow" />
-        {/* 해가 바뀌어 지난 연도 기록이 생기면 보인다 */}
-        {hist && hist.pastYears.length > 0 && <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { loadHist(); setHistOpen(true); }}>과거 내역 보기</button>}
+        {/* 늘 보인다. 지난 연도 기록이 없으면 누를 때 알림 */}
+        <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { if (!hist || hist.pastYears.length === 0) return window.alert("과거 내역이 없습니다."); loadHist(); setHistOpen(true); }}>과거 내역 보기</button>
       </div>
       {view === "total"
         ? <TotalView year={year} onYear={setYear} onPick={(p) => { setPick(p); setView("period"); }} onType={onType} thisYear={hist?.thisYear ?? ""} />
