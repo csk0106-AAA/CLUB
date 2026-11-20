@@ -108,14 +108,14 @@ function Ledger() {
         모임 회비의 수입과 지출을 적고 잔액을 확인해요. <b>회비 입금</b>은 <Link href="/admin/dues/payments">회비입금</Link>에서 확인한 금액이 자동으로 들어오고, 일정의 <b>모임회비 지원</b>은 지출로 자동으로 들어와요.
       </p>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      {/* 올해 회비내역이 기본. 지난 연도는 "과거 내역 보기"에서(보기·엑셀) */}
+      {/* 올해 회비내역이 기본. 지난 연도는 "과거내역"에서(보기·엑셀) */}
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <b style={{ fontSize: fs(15) }}>{d.year}년</b>
         {d.year < thisYear && <><span className="pill gray">과거 내역</span><button className="mini" type="button" onClick={() => setYear(thisYear)}>올해({thisYear}년)로</button></>}
         <span className="grow" />
-        <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { if (!d.years.some((y) => y < thisYear)) return window.alert("과거 내역이 없습니다."); loadLogs(); setHistOpen(true); }}>과거 내역 보기</button>
+        <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { if (!d.years.some((y) => y < thisYear)) return window.alert("과거 내역이 없습니다."); loadLogs(); setHistOpen(true); }}>과거내역</button>
       </div>
-      <Popup id="ledger-history" width={520} title="과거 내역 보기" open={histOpen} onClose={() => setHistOpen(false)}>
+      <Popup id="ledger-history" width={520} title="과거내역" open={histOpen} onClose={() => setHistOpen(false)}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <span className="small">지난 연도의 회비내역이에요. “보기”는 그 해 회비내역으로 가고, “엑셀”은 요약과 수입·지출 줄을 내려받아요.</span>
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
@@ -139,21 +139,19 @@ function Ledger() {
       </Popup>
 
       <section className="card" style={{ padding: 12 }} aria-label="잔액 요약">
-        {/* 왼쪽: 들어온 돈(전년도 잔액 · 회비 입금 · 기타 수입) / 오른쪽: 전체 입금 총액 · 지출 · 지원 · 잔액 */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 14px", fontSize: fs(13) }}>
-          <dl style={{ margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-            {stat(`${s.prevYear}년 잔액`, s.prev, YELLOW, totalHref(s.prevYear))}
-            {stat(`${d.year} 회비 입금`, s.paid, YELLOW, totalHref(d.year))}
-            {stat(`${d.year}년 기타 수입`, s.income, YELLOW)}
-          </dl>
-          <dl style={{ margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-            {stat("전체 입금 총액", s.totalIn, YELLOW)}
-            {stat(`${d.year}년 지출`, s.spend, APRICOT)}
-            {stat(`${d.year}년 지원`, s.support, APRICOT)}
-            {stat(`${d.year}년 잔액`, s.balance, s.balance < 0 ? APRICOT : YELLOW)}
-          </dl>
-        </div>
-        <span className="small" style={{ display: "block", marginTop: 8, fontSize: fs(11) }}>해마다 12월 31일 24:00에 마감하고, 그 해 잔액이 다음 해의 “전년도 잔액”으로 넘어가요. 잔액 = 전체 입금 총액 - 지출 - 지원(일정의 모임회비 지원)</span>
+        {/* 왼쪽(들어온 돈): +잔액(전년도) · +회비 · +기타 · +총액 / 오른쪽(나간 돈): -지출 · -지원 · -총액 · 잔액.
+            한 줄에 왼쪽·오른쪽을 짝지어 놓아 줄이 어긋나지 않게 한다 */}
+        <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px 14px", fontSize: fs(13) }}>
+          {stat(`${s.prevYear} +잔액`, s.prev, YELLOW, totalHref(s.prevYear))}
+          {stat(`${d.year} -지출`, s.spend, APRICOT)}
+          {stat(`${d.year} +회비`, s.paid, YELLOW, totalHref(d.year))}
+          {stat(`${d.year} -지원`, s.support, APRICOT)}
+          {stat(`${d.year} +기타`, s.income, YELLOW)}
+          {stat(`${d.year} -총액`, s.spend + s.support, APRICOT)}
+          {stat(`${d.year} +총액`, s.totalIn, YELLOW)}
+          {stat(`${d.year} 잔액`, s.balance, s.balance < 0 ? APRICOT : YELLOW)}
+        </dl>
+        <span className="small" style={{ display: "block", marginTop: 8, fontSize: fs(11) }}>+잔액은 전년도 잔액이에요. 해마다 12월 31일 24:00에 마감하고, 그 해 잔액이 다음 해의 +잔액으로 넘어가요. 잔액 = +총액 - -총액(지출 + 일정의 모임회비 지원)</span>
       </section>
 
       <form onSubmit={create} className="card compact-form" aria-label="장부 적기" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>

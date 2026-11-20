@@ -131,6 +131,11 @@ function PaymentsPage({ initial, initView, initYear }: { initial: string; initVi
   useEffect(() => {
     loadHist();
   }, [loadHist]);
+  const [acct, setAcct] = useState("");
+  // 과거내역(늘 보인다. 지난 연도 기록이 없으면 누를 때 알림)
+  const pastBtn = (
+    <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { if (!hist || hist.pastYears.length === 0) return window.alert("과거 내역이 없습니다."); loadHist(); setHistOpen(true); }}>과거내역</button>
+  );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -141,13 +146,15 @@ function PaymentsPage({ initial, initView, initYear }: { initial: string; initVi
           </div>
         )}
         <span className="grow" />
-        {/* 늘 보인다. 지난 연도 기록이 없으면 누를 때 알림 */}
-        <button className="mini" type="button" aria-haspopup="dialog" style={{ minHeight: 36 }} onClick={() => { if (!hist || hist.pastYears.length === 0) return window.alert("과거 내역이 없습니다."); loadHist(); setHistOpen(true); }}>과거 내역 보기</button>
+        {/* 입금계좌(회비설정) */}
+        {acct && <span className="small" style={{ fontSize: fs(12), textAlign: "right" }}>입금계좌 {acct}</span>}
+        {/* 누적 화면에는 기간 고르기가 없어서 과거내역을 여기에 */}
+        {view === "total" && pastBtn}
       </div>
       {view === "total"
         ? <TotalView year={year} onYear={setYear} onPick={(p) => { setPick(p); setView("period"); }} onType={onType} thisYear={hist?.thisYear ?? ""} />
-        : <Payments key={pick} initial={pick} onType={onType} thisYear={hist?.thisYear} />}
-      <Popup id="dues-history" width={560} title="과거 내역 보기" open={histOpen} onClose={() => setHistOpen(false)}>
+        : <Payments key={pick} initial={pick} onType={onType} thisYear={hist?.thisYear} pastBtn={pastBtn} onAccount={setAcct} />}
+      <Popup id="dues-history" width={560} title="과거내역" open={histOpen} onClose={() => setHistOpen(false)}>
         {hist && <PastHistory hist={hist} onView={(y) => { setHistOpen(false); setYear(y); setView("total"); }} onDownloaded={loadHist} />}
       </Popup>
     </div>
@@ -155,7 +162,7 @@ function PaymentsPage({ initial, initView, initYear }: { initial: string; initVi
 }
 
 // 기간별: 한 기간(연회비 연도·월회비 월)의 회원마다 낼 금액·입금 확인·입금 알림
-function Payments({ initial, onType, thisYear }: { initial: string; onType?: (t: "annual" | "monthly") => void; thisYear?: string }) {
+function Payments({ initial, onType, thisYear, pastBtn, onAccount }: { initial: string; onType?: (t: "annual" | "monthly") => void; thisYear?: string; pastBtn?: React.ReactNode; onAccount?: (a: string) => void }) {
   const [period, setPeriod] = useState(initial);
   const [d, setD] = useState<Data | null>(null);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
@@ -168,7 +175,8 @@ function Payments({ initial, onType, thisYear }: { initial: string; onType?: (t:
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setD(r.data);
     onType?.(r.data.duesPeriod);
-  }, [period, onType]);
+    onAccount?.(r.data.account ? `${r.data.account}${r.data.holder ? ` (${r.data.holder})` : ""}` : "");
+  }, [period, onType, onAccount]);
   useEffect(() => {
     load();
   }, [load]);
@@ -239,7 +247,7 @@ function Payments({ initial, onType, thisYear }: { initial: string; onType?: (t:
           <input type="month" className="field" aria-label="다른 달 고르기" style={{ width: "auto", minHeight: 36, fontSize: fs(13) }} value={/^\d{4}-\d{2}$/.test(d.period) ? d.period : ""}
             onChange={(e) => e.target.value && setPeriod(e.target.value)} />
         )}
-        {d.account && <span className="small grow" style={{ fontSize: fs(12), textAlign: "right" }}>입금계좌 {d.account}{d.holder ? ` (${d.holder})` : ""}</span>}
+        {pastBtn}
       </div>
 
       <section className="card" style={{ padding: 12 }} aria-label="입금 요약">
