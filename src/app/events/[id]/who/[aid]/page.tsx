@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ActivityLiveBox } from "@/components/LiveActivities";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
@@ -66,6 +67,8 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   return (
     <main className="app">
       <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title={st.activity.name} done={progress?.done} total={progress?.total} />
+      {/* 이 활동의 설명·시간·진행 상황(일정의 활동 길에서 아이콘을 눌러 들어옴) */}
+      <ActivityLiveBox eventId={id} activityId={aid} />
       <div className="seg" role="tablist" aria-label="내가 누굴까요? 메뉴">
         <button type="button" role="tab" aria-selected={tab === "write"} onClick={() => setTab("write")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개 작성</button>
         <button type="button" role="tab" aria-selected={tab === "guess"} onClick={() => setTab("guess")} style={{ minHeight: 40, fontSize: fs(13) }}>누구일까요?</button>

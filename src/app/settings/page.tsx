@@ -369,11 +369,11 @@ export default function SettingsPage() {
             <h2 id="s-map">지도 보기</h2>
             <div className="sect-body" style={{ gap: 8 }}>
               <div className="seg" role="radiogroup" aria-labelledby="s-map">
-                {([["ask", "매번 고르기"], ["google", "구글 지도"], ["naver", "네이버 지도"]] as const).map(([k, label]) => (
-                  <button key={k} type="button" role="radio" aria-checked={pr.map === k} aria-pressed={pr.map === k} onClick={() => { if (pr.map !== k) { writeMapPref(k); savePrefs({ map: k }); } }}>{label}</button>
+                {([["naver", "네이버 지도"], ["google", "구글 지도"], ["ask", "매번 고르기"]] as const).map(([k, label]) => (
+                  <button key={k} type="button" role="radio" aria-checked={pr.mapApp === k} aria-pressed={pr.mapApp === k} onClick={() => { if (pr.mapApp !== k) { writeMapPref(k); savePrefs({ mapApp: k }); } }}>{label}</button>
                 ))}
               </div>
-              <span className="small" style={{ fontSize: fs(12) }}>{pr.map === "ask" ? "일정 장소·세부일정 위치 등에서 “지도 보기”를 누르면 구글 지도와 네이버 지도 중 고를 수 있어요." : `“지도 보기”를 누르면 바로 ${pr.map === "google" ? "구글 지도" : "네이버 지도"}로 열려요.`}</span>
+              <span className="small" style={{ fontSize: fs(12) }}>{pr.mapApp === "ask" ? "일정 장소·세부일정 위치 등에서 “지도 보기”를 누르면 구글 지도와 네이버 지도 중 고를 수 있어요." : `“지도 보기”를 누르면 바로 ${pr.mapApp === "google" ? "구글 지도" : "네이버 지도"}로 열려요.`}</span>
             </div>
           </section>
 

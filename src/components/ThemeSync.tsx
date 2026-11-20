@@ -20,10 +20,10 @@ export function ThemeSync() {
     let alive = true;
     fetch("/api/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { prefs?: { screen?: string; map?: string } } | null) => {
+      .then((d: { prefs?: { screen?: string; mapApp?: string } } | null) => {
         const t = d?.prefs?.screen;
         // 지도 보기 설정도 이 기기에 맞춘다
-        const m = d?.prefs?.map;
+        const m = d?.prefs?.mapApp;
         if (alive && (m === "ask" || m === "google" || m === "naver")) writeMapPref(m);
         if (!alive || (t !== "system" && t !== "light" && t !== "dark")) return;
         done.current = true;

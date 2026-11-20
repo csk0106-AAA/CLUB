@@ -100,6 +100,8 @@ export function WhoWrite(props: {
   // 기존 인터뷰 수정하기: 질문별 답변 고치기
   const [editing, setEditing] = useState<{ q: string; a: string; skipped?: boolean }[] | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
+  // 인터뷰 중 앞 답 다시 쓰기: 몇 번째 내 답(0부터)과 고치는 글
+  const [reAns, setReAns] = useState<{ k: number; text: string } | null>(null);
 
   // 다시 불러오면(새 초안·배포) 화면 값도 맞춘다
   useEffect(() => {
@@ -155,6 +157,19 @@ export function WhoWrite(props: {
     const r = await api(`/api/who/${aid}/interview`, { body: { answer } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setAnswer("");
+    await reload();
+  });
+
+  // 인터뷰 중 앞 질문의 답을 다시 쓴다(다음 질문은 그대로 이어서). 빈칸이면 "답변안함"으로 둔다.
+  const saveRedo = () => run(async () => {
+    if (!reAns) return;
+    const mine = st.interview.messages.filter((m) => m.role === "me");
+    const answers = mine.map((m, i) => (i === reAns.k ? reAns.text.trim() : m.skipped ? "" : m.text));
+    if (!answers[reAns.k] && !mine[reAns.k]?.skipped) return setNote({ tone: "bad", text: "답을 적어 주세요." });
+    const r = await api(`/api/who/${aid}/interview`, { method: "PUT", body: { answers } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setReAns(null);
+    setNote({ tone: "info", text: "답을 고쳤어요. 이어서 다음 질문에 답해 주세요." });
     await reload();
   });
 
@@ -313,14 +328,16 @@ export function WhoWrite(props: {
 
   return (
     <>
-      {inAct && (
-        <div className="msg info" role="status">
-          이 활동에 참여해요. 프로필 북에는 실명 대신 별칭 “{st.profile.alias}”(으)로 보여요{st.revealAt ? `. ${fmtDateTime(st.revealAt)}에 실명과 소개가 함께 공개돼요` : ""}.
+      {/* 내 소개 작성 안내: 펼쳐서 읽고 접은 뒤 인터뷰를 시작한다 */}
+      <details className="card who-guide">
+        <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>내 소개 작성 안내 <span className="small">(눌러서 펼치기·접기)</span></summary>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+          {inAct && <span className="small">이 활동에 참여해요. 프로필 북에는 실명 대신 별칭 “{st.profile.alias}”(으)로 보여요{st.revealAt ? `. ${fmtDateTime(st.revealAt)}에 실명과 소개가 함께 공개돼요` : ""}.</span>}
+          {!st.aiEnabled && <span className="small">AI가 아직 연결되지 않아 정해진 질문으로 진행해요. 소개 글은 내 답변을 모아 초안을 만들고 직접 다듬어요.</span>}
+          <span className="small">질문에 답하면 소개 글을 만들 수 있어요. 약 10분이면 끝나고, 중간에 나가도 저장돼서 이어서 쓸 수 있어요.{inAct ? " 이름과 회사명은 쓰지 않아도 돼요." : ""}</span>
+          <span className="small">인터뷰 중에도 앞 질문의 내 답 옆 “다시 쓰기”를 누르면 그 답을 고칠 수 있어요.</span>
         </div>
-      )}
-      {!st.aiEnabled && (
-        <div className="msg info" role="status">AI가 아직 연결되지 않아 정해진 질문으로 진행해요. 소개 글은 내 답변을 모아 초안을 만들고 직접 다듬어요.</div>
-      )}
+      </details>
 
       {/* 인터뷰를 마친 뒤: 기존 인터뷰 수정하기 / AI 인터뷰 다시 하기 */}
       {(interviewDone || introOnly) && (
@@ -335,24 +352,37 @@ export function WhoWrite(props: {
         <section aria-label="인터뷰" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {iv.messages.length === 0 ? (
             <>
-              <div className="msg info">질문에 답하면 소개 글을 만들 수 있어요. 약 10분이면 끝나고, 중간에 나가도 저장돼서 이어서 쓸 수 있어요.{inAct ? " 이름과 회사명은 쓰지 않아도 돼요." : ""}</div>
               <button className="btn" type="button" disabled={busy} onClick={startInterview}>인터뷰 시작하기</button>
             </>
           ) : (
             <>
               <div role="log" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {iv.messages.map((m, i) =>
-                  m.role === "ai" ? (
+                {iv.messages.map((m, i) => {
+                  if (m.role === "ai") return (
                     <div key={i} className="say">
                       <Mascot size={32} />
                       <div className="bubble">{m.text}</div>
                     </div>
-                  ) : m.skipped ? (
-                    <div key={i} className="mine" style={{ opacity: 0.6, fontStyle: "italic" }}>답변안함</div>
-                  ) : (
-                    <div key={i} className="mine">{m.text}</div>
-                  ),
-                )}
+                  );
+                  // 몇 번째 내 답인지(다시 쓰기에 쓴다)
+                  const k = iv.messages.slice(0, i).filter((x) => x.role === "me").length;
+                  if (reAns?.k === k) return (
+                    <div key={i} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignSelf: "stretch" }}>
+                      <label className="l" htmlFor={`redo-${k}`} style={{ margin: 0 }}>이 질문의 답 다시 쓰기</label>
+                      <textarea id={`redo-${k}`} className="field" rows={3} style={{ padding: 10, lineHeight: 1.5, fontSize: fs(15) }} value={reAns.text} onChange={(e) => setReAns({ k, text: e.target.value })} />
+                      <div className="row" style={{ gap: 6 }}>
+                        <button className="btn" type="button" style={{ flex: 1 }} disabled={busy} onClick={saveRedo}>고친 답 저장</button>
+                        <button className="btn white" type="button" style={{ flex: 1 }} disabled={busy} onClick={() => setReAns(null)}>취소</button>
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                      <div className="mine" style={m.skipped ? { opacity: 0.6, fontStyle: "italic" } : undefined}>{m.skipped ? "답변안함" : m.text}</div>
+                      <button type="button" className="mini" style={{ minHeight: 28, padding: "0 8px", fontSize: fs(12) }} disabled={busy || !!reAns} onClick={() => setReAns({ k, text: m.skipped ? "" : m.text })} aria-label={`${k + 1}번째 답 다시 쓰기`}>{m.skipped ? "답하기" : "다시 쓰기"}</button>
+                    </div>
+                  );
+                })}
                 <div ref={chatEnd} />
               </div>
               <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

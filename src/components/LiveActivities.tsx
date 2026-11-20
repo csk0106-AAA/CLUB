@@ -80,7 +80,7 @@ const NODE_ICON: Record<string, React.ReactNode> = {
 };
 
 // 활동 카드. 2초마다 서버 상태를 확인해서 진행자가 버튼을 누르면 회원 화면이 바로 켜진다.
-// layout="path" 이면 목업 ⑥처럼 길 모양 노드로 보여 주고, 진행 중인 활동만 아래에 카드로 보여 준다.
+// layout="path" 이면 목업 ⑥처럼 길 모양 노드만 보여 준다. 활동 박스(설명·시간·진행 상황)는 아이콘을 눌러 들어간 활동 화면 맨 위에 보인다(ActivityLiveBox).
 export function LiveActivities({ eventId, layout = "cards" }: { eventId: string; layout?: "cards" | "path" }) {
   const [list, setList] = useState<Live[] | null>(null);
   const [offline, setOffline] = useState(false);
@@ -115,7 +115,6 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
   if (layout === "path") {
     const nodes = list.map((a) => ({ a, n: nodeOf(eventId, a) }));
     const firstNow = nodes.findIndex((x) => x.n.tone === "now");
-    const live = list.filter((a) => a.round || a.worry || a.live.active);
     return (
       <>
         <section aria-label="활동 길" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -144,12 +143,6 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
             })}
           </div>
         </section>
-        {live.length > 0 && (
-          <section aria-label="지금 진행 중" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <b style={{ font: `700 ${fs(17)} var(--display)` }}>지금 진행 중</b>
-            {live.map((a) => card(a))}
-          </section>
-        )}
       </>
     );
   }
@@ -158,11 +151,38 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
     <section aria-label="활동" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>활동</b>
       {offline && <div className="msg info" role="status">연결이 불안정해요. 다시 연결하는 중이에요…</div>}
-      {list.map((a) => card(a))}
+      {list.map((a) => <ActivityCard key={a.id} eventId={eventId} a={a} reload={load} />)}
     </section>
   );
+}
 
-  function card(a: Live) {
+// 활동 화면 맨 위 박스: 이 활동의 설명·시간·참여 대상·진행 상황(진행자가 연 화면, 2진실 1거짓 라운드, 뽑힌 고민).
+// 일정의 활동 길에서 아이콘을 눌러 들어오면 여기서 본다. 2초마다 진행 상황을 다시 읽는다.
+export function ActivityLiveBox({ eventId, activityId }: { eventId: string; activityId: string }) {
+  const [a, setA] = useState<Live | null>(null);
+  const load = useCallback(async () => {
+    const r = await api<{ activities: Live[] }>(`/api/events/${eventId}/live`);
+    if (r.ok) setA(r.data.activities.find((x) => x.id === activityId) ?? null);
+  }, [eventId, activityId]);
+  useEffect(() => {
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function tick() {
+      if (document.visibilityState === "visible") await load();
+      if (!stop) timer = setTimeout(tick, 2000);
+    }
+    tick();
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
+  }, [load]);
+  if (!a) return null;
+  return <ActivityCard eventId={eventId} a={a} reload={load} inPage />;
+}
+
+// 활동 박스. inPage: 그 활동 화면 안에서 보일 때(같은 화면으로 가는 버튼은 빼고 내용만)
+function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a: Live; reload: () => Promise<void>; inPage?: boolean }) {
         const b = preBadge(a.pre);
         return (
           <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -182,7 +202,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
                 {!a.canJoin && <span className="small">이 활동에는 참여 대상으로 선택되지 않았어요. 관리자에게 문의해 주세요.</span>}
               </div>
             )}
-            {a.kind === "worry" && (
+            {!inPage && a.kind === "worry" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
                 {a.pre.status === "open" ? (
                   <Link href={`/events/${eventId}/worry/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>고민 작성하기</Link>
@@ -191,14 +211,14 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
                 )}
               </div>
             )}
-            {a.kind === "capsule" && (
+            {!inPage && a.kind === "capsule" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <Link href={`/events/${eventId}/capsule/${a.id}`} className={`btn ${a.live.unlocked && a.live.memberScreen === "write" && a.canJoin ? "" : "white"}`} style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>
                   {a.live.unlocked && a.live.memberScreen === "write" && a.canJoin ? "타임캡슐 작성하기" : "내 타임캡슐 보기"}
                 </Link>
               </div>
             )}
-            {a.kind === "who" && (
+            {!inPage && a.kind === "who" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
                 {a.pre.status === "open" || a.guess.status === "open" || a.pre.status === "closed" ? (
                   <Link href={`/events/${eventId}/who/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>
@@ -226,7 +246,6 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
             )}
           </div>
         );
-  }
 }
 
 /* ───── 나의 고민은?: 지금 뽑힌 고민 (회원 휴대폰) ───── */

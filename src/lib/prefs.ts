@@ -13,7 +13,7 @@ export type Theme = "system" | "light" | "dark";
 export type MapChoice = "ask" | "google" | "naver";
 export type Prefs = {
   screen: Theme;
-  map: MapChoice; // 지도 보기: ask(매번 고르기, 기본) | google | naver (lib/map-pref.ts)
+  mapApp: MapChoice; // 지도 보기: naver(네이버 지도, 기본) | google | ask(매번 고르기) (lib/map-pref.ts). 예전 칸 map 은 읽지 않는다
   notify: { events: boolean; notices: boolean; posts: boolean; profiles: boolean; feedback: boolean; requests: boolean };
   notifyOn: boolean;
   sound: boolean;
@@ -24,7 +24,7 @@ export const THEMES: readonly Theme[] = ["system", "light", "dark"];
 
 export const DEFAULT_PREFS: Prefs = {
   screen: "dark",
-  map: "ask",
+  mapApp: "naver",
   notify: { events: true, notices: true, posts: true, profiles: true, feedback: true, requests: true },
   notifyOn: true,
   sound: true,
@@ -55,7 +55,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
   const notifyOn = bool(o.notifyOn, DEFAULT_PREFS.notifyOn);
   return {
     screen: THEMES.includes(o.screen as Theme) ? (o.screen as Theme) : DEFAULT_PREFS.screen,
-    map: o.map === "google" || o.map === "naver" ? o.map : "ask",
+    mapApp: o.mapApp === "google" || o.mapApp === "ask" ? o.mapApp : "naver",
     notify: {
       events: bool(n.events, DEFAULT_PREFS.notify.events),
       notices: bool(n.notices, DEFAULT_PREFS.notify.notices),
@@ -78,7 +78,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
 export const prefsInput = z
   .object({
     screen: z.enum(["system", "light", "dark"]),
-    map: z.enum(["ask", "google", "naver"]),
+    mapApp: z.enum(["ask", "google", "naver"]),
     notify: z.object({ events: z.boolean(), notices: z.boolean(), posts: z.boolean(), profiles: z.boolean(), feedback: z.boolean(), requests: z.boolean() }).partial().strict(),
     notifyOn: z.boolean(),
     sound: z.boolean(),

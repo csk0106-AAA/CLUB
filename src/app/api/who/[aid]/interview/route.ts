@@ -95,7 +95,8 @@ export async function PUT(req: Request, ctx: Ctx) {
 
   const s = await getStore();
   const { row, messages } = await myInterview(g.s.mid, aid);
-  if (!row || row.status !== "done") return bad("끝난 인터뷰만 고칠 수 있어요.", 409);
+  // 인터뷰 중에도 앞 질문의 답을 다시 쓸 수 있다(끝난 뒤에는 "기존 인터뷰 수정하기")
+  if (!row) return bad("인터뷰를 먼저 시작해 주세요.", 409);
   const mine = messages.filter((m) => m.role === "me").length;
   if (parsed.data.answers.length !== mine) return bad("인터뷰가 바뀌었어요. 화면을 새로 고쳐 주세요.", 409);
   const mineMsgs = messages.filter((m) => m.role === "me");

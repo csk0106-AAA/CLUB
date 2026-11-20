@@ -7,7 +7,7 @@ import { MAP_NAME, mapHref, readMapPref } from "@/lib/map-pref";
 
 // 지도 링크 묶음(팝업 안 등): 설정에서 지도를 하나로 정했으면 그 지도 하나, 아니면 구글·네이버 둘 다.
 export function MapLinks({ place, onPick, small }: { place: string; onPick?: () => void; small?: boolean }) {
-  const pref = typeof window === "undefined" ? "ask" : readMapPref();
+  const pref = typeof window === "undefined" ? "naver" : readMapPref();
   const kinds = pref === "ask" ? (["google", "naver"] as const) : ([pref] as const);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

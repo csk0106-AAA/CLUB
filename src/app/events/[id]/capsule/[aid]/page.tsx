@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
+import { ActivityLiveBox } from "@/components/LiveActivities";
 import { useRouter } from "next/navigation";
 import { IconLock } from "@/components/Icons";
 import { LessonHeader } from "@/components/LessonHeader";
@@ -76,6 +77,8 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
     <main className="app">
       <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title={d.activity.name} done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
         right={<span className={`chip ${state.tone === "ok" ? "violet" : "line"}`}>{state.text}</span>} />
+      {/* 이 활동의 설명·시간·진행 상황(일정의 활동 길에서 아이콘을 눌러 들어옴) */}
+      <ActivityLiveBox eventId={id} activityId={aid} />
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <div className={`fb ${d.opened ? "good" : "info"}`}>
