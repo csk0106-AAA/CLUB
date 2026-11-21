@@ -7,7 +7,7 @@ import { familyRows } from "./template-versions";
 import { DEFAULT_TEMPLATES, type TemplateConfig } from "./template-schema";
 
 // 프로필 북의 "소개 작성하기"(일정 활동이 아닌 곳에서 쓰는 내 소개).
-//  프로필 북 전용 활동 템플릿 "내 소개(프로필 북)"(id profile-intro)의 **최신 버전** 질문·AI 지침을 쓴다(템플릿 화면에서 따로 관리).
+//  프로필 북 전용 활동 템플릿 "AI소개인터뷰"(id profile-intro)의 **최신 버전** 질문·AI 지침을 쓴다(템플릿 화면에서 따로 관리).
 //  게임용 '내가 누구일까요?'와 지침이 섞이지 않는다. 2진실 1거짓은 없다. 전용 템플릿이 없으면 '내가 누구일까요?' v1 을 쓴다.
 //  인터뷰는 Interviews.eventActivityId = PROFILE_AID 로 저장한다. 완료하면 프로필 북에 실명으로 바로 보인다.
 export const PROFILE_AID = "profile-book";

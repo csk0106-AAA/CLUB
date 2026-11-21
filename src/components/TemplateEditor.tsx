@@ -29,22 +29,22 @@ export const modeOf = (c: Pick<EditableConfig, "mode" | "preEvent" | "onsite">):
   c.mode ?? (!c.preEvent.steps.includes("ai_interview") && !c.preEvent.steps.includes("worry_write") && c.onsite.steps.some((s) => s.memberScreen === "write") ? "team" : "all");
 
 // 사전 단계 하나의 기간: 시작 = 일정 N일 전 HH:mm, 마감 = 일정 N일 전 HH:mm. 일정 날짜를 알면 실제 날짜·시각도 보여 준다.
-function WindowFields<W extends PreWindow>({ id, win, onChange, eventStartsAt, defaults }: { id: string; win: W; onChange: (w: W) => void; eventStartsAt?: string; defaults: { open: number; close: number } }) {
+export function WindowFields<W extends PreWindow>({ id, win, onChange, eventStartsAt, defaults }: { id: string; win: W; onChange: (w: W) => void; eventStartsAt?: string; defaults: { open: number; close: number } }) {
   const w = preWindowTimes(win, eventStartsAt ?? "");
-  const day = (v: string) => Math.max(0, Math.min(365, Number(v.replace(/\D/g, "")) || 0));
+  // 며칠 전 칸: 지우고 다시 쓸 수 있다(비우고 나가면 0일 전 = 일정 당일)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div className="win-row">
         <span className="l" id={`${id}-o`} style={{ margin: 0 }}>시작</span>
         <span>일정</span>
-        <input className="field num" aria-labelledby={`${id}-o`} aria-label="시작: 일정 며칠 전" inputMode="numeric" value={win.opensBeforeDays ?? defaults.open} onChange={(e) => onChange({ ...win, opensBeforeDays: day(e.target.value) })} />
+        <NumField className="field num" aria-labelledby={`${id}-o`} aria-label="시작: 일정 며칠 전" min={0} max={365} value={win.opensBeforeDays ?? defaults.open} onChange={(n) => onChange({ ...win, opensBeforeDays: n })} />
         <span>일 전</span>
         <input className="field num" type="time" aria-label="시작 시각" value={win.opensTime ?? ""} onChange={(e) => onChange({ ...win, opensTime: e.target.value || undefined })} />
       </div>
       <div className="win-row">
         <span className="l" id={`${id}-c`} style={{ margin: 0 }}>마감</span>
         <span>일정</span>
-        <input className="field num" aria-labelledby={`${id}-c`} aria-label="마감: 일정 며칠 전" inputMode="numeric" value={win.closesBeforeDays ?? defaults.close} onChange={(e) => onChange({ ...win, closesBeforeDays: day(e.target.value) })} />
+        <NumField className="field num" aria-labelledby={`${id}-c`} aria-label="마감: 일정 며칠 전" min={0} max={365} value={win.closesBeforeDays ?? defaults.close} onChange={(n) => onChange({ ...win, closesBeforeDays: n })} />
         <span>일 전</span>
         <input className="field num" type="time" aria-label="마감 시각" value={win.closesTime ?? ""} onChange={(e) => onChange({ ...win, closesTime: e.target.value || undefined })} />
       </div>
@@ -132,7 +132,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
         {pre.enabled && (
           <>
             <b style={{ fontSize: fs(15) }}>① {pre.steps.includes("ai_interview") ? "사전 작성(AI 인터뷰로 소개 쓰기)" : pre.steps.includes("worry_write") ? "사전 작성(고민 쓰기)" : "사전 작성"}</b>
-            <WindowFields id="t-pre" win={pre} defaults={{ open: 14, close: 1 }} eventStartsAt={eventStartsAt} onChange={(w) => onChange({ ...value, preEvent: w })} />
+            <span className="small">작성 기간(일정 며칠 전부터 며칠 전까지)은 일정 › 활동에서 일정마다 정해요.</span>
           </>
         )}
         {pre.enabled && value.guessPhase && (
@@ -143,9 +143,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
                 <b style={{ fontSize: fs(15) }}>② 사전 맞히기(누구인지 미리 맞혀 보기)</b>
               </label>
             </div>
-            {value.guessPhase.enabled && (
-              <WindowFields id="t-guess" win={value.guessPhase} defaults={{ open: 7, close: 1 }} eventStartsAt={eventStartsAt} onChange={(w) => onChange({ ...value, guessPhase: w })} />
-            )}
+            {value.guessPhase.enabled && <span className="small">맞히기 기간도 일정 › 활동에서 일정마다 정해요.</span>}
           </>
         )}
       </div>

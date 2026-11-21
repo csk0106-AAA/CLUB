@@ -30,6 +30,13 @@ export const stepSchema = z.object({
 // 사전 단계 기간(사전 작성, 사전 맞히기 등 활동 안의 사전 단계마다 하나): 일정 며칠 전 몇 시부터 며칠 전 몇 시까지.
 //  opensTime/closesTime("HH:mm", 한국 시간)을 정하면 그날 그 시각, 정하지 않으면 예전처럼 일정 시작 시각 기준으로 N일 전.
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+// 기간만(일정 활동에서 정한다)
+export const preWindowSchema = z.object({
+  opensBeforeDays: z.number().int().min(0).max(365).optional(),
+  closesBeforeDays: z.number().int().min(0).max(365).optional(),
+  opensTime: z.string().regex(HM).optional(),
+  closesTime: z.string().regex(HM).optional(),
+});
 export const preEventSchema = z.object({
   enabled: z.boolean(), // false면 일정 전 사전 작성 단계가 없다(현장에서만 진행)
   opensBeforeDays: z.number().int().min(0).optional(),
@@ -214,4 +221,19 @@ export function describeTemplate(c: Pick<TemplateConfig, "preEvent" | "guessPhas
   if (mode === "team") out.push("팀별로 진행해요.");
   if (c.host?.required) out.push("진행자가 필요해요.");
   return out.join(" ");
+}
+
+// 사전 작성·사전 맞히기 기간(며칠 전·시각)은 일정 활동마다 정한다(템플릿은 있는지 여부만).
+// 템플릿을 고쳐 일정 활동에 반영할 때 그 활동이 정한 기간을 지킨다(own: 그 활동의 예전 설정).
+const WIN_KEYS = ["opensBeforeDays", "closesBeforeDays", "opensTime", "closesTime"] as const;
+type WinLike = Partial<Record<(typeof WIN_KEYS)[number], number | string>>;
+const pickWin = (w?: WinLike) => Object.fromEntries(WIN_KEYS.filter((k) => w?.[k] !== undefined).map((k) => [k, w![k]]));
+const dropWin = <W extends object>(w: W): W => { const o = { ...w } as Record<string, unknown>; for (const k of WIN_KEYS) delete o[k]; return o as W; };
+export function withEventWindows<C extends Pick<TemplateConfig, "preEvent" | "guessPhase">>(next: C, own?: Pick<TemplateConfig, "preEvent" | "guessPhase"> | null): C {
+  if (!own) return next;
+  return {
+    ...next,
+    preEvent: { ...dropWin(next.preEvent), ...pickWin(own.preEvent) },
+    ...(next.guessPhase ? { guessPhase: { ...dropWin(next.guessPhase), ...pickWin(own.guessPhase ?? next.guessPhase) } } : {}),
+  };
 }

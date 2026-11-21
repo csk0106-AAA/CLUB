@@ -1,5 +1,5 @@
 import { activityKind, activityMode, newTemplateId, readConfig } from "./activities";
-import { canSelect } from "./template-schema";
+import { canSelect, withEventWindows } from "./template-schema";
 import type { Row, Store } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
 
@@ -99,8 +99,10 @@ export async function fixVersion(s: Store, base: Row, input: Editable): Promise<
   for (const a of await s.list("EventActivities")) {
     if (a.templateId !== base.id) continue;
     // 참여 대상(전체 회원 / 관리자 선택 회원)은 일정 활동마다 정하므로 그 활동의 값을 지킨다
-    const own = canSelect(config) ? readConfig(a.config)?.participants ?? config.participants : "all";
-    const next = own === config.participants ? json : JSON.stringify({ ...config, participants: own });
+    // 일정마다 정하는 값(참여 방식, 사전 작성·맞히기 기간)은 그 활동의 값을 지킨다
+    const oldCfg = readConfig(a.config);
+    const own = canSelect(config) ? oldCfg?.participants ?? config.participants : "all";
+    const next = JSON.stringify(withEventWindows({ ...config, participants: own }, oldCfg));
     if (a.config === next) continue;
     await s.update("EventActivities", a.id, { config: next, templateVersion: String(version) });
     propagated++;
@@ -249,7 +251,7 @@ export async function migrateAiRules(s: Store): Promise<{ backedUp: number } | n
   return { backedUp: rows.length };
 }
 
-// 한 번만: 프로필 북 전용 템플릿 "내 소개(프로필 북)"(id profile-intro)을 만든다.
+// 한 번만: 프로필 북 전용 템플릿 "AI소개인터뷰"(id profile-intro)을 만든다.
 //  '내가 누구일까요?' v1 의 인터뷰 질문·후속 질문 설정·AI 지침(후속 질문·소개 글·수정 요청)·공통 지침을 복사하되
 //  게임 관련(2진실 1거짓 지침, 공통 지침의 2진실 1거짓 문장)은 빼고, 겹친 문장은 한 번만 남긴다.
 export async function migrateBookTemplate(s: Store): Promise<{ created: boolean } | null> {
@@ -263,7 +265,7 @@ export async function migrateBookTemplate(s: Store): Promise<{ created: boolean 
     const g = who?.aiGuides ?? {};
     const cfg: TemplateConfig = {
       id: "profile-intro",
-      name: "내 소개(프로필 북)",
+      name: "AI소개인터뷰",
       version: 1,
       description: "프로필 북의 “소개 작성하기”에서 쓰는 AI 인터뷰예요(실명 소개, 2진실 1거짓 없음). 일정에는 넣지 않아요.",
       participants: "all",

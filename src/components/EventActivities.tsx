@@ -13,7 +13,7 @@ import { AiGuidesEditor, aiPointKeys } from "./AiGuidesEditor";
 import { Popup } from "./Popup";
 import { SaveChoices, savedText, type SaveMode } from "./SaveChoices";
 import { TeamBoard } from "./TeamBoard";
-import { modeOf, SCREEN_LABELS, TemplateEditor, type EditableConfig } from "./TemplateEditor";
+import { modeOf, SCREEN_LABELS, TemplateEditor, WindowFields, type EditableConfig } from "./TemplateEditor";
 import { fs } from "@/lib/fs";
 
 type Act = {
@@ -187,6 +187,60 @@ function Schedule({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; 
       {msg ? <span className={msg.tone === "bad" ? "msg bad" : "small"} role={msg.tone === "bad" ? "alert" : "status"} style={msg.tone === "ok" ? { color: "var(--accent-ink)", fontWeight: 700 } : undefined}>{msg.text}</span>
         : dirty && canEdit ? <span className="small" role="status">바꾼 일시를 저장하려면 “저장”을 눌러 주세요.</span>
         : <span className="small">회원에게 보여 주는 안내용 정보예요. 참여 대상은 “출석 체크”에서 따로 정해요.</span>}
+    </div>
+  );
+}
+
+// 사전 작성·사전 맞히기 기간(일정마다 정한다. 템플릿은 있는지 여부만 정한다). 저장 버튼이 상태를 보여 준다.
+function PreWindows({ eventId, a, canEdit, evStart, onChange }: { eventId: string; a: Act; canEdit: boolean; evStart: string; onChange: () => void }) {
+  const init = () => ({ pre: a.config.preEvent, guess: a.config.guessPhase });
+  const [w, setW] = useState(init);
+  const [saved, setSaved] = useState(() => JSON.stringify(init()));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "bad" | "ok"; text: string } | null>(null);
+  useEffect(() => {
+    const v = { pre: a.config.preEvent, guess: a.config.guessPhase };
+    setW(v);
+    setSaved(JSON.stringify(v));
+  }, [a.config.preEvent, a.config.guessPhase]);
+  const dirty = JSON.stringify(w) !== saved;
+  const winOf = (x?: { opensBeforeDays?: number; closesBeforeDays?: number; opensTime?: string; closesTime?: string }) =>
+    x ? { opensBeforeDays: x.opensBeforeDays, closesBeforeDays: x.closesBeforeDays, opensTime: x.opensTime, closesTime: x.closesTime } : undefined;
+
+  async function save() {
+    setBusy(true);
+    setMsg(null);
+    const r = await api(`/api/admin/events/${eventId}/activities/${a.id}`, { method: "PATCH", body: { windows: { preEvent: winOf(w.pre), ...(w.guess ? { guessPhase: winOf(w.guess) } : {}) } } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setSaved(JSON.stringify(w));
+    setMsg({ tone: "ok", text: "저장했어요 ✓" });
+    onChange();
+  }
+
+  return (
+    <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      <b style={{ font: `700 ${fs(15)} var(--display)` }}>사전 작성 기간</b>
+      <fieldset disabled={!canEdit || busy} style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+        <WindowFields id={`pw-${a.id}`} win={w.pre} defaults={{ open: 14, close: 1 }} eventStartsAt={evStart} onChange={(pre) => { setW({ ...w, pre }); setMsg(null); }} />
+        {w.guess?.enabled && (
+          <>
+            <b style={{ fontSize: fs(14) }}>사전 맞히기 기간</b>
+            <WindowFields id={`gw-${a.id}`} win={w.guess} defaults={{ open: 7, close: 1 }} eventStartsAt={evStart} onChange={(guess) => { setW({ ...w, guess }); setMsg(null); }} />
+          </>
+        )}
+      </fieldset>
+      <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {canEdit && (
+          <button className={`btn ${dirty ? "" : "white"}`} type="button" disabled={busy || !dirty} onClick={save}
+            style={{ width: "auto", minWidth: 92, minHeight: 44, fontSize: fs(14) }}>
+            {busy ? "저장 중…" : dirty ? "저장" : "저장됨"}
+          </button>
+        )}
+        {msg ? <span className={msg.tone === "bad" ? "msg bad" : "small"} role={msg.tone === "bad" ? "alert" : "status"} style={msg.tone === "ok" ? { color: "var(--accent-ink)", fontWeight: 700 } : undefined}>{msg.text}</span>
+          : dirty && canEdit ? <span className="small" role="status">바꾼 기간을 저장하려면 “저장”을 눌러 주세요.</span>
+          : <span className="small">이 일정에서만 쓰는 기간이에요.</span>}
+      </div>
     </div>
   );
 }
@@ -577,6 +631,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           </div>
           {a.config.participants === "selected" && <Attendance eventId={eventId} a={a} canEdit={canEdit} onChange={load} />}
           <Schedule eventId={eventId} a={a} canEdit={canEdit} onChange={load} />
+          {a.config.preEvent.enabled && <PreWindows eventId={eventId} a={a} canEdit={canEdit} evStart={evStart} onChange={load} />}
           <HostSetting eventId={eventId} a={a} canEdit={canEdit} members={members} onChange={load} />
           {a.config.preEvent.steps.includes("worry_write") && (
             <Link href={`/host/worry/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(16), textDecoration: "none" }}>

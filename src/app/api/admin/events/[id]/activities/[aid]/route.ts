@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { readConfig, templateInput } from "@/lib/activities";
-import { canSelect } from "@/lib/template-schema";
+import { canSelect, preWindowSchema, withEventWindows } from "@/lib/template-schema";
 import { getStore } from "@/lib/store";
 import { editable, eventSource, SAVE_MODES, saveTemplate } from "@/lib/template-versions";
 
@@ -20,6 +20,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const raw = await req.json().catch(() => null);
+  // 사전 작성·사전 맞히기 기간만 바꾸기: { windows: { preEvent?, guessPhase? } } — 이 일정 활동에만(템플릿은 있는지 여부만 정한다)
+  if (raw && typeof raw === "object" && "windows" in raw && !("config" in raw)) {
+    const p = z.object({ preEvent: preWindowSchema.optional(), guessPhase: preWindowSchema.optional() }).safeParse((raw as { windows: unknown }).windows);
+    if (!p.success) return bad("기간을 확인해 주세요.");
+    const s = await getStore();
+    const cur = (await s.list("EventActivities")).find((a) => a.id === aid && a.eventId === id);
+    const cfg = readConfig(cur?.config);
+    if (!cur || !cfg) return bad("활동을 찾을 수 없어요.", 404);
+    const next = withEventWindows(cfg, {
+      preEvent: { ...cfg.preEvent, ...(p.data.preEvent ?? {}) },
+      guessPhase: cfg.guessPhase ? { ...cfg.guessPhase, ...(p.data.guessPhase ?? {}) } : undefined,
+    });
+    await s.update("EventActivities", aid, { config: JSON.stringify(next) });
+    return NextResponse.json({ ok: true });
+  }
   // 참여 대상만 바꾸기: { participants: "all" | "selected" } — 이 일정 활동에만 적용(템플릿은 그대로, 선택 참여는 템플릿이 허용할 때만)
   if (raw && typeof raw === "object" && "participants" in raw && !("config" in raw)) {
     const p = z.enum(["all", "selected"]).safeParse((raw as { participants: unknown }).participants);
@@ -59,7 +74,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (live?.step && !input.onsite.steps.some((x) => x.key === live.step)) {
       return bad("지금 진행 중인 단계는 지울 수 없어요. 현장 진행을 먼저 되돌려 주세요.");
     }
-    const config = { ...input, participants: ownPart, id: old?.id ?? aid, version: old?.version ?? 1 };
+    const config = withEventWindows({ ...input, participants: ownPart, id: old?.id ?? aid, version: old?.version ?? 1 }, old);
     await s.update("EventActivities", aid, { config: JSON.stringify(config) });
     return NextResponse.json({ ok: true, mode: "fix", propagated: 0 });
   }
@@ -69,7 +84,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (r.unchanged) return NextResponse.json({ ok: true, unchanged: true, mode: r.mode });
   // 수정은 이 버전을 쓰는 활동(이 활동 포함)에 이미 반영됐다. 새 버전·새 활동은 이 활동만 새 것을 쓴다.
   if (r.mode !== "fix") {
-    await s.update("EventActivities", aid, { templateId: r.id, templateVersion: String(r.version), config: JSON.stringify({ ...r.config, participants: ownPart }) });
+    await s.update("EventActivities", aid, { templateId: r.id, templateVersion: String(r.version), config: JSON.stringify(withEventWindows({ ...r.config, participants: ownPart }, old)) });
   }
   return NextResponse.json({ ok: true, mode: r.mode, templateId: r.id, version: r.version, name: r.config.name, propagated: r.propagated ?? 0 });
 }
