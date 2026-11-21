@@ -17,11 +17,11 @@ import { fileUrl, type BoardMe, type PostSummary } from "@/components/board/type
 import { FORM_LABEL, RESPONSE_FORMS } from "@/lib/board";
 import { api, fmtDate } from "@/lib/client";
 import { fs } from "@/lib/fs";
+import { BookGuide } from "@/components/BookGuide";
 
 
-type Me = { name: string; consent: boolean; avatar: AvatarView };
+type Me = { name: string; consent: boolean; avatar: AvatarView; bookGuide?: boolean };
 
-// 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 다가오는 나의 일정 카드(참석 신청한 일정, 가까운 순 3개, 롤링), 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
 // 마감 일시 짧게: "2026-11-30T18:00" → "11/30 18:00", "2026-11-30" → "11/30"
 function deadlineText(d: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/.exec(d);
@@ -29,6 +29,7 @@ function deadlineText(d: string): string {
   return `${Number(m[2])}/${Number(m[3])}${m[4] ? ` ${m[4]}` : ""}`;
 }
 
+// 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 다가오는 나의 일정 카드(참석 신청한 일정, 가까운 순 3개, 롤링), 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
 export default function BoardPage() {
   const router = useRouter();
   const [who, setWho] = useState<Me | null>(null);
@@ -186,6 +187,7 @@ export default function BoardPage() {
       </Popup>
       {who && <ConsentSheet consent={who.consent} onAgreed={() => setWho({ ...who, consent: true })} />}
       {who && <ApplyNotice ready={who.consent} />}
+      {who && <BookGuide ready={who.consent} show={!!who.bookGuide} name={who.name} />}
       <MemberTabs on="board" />
     </main>
   );

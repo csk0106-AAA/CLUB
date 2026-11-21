@@ -99,13 +99,15 @@ export default function ProfilesPage() {
           </p>
           {d.items.length === 0 && <div className="msg info">아직 회원이 없어요.</div>}
           <div className="rows bleed">
-            {d.items.map((p) => (
+            {/* 내 카드는 맨 위에, 테두리·배경으로 눈에 띄게(별칭일 때도 내 것임을 알 수 있게) */}
+            {[...d.items.filter((p) => p.mine), ...d.items.filter((p) => !p.mine)].map((p) => (
               <button key={p.key} type="button" className="opt" onClick={() => router.push(`/profiles/${p.key}`)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, ...(p.mine ? { background: "var(--violet-bg)", boxShadow: "inset 4px 0 0 var(--accent-ink)" } : {}) }}>
                 {/* 별칭 회원은 사진·캐릭터를 내려받지 않는다(주인을 알아챌 수 있어서) */}
                 {p.masked ? <span className="avatar" aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 12, background: "var(--violet-bg)", color: "var(--accent-ink)", fontSize: fs(18) }}>?</span>
                   : <Avatar member={{ name: p.name, avatar: p.avatar ?? null }} size={44} />}
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 0 }}>
+                  {p.mine && <b style={{ fontSize: fs(12), color: "var(--accent-ink)", letterSpacing: 0.2 }}>{p.masked ? "내 프로필 · 지금은 별칭으로 보여요" : "내 프로필"}</b>}
                   <span className="name">
                     {p.masked ? `“${p.name}”` : p.name}
                     {p.fresh && <FreshChip fresh={p.fresh} style={{ marginLeft: 6, verticalAlign: "middle" }} />}
@@ -113,7 +115,6 @@ export default function ProfilesPage() {
                   </span>
                   <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                     {p.isNew && <span className="chip red">신규 회원</span>}
-                    {p.mine && <span className="chip violet">나</span>}
                     {p.mine && p.hiddenMine && <span className="chip gray" title="설정 › 프로필 북에서 바꿀 수 있어요">다른 회원에게 숨김</span>}
                     {p.masked && <span className="chip line">내가 누굴까요?</span>}
                     {!p.hasIntro && <span className="chip gray">{p.mine && !p.masked ? "소개 작성하기" : "소개 준비 중"}</span>}

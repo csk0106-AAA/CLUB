@@ -16,8 +16,14 @@ type Member = { id?: string; kind?: string; perms?: string; position?: string; a
 type Sess = { name: string; perms: string[]; admin: boolean };
 
 async function view(s: Sess, me: Member) {
-  const extra = parseJson<{ consentAt?: string }>(me.extra, {});
+  const extra = parseJson<{ consentAt?: string; bookGuideAt?: string }>(me.extra, {});
   const { clubs } = await getLists();
+  // 프로필 북 소개 안내(처음 한 번): 프로필 북에 보이는 회원이고, 아직 안내를 안 봤고, 공개된 소개가 없을 때
+  let bookGuide = false;
+  if (!isGuest(me.kind) && !extra.bookGuideAt && me.id) {
+    const p = (await (await getStore()).list("Profiles")).find((x) => x.memberId === me.id);
+    bookGuide = p?.introStatus !== "approved";
+  }
   return {
     name: s.name,
     perms: s.perms,
@@ -25,6 +31,7 @@ async function view(s: Sess, me: Member) {
     livePerms: effectivePerms(me as Parameters<typeof effectivePerms>[0], await getPermGroups()),
     admin: s.admin,
     consent: Boolean(extra.consentAt),
+    bookGuide,
     gender: me.gender === "남" || me.gender === "여" ? me.gender : "",
     company: me.company ?? "",
     title: me.title ?? "",
