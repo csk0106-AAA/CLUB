@@ -71,6 +71,10 @@ export const templateConfigSchema = z.object({
   // 참여 범위(템플릿에서 정한다): true 면 일정에서 "선택 회원"을 고를 수 있다. false 면 늘 전체 회원.
   // 없으면 예전 값(participants 가 selected 이면 선택 가능)으로 본다 — canSelect().
   selectable: z.boolean().optional(),
+  // 기능 블록(lib/blocks.ts): 이 활동에 넣은 블록 키(예: ["saju"])
+  blocks: z.array(z.string()).optional(),
+  // 사주풀이 블록을 여는 시점(활동 설정): interview(AI 인터뷰 뒤) / pre(사전 작성 기간) / event(일정 당일)
+  sajuWhen: z.enum(["interview", "pre", "event"]).optional(),
   // 선별 조건(템플릿에서 적는다): 선택 회원으로 할 때 관리자가 회원을 고르는 기준. 출석 체크 화면에 보인다.
   selectRule: z.string().max(2000).optional(),
   preEvent: preEventSchema,
@@ -114,6 +118,8 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
   {
     id: "who-am-i",
     name: "내가 누구일까요?",
+    blocks: ["saju"],
+    sajuWhen: "interview",
     selectable: true,
     selectRule: "프로필 북에 실명 소개가 아직 공개되지 않은 회원을 고르세요. 익명(별칭) 소개를 보고 누구인지 맞히는 활동이에요.\n이미 실명 소개가 공개된 회원(북공개)을 고르면, 그 회원은 ‘북 초기화’(소개를 지우고 별칭으로 새로 작성, 맞히기 대상) 또는 ‘일부활동참여’(소개 그대로, 맞히기 대상에서만 빠지고 맞히기·투표 참여) 중 하나를 정해야 해요.",
     version: 1,
@@ -123,7 +129,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
       enabled: true,
       opensBeforeDays: 14,
       closesBeforeDays: 7,
-      steps: ["alias", "ai_interview", "truth_lies", "reading_optional", "approve"],
+      steps: ["alias", "ai_interview", "truth_lies", "approve"],
     },
     guessPhase: { enabled: true, opensBeforeDays: 7, closesBeforeDays: 1, steps: ["guess"] },
     onsite: {
@@ -179,14 +185,19 @@ export const canSelect = (c: Pick<TemplateConfig, "selectable" | "participants">
 // lib/activities.ts readConfig 가 읽을 때마다 이 값으로 채운다.
 const PRE_LABEL: Record<string, string> = {
   alias: "별칭 정하기", ai_interview: "AI 인터뷰로 소개 글 작성", truth_lies: "2진실 1거짓 문장 만들기",
-  reading_optional: "명리학 사주풀이(선택)", approve: "본인 승인 후 공개", worry_write: "고민 미리 적기", guess: "누구인지 맞히기",
+  approve: "본인 승인 후 공개", worry_write: "고민 미리 적기", guess: "누구인지 맞히기",
 };
-export function describeTemplate(c: Pick<TemplateConfig, "preEvent" | "guessPhase" | "onsite" | "mode" | "host" | "bookOnly" | "reveal">): string {
+export function describeTemplate(c: Pick<TemplateConfig, "preEvent" | "guessPhase" | "onsite" | "mode" | "host" | "bookOnly" | "reveal" | "blocks" | "sajuWhen">): string {
   const out: string[] = [];
-  const pre = c.preEvent.enabled ? c.preEvent.steps.map((k) => PRE_LABEL[k] ?? k) : [];
+  // 사주풀이(예전에는 사전 단계 reading_optional)는 기능 블록 줄에 쓴다
+  const pre = c.preEvent.enabled ? c.preEvent.steps.filter((k) => k !== "reading_optional").map((k) => PRE_LABEL[k] ?? k) : [];
+  const saju = (c.blocks ?? []).includes("saju") || c.preEvent.steps.includes("reading_optional");
+  const when = c.sajuWhen ?? (c.preEvent.steps.includes("ai_interview") ? "interview" : c.preEvent.enabled ? "pre" : "event");
+  const blockLine = saju ? `기능 블록: 명리학 사주풀이(${when === "interview" ? "AI 인터뷰를 마친 뒤" : when === "pre" ? "사전 작성 기간" : "일정 당일"}, 선택).` : "";
   if (c.bookOnly) {
     out.push("프로필 북 “소개 작성하기”에서 쓰는 활동이에요(일정에는 넣지 않아요).");
     if (pre.length) out.push(`진행: ${pre.join(" → ")}.`);
+    if (blockLine) out.push(blockLine);
     out.push("실명으로 소개가 공개돼요.");
     return out.join(" ");
   }
@@ -199,6 +210,7 @@ export function describeTemplate(c: Pick<TemplateConfig, "preEvent" | "guessPhas
     out.push(`실명 공개: ${!r || r.mode === "end" ? "일정이 끝날 때" : r.mode === "after" ? `일정이 끝나고 ${r.hours ?? 0}시간 뒤` : `${(r.at ?? "").replace("T", " ")}`}.`);
   }
   const mode = c.mode ?? (!c.preEvent.steps.includes("ai_interview") && !c.preEvent.steps.includes("worry_write") && c.onsite.steps.some((x) => x.memberScreen === "write") ? "team" : "all");
+  if (blockLine) out.push(blockLine);
   if (mode === "team") out.push("팀별로 진행해요.");
   if (c.host?.required) out.push("진행자가 필요해요.");
   return out.join(" ");

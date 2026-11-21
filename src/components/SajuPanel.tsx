@@ -112,8 +112,9 @@ export function OldReadingNote() {
 const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`);
 
 // 명리학 풀이(선택). 인터뷰 마지막 단계에서 "사주 보기 / 사주 안 보기"를 고르고, 보기를 고르면 정보를 넣는다.
-export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
-  aid: string; r: Reading; canWrite: boolean; published?: boolean; onChanged: () => Promise<void>;
+// base: 서버 주소(소개 작성 활동은 /api/who/[aid]/reading, 그 밖의 활동은 /api/saju/[aid] — components/ActivitySaju.tsx)
+export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base }: {
+  aid: string; r: Reading; canWrite: boolean; published?: boolean; onChanged: () => Promise<void>; base?: string;
 }) {
   const [form, setForm] = useState(false);
   const [gender, setGender] = useState<"남" | "여" | "">("");
@@ -133,7 +134,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged }: {
   async function call(method: string, body?: unknown) {
     setBusy(true);
     setErr("");
-    const res = await api(`/api/who/${aid}/reading`, { method, body });
+    const res = await api(base ?? `/api/who/${aid}/reading`, { method, body });
     setBusy(false);
     if (!res.ok) {
       setErr(res.error);

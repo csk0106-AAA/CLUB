@@ -20,7 +20,9 @@ export type WhoState = {
   state: "none" | "prompt" | "optout" | "in";
   inActivity: boolean; // 게임 참여(별칭·2진실 1거짓)
   participants: string;
-  blocks?: { saju: boolean; truthlies: boolean }; // 켠 기능 블록
+  blocks?: { saju: boolean; truthlies: boolean }; // 기능 블록 사주풀이 / 2진실 1거짓(사전 단계)
+  sajuWhen?: "interview" | "pre" | "event"; // 사주풀이 여는 시점(활동 설정)
+  sajuOpen?: boolean; // 지금 사주풀이를 받을 수 있는지
   revealAt: string; // 프로필 북 실명 공개 시각(ISO)
   profile: {
     alias: string; draftMd: string; introMd: string; introStatus: string;
@@ -80,6 +82,7 @@ export function WhoWrite(props: {
   // 기능 블록: 2진실 1거짓(게임 참여 회원만) / 사주풀이(AI 연결 시). 예전 응답(blocks 없음)은 모두 켠 것으로 본다.
   const tlOn = inAct && st.blocks?.truthlies !== false;
   const sajuOn = st.aiEnabled && st.blocks?.saju !== false;
+  const sajuAfterIv = sajuOn && (st.sajuWhen ?? "interview") === "interview"; // 인터뷰 뒤(소개 글 만들기 전에 고른다)
 
   const [alias, setAlias] = useState(st.profile.alias);
   const [intro, setIntro] = useState(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
@@ -458,12 +461,16 @@ export function WhoWrite(props: {
       )}
 
       {/* 인터뷰 마지막 단계: 명리학 사주 보기 / 안 보기 (고르기 전에는 소개 글 만들기를 보여 주지 않는다) */}
-      {interviewDone && !hasDraft && sajuOn && (
+      {interviewDone && !hasDraft && sajuAfterIv && (
         <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />
+      )}
+      {/* 여는 시점이 사전 작성 기간·일정 당일이면 그때 따로 보여 준다(소개 글 만들기와 상관없이) */}
+      {sajuOn && !sajuAfterIv && !hasDraft && (st.sajuOpen || readingChosen) && (
+        <SajuPanel aid={aid} r={reading} canWrite={!!st.sajuOpen} onChanged={reload} />
       )}
 
       {/* 2. 초안 만들기 */}
-      {interviewDone && !hasDraft && (!sajuOn || readingChosen) && (
+      {interviewDone && !hasDraft && (!sajuAfterIv || readingChosen) && (
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {tlOn ? "별칭과 소개 글, 2진실 1거짓을" : inAct ? "별칭과 소개 글을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
           <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : tlOn ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
@@ -568,7 +575,7 @@ export function WhoWrite(props: {
           )}
 
           {/* 명리학: 성격·성향(소개 페이지 맨 끝에 공개, 뺄 수 있음) + 생애주기 풀이(나만) */}
-          {sajuOn && <SajuPanel aid={aid} r={reading} canWrite={open} published={approved} onChanged={reload} />}
+          {sajuOn && (sajuAfterIv || st.sajuOpen || readingChosen) && <SajuPanel aid={aid} r={reading} canWrite={sajuAfterIv ? open : !!st.sajuOpen} published={approved} onChanged={reload} />}
 
           {approveErr && !approved && (
             <div className="msg bad" role="alert">

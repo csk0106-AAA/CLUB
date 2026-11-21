@@ -6,7 +6,6 @@ import { generateTruthLies, keyWords, qaPairs } from "@/lib/truthlies";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
 import { getStore } from "@/lib/store";
 import { guidelinesFor } from "@/lib/ai-guides";
-import { hasBlock } from "@/lib/blocks";
 import { inGame, loadWho, myInterview, myProfile, myTruthLies, normAlias, writeClosed, writeGate } from "@/lib/who";
 
 type Ctx = { params: Promise<{ aid: string }> };
@@ -44,8 +43,8 @@ export async function POST(_req: Request, ctx: Ctx) {
   let statements = ["", "", ""];
   let lieIndex = 0;
 
-  // ① 2진실 1거짓 먼저(기능 블록 '2진실 1거짓'을 켠 활동만)
-  if (inAct && hasBlock(w.cfg, "truthlies")) {
+  // ① 2진실 1거짓 먼저(사전 단계에 2진실 1거짓이 있는 활동만)
+  if (inAct && w.cfg.preEvent.steps.includes("truth_lies")) {
     const tl = await generateTruthLies("", qaPairs(messages, terms), terms, w.act);
     if (tl) {
       statements = tl.statements;

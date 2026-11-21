@@ -1,5 +1,7 @@
 "use client";
 
+import { BLOCKS, hasBlock } from "@/lib/blocks";
+import { SAJU_LABEL, SAJU_RULES } from "@/lib/ai-rules";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { AiGuidesEditor, aiPointKeys } from "@/components/AiGuidesEditor";
@@ -32,7 +34,50 @@ const hasAi = (c: TemplateConfig) => Object.values(c.aiGuides ?? {}).some((v) =>
 const summary = (c: TemplateConfig) =>
   `${modeOf(c) === "team" ? "팀별 · " : "모두 함께 · "}${canSelect(c) ? "선택 참여 가능 · " : "전체 참여만 · "}${c.preEvent.enabled ? `사전 작성 있음 (일정 ${c.preEvent.opensBeforeDays ?? 14}일 전 ~ ${c.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 ${c.onsite.steps.length}단계`;
 
+// 기능블록 목록(읽기만): 코드로 만든 기능이라 버전이 없고, 바뀌면 쓰는 모든 활동에 함께 반영된다.
+// 넣고 빼기는 각 활동템플릿의 “기능 블록” 칸에서, 새 블록은 “AI에게 개발 요청”으로.
+function BlockList({ fams }: { fams: Family[] }) {
+  const [open, setOpen] = useState("");
+  return (
+    <>
+      <p className="small" style={{ margin: 0 }}>
+        기능블록은 개발된 기능이에요. 어느 활동템플릿에나 넣을 수 있고, 언제 열지 같은 설정은 활동템플릿에서 정해요. 코드로 만들어서 버전이 없고, 바뀌면 이 블록을 쓰는 모든 활동에 함께 반영돼요. 넣고 빼기는 활동템플릿의 “기능 블록” 칸에서, 새 기능블록은 활동템플릿 편집 창의 “AI에게 개발 요청”으로 요청해 주세요.
+      </p>
+      <div className="cards">
+        {BLOCKS.map((b) => {
+          const users = fams.filter((f) => f.versions.some((v) => hasBlock(v.config, b.key))).map((f) => f.root.config.name);
+          return (
+            <div key={b.key} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+              <span className="pill ok">기능블록</span>
+              <b style={{ font: `700 ${fs(18)} var(--display)` }}>{b.name}</b>
+              <span className="small">{b.summary}</span>
+              <span className="small"><b>쓰는 활동템플릿</b> · {users.length ? users.join(", ") : "아직 없어요"}</span>
+              {b.rulesNote && (
+                <>
+                  <button className="mini" type="button" aria-expanded={open === b.key} onClick={() => setOpen(open === b.key ? "" : b.key)}>{open === b.key ? "지침 접기" : "지침 보기"}</button>
+                  {open === b.key && (
+                    <div className="small" style={{ display: "flex", flexDirection: "column", gap: 6, lineHeight: 1.6 }}>
+                      <span><b>{b.rulesNote}</b></span>
+                      {b.key === "saju" && (["common", "public", "private"] as const).map((k) => (
+                        <div key={k}>
+                          <span style={{ fontWeight: 700 }}>{SAJU_LABEL[k]}</span>
+                          <ol style={{ margin: "2px 0 0", paddingLeft: 20 }}>{SAJU_RULES[k].map((r, i) => <li key={i}>{r}</li>)}</ol>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 function Templates() {
+  const [tab, setTab] = useState<"act" | "block">("act");
   const [list, setList] = useState<T[] | null>(null);
   const [canDelete, setCanDelete] = useState(false); // 지우기는 관리자(활동 권한)만 — 클럽 직책자는 만들고 고치기만
   // 편집 창. base 가 있으면 그 버전을 바탕으로 새 버전을 만들고, 없으면 새 템플릿(v1)을 만든다.
@@ -112,7 +157,7 @@ function Templates() {
             </>
           ) : (
             <>
-              <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "템플릿" : "내가 만든 템플릿"} v1</span>
+              <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "활동템플릿" : "내가 만든 활동템플릿"} v1</span>
               {t.config.bookOnly && <span className="pill warn" title="프로필 북 “소개 작성하기”에서 최신 버전을 써요. 일정에는 넣지 않아요.">프로필 북 전용</span>}
             </>
           )}
@@ -158,6 +203,16 @@ function Templates() {
 
   return (
     <>
+      {/* 활동템플릿(버전 있음) / 기능블록(코드로 만든 기능, 버전 없음) */}
+      <div className="row" role="tablist" aria-label="템플릿 종류" style={{ gap: 6 }}>
+        {(["act", "block"] as const).map((k) => (
+          <button key={k} role="tab" aria-selected={tab === k} type="button" className={`btn ${tab === k ? "" : "white"}`}
+            style={{ width: "auto", minWidth: 120, minHeight: 42, fontSize: fs(15) }} onClick={() => setTab(k)}>
+            {k === "act" ? "활동템플릿" : `기능블록 ${BLOCKS.length}`}
+          </button>
+        ))}
+      </div>
+      {tab === "block" ? <BlockList fams={fams} /> : (<>
       <p className="small" style={{ margin: 0 }}>
         활동 템플릿은 일정에 넣을 활동의 설계도예요. 사전 작성이 있는지, 현장에서 어떤 단계로 진행하는지, 진행자가 버튼을 누를 때 회원 화면이 언제 켜지는지를 여기서 정해요.
         처음 만든 템플릿이 v1이에요. 고친 뒤 저장할 때 방법을 골라요: <b>수정</b>(지금 버전에 빠진 조건을 넣거나 잘못된 곳 고치기), <b>새 버전 저장</b>(v2, v3…), <b>새 활동으로 저장</b>(다른 이름의 새 템플릿). 일정에서 고칠 때도 같아요.
@@ -192,6 +247,7 @@ function Templates() {
           <p className="small" style={{ margin: 0 }}>기존 템플릿을 “복제”해서 필요한 부분만 고쳐 쓰는 것이 가장 빨라요. 복제하면 버전이 아니라 새 템플릿(v1)이 따로 생겨요. 새 활동은 “+ 새 템플릿 만들기” 안의 “AI에게 요청”으로 설명하면 AI가 초안을 만들어 줘요.</p>
         </>
       )}
+      </>)}
 
       <Popup
         id="template-versions"

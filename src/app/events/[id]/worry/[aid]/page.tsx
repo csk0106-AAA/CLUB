@@ -1,5 +1,6 @@
 "use client";
 
+import { ActivitySaju } from "@/components/ActivitySaju";
 import { use, useCallback, useEffect, useState, useRef } from "react";
 import { ActivityLiveBox } from "@/components/LiveActivities";
 import { useRouter } from "next/navigation";
@@ -129,6 +130,8 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
         right={d.canJoin ? <span className={`chip ${d.mine.length ? "violet" : "line"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
       {/* 이 활동의 설명·시간·진행 상황(일정의 활동 길에서 아이콘을 눌러 들어옴) */}
       <ActivityLiveBox eventId={id} activityId={aid} />
+      {/* 기능 블록: 명리학 사주풀이(넣은 활동이고 여는 시점일 때만 보임) */}
+      <ActivitySaju aid={aid} />
       <div className="say">
         <Mascot size={32} />
         <p className="lead">고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 일정에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 진행자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>

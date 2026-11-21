@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasBlock } from "@/lib/blocks";
+import { hasBlock, sajuOpen, sajuWhenOf } from "@/lib/blocks";
 import { revealTime } from "@/lib/activities";
 import { guard, parseJson } from "@/lib/api";
 import { isAiEnabled } from "@/lib/ai";
@@ -54,8 +54,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
     // 게임 참여(state in)일 때만 활동에 들어간다(2진실 1거짓, 맞히기, 별칭)
     inActivity: state === "in",
     participants: w.cfg.participants,
-    // 켠 기능 블록(lib/blocks.ts): 사주풀이, 2진실 1거짓
-    blocks: { saju: hasBlock(w.cfg, "saju"), truthlies: hasBlock(w.cfg, "truthlies") },
+    // 기능 블록 사주풀이(lib/blocks.ts)와 여는 시점, 2진실 1거짓(사전 단계)
+    blocks: { saju: hasBlock(w.cfg, "saju"), truthlies: w.cfg.preEvent.steps.includes("truth_lies") },
+    sajuWhen: sajuWhenOf(w.cfg),
+    sajuOpen: sajuOpen(w.cfg, w.ev, !!w.book),
     // 프로필 북 실명 공개 시각(ISO). 이때까지 참여 회원은 프로필 북에 별칭으로만 보인다.
     revealAt: rt ? new Date(rt).toISOString() : "",
     profile: {

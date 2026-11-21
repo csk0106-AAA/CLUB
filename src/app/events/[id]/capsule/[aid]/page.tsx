@@ -1,5 +1,6 @@
 "use client";
 
+import { ActivitySaju } from "@/components/ActivitySaju";
 import { use, useCallback, useEffect, useState } from "react";
 import { ActivityLiveBox } from "@/components/LiveActivities";
 import { useRouter } from "next/navigation";
@@ -79,6 +80,8 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
         right={<span className={`chip ${state.tone === "ok" ? "violet" : "line"}`}>{state.text}</span>} />
       {/* 이 활동의 설명·시간·진행 상황(일정의 활동 길에서 아이콘을 눌러 들어옴) */}
       <ActivityLiveBox eventId={id} activityId={aid} />
+      {/* 기능 블록: 명리학 사주풀이(넣은 활동이고 여는 시점일 때만 보임) */}
+      <ActivitySaju aid={aid} />
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       <div className={`fb ${d.opened ? "good" : "info"}`}>

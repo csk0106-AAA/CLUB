@@ -145,24 +145,48 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
 function Schedule({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; canEdit: boolean; onChange: () => void }) {
   const [s, setS] = useState(a.startsAt);
   const [e, setE] = useState(a.endsAt);
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [saved, setSaved] = useState({ s: a.startsAt, e: a.endsAt }); // 서버에 저장된 값
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "bad" | "ok"; text: string } | null>(null);
+  // 다시 불러온 값으로 맞춘다(다른 곳에서 바뀐 경우)
+  useEffect(() => {
+    setSaved({ s: a.startsAt, e: a.endsAt });
+    setS(a.startsAt);
+    setE(a.endsAt);
+  }, [a.startsAt, a.endsAt]);
+  const dirty = s !== saved.s || e !== saved.e;
 
   async function save() {
+    if (s && e && e < s) return setMsg({ tone: "bad", text: "끝나는 일시가 시작 일시보다 빨라요." });
+    setBusy(true);
+    setMsg(null);
     const r = await api(`/api/admin/events/${eventId}/activities/${a.id}/schedule`, { method: "PUT", body: { startsAt: s, endsAt: e } });
-    setMsg(r.ok ? { tone: "info", text: "활동 일시를 저장했어요." } : { tone: "bad", text: r.error });
-    if (r.ok) onChange();
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setSaved({ s, e });
+    setMsg({ tone: "ok", text: "저장했어요 ✓" });
+    onChange();
   }
 
+  // 한 줄: [활동 일시] 시작 ~ 끝 [저장]. 좁은 화면에서는 여러 줄로 내려간다.
+  //  저장 버튼: 바꾼 내용이 있으면 눌러야 하는 색(“저장”), 없으면 흐린 “저장됨”으로 상태를 보여 준다.
   return (
-    <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-      <b style={{ font: `700 ${fs(16)} var(--display)` }}>활동 날짜와 진행 시간</b>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
-      <div className="grid2">
-        <div><label className="l" htmlFor={`as-${a.id}`}>시작 일시</label><DateField id={`as-${a.id}`} mode="datetime" value={s} disabled={!canEdit} onChange={setS} /></div>
-        <div><label className="l" htmlFor={`ae-${a.id}`}>끝나는 일시</label><DateField id={`ae-${a.id}`} mode="datetime" value={e} disabled={!canEdit} onChange={setE} /></div>
+    <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <b style={{ font: `700 ${fs(15)} var(--display)`, flex: "0 0 auto" }}>활동 일시</b>
+        <div style={{ flex: "1 1 190px", minWidth: 0 }}><DateField id={`as-${a.id}`} ariaLabel="활동 시작 일시" mode="datetime" value={s} disabled={!canEdit || busy} onChange={(v) => { setS(v); setMsg(null); }} /></div>
+        <span aria-hidden="true" style={{ flex: "0 0 auto" }}>-</span>
+        <div style={{ flex: "1 1 190px", minWidth: 0 }}><DateField id={`ae-${a.id}`} ariaLabel="활동 끝나는 일시" mode="datetime" value={e} disabled={!canEdit || busy} onChange={(v) => { setE(v); setMsg(null); }} /></div>
+        {canEdit && (
+          <button className={`btn ${dirty ? "" : "white"}`} type="button" disabled={busy || !dirty} onClick={save}
+            style={{ width: "auto", minWidth: 92, minHeight: 44, fontSize: fs(14), flex: "0 0 auto" }}>
+            {busy ? "저장 중…" : dirty ? "저장" : "저장됨"}
+          </button>
+        )}
       </div>
-      <span className="small">회원에게 보여 주는 안내용 정보예요. 참여 대상은 아래 “출석 체크”에서 따로 정해요.</span>
-      {canEdit && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={save}>일시 저장</button>}
+      {msg ? <span className={msg.tone === "bad" ? "msg bad" : "small"} role={msg.tone === "bad" ? "alert" : "status"} style={msg.tone === "ok" ? { color: "var(--accent-ink)", fontWeight: 700 } : undefined}>{msg.text}</span>
+        : dirty && canEdit ? <span className="small" role="status">바꾼 일시를 저장하려면 “저장”을 눌러 주세요.</span>
+        : <span className="small">회원에게 보여 주는 안내용 정보예요. 참여 대상은 “출석 체크”에서 따로 정해요.</span>}
     </div>
   );
 }
