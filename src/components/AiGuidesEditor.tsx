@@ -55,12 +55,15 @@ export function AiGuidesEditor(props: {
     api<Info>("/api/admin/interview-settings").then((r) => {
       if (!r.ok) return setErr(r.error);
       setInfo(r.data);
+      // 공통 지침 칸이 비어 있으면 기본 지침(관리자 › 모임설정에서 볼 수 있음)을 채워 보여 준다. 고쳐 저장하면 이 활동은 저장한 글을 따른다.
+      setCommon((c) => (c.trim() ? c : r.data.guidelines));
       // 템플릿에 인터뷰 질문이 없으면 기본값으로 채워서 보여 준다(저장하면 템플릿으로 옮겨짐)
       if (!initial.interview?.questions?.length) {
         setItems(r.data.questions.map((q) => ({ q, skip: false })));
         setFollowUpMax(r.data.followUpMax);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial.interview]);
 
   async function save(mode: SaveMode = "fix", name?: string) {
@@ -79,7 +82,7 @@ export function AiGuidesEditor(props: {
         <button className="mini" type="button" onClick={onClose}>닫기</button>
       </div>
       <span className="small">
-        이 활동 안에서 AI가 쓰이는 지점마다 지침을 정해요. 비워 두면 “AI 설정” 화면의 전체 지침을 써요. 모든 지점에는 공통 지침(신원 정보 금지 등)이 항상 함께 들어가요.
+        이 활동 안에서 AI가 쓰이는 지점마다 지침을 정해요. 모든 AI에는 <b>필수 지침</b>(민감정보·신원정보·혐오 표현 금지 등)이 맨 위에 항상 들어가고, 그다음 이 활동의 <b>공통 지침</b>이 모든 세부 지침에 함께 들어가요. 세부 지침은 비어 있으면 없는 것으로 둬요. 필수·기본 지침은 관리자 › 모임설정에서 볼 수 있어요.
       </span>
       {err && <div className="msg bad" role="alert">{err}</div>}
       {!info && !err && <p className="small">불러오는 중이에요…</p>}
@@ -87,10 +90,10 @@ export function AiGuidesEditor(props: {
 
       {info && keys.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label className="l" htmlFor="ag-common" style={{ marginBottom: 0 }}>이 활동 공통 지침 (모든 지점에 들어가요)</label>
-          <span className="small">신원 정보 금지, 말투 등 이 활동 전체에 적용할 기준이에요.</span>
+          <label className="l" htmlFor="ag-common" style={{ marginBottom: 0 }}>이 활동 공통 지침 (아래 모든 세부 지침에 들어가요)</label>
+          <span className="small">이 활동 전체에 적용할 기준이에요. 비어 있으면 기본 지침을 채워 보여 줘요. 고쳐 저장하면 이 활동은 저장한 글을 따라요.</span>
           <textarea id="ag-common" className="field" rows={5} maxLength={4000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
-            placeholder={`비워 두면 AI 설정 화면의 기본 공통 지침을 써요:\n${info.guidelines}`}
+            placeholder="비워 두면 기본 공통 지침을 써요."
             value={common} onChange={(e) => setCommon(e.target.value)} />
         </div>
       )}
@@ -127,23 +130,22 @@ export function AiGuidesEditor(props: {
       {info && keys.map((k) => {
         const p = info.points.find((x) => x.key === k);
         if (!p) return null;
-        const fallback = info.pointGuides[k]?.trim();
         return (
           <div key={k} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <label className="l" htmlFor={`ag-${k}`} style={{ marginBottom: 0 }}>{p.label}</label>
             <span className="small">{p.hint}</span>
             <textarea id={`ag-${k}`} className="field" rows={4} maxLength={4000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
-              placeholder={fallback ? `비워 두면 전체 지침을 써요:\n${fallback}` : "비워 두면 공통 지침만 써요."}
+              placeholder="비워 두면 이 지점에는 세부 지침 없이 공통 지침만 들어가요."
               value={guides[k] ?? ""} onChange={(e) => setGuides({ ...guides, [k]: e.target.value })} />
-            <span className="hint">{(guides[k] ?? "").trim() ? "이 지침을 써요" : fallback ? "지금은 전체 지침을 써요" : "지금은 공통 지침만 써요"}</span>
+            <span className="hint">{(guides[k] ?? "").trim() ? "이 세부 지침을 써요" : "지금은 공통 지침만 들어가요"}</span>
           </div>
         );
       })}
       {info && (
         <details className="card" style={{ background: "var(--soft)" }}>
-          <summary style={{ fontWeight: 700, cursor: "pointer" }}>AI 설정 화면의 기본 공통 지침 보기</summary>
+          <summary style={{ fontWeight: 700, cursor: "pointer" }}>기본 지침 보기</summary>
           <p className="small" style={{ whiteSpace: "pre-wrap", margin: "8px 0 0" }}>{info.guidelines}</p>
-          <span className="small">위 “이 활동 공통 지침”을 비워 두면 이 기본값을 써요.</span>
+          <span className="small">위 “이 활동 공통 지침” 칸을 완전히 비우면 이 기본 지침을 써요. 기본·필수 지침은 관리자 › 모임설정에서 볼 수 있고, 바꾸려면 개발자에게 요청하세요.</span>
         </details>
       )}
       {keys.length > 0 && (

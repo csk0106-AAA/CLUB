@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { BASE_GUIDE } from "@/lib/ai-rules";
 import { z } from "zod";
 import { isAiEnabled } from "@/lib/ai";
-import { AI_POINTS, pointGuides, pointKey } from "@/lib/ai-guides";
+import { AI_POINTS, pointKey } from "@/lib/ai-guides";
 import { adminOrOfficer, bad, guard } from "@/lib/api";
-import { DEFAULT_GUIDELINES, DEFAULT_QUESTIONS, getSetting, setSetting } from "@/lib/store";
+import { DEFAULT_QUESTIONS, getSetting, setSetting } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +22,10 @@ export async function GET() {
   if ("err" in g) return g.err;
   return NextResponse.json({
     questions: await getSetting("interviewQuestions", DEFAULT_QUESTIONS),
-    guidelines: await getSetting("aiGuidelines", DEFAULT_GUIDELINES),
+    guidelines: BASE_GUIDE, // 기본 지침(코드, lib/ai-rules.ts). 활동 공통 지침이 비어 있을 때 쓴다
     followUpMax: await getSetting("followUpMax", 6),
     points: AI_POINTS,
-    pointGuides: await pointGuides(),
+    pointGuides: {}, // 세부 지침은 활동 템플릿에 적은 것만 쓴다(비어 있으면 없음)
     aiEnabled: isAiEnabled(),
   });
 }

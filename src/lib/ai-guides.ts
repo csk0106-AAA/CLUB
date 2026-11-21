@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { readConfig } from "./activities";
-import { DEFAULT_GUIDELINES, getSetting, getStore } from "./store";
+import { BASE_GUIDE } from "./ai-rules";
+import { getSetting, getStore } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
 
@@ -31,7 +32,7 @@ export const DEFAULT_READING_FULL = [
   "단정적인 예언, 불안을 키우는 표현, 특정 질병·사고 단정은 쓰지 않고 “경향”, “조심하면 좋은 점” 정도로 쓴다.",
   "마지막에 “명리학 풀이는 재미와 자기 성찰을 위한 참고용”이라는 한 줄을 붙인다.",
 ].join("\n");
-const POINT_DEFAULT: Partial<Record<string, string>> = { reading: DEFAULT_READING_PUB, readingFull: DEFAULT_READING_FULL };
+
 
 const keyOf = (p: AiPoint) => `aiGuide:${p}`;
 
@@ -59,12 +60,11 @@ export async function activityAiConfig(act?: Row): Promise<TemplateConfig | null
   return readConfig(act.config);
 }
 
-// 공통 지침(활동 템플릿 → 기본) + 이 지점의 지침(활동 템플릿 → 기본)
+// 활동 공통 지침(없으면 기본 지침) + 이 지점의 세부 지침(활동 템플릿에 적은 것만). 필수 지침은 lib/ai.ts ask 가 맨 위에 붙인다.
 export async function guidelinesFor(point: AiPoint, act?: Row): Promise<string> {
-  const cfg = await activityAiConfig(act);
-  const common = cfg?.aiCommon?.trim() || (await getSetting<string>("aiGuidelines", DEFAULT_GUIDELINES));
-  const extra = cfg?.aiGuides?.[point]?.trim() || (await getSetting<string>(keyOf(point), "")).trim();
-  return extra ? `${common}\n\n[${AI_POINTS.find((p) => p.key === point)?.label} 단계 추가 지침]\n${extra}` : common;
+  const common = await commonGuide(act);
+  const extra = await pointGuide(point, act);
+  return extra ? `${common}\n\n[${AI_POINTS.find((p) => p.key === point)?.label} 세부 지침]\n${extra}` : common;
 }
 
 export { keyOf as pointKey };
@@ -72,12 +72,12 @@ export { keyOf as pointKey };
 // 공통 지침만(활동 템플릿 → 기본) / 이 지점의 추가 지침만(활동 템플릿 → 기본). 명리학 풀이처럼 한 번에 두 글을 쓸 때 나눠 넣는다.
 export async function commonGuide(act?: Row): Promise<string> {
   const cfg = await activityAiConfig(act);
-  return cfg?.aiCommon?.trim() || (await getSetting<string>("aiGuidelines", DEFAULT_GUIDELINES));
+  return cfg?.aiCommon?.trim() || BASE_GUIDE;
 }
+// 세부 지침: 활동 템플릿에 적은 것만. 비어 있으면 없는 것으로 둔다.
 export async function pointGuide(point: AiPoint, act?: Row): Promise<string> {
   const cfg = await activityAiConfig(act);
-  // 활동 템플릿 → AI 설정 화면 → 기본값(명리학 풀이)
-  return cfg?.aiGuides?.[point]?.trim() || (await getSetting<string>(keyOf(point), "")).trim() || (POINT_DEFAULT[point] ?? "");
+  return cfg?.aiGuides?.[point]?.trim() ?? "";
 }
 
 // 템플릿 AI 설정 저장 입력(지점별 지침, 활동 공통 지침, 인터뷰 질문)

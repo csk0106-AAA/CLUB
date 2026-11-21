@@ -266,6 +266,18 @@ export async function migrateReadingDefaults(s: Store): Promise<{ templates: num
   return out;
 }
 
+// 한 번만: 예전 전체 "기본 공통 지침"(Settings aiGuidelines)과 지점별 전체 지침(aiGuide:*)은 이제 쓰지 않는다
+//  (필수·기본 지침은 코드 lib/ai-rules.ts). 지우기 전에 aiGuidelinesBackup 에 그대로 남긴다. 활동에 적힌 지침은 그대로.
+export async function migrateAiRules(s: Store): Promise<{ backedUp: number } | null> {
+  const flag = "aiRulesMigrated";
+  if (await s.get("Settings", flag)) return null;
+  const rows = (await s.list("Settings")).filter((r) => r.id === "aiGuidelines" || r.id.startsWith("aiGuide:"));
+  if (rows.length) await s.insert("Settings", { id: "aiGuidelinesBackup", value: JSON.stringify({ at: new Date().toISOString(), rows: rows.map((r) => ({ id: r.id, value: r.value })) }) });
+  for (const r of rows) await s.remove("Settings", r.id);
+  await s.insert("Settings", { id: flag, value: JSON.stringify({ at: new Date().toISOString(), backedUp: rows.length }) });
+  return { backedUp: rows.length };
+}
+
 // 지울 수 있는지: 일정 활동이 쓰는 버전은 지울 수 없고, v1 은 다른 버전이 없는 직접 만든 템플릿만 지운다.
 export function deleteBlock(rows: Row[], acts: Row[], r: Row): string | null {
   if (r.origin === "default") return "기본 템플릿은 지울 수 없어요. 복제해서 쓰세요.";

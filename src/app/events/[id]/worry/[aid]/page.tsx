@@ -188,7 +188,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
             <span className="hint num" style={{ fontSize: fs(12), display: "block", textAlign: "right" }}>{body.length}/500자</span>
             {(polishing || pmsg) && <p className="small" role="status" style={{ margin: "4px 0 0", color: before !== null ? "var(--accent-ink)" : undefined }}>{polishing ? "AI가 문맥을 보고 오타를 다듬는 중이에요…" : pmsg}</p>}
             {before !== null && <button className="mini" type="button" style={{ marginTop: 6 }} disabled={busy || polishing} onClick={() => { setBody(before); setBefore(null); setPmsg("다듬기 전 글로 되돌렸어요."); }}>다듬기 전으로</button>}
-            <span className="hint" style={{ fontSize: fs(12), display: "block", marginTop: 6 }}>고민 칸을 누르면 나오는 키보드의 🎤(마이크) 버튼을 누르고 말씀하시면 글자로 받아 적어요. 저장을 누르면 AI가 오타를 먼저 다듬어 보여 드려요.</span>
+            <span className="hint" style={{ fontSize: fs(12), display: "block", marginTop: 6 }}>고민 칸을 누르면 나오는 키보드의 🎤(마이크) 버튼을 누르고 말씀하시면 글자로 받아 적어요. 저장을 누르면 AI가 오타를 먼저 다듬어 보여 드려요. 고민은 큰 화면에 나오니 실명이나 회사 이름은 쓰지 않는 게 좋아요.</span>
           </div>
           <div>
             <label className="l" htmlFor="w-cat">카테고리</label>

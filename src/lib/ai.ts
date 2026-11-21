@@ -2,6 +2,8 @@
 // ANTHROPIC_API_KEY 가 없거나 호출이 두 번 실패하면 호출하는 쪽이 수동 입력 모드로 넘어간다.
 // 주의: 이 파일의 API 호출 부분은 아직 실제 키로 시험하지 못했다.
 
+import { requiredBlock } from "./ai-rules";
+
 export function isAiEnabled(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
@@ -31,11 +33,13 @@ async function callOnce(system: string, messages: Msg[], maxTokens: number): Pro
 }
 
 // 재시도 1회. 그래도 실패하면 null 을 돌려주고, 호출한 쪽이 수동 모드로 바꾼다.
+// 모든 AI 호출은 여기를 지난다 → 필수 지침(lib/ai-rules.ts)을 맨 위에 붙인다(빠지는 기능이 없게)
 export async function ask(system: string, messages: Msg[], maxTokens = 1500): Promise<string | null> {
   if (!isAiEnabled()) return null;
+  const full = `${requiredBlock()}\n\n${system}`;
   for (let i = 0; i < 2; i++) {
     try {
-      const out = await callOnce(system, messages, maxTokens);
+      const out = await callOnce(full, messages, maxTokens);
       if (out) return out;
     } catch (e) {
       // 다시 시도. 원인은 서버 기록에 남긴다(키 값은 남기지 않는다).

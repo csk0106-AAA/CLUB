@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { TONE_GUIDE } from "@/lib/ai-rules";
 import { z } from "zod";
 import { ask, extractJson, isAiEnabled } from "@/lib/ai";
 import { bad } from "@/lib/api";
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
 
   const system = [
     "당신은 모임(원우회) 게시판 글을 대신 써 주는 편집자입니다. 반드시 한국어로 답하세요.",
+    `[기본 지침 · 말투]\n${TONE_GUIDE}`,
     `글 양식: ${FORM_LABEL[form]}${form === "general" ? "" : " (설문·투표·퀴즈 항목은 따로 입력하므로, 내용에는 안내 글만 쓰세요)"}`,
     "회원들이 읽는 게시글답게 정중하고 읽기 쉽게, 필요하면 줄바꿈과 '-' 목록을 쓰세요. 마크다운 제목(#)이나 굵게(**)는 쓰지 마세요.",
     "요청과 [참고 정보]에 없는 날짜·장소·금액·사람 이름 같은 사실은 지어내지 말고 [ ] 로 비워 두세요.",
