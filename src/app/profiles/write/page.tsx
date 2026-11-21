@@ -8,7 +8,7 @@ import { WhoWrite, type Note, type WhoState } from "@/components/WhoWrite";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
-// 프로필 북의 "소개 작성하기": '내가 누굴까요?' 템플릿 v1의 AI 인터뷰(질문·지침)로 내 소개를 쓴다.
+// 프로필 북의 "소개 작성하기": '내가 누구일까요?' 템플릿 v1의 AI 인터뷰(질문·지침)로 내 소개를 쓴다.
 // 일정 활동이 아니라서 2진실 1거짓은 없고, 배포하면 프로필 북에 실명으로 바로 보인다.
 const AID = "profile-book";
 
@@ -40,7 +40,7 @@ export default function ProfileWritePage() {
       {!st && !note && <p className="small">불러오는 중이에요…</p>}
       {st && (st.blockedBy ? (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: `700 ${fs(16)} var(--display)` }}>“내가 누굴까요?” 활동에 참여 중이에요</b>
+          <b style={{ font: `700 ${fs(16)} var(--display)` }}>“내가 누구일까요?” 활동에 참여 중이에요</b>
           <span className="small">실명 공개 전까지는 그 활동에서 별칭으로 소개를 써요.</span>
           <Link className="btn" href={`/events/${st.blockedBy.eventId}/who/${st.blockedBy.aid}`} style={{ textDecoration: "none" }}>활동으로 가기</Link>
         </div>

@@ -65,11 +65,14 @@ export const templateConfigSchema = z.object({
   name: z.string().min(1),
   version: z.number().int().min(1),
   description: z.string().default(""),
-  // 참여 대상: all(전체 회원) / selected(관리자 선택 회원).
-  // selected 이면 관리자가 활동 전에 참여할 사람을 고르고(출석 체크) 완료해야 한다.
-  // 활동에 들어가는 일(2진실 1거짓과 맞히기, 투표, 진행 대상, 고민 작성과 뽑기, 타임캡슐 작성)에 적용된다.
-  // 선택되지 않은 회원은 활동에 들어가지 않고, 소개 활동이라면 AI 인터뷰로 프로필 북용 소개만 작성한다.
+  // 참여 대상(일정 활동마다 정한다): all(전체 회원) / selected(선택 회원 — 관리자가 활동 전에 출석 체크로 고르고 완료).
+  // 템플릿에서는 일정에 넣을 때의 기본값.
   participants: z.enum(["all", "selected"]).default("all"),
+  // 참여 범위(템플릿에서 정한다): true 면 일정에서 "선택 회원"을 고를 수 있다. false 면 늘 전체 회원.
+  // 없으면 예전 값(participants 가 selected 이면 선택 가능)으로 본다 — canSelect().
+  selectable: z.boolean().optional(),
+  // 선별 조건(템플릿에서 적는다): 선택 회원으로 할 때 관리자가 회원을 고르는 기준. 출석 체크 화면에 보인다.
+  selectRule: z.string().max(2000).optional(),
   preEvent: preEventSchema,
   guessPhase: preEventSchema.optional(),
   onsite: z.object({ steps: z.array(stepSchema).min(1) }),
@@ -110,7 +113,9 @@ export type TemplateStep = z.infer<typeof stepSchema>;
 export const DEFAULT_TEMPLATES: TemplateConfig[] = [
   {
     id: "who-am-i",
-    name: "내가 누굴까요?",
+    name: "내가 누구일까요?",
+    selectable: true,
+    selectRule: "프로필 북에 실명 소개가 아직 공개되지 않은 회원을 고르세요. 익명(별칭) 소개를 보고 누구인지 맞히는 활동이에요.\n이미 실명 소개가 공개된 회원(북공개)을 고르면, 그 회원은 ‘북 초기화’(소개를 지우고 별칭으로 새로 작성, 맞히기 대상) 또는 ‘일부활동참여’(소개 그대로, 맞히기 대상에서만 빠지고 맞히기·투표 참여) 중 하나를 정해야 해요.",
     version: 1,
     participants: "selected", // 기본: 관리자가 선택한 회원만 참여(활동 전에 출석 체크)
     description: "AI 인터뷰로 별칭 소개글을 만들고, 누구인지 맞히고, 2진실 1거짓을 즐깁니다.",
@@ -137,6 +142,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
     name: "나의 고민은?",
     version: 1,
     participants: "selected", // 기본: 관리자가 선택한 회원만 참여(활동 전에 출석 체크)
+    selectable: true,
     description: "고민을 미리 적어 두고, 현장에서 뽑아 15분씩 대화합니다.",
     preEvent: { enabled: true, opensBeforeDays: 14, closesBeforeDays: 1, steps: ["worry_write"] },
     onsite: {
@@ -153,6 +159,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
     name: "타임캡슐",
     version: 1,
     participants: "selected", // 기본: 관리자가 선택한 회원만 참여(활동 전에 출석 체크)
+    selectable: true,
     description: "1년 뒤 목표와 팀 약속을 현장에서 쓰고 봉인합니다.",
     preEvent: { enabled: false, steps: [] }, // 사전 작성 없음: 현장에서 작성
     onsite: {
@@ -164,3 +171,6 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
     host: { required: true },
   },
 ];
+
+// 이 템플릿(활동)이 "선택 회원"으로 진행할 수 있는지(참여 범위)
+export const canSelect = (c: Pick<TemplateConfig, "selectable" | "participants">): boolean => c.selectable ?? c.participants === "selected";

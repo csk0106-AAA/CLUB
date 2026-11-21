@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // 프로필 한 장. pid: 프로필 번호(별칭 회원) 또는 "m-회원번호"(실명 회원).
 //  - 공개로 승인된 소개 글만 내려준다(없으면 introMd 빈 값 — 화면이 "소개 작성하기"/"아직 소개가 없어요"를 보여 준다).
-//  - 실명 공개 전인 '내가 누굴까요?' 참여 회원은 별칭만(이름·회사·사진 없음). 회원 번호로는 열 수 없다(누구인지 드러나므로).
+//  - 실명 공개 전인 '내가 누구일까요?' 참여 회원은 별칭만(이름·회사·사진 없음). 회원 번호로는 열 수 없다(누구인지 드러나므로).
 //  - 2진실 1거짓은 활동 중에는 절대 내려주지 않고, 활동이 끝난 뒤(그 회원 차례의 정답 공개 또는 일정 종료)에만 정답과 함께 보여 준다.
 export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }> }) {
   const g = await guard();
@@ -58,7 +58,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ pid: string }>
     alias: p?.alias ?? "", masked: !!hidden, ...card,
     introMd: approved ? p?.introMd ?? "" : "",
     mine, truthLies,
-    // 내 화면: 참여 중인 '내가 누굴까요?' 활동(그 활동에서 소개를 쓴다)
+    // 내 화면: 참여 중인 '내가 누구일까요?' 활동(그 활동에서 소개를 쓴다)
     myActivity: mine && hidden ? { aid: hidden.aid, eventId: hidden.eventId } : null,
     // 명리학: 성격·성향은 본인이 소개 페이지에 싣기로 한 경우만, 생애주기 전체 풀이는 본인에게만
     traitsMd: approved && p?.traitsShown === "true" ? p.traitsMd ?? "" : "",

@@ -11,7 +11,7 @@ import { api, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
 type Data = {
-  // key: 상세 화면 주소, masked: '내가 누굴까요?' 참여 중이라 별칭으로 보임(이름 칸에 별칭, 회사·사진 없음)
+  // key: 상세 화면 주소, masked: '내가 누구일까요?' 참여 중이라 별칭으로 보임(이름 칸에 별칭, 회사·사진 없음)
   // hasIntro: 공개된 소개가 있는지, fresh: 마지막으로 본 뒤 처음 공개(NEW) / 다시 공개·수정(UP)
   // isNew: 신규 회원(승인 후 한 달, 맨 위)
   items: { key: string; masked: boolean; name: string; hasIntro: boolean; mine: boolean; hiddenMine?: boolean; isNew?: boolean; fresh?: Fresh | null; company?: string; title?: string; clubs?: string[]; avatar?: AvatarView }[];
@@ -24,7 +24,7 @@ function details(m: { company?: string; title?: string; clubs?: string[] }): str
 }
 
 // 회원 프로필 북: 모든 회원을 이름으로 보여 준다. 누르면 소개(없으면 본인은 "소개 작성하기").
-// '내가 누굴까요?'에 참여 중인 회원은 실명 공개 시점까지 별칭(랜덤 닉네임)으로만 보인다.
+// '내가 누구일까요?'에 참여 중인 회원은 실명 공개 시점까지 별칭(랜덤 닉네임)으로만 보인다.
 export default function ProfilesPage() {
   const router = useRouter();
   const [d, setD] = useState<Data | null>(null);
@@ -95,7 +95,7 @@ export default function ProfilesPage() {
       {d && (
         <>
           <p className="small" style={{ margin: 0, fontSize: fs(12) }}>
-            이름을 누르면 소개를 볼 수 있어요.{d.maskedCount > 0 ? ` “내가 누굴까요?”에 참여 중인 ${d.maskedCount}명은 실명 공개 전까지 별칭으로 보여요.` : ""}
+            이름을 누르면 소개를 볼 수 있어요.{d.maskedCount > 0 ? ` “내가 누구일까요?”에 참여 중인 ${d.maskedCount}명은 실명 공개 전까지 별칭으로 보여요.` : ""}
           </p>
           {d.items.length === 0 && <div className="msg info">아직 회원이 없어요.</div>}
           <div className="rows bleed">
@@ -116,7 +116,7 @@ export default function ProfilesPage() {
                   <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                     {p.isNew && <span className="chip red">신규 회원</span>}
                     {p.mine && p.hiddenMine && <span className="chip gray" title="설정 › 프로필 북에서 바꿀 수 있어요">다른 회원에게 숨김</span>}
-                    {p.masked && <span className="chip line">내가 누굴까요?</span>}
+                    {p.masked && <span className="chip line">내가 누구일까요?</span>}
                     {!p.hasIntro && <span className="chip gray">{p.mine && !p.masked ? "소개 작성하기" : "소개 준비 중"}</span>}
                   </span>
                 </span>

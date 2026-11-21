@@ -217,7 +217,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         )
       )}
 
-      {/* '내가 누굴까요?' 참여 대상인데 이미 실명 소개가 공개된 회원: 프로필북 초기화 / 일부활동참여 */}
+      {/* '내가 누구일까요?' 참여 대상인데 이미 실명 소개가 공개된 회원: 프로필북 초기화 / 일부활동참여 */}
       {(d.whoPrompts ?? []).map((w) => (
         <WhoChoice key={w.aid} aid={w.aid} name={w.name} canReset={w.canReset} onDone={(text) => { window.alert(text); load(); }} />
       ))}

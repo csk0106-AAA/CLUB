@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { readConfig, templateInput } from "@/lib/activities";
+import { canSelect } from "@/lib/template-schema";
 import { getStore } from "@/lib/store";
 import { editable, eventSource, SAVE_MODES, saveTemplate } from "@/lib/template-versions";
 
@@ -19,6 +20,18 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const raw = await req.json().catch(() => null);
+  // 참여 대상만 바꾸기: { participants: "all" | "selected" } — 이 일정 활동에만 적용(템플릿은 그대로, 선택 회원은 템플릿이 허용할 때만)
+  if (raw && typeof raw === "object" && "participants" in raw && !("config" in raw)) {
+    const p = z.enum(["all", "selected"]).safeParse((raw as { participants: unknown }).participants);
+    if (!p.success) return bad("참여 대상을 확인해 주세요.");
+    const s = await getStore();
+    const cur = (await s.list("EventActivities")).find((a) => a.id === aid && a.eventId === id);
+    const cfg = readConfig(cur?.config);
+    if (!cur || !cfg) return bad("활동을 찾을 수 없어요.", 404);
+    if (p.data === "selected" && !canSelect(cfg)) return bad("이 활동은 템플릿에서 전체 회원 활동으로 정해져 있어요.");
+    if (cfg.participants !== p.data) await s.update("EventActivities", aid, { config: JSON.stringify({ ...cfg, participants: p.data }) });
+    return NextResponse.json({ ok: true, participants: p.data });
+  }
   const b = body.safeParse(raw && typeof raw === "object" && "config" in raw ? raw : { config: raw });
   if (!b.success) return bad("저장 방법을 확인해 주세요.");
   const parsed = templateInput.safeParse(b.data.config);
@@ -33,10 +46,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const tpl = tpls.find((t) => t.id === cur.templateId);
   const tplCfg = readConfig(tpl?.config);
   // AI 설정은 이 편집기에서 고치지 않으므로 지금 쓰이는 값(템플릿 버전)을 그대로 이어받는다.
+  // 참여 대상도 이 편집기에서 고치지 않는다(활동 카드에서 일정마다 정한다): 템플릿 값을 이어받고, 이 활동의 값은 저장 뒤 되돌린다.
   const input = editable({
     ...parsed.data,
-    ...(tplCfg ? { aiGuides: tplCfg.aiGuides, aiCommon: tplCfg.aiCommon, interview: tplCfg.interview } : {}),
+    ...(tplCfg ? { aiGuides: tplCfg.aiGuides, aiCommon: tplCfg.aiCommon, interview: tplCfg.interview, participants: tplCfg.participants, selectable: tplCfg.selectable, selectRule: tplCfg.selectRule } : {}),
   });
+  const ownPart = canSelect(input) ? old?.participants ?? input.participants : "all";
 
   if (!tpl || !tplCfg) {
     // 원래 템플릿이 없어진 활동: 이 활동의 설정만 고친다
@@ -44,7 +59,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (live?.step && !input.onsite.steps.some((x) => x.key === live.step)) {
       return bad("지금 진행 중인 단계는 지울 수 없어요. 현장 진행을 먼저 되돌려 주세요.");
     }
-    const config = { ...input, id: old?.id ?? aid, version: old?.version ?? 1 };
+    const config = { ...input, participants: ownPart, id: old?.id ?? aid, version: old?.version ?? 1 };
     await s.update("EventActivities", aid, { config: JSON.stringify(config) });
     return NextResponse.json({ ok: true, mode: "fix", propagated: 0 });
   }
@@ -54,7 +69,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (r.unchanged) return NextResponse.json({ ok: true, unchanged: true, mode: r.mode });
   // 수정은 이 버전을 쓰는 활동(이 활동 포함)에 이미 반영됐다. 새 버전·새 활동은 이 활동만 새 것을 쓴다.
   if (r.mode !== "fix") {
-    await s.update("EventActivities", aid, { templateId: r.id, templateVersion: String(r.version), config: JSON.stringify(r.config) });
+    await s.update("EventActivities", aid, { templateId: r.id, templateVersion: String(r.version), config: JSON.stringify({ ...r.config, participants: ownPart }) });
   }
   return NextResponse.json({ ok: true, mode: r.mode, templateId: r.id, version: r.version, name: r.config.name, propagated: r.propagated ?? 0 });
 }

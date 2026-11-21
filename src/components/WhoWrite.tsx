@@ -13,7 +13,7 @@ export type WhoState = {
   activity: { id: string; name: string };
   event: { id: string; name: string };
   book: boolean; // 프로필 북의 "소개 작성하기"(2진실 1거짓 없음, 실명 공개)
-  blockedBy: { aid: string; eventId: string } | null; // 프로필 북 작성: 참여 중인 '내가 누굴까요?' 활동(그쪽에서 쓴다)
+  blockedBy: { aid: string; eventId: string } | null; // 프로필 북 작성: 참여 중인 '내가 누구일까요?' 활동(그쪽에서 쓴다)
   pre: { status: string; opensAt: string; closesAt: string };
   guess: { status: string; opensAt: string; closesAt: string };
   aiEnabled: boolean;

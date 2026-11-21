@@ -83,7 +83,7 @@ export const isRevealed = (cfg: TemplateConfig, act: { endsAt?: string }, ev: { 
   return t != null && now >= t;
 };
 
-// '내가 누굴까요?' 방식(AI 인터뷰로 소개 작성)의 활동인지: 템플릿의 사전 작성 단계로 판단한다.
+// '내가 누구일까요?' 방식(AI 인터뷰로 소개 작성)의 활동인지: 템플릿의 사전 작성 단계로 판단한다.
 export function isWhoAmI(cfg: TemplateConfig): boolean {
   return cfg.preEvent.steps.includes("ai_interview");
 }

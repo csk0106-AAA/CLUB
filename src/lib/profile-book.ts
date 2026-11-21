@@ -8,13 +8,13 @@ import { DEFAULT_TEMPLATES, type TemplateConfig } from "./template-schema";
 
 // 프로필 북의 "소개 작성하기"(일정 활동이 아닌 곳에서 쓰는 내 소개).
 //  프로필 북 전용 활동 템플릿 "내 소개(프로필 북)"(id profile-intro)의 **최신 버전** 질문·AI 지침을 쓴다(템플릿 화면에서 따로 관리).
-//  게임용 '내가 누굴까요?'와 지침이 섞이지 않는다. 2진실 1거짓은 없다. 전용 템플릿이 없으면 '내가 누굴까요?' v1 을 쓴다.
+//  게임용 '내가 누구일까요?'와 지침이 섞이지 않는다. 2진실 1거짓은 없다. 전용 템플릿이 없으면 '내가 누구일까요?' v1 을 쓴다.
 //  인터뷰는 Interviews.eventActivityId = PROFILE_AID 로 저장한다. 완료하면 프로필 북에 실명으로 바로 보인다.
 export const PROFILE_AID = "profile-book";
 export const WHO_V1_ID = "who-am-i";
 export const BOOK_TEMPLATE_ID = "profile-intro";
 
-// 프로필 북 소개 작성에 쓰는 템플릿: 전용 템플릿 묶음의 최신 버전 → 없으면 '내가 누굴까요?' v1 → 없으면 기본값
+// 프로필 북 소개 작성에 쓰는 템플릿: 전용 템플릿 묶음의 최신 버전 → 없으면 '내가 누구일까요?' v1 → 없으면 기본값
 export async function whoV1(): Promise<{ row: Row; cfg: TemplateConfig }> {
   const rows = await (await getStore()).list("ActivityTemplates");
   const fam = familyRows(rows, BOOK_TEMPLATE_ID);
@@ -25,7 +25,7 @@ export async function whoV1(): Promise<{ row: Row; cfg: TemplateConfig }> {
   return { row, cfg };
 }
 
-// 지금 별칭으로 가려야 하는 회원: 실명 공개 전인 '내가 누굴까요?' 활동의 게임 참여 회원(참여 상태 in).
+// 지금 별칭으로 가려야 하는 회원: 실명 공개 전인 '내가 누구일까요?' 활동의 게임 참여 회원(참여 상태 in).
 // 값: 회원 id → { 활동 id, 일정 id }
 export async function maskedMembers(): Promise<Map<string, { aid: string; eventId: string }>> {
   const s = await getStore();

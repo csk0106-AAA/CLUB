@@ -1,4 +1,5 @@
 import { activityKind, activityMode, newTemplateId, readConfig } from "./activities";
+import { canSelect } from "./template-schema";
 import type { Row, Store } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
 
@@ -96,8 +97,12 @@ export async function fixVersion(s: Store, base: Row, input: Editable): Promise<
   await s.update("ActivityTemplates", base.id, { name: config.name, config: json });
   let propagated = 0;
   for (const a of await s.list("EventActivities")) {
-    if (a.templateId !== base.id || a.config === json) continue;
-    await s.update("EventActivities", a.id, { config: json, templateVersion: String(version) });
+    if (a.templateId !== base.id) continue;
+    // 참여 대상(전체 회원 / 관리자 선택 회원)은 일정 활동마다 정하므로 그 활동의 값을 지킨다
+    const own = canSelect(config) ? readConfig(a.config)?.participants ?? config.participants : "all";
+    const next = own === config.participants ? json : JSON.stringify({ ...config, participants: own });
+    if (a.config === next) continue;
+    await s.update("EventActivities", a.id, { config: next, templateVersion: String(version) });
     propagated++;
   }
   return { config, propagated };
@@ -175,7 +180,7 @@ export async function migrateTemplateHost(s: Store): Promise<{ templates: number
   return out;
 }
 
-// 한 번만: '내가 누굴까요?'의 현장 단계 'reveal'(당사자 휴대폰에 "저예요" 버튼) 이름이 "이름 공개"라서
+// 한 번만: '내가 누구일까요?'의 현장 단계 'reveal'(당사자 휴대폰에 "저예요" 버튼) 이름이 "이름 공개"라서
 // 진행자 화면의 [이름 공개] 버튼(진행자가 대신 밝히기)과 헷갈렸다 → 단계 이름 "저예요", 진행자 버튼 이름 "“저예요” 열기".
 // 템플릿의 모든 버전과 이미 만든 일정 활동을 같이 고친다(관리자가 다른 이름으로 바꿔 둔 경우는 그대로).
 export async function migrateRevealLabel(s: Store): Promise<{ templates: number; acts: number } | null> {
@@ -245,7 +250,7 @@ export async function migrateAiRules(s: Store): Promise<{ backedUp: number } | n
 }
 
 // 한 번만: 프로필 북 전용 템플릿 "내 소개(프로필 북)"(id profile-intro)을 만든다.
-//  '내가 누굴까요?' v1 의 인터뷰 질문·후속 질문 설정·AI 지침(후속 질문·소개 글·수정 요청)·공통 지침을 복사하되
+//  '내가 누구일까요?' v1 의 인터뷰 질문·후속 질문 설정·AI 지침(후속 질문·소개 글·수정 요청)·공통 지침을 복사하되
 //  게임 관련(2진실 1거짓 지침, 공통 지침의 2진실 1거짓 문장)은 빼고, 겹친 문장은 한 번만 남긴다.
 export async function migrateBookTemplate(s: Store): Promise<{ created: boolean } | null> {
   const flag = "bookTemplateCreated";

@@ -4,7 +4,7 @@ import { pushTo } from "./push";
 import { getStore } from "./store";
 import { myInterview, myProfile, myTruthLies, windows, type WhoCtx } from "./who";
 
-// 이미 프로필 북에 실명 소개가 공개된 회원이 '내가 누굴까요?'(프로필 북 익명 + 맞히기 게임) 참여 대상이 됐을 때의 선택.
+// 이미 프로필 북에 실명 소개가 공개된 회원이 '내가 누구일까요?'(프로필 북 익명 + 맞히기 게임) 참여 대상이 됐을 때의 선택.
 //  update  "프로필북 초기화": 지금 소개를 지우고(백업 Profiles.introBackup) 새 별칭으로 이 활동에서 다시 쓴다 → 맞히기 대상
 //  partial "일부활동참여"  : 지금 실명 소개는 그대로, 맞히기 대상에서만 빠지고 맞히기·투표 등 나머지는 참여(Interviews.status "optout")
 //  초기화는 사전 작성 마감 전에만 할 수 있다(다른 회원이 맞히기를 시작한 뒤에는 대상에 넣지 않는다).

@@ -127,7 +127,7 @@ function Settings() {
   );
 }
 
-// 프로필 북 실명 공개 시점은 '내가 누굴까요?' 활동 템플릿(활동 설정)에서 정한다(components/TemplateEditor.tsx).
+// 프로필 북 실명 공개 시점은 '내가 누구일까요?' 활동 템플릿(활동 설정)에서 정한다(components/TemplateEditor.tsx).
 
 export default function SettingsPage() {
   return <AdminGate mode="group" need={["group"]} active="/admin/settings"><Settings /></AdminGate>;

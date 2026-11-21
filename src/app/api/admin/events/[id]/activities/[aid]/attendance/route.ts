@@ -25,7 +25,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const [members, selected, applies, state, profiles, interviews] = await Promise.all([
     c.s.list("Members"), rosterSet(c.act), c.s.list("EventApplies"), attendanceState(aid), c.s.list("Profiles", { omit: ["draftMd", "introMd", "readingMd"] }), c.s.list("Interviews", { omit: ["messages"] }),
   ]);
-  // '내가 누굴까요?'(프로필 북 익명 게임)면 회원마다 내 소개 공개 여부와 참여 상태를 함께 보여 준다
+  // '내가 누구일까요?'(프로필 북 익명 게임)면 회원마다 내 소개 공개 여부와 참여 상태를 함께 보여 준다
   const who = isWhoAmI(readConfig(c.act.config) ?? ({} as never));
   const whoOf = (mid: string) => {
     if (!who) return undefined;
@@ -44,7 +44,9 @@ export async function GET(_req: Request, ctx: Ctx) {
       .filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")))
       .map((m) => {
         const ap = applies.find((a) => a.eventId === id && a.memberId === m.id);
-        return { id: m.id, name: m.name, answer: ap?.answer ?? "", days: ap?.days ?? "", selected: selected.has(m.id), who: whoOf(m.id) };
+        // published: 프로필 북에 실명 소개가 공개됨(북공개) — 어떤 활동이든 참고용으로 보여 준다
+        const published = profiles.find((p) => p.memberId === m.id)?.introStatus === "approved";
+        return { id: m.id, name: m.name, answer: ap?.answer ?? "", days: ap?.days ?? "", selected: selected.has(m.id), published, who: whoOf(m.id) };
       }),
   });
 }

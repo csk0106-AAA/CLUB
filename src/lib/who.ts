@@ -16,7 +16,7 @@ export const SKIP_TEXT = "답변안함";
 // book: 프로필 북의 "소개 작성하기"(일정 활동이 아님 — 템플릿 v1 지침, 2진실 1거짓 없음, 실명으로 공개)
 export type WhoCtx = { ev: Row; act: Row; cfg: TemplateConfig; book?: boolean };
 
-// 활동 id 로 일정과 설정을 찾는다. '내가 누굴까요?' 방식의 활동이 아니면 오류.
+// 활동 id 로 일정과 설정을 찾는다. '내가 누구일까요?' 방식의 활동이 아니면 오류.
 // aid 가 PROFILE_AID 면 프로필 북 작성(템플릿 v1)으로 본다.
 export async function loadWho(aid: string): Promise<WhoCtx | NextResponse> {
   if (aid === PROFILE_AID) {
@@ -113,12 +113,12 @@ export const inGame = async (ctx: WhoCtx, memberId: string) => (await whoState(c
 
 // 소개를 쓸 수 있는 곳인지
 //  - 활동: 참여 상태가 in 인 회원만(참여 대상이 아니면 프로필 북에서 쓴다)
-//  - 프로필 북: 실명 공개 전인 '내가 누굴까요?' 활동에 참여 중이면 그 활동에서 쓴다(별칭으로 가려져 있으므로)
+//  - 프로필 북: 실명 공개 전인 '내가 누구일까요?' 활동에 참여 중이면 그 활동에서 쓴다(별칭으로 가려져 있으므로)
 export async function writeGate(ctx: WhoCtx, memberId: string): Promise<NextResponse | null> {
   if (ctx.book) {
     const { maskedMembers } = await import("./profile-book");
     if ((await maskedMembers()).has(memberId)) {
-      return NextResponse.json({ error: "지금 참여 중인 ‘내가 누굴까요?’ 활동이 있어요. 그 활동 화면에서 소개를 작성해 주세요." }, { status: 409 });
+      return NextResponse.json({ error: "지금 참여 중인 ‘내가 누구일까요?’ 활동이 있어요. 그 활동 화면에서 소개를 작성해 주세요." }, { status: 409 });
     }
     return null;
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { kstText, preWindowTimes, type PreWindow, type TemplateConfig } from "@/lib/template-schema";
+import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect } from "@/lib/template-schema";
 import { NumField } from "./NumField";
 import { DateField } from "./DateField";
 import { DragHandle, useDragSort } from "./DragSort";
@@ -54,7 +54,8 @@ function WindowFields<W extends PreWindow>({ id, win, onChange, eventStartsAt, d
   );
 }
 
-export function TemplateEditor({ value, onChange, eventStartsAt }: { value: EditableConfig; onChange: (v: EditableConfig) => void; eventStartsAt?: string }) {
+// inEvent: 일정 활동에서 고칠 때(참여 대상은 활동 카드에서 일정마다 정하므로 여기서는 고르지 않는다)
+export function TemplateEditor({ value, onChange, eventStartsAt, inEvent }: { value: EditableConfig; onChange: (v: EditableConfig) => void; eventStartsAt?: string; inEvent?: boolean }) {
   const steps = value.onsite.steps;
   const ds = useDragSort(steps, (next) => onChange({ ...value, onsite: { steps: next } }));
   const setStep = (i: number, patch: Partial<(typeof steps)[number]>) =>
@@ -70,12 +71,22 @@ export function TemplateEditor({ value, onChange, eventStartsAt }: { value: Edit
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>참여 대상</b>
-        <label className="l" htmlFor="t-part">이 활동에 참여하는 사람</label>
-        <select id="t-part" className="field" value={value.participants} onChange={(e) => onChange({ ...value, participants: e.target.value as "all" | "selected" })}>
-          <option value="selected">관리자 선택 회원 (활동 전에 출석 체크)</option>
-          <option value="all">전체 회원</option>
+        {inEvent ? (
+          <span className="small">참여 범위와 선별 조건은 템플릿에서, 이 일정의 전체 회원 / 선택 회원은 활동 카드에서 정해요. 여기서 저장해도 바뀌지 않아요.</span>
+        ) : (<>
+        <label className="l" htmlFor="t-part">참여 범위</label>
+        <select id="t-part" className="field" value={canSelect(value) ? "selectable" : "all"}
+          onChange={(e) => onChange(e.target.value === "all" ? { ...value, selectable: false, participants: "all" } : { ...value, selectable: true, participants: "selected" })}>
+          <option value="all">전체 회원만 (일정 대상 회원 모두 참여)</option>
+          <option value="selectable">선택 회원 가능 (일정에서 전체 회원 / 선택 회원을 골라요)</option>
         </select>
-        <span className="small">“관리자 선택 회원”으로 하면 일정에서 관리자가 참여할 사람을 고르고(출석 체크) 활동 전에 완료해야 시작할 수 있어요. 선택된 회원만 활동에 참여하고 정보가 노출돼요(2진실 1거짓과 맞히기, 투표, 고민 작성과 뽑기, 타임캡슐 작성). 선택되지 않은 회원은 활동에 들어가지 않고, 소개 활동이라면 AI 인터뷰로 프로필 북용 소개만 작성해요.</span>
+        <span className="small">선택 회원으로 하면 일정에서 관리자가 참여할 사람을 고르고(출석 체크) 완료해야 활동을 시작할 수 있어요. 고르지 않은 회원은 활동에 들어가지 않아요.</span>
+        {canSelect(value) && (<>
+          <label className="l" htmlFor="t-rule" style={{ marginTop: 6 }}>선별 조건</label>
+          <textarea id="t-rule" className="field" rows={4} value={value.selectRule ?? ""} placeholder="관리자가 참여할 회원을 고르는 기준을 적어 주세요. 출석 체크 화면에 그대로 보여요."
+            onChange={(e) => onChange({ ...value, selectRule: e.target.value })} style={{ resize: "vertical" }} />
+        </>)}
+        </>)}
         <label className="l" htmlFor="t-mode" style={{ marginTop: 6 }}>활동 방식</label>
         <select id="t-mode" className="field" value={modeOf(value)} onChange={(e) => onChange({ ...value, mode: e.target.value as "all" | "team" })}>
           <option value="all">전체 활동 (모두 함께)</option>
@@ -153,7 +164,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt }: { value: Edit
         </div>
       )}
 
-      {/* 소개 작성 활동('내가 누굴까요?'): 프로필 북 실명 공개 시점 */}
+      {/* 소개 작성 활동('내가 누구일까요?'): 프로필 북 실명 공개 시점 */}
       {pre.steps.includes("ai_interview") && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>프로필 북 실명 공개 시점</b>

@@ -126,7 +126,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       req: a.req ?? "", reqDays: a.reqDays ? a.reqDays.split(",") : [], reqResult: a.reqResult ?? "", reqReason: a.reqReason ?? "",
     } : null,
     feeDue: attending && fee !== "" && a?.paid !== "true",
-    // '내가 누굴까요?'(프로필 북 익명 게임) 참여 대상인데 이미 실명 소개가 공개돼 아직 "프로필북 초기화 / 일부활동참여"를 고르지 않은 활동
+    // '내가 누구일까요?'(프로필 북 익명 게임) 참여 대상인데 이미 실명 소개가 공개돼 아직 "프로필북 초기화 / 일부활동참여"를 고르지 않은 활동
     whoPrompts: await whoPromptsFor(id, g.s.mid),
   });
 }

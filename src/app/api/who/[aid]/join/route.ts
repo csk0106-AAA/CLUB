@@ -6,7 +6,7 @@ import { decideWho } from "@/lib/who-join";
 
 export const dynamic = "force-dynamic";
 
-// 이미 실명과 소개가 공개된 회원이 '내가 누굴까요?' 참여 대상일 때 고른다(lib/who-join.ts).
+// 이미 실명과 소개가 공개된 회원이 '내가 누구일까요?' 참여 대상일 때 고른다(lib/who-join.ts).
 //  update "프로필북 초기화" / partial "일부활동참여"(예전 이름 optout 도 받는다)
 //  일부활동참여를 고른 뒤에도 사전 작성 마감 전이면 초기화로 바꿀 수 있다.
 const body = z.object({ decision: z.enum(["update", "partial", "optout"]) });

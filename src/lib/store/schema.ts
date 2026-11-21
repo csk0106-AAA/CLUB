@@ -131,7 +131,7 @@ export const TABS = {
   // 숙박 숙소배정: date(YYYY-MM-DD) 날짜별 방, guests 는 회원 id 배열 JSON
   Rooms: ["id", "eventId", "date", "name", "capacity", "memo", "guests"],
   LiveState: ["id", "eventActivityId", "step", "memberUnlocked", "payload", "updatedAt"],
-  // 내가 누굴까요? : 프로필(회원당 1개), 인터뷰 원문(본인만), 2진실 1거짓, 사전 추측
+  // 내가 누구일까요? : 프로필(회원당 1개), 인터뷰 원문(본인만), 2진실 1거짓, 사전 추측
   Profiles: [
     "id", "memberId", "alias", "draftMd", "introMd", "introStatus", "publicFields",
     "readingMd", "readingStatus", "approvedAt", "updatedAt",

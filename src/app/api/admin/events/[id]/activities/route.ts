@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { liveView, preStatus, readConfig } from "@/lib/activities";
+import { canSelect } from "@/lib/template-schema";
 import { attendanceState, rosterSet } from "@/lib/participants";
 import { readHosts } from "@/lib/hosts";
 import { getStore } from "@/lib/store";
@@ -44,7 +45,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({ activities });
 }
 
-const addBody = z.object({ templateId: z.string().min(1) });
+const addBody = z.object({ templateId: z.string().min(1), participants: z.enum(["all", "selected"]).optional() });
 
 // 템플릿에서 활동을 골라 일정에 넣는다. 설정은 그 시점 것을 복사해 일정별로 따로 수정할 수 있다.
 export async function POST(req: Request, ctx: Ctx) {
@@ -56,7 +57,10 @@ export async function POST(req: Request, ctx: Ctx) {
   const s = await getStore();
   if (!(await s.list("Events")).some((e) => e.id === id)) return bad("일정을 찾을 수 없어요.", 404);
   const tpl = (await s.list("ActivityTemplates")).find((t) => t.id === parsed.data.templateId);
-  if (!tpl || !readConfig(tpl.config)) return bad("템플릿을 찾을 수 없어요.", 404);
+  const tcfg = readConfig(tpl?.config);
+  if (!tpl || !tcfg) return bad("템플릿을 찾을 수 없어요.", 404);
+  // 참여 대상은 이 일정에서 정한다(고르지 않으면 템플릿 값)
+  const part = canSelect(tcfg) ? parsed.data.participants ?? tcfg.participants : "all";
 
   const acts = (await s.list("EventActivities")).filter((a) => a.eventId === id);
   const order = acts.reduce((n, a) => Math.max(n, Number(a.order) || 0), 0) + 1;
@@ -64,7 +68,7 @@ export async function POST(req: Request, ctx: Ctx) {
     eventId: id,
     templateId: tpl.id,
     templateVersion: tpl.version,
-    config: tpl.config,
+    config: part === tcfg.participants ? tpl.config : JSON.stringify({ ...tcfg, participants: part }),
     state: "ready",
     order: String(order),
   });
