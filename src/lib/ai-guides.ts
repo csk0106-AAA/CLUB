@@ -21,7 +21,7 @@ const keyOf = (p: AiPoint) => `aiGuide:${p}`;
 
 // 이 활동 설정에서 AI가 쓰이는 지점
 export function aiPointsFor(cfg: Pick<TemplateConfig, "preEvent">): AiPoint[] {
-  if (cfg.preEvent.steps.includes("ai_interview")) return ["followup", "draft", "truthlies", "revise"];
+  if (cfg.preEvent.steps.includes("ai_interview")) return cfg.preEvent.steps.includes("truth_lies") ? ["followup", "draft", "truthlies", "revise"] : ["followup", "draft", "revise"];
   if (cfg.preEvent.steps.includes("worry_write")) return ["worry"];
   return [];
 }

@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { preWindowTimes, templateConfigSchema, type PreWindow, type TemplateConfig, type TemplateStep } from "./template-schema";
+import { describeTemplate, preWindowTimes, templateConfigSchema, type PreWindow, type TemplateConfig, type TemplateStep } from "./template-schema";
 // 템플릿 설정(JSON 문자열)을 읽는다. 스키마에 맞지 않으면 null.
 export function readConfig(json: string | undefined): TemplateConfig | null {
   if (!json) return null;
   try {
     const r = templateConfigSchema.safeParse(JSON.parse(json));
-    return r.success ? r.data : null;
+    // 설명은 저장된 글 대신 설정에서 자동으로 만든다(lib/template-schema.ts describeTemplate)
+    return r.success ? { ...r.data, description: describeTemplate(r.data) } : null;
   } catch {
     return null;
   }

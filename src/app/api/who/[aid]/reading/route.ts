@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasBlock } from "@/lib/blocks";
 import { z } from "zod";
 import { ask, extractJson, isAiEnabled } from "@/lib/ai";
 import { commonGuide } from "@/lib/ai-guides";
@@ -38,6 +39,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (w instanceof NextResponse) return w;
   const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
+  if (!hasBlock(w.cfg, "saju")) return bad("이 활동에는 명리학 사주풀이가 없어요.", 409);
 
   const raw = await req.json().catch(() => null);
   const s = await getStore();

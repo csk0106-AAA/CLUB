@@ -20,6 +20,7 @@ export type WhoState = {
   state: "none" | "prompt" | "optout" | "in";
   inActivity: boolean; // 게임 참여(별칭·2진실 1거짓)
   participants: string;
+  blocks?: { saju: boolean; truthlies: boolean }; // 켠 기능 블록
   revealAt: string; // 프로필 북 실명 공개 시각(ISO)
   profile: {
     alias: string; draftMd: string; introMd: string; introStatus: string;
@@ -76,6 +77,9 @@ export function WhoWrite(props: {
   const open = st.pre.status === "open";
   const approved = st.profile.introStatus === "approved";
   const inAct = st.inActivity;
+  // 기능 블록: 2진실 1거짓(게임 참여 회원만) / 사주풀이(AI 연결 시). 예전 응답(blocks 없음)은 모두 켠 것으로 본다.
+  const tlOn = inAct && st.blocks?.truthlies !== false;
+  const sajuOn = st.aiEnabled && st.blocks?.saju !== false;
 
   const [alias, setAlias] = useState(st.profile.alias);
   const [intro, setIntro] = useState(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
@@ -221,16 +225,16 @@ export function WhoWrite(props: {
     setLie(r.data.lieIndex);
     setNote(
       r.data.mode === "manual"
-        ? { tone: "info", text: inAct ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬은 뒤, 2진실 1거짓 문장 3개를 적어 주세요." : "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 글을 다듬어 주세요." }
+        ? { tone: "info", text: tlOn ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬은 뒤, 2진실 1거짓 문장 3개를 적어 주세요." : inAct ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬어 주세요." : "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 글을 다듬어 주세요." }
         : r.data.leaked?.length
           ? { tone: "bad", text: `소개 글에 2진실 1거짓 내용(${r.data.leaked.join(", ")})이 남아 있어요. 소개 글에서 지우거나 “다시 만들기”를 눌러 주세요.` }
-          : { tone: "info", text: inAct ? "별칭, 소개 글, 2진실 1거짓을 만들었어요. 2진실 1거짓 내용은 소개 글에 넣지 않았어요. 읽어 보고 고칠 부분을 알려 주세요." : "소개 글을 만들었어요. 읽어 보고 고칠 부분을 알려 주세요." },
+          : { tone: "info", text: tlOn ? "별칭, 소개 글, 2진실 1거짓을 만들었어요. 2진실 1거짓 내용은 소개 글에 넣지 않았어요. 읽어 보고 고칠 부분을 알려 주세요." : inAct ? "별칭과 소개 글을 만들었어요. 읽어 보고 고칠 부분을 알려 주세요." : "소개 글을 만들었어요. 읽어 보고 고칠 부분을 알려 주세요." },
     );
     await reload();
   });
 
   const saveDraft = (silent = false) => run(async () => {
-    const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, ...(inAct ? { statements: stmts, lieIndex: lie } : {}) } });
+    const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, ...(tlOn ? { statements: stmts, lieIndex: lie } : {}) } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     if (!silent) setNote({ tone: "info", text: "저장했어요. 승인하기 전에는 다른 회원에게 보이지 않아요." });
     await reload();
@@ -259,7 +263,7 @@ export function WhoWrite(props: {
   const approve = () => run(async () => {
     setApproveErr("");
     setHits([]);
-    const r = await api(`/api/who/${aid}/approve`, { body: { introMd: intro, ...(inAct ? { statements: stmts, lieIndex: lie } : {}) } });
+    const r = await api(`/api/who/${aid}/approve`, { body: { introMd: intro, ...(tlOn ? { statements: stmts, lieIndex: lie } : {}) } });
     // 배포가 막히면 이유를 버튼 바로 위에도 보여 준다(맨 위 안내는 화면 밖이라 안 보일 수 있다)
     if (!r.ok) {
       setApproveErr(r.error);
@@ -284,7 +288,7 @@ export function WhoWrite(props: {
 
   // 다시 만들기: 2진실 1거짓과 소개 글을 항상 함께 새로 만든다(둘이 겹치지 않게). 별칭은 그대로.
   const redo = () => {
-    if (window.confirm(`인터뷰 답변으로 ${inAct ? "2진실 1거짓과 소개 글을" : "소개 글을"} 함께 다시 만들까요? 지금 고친 내용은 새로 만든 내용으로 바뀌어요.${inAct ? " 별칭은 그대로예요." : ""}`)) makeDraft();
+    if (window.confirm(`인터뷰 답변으로 ${tlOn ? "2진실 1거짓과 소개 글을" : "소개 글을"} 함께 다시 만들까요? 지금 고친 내용은 새로 만든 내용으로 바뀌어요.${inAct ? " 별칭은 그대로예요." : ""}`)) makeDraft();
   };
 
   // 기존 인터뷰 수정하기: 질문과 내 답변을 짝지어 보여 준다
@@ -352,7 +356,7 @@ export function WhoWrite(props: {
   if (editing) {
     return (
       <section aria-label="기존 인터뷰 수정하기" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div className="msg info">질문별 내 답변을 고쳐 주세요. 키보드로 고치거나 마이크로 말해서 덧붙일 수 있어요. 저장하면 고친 답변으로 소개 글{inAct ? "과 2진실 1거짓" : ""}을 다시 만들어요{approved ? "(다시 배포할 때까지 지금 공개된 소개는 숨겨져요)" : ""}.</div>
+        <div className="msg info">질문별 내 답변을 고쳐 주세요. 키보드로 고치거나 마이크로 말해서 덧붙일 수 있어요. 저장하면 고친 답변으로 소개 글{tlOn ? "과 2진실 1거짓" : ""}을 다시 만들어요{approved ? "(다시 배포할 때까지 지금 공개된 소개는 숨겨져요)" : ""}.</div>
         <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
           {editing.map((p, i) => (
             <AnswerEdit key={i} idx={i} q={p.q} value={p.a} skipped={p.skipped} onChange={(v) => setEditing((cur) => cur?.map((x, j) => (j === i ? { ...x, a: v } : x)) ?? cur)} />
@@ -454,15 +458,15 @@ export function WhoWrite(props: {
       )}
 
       {/* 인터뷰 마지막 단계: 명리학 사주 보기 / 안 보기 (고르기 전에는 소개 글 만들기를 보여 주지 않는다) */}
-      {interviewDone && !hasDraft && st.aiEnabled && (
+      {interviewDone && !hasDraft && sajuOn && (
         <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />
       )}
 
       {/* 2. 초안 만들기 */}
-      {interviewDone && !hasDraft && (!st.aiEnabled || readingChosen) && (
+      {interviewDone && !hasDraft && (!sajuOn || readingChosen) && (
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {inAct ? "별칭과 소개 글, 2진실 1거짓을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
-          <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : inAct ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
+          <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {tlOn ? "별칭과 소개 글, 2진실 1거짓을" : inAct ? "별칭과 소개 글을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
+          <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : tlOn ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
         </section>
       )}
 
@@ -529,7 +533,7 @@ export function WhoWrite(props: {
             </div>
           )}
 
-          {inAct && (
+          {tlOn && (
             <>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <h3 className="h3 grow">2진실 1거짓</h3>
@@ -564,7 +568,7 @@ export function WhoWrite(props: {
           )}
 
           {/* 명리학: 성격·성향(소개 페이지 맨 끝에 공개, 뺄 수 있음) + 생애주기 풀이(나만) */}
-          {st.aiEnabled && <SajuPanel aid={aid} r={reading} canWrite={open} published={approved} onChanged={reload} />}
+          {sajuOn && <SajuPanel aid={aid} r={reading} canWrite={open} published={approved} onChanged={reload} />}
 
           {approveErr && !approved && (
             <div className="msg bad" role="alert">

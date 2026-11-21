@@ -243,7 +243,7 @@ function Templates() {
             {edit.base && <span className="small">고친 뒤 아래에서 저장 방법을 골라요. 수정은 지금 버전(v{edit.base.version})을 고치고{edit.base.useEvents.length ? ` 이 버전을 쓰는 일정 ${edit.base.useEvents.length}곳에도 반영돼요` : ""}, 새 버전은 v{edit.next}로, 새 활동은 다른 이름의 새 템플릿(v1)으로 저장돼요.</span>}
             {editErr && <div className="msg bad" role="alert">{editErr}</div>}
             <AiAssist value={edit.value} templateId={edit.base?.id} onApply={(value) => setEditRaw({ ...edit, value })} />
-            <TemplateEditor value={edit.value} onChange={(value) => setEditRaw({ ...edit, value })} />
+            <TemplateEditor value={edit.value} isNew={!edit.base} onChange={(value) => setEditRaw({ ...edit, value })} />
           </>
         )}
       </Popup>

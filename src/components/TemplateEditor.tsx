@@ -1,6 +1,7 @@
 "use client";
 
-import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect } from "@/lib/template-schema";
+import { BlockPicker } from "./BlockPicker";
+import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect, describeTemplate } from "@/lib/template-schema";
 import { NumField } from "./NumField";
 import { DateField } from "./DateField";
 import { DragHandle, useDragSort } from "./DragSort";
@@ -55,7 +56,8 @@ function WindowFields<W extends PreWindow>({ id, win, onChange, eventStartsAt, d
 }
 
 // inEvent: 일정 활동에서 고칠 때(참여 대상은 활동 카드에서 일정마다 정하므로 여기서는 고르지 않는다)
-export function TemplateEditor({ value, onChange, eventStartsAt, inEvent }: { value: EditableConfig; onChange: (v: EditableConfig) => void; eventStartsAt?: string; inEvent?: boolean }) {
+// isNew: 새 템플릿(기능 블록을 넣을지 먼저 묻는다)
+export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew }: { value: EditableConfig; onChange: (v: EditableConfig) => void; eventStartsAt?: string; inEvent?: boolean; isNew?: boolean }) {
   const steps = value.onsite.steps;
   const ds = useDragSort(steps, (next) => onChange({ ...value, onsite: { steps: next } }));
   const setStep = (i: number, patch: Partial<(typeof steps)[number]>) =>
@@ -66,8 +68,10 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent }: { va
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="grid2">
         <div><label className="l" htmlFor="t-name">활동 이름</label><input id="t-name" className="field" value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} /></div>
-        <div><label className="l" htmlFor="t-desc">설명</label><input id="t-desc" className="field" value={value.description} onChange={(e) => onChange({ ...value, description: e.target.value })} /></div>
+        <div><span className="l">설명 (자동)</span><div className="small" style={{ lineHeight: 1.6, padding: "6px 0" }}>{describeTemplate(value)}</div></div>
       </div>
+
+      <BlockPicker value={value} onChange={onChange} isNew={isNew} />
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>참여 대상</b>
@@ -127,7 +131,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent }: { va
         {/* 사전 단계마다 시작·마감(일정 며칠 전 + 시각) */}
         {pre.enabled && (
           <>
-            <b style={{ fontSize: fs(15) }}>① {pre.steps.includes("ai_interview") ? "사전 작성(별칭 · AI 인터뷰 · 2진실 1거짓)" : pre.steps.includes("worry_write") ? "사전 작성(고민 쓰기)" : "사전 작성"}</b>
+            <b style={{ fontSize: fs(15) }}>① {pre.steps.includes("ai_interview") ? "사전 작성(AI 인터뷰로 소개 쓰기)" : pre.steps.includes("worry_write") ? "사전 작성(고민 쓰기)" : "사전 작성"}</b>
             <WindowFields id="t-pre" win={pre} defaults={{ open: 14, close: 1 }} eventStartsAt={eventStartsAt} onChange={(w) => onChange({ ...value, preEvent: w })} />
           </>
         )}

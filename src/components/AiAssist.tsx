@@ -15,7 +15,6 @@ export function diffConfig(a: EditableConfig, b: EditableConfig): string[] {
   const out: string[] = [];
   const same = (x: unknown, y: unknown) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
   if (a.name !== b.name) out.push(`활동 이름: “${a.name}” → “${b.name}”`);
-  if (a.description !== b.description) out.push("설명을 바꿔요");
   if (a.participants !== b.participants) out.push(`참여 대상: ${b.participants === "selected" ? "관리자 선택 회원" : "전체 회원"}`);
   if (!same(a.mode, b.mode)) out.push(`활동 방식: ${b.mode === "team" ? "팀별" : b.mode === "all" ? "모두 함께" : "자동"}`);
   if (!same(a.host, b.host)) out.push(`진행자: ${b.host?.required ? "꼭 있어야 해요" : "없어도 돼요"}${b.host?.note && b.host.note !== a.host?.note ? " · 안내를 바꿔요" : ""}`);

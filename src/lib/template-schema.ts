@@ -174,3 +174,32 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
 
 // 이 템플릿(활동)이 "선택 회원"으로 진행할 수 있는지(참여 범위)
 export const canSelect = (c: Pick<TemplateConfig, "selectable" | "participants">): boolean => c.selectable ?? c.participants === "selected";
+
+// 활동 설명(자동): 템플릿 설정(사전 단계·현장 단계·방식 등)에서 만든다. 직접 고치지 않고, 활동을 바꾸면(AI에게 개발 요청 등) 따라 바뀐다.
+// lib/activities.ts readConfig 가 읽을 때마다 이 값으로 채운다.
+const PRE_LABEL: Record<string, string> = {
+  alias: "별칭 정하기", ai_interview: "AI 인터뷰로 소개 글 작성", truth_lies: "2진실 1거짓 문장 만들기",
+  reading_optional: "명리학 사주풀이(선택)", approve: "본인 승인 후 공개", worry_write: "고민 미리 적기", guess: "누구인지 맞히기",
+};
+export function describeTemplate(c: Pick<TemplateConfig, "preEvent" | "guessPhase" | "onsite" | "mode" | "host" | "bookOnly" | "reveal">): string {
+  const out: string[] = [];
+  const pre = c.preEvent.enabled ? c.preEvent.steps.map((k) => PRE_LABEL[k] ?? k) : [];
+  if (c.bookOnly) {
+    out.push("프로필 북 “소개 작성하기”에서 쓰는 활동이에요(일정에는 넣지 않아요).");
+    if (pre.length) out.push(`진행: ${pre.join(" → ")}.`);
+    out.push("실명으로 소개가 공개돼요.");
+    return out.join(" ");
+  }
+  if (pre.length) out.push(`사전: ${pre.join(" → ")}.`);
+  else out.push("사전 작성 없이 현장에서 진행해요.");
+  if (c.guessPhase?.enabled) out.push("사전 맞히기: 별칭 소개를 보고 누구인지 맞혀요.");
+  if (c.onsite.steps.length) out.push(`현장: ${c.onsite.steps.map((x) => x.label).join(" → ")}.`);
+  if (c.preEvent.steps.includes("ai_interview") && c.preEvent.steps.includes("alias")) {
+    const r = c.reveal;
+    out.push(`실명 공개: ${!r || r.mode === "end" ? "일정이 끝날 때" : r.mode === "after" ? `일정이 끝나고 ${r.hours ?? 0}시간 뒤` : `${(r.at ?? "").replace("T", " ")}`}.`);
+  }
+  const mode = c.mode ?? (!c.preEvent.steps.includes("ai_interview") && !c.preEvent.steps.includes("worry_write") && c.onsite.steps.some((x) => x.memberScreen === "write") ? "team" : "all");
+  if (mode === "team") out.push("팀별로 진행해요.");
+  if (c.host?.required) out.push("진행자가 필요해요.");
+  return out.join(" ");
+}
