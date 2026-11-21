@@ -232,40 +232,6 @@ export async function migrateReadingSplit(s: Store): Promise<{ templates: number
   return out;
 }
 
-// 한 번만: 예전 코드에 박혀 있던 명리학 풀이 규칙을 지침 칸 기본값으로 채운다(AI 지침 화면에서 보고 고칠 수 있게).
-//  AI 인터뷰가 있는 템플릿(모든 버전)·일정 활동과 AI 설정 화면의 전체 지침 중 비어 있는 칸만.
-export async function migrateReadingDefaults(s: Store): Promise<{ templates: number; acts: number; settings: number } | null> {
-  const flag = "readingDefaultsFilled";
-  if (await s.get("Settings", flag)) return null;
-  const { DEFAULT_READING_PUB, DEFAULT_READING_FULL } = await import("./ai-guides");
-  const out = { templates: 0, acts: 0, settings: 0 };
-  const fix = (json: string | undefined): string | null => {
-    const cfg = readConfig(json) as (ReturnType<typeof readConfig> & { aiGuides?: Record<string, string> }) | null;
-    if (!cfg || !cfg.preEvent?.steps?.includes("ai_interview")) return null;
-    const g = cfg.aiGuides ?? {};
-    if (g.reading?.trim() && g.readingFull?.trim()) return null;
-    return JSON.stringify({ ...cfg, aiGuides: { ...g, reading: g.reading?.trim() || DEFAULT_READING_PUB, readingFull: g.readingFull?.trim() || DEFAULT_READING_FULL } });
-  };
-  for (const r of await s.list("ActivityTemplates")) {
-    const next = fix(r.config);
-    if (next) { await s.update("ActivityTemplates", r.id, { config: next }); out.templates++; }
-  }
-  for (const a of await s.list("EventActivities")) {
-    const next = fix(a.config);
-    if (next) { await s.update("EventActivities", a.id, { config: next }); out.acts++; }
-  }
-  for (const [id, v] of [["aiGuide:reading", DEFAULT_READING_PUB], ["aiGuide:readingFull", DEFAULT_READING_FULL]] as const) {
-    const cur = await s.get("Settings", id);
-    const val = (() => { try { return String(JSON.parse(cur?.value ?? '""')); } catch { return ""; } })();
-    if (val.trim()) continue;
-    if (cur) await s.update("Settings", id, { value: JSON.stringify(v) });
-    else await s.insert("Settings", { id, value: JSON.stringify(v) });
-    out.settings++;
-  }
-  await s.insert("Settings", { id: flag, value: JSON.stringify({ at: new Date().toISOString(), ...out }) });
-  return out;
-}
-
 // 한 번만: 예전 전체 "기본 공통 지침"(Settings aiGuidelines)과 지점별 전체 지침(aiGuide:*)은 이제 쓰지 않는다
 //  (필수·기본 지침은 코드 lib/ai-rules.ts). 지우기 전에 aiGuidelinesBackup 에 그대로 남긴다. 활동에 적힌 지침은 그대로.
 export async function migrateAiRules(s: Store): Promise<{ backedUp: number } | null> {

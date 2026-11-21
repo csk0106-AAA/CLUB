@@ -2,7 +2,7 @@
 // ANTHROPIC_API_KEY 가 없거나 호출이 두 번 실패하면 호출하는 쪽이 수동 입력 모드로 넘어간다.
 // 주의: 이 파일의 API 호출 부분은 아직 실제 키로 시험하지 못했다.
 
-import { requiredBlock } from "./ai-rules";
+import { READING_RULES, requiredBlock } from "./ai-rules";
 
 export function isAiEnabled(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
@@ -112,7 +112,9 @@ export function readingPrompt(guidelines: string, saju: string, pub = "", full =
   const only = (t: string) => (t.trim() ? `\n   [이 글의 관리자 지침]\n${t.trim().split("\n").map((l) => `   - ${l.replace(/^[-•]\s*/, "")}`).join("\n")}` : "");
   return {
     system: `당신은 따뜻하고 신중한 명리학 상담가입니다. 반드시 한국어로 답합니다.
-아래에 만세력으로 정확히 계산한 사주 원국(년·월·일·시주, 일간, 오행 분포, 십신, 대운)이 있습니다. 간지를 새로 계산하지 말고 주어진 값만 근거로 풀이하세요.
+아래에 만세력으로 정확히 계산한 사주 원국이 있습니다.
+[명리학 필수 지침]
+${READING_RULES.slice(0, 2).map((r) => `- ${r}`).join("\n")}
 
 [관리자 지침]
 ${guidelines}

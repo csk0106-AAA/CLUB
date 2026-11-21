@@ -8,7 +8,7 @@ import { PasswordField } from "@/components/PasswordField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
-import { BASE_RULES, REQUIRED_RULES } from "@/lib/ai-rules";
+import { BASE_RULES, READING_RULES, REQUIRED_RULES } from "@/lib/ai-rules";
 
 // 회원구분·직책·클럽 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
 type S = { clubName: string; clubShortName: string; clubNameDisplay: "full" | "short"; inviteCode: string; requirement: string };
@@ -96,7 +96,7 @@ function Settings() {
 
       {/* AI 필수·기본 지침(코드에 정해져 있어 읽기만) */}
       <details className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <summary style={{ cursor: "pointer", font: `700 ${fs(17)} var(--display)` }}>AI 필수·기본 지침</summary>
+        <summary style={{ cursor: "pointer", font: `700 ${fs(17)} var(--display)` }}>AI 필수·기본·명리학 필수 지침</summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
           <span className="small">앱 안의 모든 AI(활동 인터뷰·소개 글·명리학 풀이·고민 관점, 게시글 AI 작성, 오타 다듬기 등)에 적용돼요. <b>수정이 필요하면 개발자에게 요청하세요.</b></span>
           <div>
@@ -106,6 +106,10 @@ function Settings() {
           <div>
             <b style={{ fontSize: fs(14) }}>기본 지침</b> <span className="small">활동의 공통 지침이 비어 있을 때 쓰고, 활동 AI 지침 화면에 처음 채워 보여 줘요. 게시글 AI 작성에는 말투 항목(1~4)만 들어가요(임원 소개처럼 이름·직함이 필요한 글이 있어서).</span>
             <ol className="small" style={{ margin: "4px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 2 }}>{BASE_RULES.map((r, i) => <li key={i}>{r}</li>)}</ol>
+          </div>
+          <div>
+            <b style={{ fontSize: fs(14) }}>AI 명리학 필수 지침</b> <span className="small">명리학 풀이(“내가 누굴까요?”)에 항상 적용돼요. 풀이 내용(분량·구성·말투)은 활동 템플릿 AI 지침의 “명리학 풀이” 두 칸에서 정해요.</span>
+            <ol className="small" style={{ margin: "4px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 2 }}>{READING_RULES.map((r, i) => <li key={i}>{r}</li>)}</ol>
           </div>
           <span className="small">그 아래로 활동마다 <b>공통 지침</b>(그 활동의 모든 세부 지침에 들어감)과 <b>세부 지침</b>(지점별)을 관리자 › 활동 템플릿 › AI 지침에서 정해요.</span>
         </div>
