@@ -53,14 +53,14 @@ export function WindowFields<W extends PreWindow>({ id, win, onChange, eventStar
         <span>일정</span>
         <NumField className="field num" aria-labelledby={`${id}-o`} aria-label="시작: 일정 며칠 전" min={0} max={365} value={win.opensBeforeDays ?? defaults.open} onChange={(n) => onChange({ ...win, opensBeforeDays: n })} />
         <span>일 전</span>
-        <input className="field num" type="time" aria-label="시작 시각" value={win.opensTime ?? ""} onChange={(e) => onChange({ ...win, opensTime: e.target.value || undefined })} />
+        <input className="field num" type="time" step={300} aria-label="시작 시각" value={win.opensTime ?? ""} onChange={(e) => onChange({ ...win, opensTime: e.target.value || undefined })} />
       </div>
       <div className="win-row">
         <span className="l" id={`${id}-c`} style={{ margin: 0 }}>마감</span>
         <span>일정</span>
         <NumField className="field num" aria-labelledby={`${id}-c`} aria-label="마감: 일정 며칠 전" min={0} max={365} value={win.closesBeforeDays ?? defaults.close} onChange={(n) => onChange({ ...win, closesBeforeDays: n })} />
         <span>일 전</span>
-        <input className="field num" type="time" aria-label="마감 시각" value={win.closesTime ?? ""} onChange={(e) => onChange({ ...win, closesTime: e.target.value || undefined })} />
+        <input className="field num" type="time" step={300} aria-label="마감 시각" value={win.closesTime ?? ""} onChange={(e) => onChange({ ...win, closesTime: e.target.value || undefined })} />
       </div>
       <span className="small">
         {w ? `실제 기간: ${kstText(w.opens)} ~ ${kstText(w.closes)}${w.closes <= w.opens ? " · 마감이 시작보다 빨라요" : ""}` : "시각을 비워 두면 기준 시각(활동 시작, 없으면 일정 시작)이에요. 0일 전 = 그날이에요."}

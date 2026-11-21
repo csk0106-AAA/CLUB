@@ -5,7 +5,7 @@ import { fs } from "@/lib/fs";
 
 // 날짜·일시 입력칸. 화면에는 "2026/12/11" 또는 "2026/12/11 14:30" 으로 보이고,
 // 저장 값은 그대로 "2026-12-11" / "2026-12-11T14:30" 이다.
-// 칸이나 달력 아이콘을 누르면 구글 캘린더처럼 한 달 달력(+ 일시면 15분 단위 시간 목록)이 칸 아래에 열린다. 직접 입력도 된다.
+// 칸이나 달력 아이콘을 누르면 구글 캘린더처럼 한 달 달력(+ 일시면 5분 단위 시간 목록)이 칸 아래에 열린다. 직접 입력도 된다.
 export type DateFieldMode = "date" | "datetime";
 
 type Props = {
@@ -21,8 +21,8 @@ type Props = {
 
 const p2 = (n: number) => String(n).padStart(2, "0");
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
-// 15분 단위 시간(00:00 ~ 23:45)
-const TIMES = Array.from({ length: 96 }, (_, i) => `${p2(Math.floor(i / 4))}:${p2((i % 4) * 15)}`);
+// 시간 목록: 5분 단위(00:00, 00:05 … 23:55)
+const TIMES = Array.from({ length: 288 }, (_, i) => `${p2(Math.floor(i / 12))}:${p2((i % 12) * 5)}`);
 const ymd = (d: Date) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 const timeLabel = (t: string) => {
   const [h, m] = t.split(":").map(Number);
@@ -201,7 +201,7 @@ export function DateField({ id, value, onChange, mode, ariaLabel, disabled, styl
             </div>
           </div>
           {mode === "datetime" && (
-            <div className="df-times" ref={timeRef} role="listbox" aria-label="시간 (15분 단위)">
+            <div className="df-times" ref={timeRef} role="listbox" aria-label="시간 (5분 단위)">
               {TIMES.map((t) => (
                 <button key={t} type="button" role="option" aria-selected={t === curTime} data-t={t} className={`df-time${t === curTime ? " on" : ""}`} onClick={() => pickTime(t)}>
                   {timeLabel(t)}
