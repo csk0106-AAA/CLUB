@@ -75,6 +75,11 @@ export async function skippable(act?: Row): Promise<boolean[]> {
   return iv.questions.map((q, i) => ({ q: q.trim(), skip: iv.skippable?.[i] === true })).filter((p) => p.q).map((p) => p.skip);
 }
 
+// AI 후속 질문도 "답변안함"을 허용하는지(활동 템플릿 설정, 값이 없으면 허용)
+export async function followUpSkippable(act?: Row): Promise<boolean> {
+  return (await activityAiConfig(act))?.interview?.followUpSkip !== false;
+}
+
 // 후속 질문 최대 개수: 활동 템플릿에 있으면 그것, 없으면 기본값
 export async function followUpMax(act?: Row): Promise<number> {
   const t = (await activityAiConfig(act))?.interview?.followUpMax;
@@ -126,11 +131,11 @@ export async function writeGate(ctx: WhoCtx, memberId: string): Promise<NextResp
   return NextResponse.json({ error: msg }, { status: 403 });
 }
 
-// canSkip: 지금 묻는 질문이 "답변안함"을 허용하는 필수 질문인지
-export function interviewView(messages: ChatMsg[], status: string, required: number, skips: boolean[] = []) {
+// canSkip: 지금 묻는 질문이 "답변안함"을 허용하는지(필수 질문은 질문마다, AI 후속 질문은 fuSkip)
+export function interviewView(messages: ChatMsg[], status: string, required: number, skips: boolean[] = [], fuSkip = false) {
   const answered = messages.filter((m) => m.role === "me").length;
   const waiting = (status || "active") !== "done" && messages[messages.length - 1]?.role === "ai";
-  return { messages, status: status || "active", answered, required, canSkip: waiting && answered < required && skips[answered] === true };
+  return { messages, status: status || "active", answered, required, canSkip: waiting && (answered < required ? skips[answered] === true : fuSkip) };
 }
 
 // 답한 것만("답변안함" 뺀 것) — 소개 글·후속 질문·2진실 1거짓에 쓴다

@@ -23,7 +23,7 @@ export type AiSettings = {
   aiGuides: Record<string, string>;
   aiCommon?: string;
   // skippable: 질문마다 "답변안함" 허용(questions 와 같은 순서)
-  interview?: { questions: string[]; followUpMax: number; skippable?: boolean[] };
+  interview?: { questions: string[]; followUpMax: number; skippable?: boolean[]; followUpSkip?: boolean };
 };
 
 export function AiGuidesEditor(props: {
@@ -49,6 +49,7 @@ export function AiGuidesEditor(props: {
   // 인터뷰 질문 순서: ⠿ 손잡이를 끌어서(또는 손잡이에서 위·아래 방향키로) 바꾼다
   const qds = useDragSort(items, setItems);
   const [followUpMax, setFollowUpMax] = useState<number>(initial.interview?.followUpMax ?? 6);
+  const [followUpSkip, setFollowUpSkip] = useState<boolean>(initial.interview?.followUpSkip !== false); // AI 후속 질문도 답변안함 허용(기본 허용)
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -70,7 +71,7 @@ export function AiGuidesEditor(props: {
     if (hasInterview && !questions.some((q) => q.trim())) return setErr("인터뷰 질문을 하나 이상 넣어 주세요.");
     setBusy(true);
     setErr("");
-    const e = await onSave({ aiGuides: guides, aiCommon: common, ...(hasInterview ? { interview: { questions, followUpMax, skippable: items.map((x) => x.skip) } } : {}) }, mode, name);
+    const e = await onSave({ aiGuides: guides, aiCommon: common, ...(hasInterview ? { interview: { questions, followUpMax, skippable: items.map((x) => x.skip), followUpSkip } } : {}) }, mode, name);
     setBusy(false);
     if (e) setErr(e);
   }
@@ -124,6 +125,10 @@ export function AiGuidesEditor(props: {
             <label className="l" htmlFor="ag-fu">AI 후속 질문 최대 개수</label>
             <NumField id="ag-fu" className="field" min={0} max={12} value={followUpMax} onChange={setFollowUpMax} />
           </div>
+          <label className="row" style={{ gap: 8, minHeight: 32, fontSize: fs(13), cursor: "pointer" }}>
+            <input type="checkbox" checked={followUpSkip} onChange={(e) => setFollowUpSkip(e.target.checked)} style={{ width: 18, height: 18 }} />
+            <span>AI 후속 질문도 답변안함 허용</span>
+          </label>
         </div>
       )}
 

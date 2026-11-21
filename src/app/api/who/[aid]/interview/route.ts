@@ -6,7 +6,7 @@ import { bad, guard } from "@/lib/api";
 import { newAlias } from "@/lib/profile-book";
 import { getStore } from "@/lib/store";
 import {
-  followUpMax, inGame, interviewView, loadWho, myInterview, myProfile, myTruthLies, questions, SKIP_TEXT, skippable, writeClosed, writeGate, type ChatMsg,
+  followUpMax, followUpSkippable, inGame, interviewView, loadWho, myInterview, myProfile, myTruthLies, questions, SKIP_TEXT, skippable, writeClosed, writeGate, type ChatMsg,
 } from "@/lib/who";
 
 // skip: 지금 질문을 "답변안함"으로 넘긴다(템플릿에서 그 질문에 답변안함을 허용했을 때만)
@@ -32,6 +32,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const s = await getStore();
   const qs = await questions(w.act);
   const skips = await skippable(w.act);
+  const fuSkip = await followUpSkippable(w.act);
   const max = await followUpMax(w.act);
   let { row, messages } = await myInterview(g.s.mid, aid);
   if (row?.status === "done") return bad("인터뷰가 끝났어요. 소개 글 만들기로 넘어가 주세요.", 409);
@@ -40,11 +41,11 @@ export async function POST(req: Request, ctx: Ctx) {
 
   // 답 없이 다시 열었을 때(이어쓰기): 이미 질문이 있으면 그대로 돌려준다.
   if (!parsed.data.answer && !parsed.data.skip && messages.length > 0) {
-    return NextResponse.json({ interview: interviewView(messages, row?.status ?? "active", qs.length, skips) });
+    return NextResponse.json({ interview: interviewView(messages, row?.status ?? "active", qs.length, skips, fuSkip) });
   }
 
   if (parsed.data.skip) {
-    if (!interviewView(messages, row?.status ?? "active", qs.length, skips).canSkip) return bad("이 질문은 답변안함으로 넘길 수 없어요. 답을 적어 주세요.");
+    if (!interviewView(messages, row?.status ?? "active", qs.length, skips, fuSkip).canSkip) return bad("이 질문은 답변안함으로 넘길 수 없어요. 답을 적어 주세요.");
     messages = [...messages, { role: "me", text: SKIP_TEXT, scope: "none", skipped: true } as ChatMsg];
   } else if (parsed.data.answer) {
     if (messages.length === 0 || messages[messages.length - 1].role !== "ai") return bad("먼저 질문을 받아 주세요.");
@@ -74,7 +75,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const patch = { messages: JSON.stringify(messages), status: done ? "done" : "active", updatedAt: new Date().toISOString() };
   if (row) await s.update("Interviews", row.id, patch);
   else row = await s.insert("Interviews", { memberId: g.s.mid, eventActivityId: aid, ...patch });
-  return NextResponse.json({ interview: interviewView(messages, patch.status, qs.length, skips) });
+  return NextResponse.json({ interview: interviewView(messages, patch.status, qs.length, skips, fuSkip) });
 }
 
 // 기존 인터뷰 수정하기: 질문별 내 답변을 고쳐 저장한다(질문은 그대로).
