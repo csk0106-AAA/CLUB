@@ -11,7 +11,8 @@ import type { EditableConfig } from "./TemplateEditor";
 //  isNew: 새 템플릿이면 먼저 "기능 블록을 넣을까요?"를 묻고, 넣는다고 하면 목록을 보여 준다.
 export function BlockPicker({ value, onChange, isNew }: { value: EditableConfig; onChange: (v: EditableConfig) => void; isNew?: boolean }) {
   const anyOn = BLOCKS.some((b) => hasBlock(value, b.key));
-  const [ask, setAsk] = useState<"ask" | "yes" | "no">(isNew && !anyOn ? "ask" : "yes");
+  // 새 템플릿은 넣을지 먼저 묻고, 넣은 블록이 없는 템플릿은 접어 둔다("넣은 기능 블록 없음" + 넣기 버튼)
+  const [ask, setAsk] = useState<"ask" | "yes" | "no">(anyOn ? "yes" : isNew ? "ask" : "no");
   const [open, setOpen] = useState<BlockKey | "">("");
 
   return (
@@ -27,8 +28,8 @@ export function BlockPicker({ value, onChange, isNew }: { value: EditableConfig;
         </>
       ) : ask === "no" ? (
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <span className="small grow">기능 블록 없이 만들어요.</span>
-          <button className="mini" type="button" onClick={() => setAsk("yes")}>기능 블록 보기</button>
+          <span className="small grow">넣은 기능 블록이 없어요.</span>
+          <button className="mini" type="button" onClick={() => setAsk("yes")}>기능 블록 넣기</button>
         </div>
       ) : (
         <>
