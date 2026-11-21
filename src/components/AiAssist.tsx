@@ -17,7 +17,7 @@ export function diffConfig(a: EditableConfig, b: EditableConfig): string[] {
   if (a.name !== b.name) out.push(`활동 이름: “${a.name}” → “${b.name}”`);
   if (a.description !== b.description) out.push("설명을 바꿔요");
   if (a.participants !== b.participants) out.push(`참여 대상: ${b.participants === "selected" ? "관리자 선택 회원" : "전체 회원"}`);
-  if (!same(a.mode, b.mode)) out.push(`활동 방식: ${b.mode === "team" ? "팀 활동" : b.mode === "all" ? "전체 활동" : "자동"}`);
+  if (!same(a.mode, b.mode)) out.push(`활동 방식: ${b.mode === "team" ? "팀별" : b.mode === "all" ? "모두 함께" : "자동"}`);
   if (!same(a.host, b.host)) out.push(`진행자: ${b.host?.required ? "꼭 있어야 해요" : "없어도 돼요"}${b.host?.note && b.host.note !== a.host?.note ? " · 안내를 바꿔요" : ""}`);
   if (!same(a.preEvent, b.preEvent)) out.push(b.preEvent.enabled ? `사전 작성: 일정 ${b.preEvent.opensBeforeDays ?? 14}일 전 ~ ${b.preEvent.closesBeforeDays ?? 1}일 전 (${b.preEvent.steps.join(", ") || "단계 없음"})` : "사전 작성: 없음(현장에서만)");
   if (!same(a.guessPhase, b.guessPhase)) out.push("사전 맞히기 기간을 바꿔요");

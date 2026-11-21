@@ -251,7 +251,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
         <span className={`pill ${att.confirmed ? "ok" : "warn"}`}>{att.confirmed ? "완료" : "미완료"}</span>
       </div>
       <div className="msg info" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <b>선택회원 선별은 템플릿에서 선별 조건 확인 후 직접 회원을 선택하세요.</b>
+        <b>선택참여 회원 선별은 템플릿에서 선별 조건 확인 후 직접 회원을 선택하세요.</b>
         {a.config.selectRule?.trim()
           ? <span style={{ whiteSpace: "pre-wrap", fontSize: fs(13) }}><b>선별 조건</b> · {a.config.selectRule.trim()}</span>
           : <span className="small">이 템플릿에는 선별 조건이 적혀 있지 않아요.</span>}
@@ -324,17 +324,17 @@ function Progress({ eventId, aid }: { eventId: string; aid: string }) {
 }
 
 // 일정 관리의 '활동' 탭: 템플릿에서 활동 추가, 일정별 수정, 진행자 컨트롤(시험 조작)
-// 넣을 때 참여 대상 처음 값: 선택 회원이 되는 템플릿이면 템플릿 기본값, 아니면 전체 회원
+// 넣을 때 참여 대상 처음 값: 선택 참여가 되는 템플릿이면 템플릿 기본값, 아니면 전체 참여
 const partOf = (c?: TemplateConfig): "all" | "selected" => (c && canSelect(c) ? c.participants : "all");
 
-// 활동을 넣을 때 참여 대상 고르기(템플릿이 선택 회원을 허용할 때만)
+// 활동을 넣을 때 참여 대상 고르기(템플릿이 선택 참여를 허용할 때만)
 function PartPick({ value, onChange, selectable }: { value: "all" | "selected"; onChange: (v: "all" | "selected") => void; selectable: boolean }) {
-  if (!selectable) return <span className="small"><b>참여 대상: 전체 회원</b> · 템플릿에서 전체 회원 활동으로 정해져 있어요.</span>;
+  if (!selectable) return <span className="small"><b>참여 방식: 전체 참여</b> · 템플릿에서 전체 참여 활동으로 정해져 있어요.</span>;
   return (
     <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
       <legend className="l">참여 대상</legend>
-      <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="radio" name="act-part" checked={value === "all"} onChange={() => onChange("all")} /> <span><b>전체 회원</b> <span className="small">일정 대상 회원 모두 참여</span></span></label>
-      <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="radio" name="act-part" checked={value === "selected"} onChange={() => onChange("selected")} /> <span><b>선택 회원</b> <span className="small">출석 체크로 고른 회원만 참여</span></span></label>
+      <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="radio" name="act-part" checked={value === "all"} onChange={() => onChange("all")} /> <span><b>전체 참여</b> <span className="small">일정 대상 회원 모두 참여</span></span></label>
+      <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="radio" name="act-part" checked={value === "selected"} onChange={() => onChange("selected")} /> <span><b>선택 참여</b> <span className="small">출석 체크로 고른 회원만 참여</span></span></label>
       <span className="small">넣은 뒤에도 활동 카드에서 바꿀 수 있어요.</span>
     </fieldset>
   );
@@ -438,13 +438,13 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   async function setPart(a: Act, participants: "all" | "selected") {
     if (participants === a.config.participants) return;
     const warn = participants === "all"
-      ? "전체 회원으로 바꿀까요?\n일정 대상 회원 모두가 이 활동에 참여해요(출석 체크 결과는 남아 있지만 쓰지 않아요)."
-      : "선택 회원으로 바꿀까요?\n출석 체크로 고른 회원만 참여하고, 활동 전에 출석 체크를 완료해야 시작할 수 있어요.";
+      ? "전체 참여로 바꿀까요?\n일정 대상 회원 모두가 이 활동에 참여해요(출석 체크 결과는 남아 있지만 쓰지 않아요)."
+      : "선택 참여로 바꿀까요?\n출석 체크로 고른 회원만 참여하고, 활동 전에 출석 체크를 완료해야 시작할 수 있어요.";
     if (!window.confirm(warn)) return;
     setBusy(true);
     const r = await api(`/api/admin/events/${eventId}/activities/${a.id}`, { method: "PATCH", body: { participants } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: participants === "all" ? "전체 회원으로 바꿨어요." : "선택 회원으로 바꿨어요. 출석 체크에서 참여할 회원을 골라 주세요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: participants === "all" ? "전체 참여로 바꿨어요." : "선택 참여로 바꿨어요. 출석 체크에서 참여할 회원을 골라 주세요." } : { tone: "bad", text: r.error });
     load();
   }
 
@@ -516,7 +516,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.config.sourceEvent ? `템플릿 v${t.version} · ${sourceLabel(t)}` : `템플릿 v${t?.version ?? a.templateVersion}`; })()}
             </span>
             <span className={`pill ${a.pre.enabled ? "blue" : "warn"}`}>{a.pre.enabled ? "사전 작성 있음" : "현장에서만"}</span>
-            <span className="pill gray">{modeOf(a.config) === "team" ? "팀 활동" : "전체 활동"}</span>
+            <span className="pill gray">{modeOf(a.config) === "team" ? "팀별" : "모두 함께"}</span>
             <span className="grow" />
             {canEdit && (
               <>
@@ -543,11 +543,11 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             {canEdit && canSelect(a.config) ? (
               <select className="field" aria-label="참여 대상" value={a.config.participants} disabled={busy} style={{ width: "auto", minHeight: 40, fontSize: fs(14), padding: "4px 10px" }}
                 onChange={(e) => setPart(a, e.target.value as "all" | "selected")}>
-                <option value="all">참여 대상: 전체 회원</option>
-                <option value="selected">참여 대상: 선택 회원 (출석 체크)</option>
+                <option value="all">참여 방식: 전체 참여</option>
+                <option value="selected">참여 방식: 선택 참여 (출석 체크)</option>
               </select>
             ) : (
-              <span className={`pill ${a.config.participants === "selected" ? "warn" : "gray"}`}>참여 대상: {a.config.participants === "selected" ? "선택 회원" : "전체 회원"}</span>
+              <span className={`pill ${a.config.participants === "selected" ? "warn" : "gray"}`}>참여 방식: {a.config.participants === "selected" ? "선택 참여" : "전체 참여"}</span>
             )}
             {a.config.participants === "selected" && <span className="pill warn">{a.rosterCount}명{a.attendanceConfirmed ? " · 출석 체크 완료" : " · 미완료"}</span>}
           </div>
@@ -624,7 +624,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                 </div>
                 {pickFam && (
                   <span className="small">
-                    {pickFam.root.config.description ? `${pickFam.root.config.description} · ` : ""}{modeOf(pickFam.root.config) === "team" ? "팀 활동" : "전체 활동"} · {pickFam.root.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {pickFam.root.config.onsite.steps.length}단계
+                    {pickFam.root.config.description ? `${pickFam.root.config.description} · ` : ""}{modeOf(pickFam.root.config) === "team" ? "팀별" : "모두 함께"} · {pickFam.root.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {pickFam.root.config.onsite.steps.length}단계
                   </span>
                 )}
                 <PartPick value={addPart} onChange={setAddPart} selectable={!!pickFam && canSelect(pickFam.root.config)} />
@@ -652,7 +652,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                           {v.id === pickFam.latest.id && <span className="pill warn">최신</span>}
                         </span>
                         <span className="small">{sourceLabel(v)}{v.createdAt ? ` · ${fmtDate(v.createdAt)}` : ""}</span>
-                        <span className="small">{modeOf(v.config) === "team" ? "팀 활동" : "전체 활동"} · {v.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {v.config.onsite.steps.length}단계</span>
+                        <span className="small">{modeOf(v.config) === "team" ? "팀별" : "모두 함께"} · {v.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {v.config.onsite.steps.length}단계</span>
                       </span>
                     </label>
                   ))}

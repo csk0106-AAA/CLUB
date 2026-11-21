@@ -72,15 +72,15 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent }: { va
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>참여 대상</b>
         {inEvent ? (
-          <span className="small">참여 범위와 선별 조건은 템플릿에서, 이 일정의 전체 회원 / 선택 회원은 활동 카드에서 정해요. 여기서 저장해도 바뀌지 않아요.</span>
+          <span className="small">참여 범위와 선별 조건은 템플릿에서, 이 일정의 전체 참여 / 선택 참여는 활동 카드에서 정해요. 여기서 저장해도 바뀌지 않아요.</span>
         ) : (<>
         <label className="l" htmlFor="t-part">참여 범위</label>
         <select id="t-part" className="field" value={canSelect(value) ? "selectable" : "all"}
           onChange={(e) => onChange(e.target.value === "all" ? { ...value, selectable: false, participants: "all" } : { ...value, selectable: true, participants: "selected" })}>
-          <option value="all">전체 회원만 (일정 대상 회원 모두 참여)</option>
-          <option value="selectable">선택 회원 가능 (일정에서 전체 회원 / 선택 회원을 골라요)</option>
+          <option value="all">전체 참여만 (일정 대상 회원 모두 참여)</option>
+          <option value="selectable">선택 참여 가능 (일정에서 전체 참여 / 선택 참여를 골라요)</option>
         </select>
-        <span className="small">선택 회원으로 하면 일정에서 관리자가 참여할 사람을 고르고(출석 체크) 완료해야 활동을 시작할 수 있어요. 고르지 않은 회원은 활동에 들어가지 않아요.</span>
+        <span className="small">선택 참여로 하면 일정에서 관리자가 참여할 사람을 고르고(출석 체크) 완료해야 활동을 시작할 수 있어요. 고르지 않은 회원은 활동에 들어가지 않아요.</span>
         {canSelect(value) && (<>
           <label className="l" htmlFor="t-rule" style={{ marginTop: 6 }}>선별 조건</label>
           <textarea id="t-rule" className="field" rows={4} value={value.selectRule ?? ""} placeholder="관리자가 참여할 회원을 고르는 기준을 적어 주세요. 출석 체크 화면에 그대로 보여요."
@@ -89,10 +89,10 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent }: { va
         </>)}
         <label className="l" htmlFor="t-mode" style={{ marginTop: 6 }}>활동 방식</label>
         <select id="t-mode" className="field" value={modeOf(value)} onChange={(e) => onChange({ ...value, mode: e.target.value as "all" | "team" })}>
-          <option value="all">전체 활동 (모두 함께)</option>
-          <option value="team">팀 활동 (팀을 나눠 진행)</option>
+          <option value="all">모두 함께</option>
+          <option value="team">팀별 (팀을 나눠 진행)</option>
         </select>
-        <span className="small">팀 활동으로 정해도 템플릿에는 팀을 넣지 않아요. 일정 › 활동 탭에서 이 활동을 넣은 뒤 그 일정의 참여자로 팀을 배정해요.</span>
+        <span className="small">팀별로 정해도 템플릿에는 팀을 넣지 않아요. 일정 › 활동 탭에서 이 활동을 넣은 뒤 그 일정의 참여자로 팀을 배정해요.</span>
       </div>
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>

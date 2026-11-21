@@ -20,7 +20,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const raw = await req.json().catch(() => null);
-  // 참여 대상만 바꾸기: { participants: "all" | "selected" } — 이 일정 활동에만 적용(템플릿은 그대로, 선택 회원은 템플릿이 허용할 때만)
+  // 참여 대상만 바꾸기: { participants: "all" | "selected" } — 이 일정 활동에만 적용(템플릿은 그대로, 선택 참여는 템플릿이 허용할 때만)
   if (raw && typeof raw === "object" && "participants" in raw && !("config" in raw)) {
     const p = z.enum(["all", "selected"]).safeParse((raw as { participants: unknown }).participants);
     if (!p.success) return bad("참여 대상을 확인해 주세요.");
@@ -28,7 +28,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const cur = (await s.list("EventActivities")).find((a) => a.id === aid && a.eventId === id);
     const cfg = readConfig(cur?.config);
     if (!cur || !cfg) return bad("활동을 찾을 수 없어요.", 404);
-    if (p.data === "selected" && !canSelect(cfg)) return bad("이 활동은 템플릿에서 전체 회원 활동으로 정해져 있어요.");
+    if (p.data === "selected" && !canSelect(cfg)) return bad("이 활동은 템플릿에서 전체 참여 활동으로 정해져 있어요.");
     if (cfg.participants !== p.data) await s.update("EventActivities", aid, { config: JSON.stringify({ ...cfg, participants: p.data }) });
     return NextResponse.json({ ok: true, participants: p.data });
   }

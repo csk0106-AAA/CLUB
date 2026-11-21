@@ -32,7 +32,7 @@ export async function loadTeamActivity(aid: string, eventId?: string): Promise<C
   const cfg = act ? readConfig(act.config) : null;
   const ev = act ? (await s.list("Events")).find((e) => e.id === act.eventId) : undefined;
   if (!act || !cfg || !ev) return "활동을 찾을 수 없어요.";
-  if (activityMode(cfg) !== "team") return "팀 활동이 아니에요. 활동 템플릿에서 “팀 활동”으로 정해 주세요.";
+  if (activityMode(cfg) !== "team") return "팀 활동이 아니에요. 활동 템플릿의 활동 방식을 “팀별”로 정해 주세요.";
   return { act, ev, cfg };
 }
 

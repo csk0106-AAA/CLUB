@@ -30,7 +30,7 @@ const BLANK: EditableConfig = {
 
 const hasAi = (c: TemplateConfig) => Object.values(c.aiGuides ?? {}).some((v) => v.trim()) || !!c.aiCommon?.trim() || !!c.interview?.questions?.length;
 const summary = (c: TemplateConfig) =>
-  `${modeOf(c) === "team" ? "팀 활동 · " : "전체 활동 · "}${canSelect(c) ? "선택 회원 가능 · " : "전체 회원만 · "}${c.preEvent.enabled ? `사전 작성 있음 (일정 ${c.preEvent.opensBeforeDays ?? 14}일 전 ~ ${c.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 ${c.onsite.steps.length}단계`;
+  `${modeOf(c) === "team" ? "팀별 · " : "모두 함께 · "}${canSelect(c) ? "선택 참여 가능 · " : "전체 참여만 · "}${c.preEvent.enabled ? `사전 작성 있음 (일정 ${c.preEvent.opensBeforeDays ?? 14}일 전 ~ ${c.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 ${c.onsite.steps.length}단계`;
 
 function Templates() {
   const [list, setList] = useState<T[] | null>(null);
