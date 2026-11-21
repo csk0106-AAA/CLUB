@@ -1,7 +1,7 @@
 "use client";
 
 import { BlockPicker } from "./BlockPicker";
-import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect, describeTemplate, activityActions } from "@/lib/template-schema";
+import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect, describeTemplate, activityActions, screensFor, kindOfConfig } from "@/lib/template-schema";
 import { NumField } from "./NumField";
 import { DateField } from "./DateField";
 import { DragHandle, useDragSort } from "./DragSort";
@@ -13,8 +13,8 @@ export const SCREEN_LABELS: Record<string, string> = {
   wait: "대기 화면",
   write: "작성 화면",
   vote: "투표 화면",
-  iam_button: "“저예요” 버튼",
-  pick_person: "명단에서 사람 고르기",
+  iam_button: "“저예요” 버튼 (소개 주인)",
+  pick_person: "명단에서 사람 고르기 (아직 없음)",
   view: "결과 보기",
 };
 export const UNLOCK_LABELS: Record<string, string> = {
@@ -215,6 +215,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>현장 진행 단계</b>
         {steps.length > 1 && <span className="small">단계 왼쪽 위 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
+        <span className="small">회원 휴대폰 화면은 이 활동에 만들어진 화면만 고를 수 있어요({({ who: "소개·맞히기 활동", worry: "고민 활동", capsule: "작성 활동", "": "일반 활동" } as const)[kindOfConfig(value)]}: {screensFor(value).map((k) => SCREEN_LABELS[k]).join(" · ")}).</span>
         {steps.map((st, i) => {
           const row = ds.item(i);
           return (
@@ -229,8 +230,11 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
               <div>
                 <label className="l" htmlFor={`s-s-${i}`}>회원 휴대폰에 보이는 화면</label>
                 <select id={`s-s-${i}`} className="field" value={st.memberScreen} onChange={(e) => setStep(i, { memberScreen: e.target.value as typeof st.memberScreen })}>
-                  {Object.entries(SCREEN_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {[...screensFor(value), ...(screensFor(value).includes(st.memberScreen) ? [] : [st.memberScreen])].map((k) => (
+                    <option key={k} value={k}>{SCREEN_LABELS[k] ?? k}{screensFor(value).includes(k) ? "" : " (이 활동에는 없는 화면)"}</option>
+                  ))}
                 </select>
+                {!screensFor(value).includes(st.memberScreen) && <span className="small" style={{ color: "var(--red, #c33)" }}>이 활동에는 없는 화면이에요. 다른 화면으로 바꿔 주세요.</span>}
               </div>
               <div>
                 <label className="l" htmlFor={`s-u-${i}`}>회원 화면이 켜지는 때</label>

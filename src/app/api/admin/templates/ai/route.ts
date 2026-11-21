@@ -31,7 +31,7 @@ const SYSTEM = `당신은 모임(20명 안팎의 회원) 일정의 활동을 설
 - preEvent: { enabled, opensBeforeDays, closesBeforeDays, steps } — 일정 며칠 전부터 며칠 전까지 사전 작성. 없으면 { "enabled": false, "steps": [] }
 - guessPhase: 소개 엔진에서만 사용(사전 맞히기). 아니면 넣지 않습니다.
 - onsite.steps: 1개 이상. 각 단계 { key(영문 소문자, 겹치지 않게), label, memberScreen, unlock, hostButton }
-  memberScreen: wait(대기) | write(작성) | vote(투표) | iam_button("저예요") | pick_person(사람 고르기) | view(결과 보기)
+  memberScreen: 활동 종류마다 만들어진 화면만 — AI 인터뷰 소개 활동: wait(대기) | iam_button("저예요", 소개 주인) | vote(투표) | view(결과 보기) / 고민 활동: wait | view / 그 밖(작성 활동): wait | write(작성) | view. pick_person 은 쓰지 않는다
   unlock: host_click(진행자가 누르면 켜짐) | immediate(단계 시작 시 바로)
 - scoring: 소개 엔진에서만 { "enabled": true, "tieBreak": "roulette" }. 아니면 넣지 않습니다.
 - host: { "required": true } 이면 진행자가 있어야 진행합니다(1~3번 엔진과 팀 활동은 진행자 화면이 있으므로 true). note 에 진행자 안내를 쓸 수 있습니다.

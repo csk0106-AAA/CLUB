@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { describeTemplate, preWindowTimes, templateConfigSchema, type PreWindow, type TemplateConfig, type TemplateStep } from "./template-schema";
+import { describeTemplate, preWindowTimes, screensFor, templateConfigSchema, type PreWindow, type TemplateConfig, type TemplateStep } from "./template-schema";
 // 템플릿 설정(JSON 문자열)을 읽는다. 스키마에 맞지 않으면 null.
 export function readConfig(json: string | undefined): TemplateConfig | null {
   if (!json) return null;
@@ -17,6 +17,10 @@ export const templateInput = templateConfigSchema
   .omit({ id: true, version: true })
   .refine((c) => new Set(c.onsite.steps.map((s) => s.key)).size === c.onsite.steps.length, {
     message: "단계 키가 겹쳐요.",
+  })
+  // 회원 휴대폰 화면은 그 활동에 만들어진 것만(lib/template-schema.ts screensFor)
+  .refine((c) => c.onsite.steps.every((s) => screensFor(c).includes(s.memberScreen)), {
+    message: "이 활동에는 없는 회원 화면이 있어요.",
   });
 
 export function newTemplateId(): string {

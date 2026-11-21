@@ -268,3 +268,22 @@ export const onsiteKeyOf = (c: Pick<TemplateConfig, "onsite">, screen: string): 
   const st = c.onsite.steps.find((x) => x.memberScreen === screen);
   return st ? `onsite:${st.key}` : "";
 };
+
+// 활동 종류(lib/activities.ts activityKind 와 같은 규칙, 화면에서도 쓰려고 여기 둔다)
+export function kindOfConfig(c: Pick<TemplateConfig, "preEvent" | "onsite">): "who" | "worry" | "capsule" | "" {
+  if (c.preEvent.steps.includes("ai_interview")) return "who";
+  if (c.preEvent.steps.includes("worry_write")) return "worry";
+  if (c.onsite.steps.some((x) => x.memberScreen === "write")) return "capsule";
+  return "";
+}
+// 현장 단계의 "회원 휴대폰에 보이는 화면": 그 활동에 실제로 만들어진 화면만 고른다(다른 활동의 화면을 가져오지 않는다).
+//  who(내가 누구일까요? 방식): 대기 · “저예요” 버튼 · 투표 · 결과 보기
+//  worry(나의 고민은? 방식)  : 대기 · 결과 보기(뽑힌 고민·타이머·이름)
+//  capsule(타임캡슐 방식)·그 밖: 대기 · 작성 화면 · 결과 보기 (작성 화면을 넣으면 타임캡슐 방식이 된다)
+//  pick_person(명단에서 사람 고르기)은 아직 만들어진 화면이 없어 고르지 않는다.
+export function screensFor(c: Pick<TemplateConfig, "preEvent" | "onsite">): string[] {
+  const k = kindOfConfig(c);
+  if (k === "who") return ["wait", "iam_button", "vote", "view"];
+  if (k === "worry") return ["wait", "view"];
+  return ["wait", "write", "view"];
+}
