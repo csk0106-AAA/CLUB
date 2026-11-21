@@ -456,7 +456,14 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               <>
                 <button className="mini" type="button" onClick={() => { const { id: _i, version: _v, ...rest } = a.config; void _i; void _v; setEditErr(""); setEdit({ id: a.id, value: rest, orig: JSON.stringify(rest) }); }}>수정</button>
                 {aiPointKeys(a.config).length > 0 && (
-                  <button className="mini" type="button" onClick={() => { setMsg(null); setGuideFor(a); }}>
+                  <button className="mini" type="button" onClick={async () => {
+                    setMsg(null);
+                    // 열기 전에 최신 활동·템플릿을 다시 읽는다(페이지를 연 뒤 바뀐 값으로 편집하도록)
+                    const [ra, rt] = await Promise.all([api<{ activities: Act[] }>(`/api/admin/events/${eventId}/activities`), api<{ templates: Tpl[] }>("/api/admin/templates")]);
+                    if (rt.ok) setTpls(rt.data.templates);
+                    if (ra.ok) setActs(ra.data.activities);
+                    setGuideFor((ra.ok ? ra.data.activities.find((x) => x.id === a.id) : undefined) ?? a);
+                  }}>
                     AI 지침{Object.values(tpls.find((x) => x.id === a.templateId)?.config.aiGuides ?? {}).some((v) => v.trim()) ? " ✓" : ""}
                   </button>
                 )}

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ask, extractJson, isAiEnabled, readingPrompt } from "@/lib/ai";
-import { commonGuide, pointGuide } from "@/lib/ai-guides";
+import { ask, extractJson, isAiEnabled } from "@/lib/ai";
+import { commonGuide } from "@/lib/ai-guides";
+import { checkSaju, sajuReadingPrompt } from "@/lib/saju-reading";
 import { bad, guard } from "@/lib/api";
 import { memberGenderPatch } from "@/lib/gender-edit";
-import { findIdentity, generalize, termsFrom } from "@/lib/identity";
+import { generalize, termsFrom } from "@/lib/identity";
 import { computeSaju, sajuInfoOf, sajuInput, sajuSummary } from "@/lib/saju";
 import { getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -28,19 +29,7 @@ async function ensureProfile(memberId: string): Promise<Row> {
   return (await getStore()).insert("Profiles", { memberId, alias: "", introStatus: "none", updatedAt: new Date().toISOString() });
 }
 
-const out = z.object({ traits: z.string().trim().min(40).max(2000), full: z.string().trim().min(300).max(20000) });
-// 공개 글에 신원을 짐작할 단서(연도, 나이, 띠, 간지 글자)가 들어갔는지
-// (평범한 낱말 "정신", "기술", "빛을 띠다" 등은 걸리지 않도록 간지는 년·월·일·시·주·생이 붙은 경우만 본다)
-const LEAK = new RegExp(
-  [
-    "\\d{4}\\s*년",
-    "\\d{1,3}\\s*(세|살)",
-    "(쥐|소|호랑이|범|토끼|용|뱀|말|양|원숭이|닭|개|돼지)\\s*띠(?![고며어다는])",
-    "[갑을병정무기경신임계][자축인묘진사오미신유술해]\\s*(년|월|일|시|주|생)",
-    "[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]",
-  ].join("|"),
-);
-
+const out = z.object({ public: z.string().trim(), private: z.string().trim() }); // 길이·신원 단서는 checkSaju 가 본다
 export async function POST(req: Request, ctx: Ctx) {
   const g = await guard();
   if ("err" in g) return g.err;
@@ -79,24 +68,24 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   const terms = termsFrom(await s.list("Members"));
-  // 공통 지침 + 공개 성격·성향 글 지침(reading) + 본인용 생애주기 풀이 지침(readingFull)을 각 글에 따로
-  const p = readingPrompt(await commonGuide(w.act), sajuSummary(saju, gender), await pointGuide("reading", w.act), await pointGuide("readingFull", w.act));
-  const messages = [...p.messages];
+  // 명리학 사주풀이(lib/saju-reading.ts): 공개 글(소개 페이지의 성격·성향) + 나만 보기(생애주기 풀이). 명리학 필수 지침이 항상 들어간다.
+  const p = sajuReadingPrompt({ audiences: ["public", "private"], saju: sajuSummary(saju, gender), context: await commonGuide(w.act) });
+  const messages: { role: "user" | "assistant"; content: string }[] = [...p.messages];
   let result: { traits: string; full: string } | null = null;
   for (let attempt = 0; attempt < 2 && !result; attempt++) {
     const text = await ask(p.system, messages, 8000);
     if (!text) break;
     const o = out.safeParse(extractJson(text));
     if (o.success) {
-      const traits = generalize(o.data.traits, terms);
-      if (!LEAK.test(traits) && findIdentity(traits, terms).length === 0) {
-        result = { traits, full: o.data.full };
+      const traits = generalize(o.data.public, terms);
+      if (!checkSaju("public", traits, terms) && !checkSaju("private", o.data.private, terms)) {
+        result = { traits, full: o.data.private };
         break;
       }
     }
     messages.push(
       { role: "assistant", content: text },
-      { role: "user", content: "형식이 맞지 않거나, traits 에 연도·나이·띠·간지 글자처럼 신원을 짐작할 단서가 있어요. 규칙대로 JSON 하나만 다시 출력해 주세요." },
+      { role: "user", content: "형식이 맞지 않거나, public 에 연도·나이·띠·간지 글자처럼 신원을 짐작할 단서가 있거나, 길이가 맞지 않아요. 명리학 필수 지침대로 JSON 하나만 다시 출력해 주세요." },
     );
   }
   if (!result) return bad("AI가 풀이를 만들지 못했어요. 잠시 후 다시 시도해 주세요.", 502);

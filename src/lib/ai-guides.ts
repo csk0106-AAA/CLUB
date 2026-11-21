@@ -12,8 +12,6 @@ export const AI_POINTS = [
   { key: "draft", label: "소개 글 초안 작성", hint: "인터뷰 답변으로 별칭 소개 글을 쓸 때의 분량·문체·구성" },
   { key: "truthlies", label: "2진실 1거짓 문장 만들기", hint: "소개 글에 쓰지 않은 내용으로 만드는 문장의 난이도·종류" },
   { key: "revise", label: "소개 글 수정 요청 반영", hint: "회원의 수정 요청을 받아들이거나 거절하는 기준" },
-  { key: "reading", label: "명리학 풀이 · 공개 성격·성향 글", hint: "내 소개 페이지 맨 끝에 다른 회원에게 공개되는 “명리학으로 본 성격과 성향”(5~8문장)의 말투·분량·금지 표현" },
-  { key: "readingFull", label: "명리학 풀이 · 본인용 생애주기 풀이", hint: "본인만 보는 “생애주기 명리 풀이”(2~3페이지)의 말투·분량·다룰 항목·금지 표현" },
   { key: "worry", label: "고민 관점 제안 (진행 도우미)", hint: "고민에 대해 AI가 제시하는 관점의 톤과 금지 사항" },
 ] as const;
 export type AiPoint = (typeof AI_POINTS)[number]["key"];
@@ -23,7 +21,7 @@ const keyOf = (p: AiPoint) => `aiGuide:${p}`;
 
 // 이 활동 설정에서 AI가 쓰이는 지점
 export function aiPointsFor(cfg: Pick<TemplateConfig, "preEvent">): AiPoint[] {
-  if (cfg.preEvent.steps.includes("ai_interview")) return ["followup", "draft", "truthlies", "revise", "reading", "readingFull"];
+  if (cfg.preEvent.steps.includes("ai_interview")) return ["followup", "draft", "truthlies", "revise"];
   if (cfg.preEvent.steps.includes("worry_write")) return ["worry"];
   return [];
 }

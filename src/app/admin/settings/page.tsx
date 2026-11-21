@@ -8,7 +8,7 @@ import { PasswordField } from "@/components/PasswordField";
 import { Mascot } from "@/components/Mascot";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
-import { BASE_RULES, READING_RULES, REQUIRED_RULES } from "@/lib/ai-rules";
+import { BASE_RULES, REQUIRED_RULES, SAJU_LABEL, SAJU_RULES } from "@/lib/ai-rules";
 
 // 회원구분·직책·클럽 목록은 "회원 구분" 화면(/admin/kinds)으로 옮겼다.
 type S = { clubName: string; clubShortName: string; clubNameDisplay: "full" | "short"; inviteCode: string; requirement: string };
@@ -108,8 +108,13 @@ function Settings() {
             <ol className="small" style={{ margin: "4px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 2 }}>{BASE_RULES.map((r, i) => <li key={i}>{r}</li>)}</ol>
           </div>
           <div>
-            <b style={{ fontSize: fs(14) }}>AI 명리학 필수 지침</b> <span className="small">명리학 풀이(“내가 누굴까요?”)에 항상 적용돼요. 풀이 내용(분량·구성·말투)은 활동 템플릿 AI 지침의 “명리학 풀이” 두 칸에서 정해요.</span>
-            <ol className="small" style={{ margin: "4px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 2 }}>{READING_RULES.map((r, i) => <li key={i}>{r}</li>)}</ol>
+            <b style={{ fontSize: fs(14) }}>AI 명리학 필수 지침</b> <span className="small">앱 안 어디서든 명리학 사주풀이에 항상 적용돼요. 결과가 공개되는지(공개 글), 본인만 보는지(나만 보기)에 따라 붙는 지침이 달라요.</span>
+            {(["common", "public", "private"] as const).map((k) => (
+              <div key={k} style={{ marginTop: 6 }}>
+                <span className="small" style={{ fontWeight: 700 }}>{SAJU_LABEL[k]}</span>
+                <ol className="small" style={{ margin: "2px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 2 }}>{SAJU_RULES[k].map((r, i) => <li key={i}>{r}</li>)}</ol>
+              </div>
+            ))}
           </div>
           <span className="small">그 아래로 활동마다 <b>공통 지침</b>(그 활동의 모든 세부 지침에 들어감)과 <b>세부 지침</b>(지점별)을 관리자 › 활동 템플릿 › AI 지침에서 정해요.</span>
         </div>

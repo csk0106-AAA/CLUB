@@ -137,7 +137,14 @@ function Templates() {
             {inVersions ? "이 버전 열기·고치기" : "수정"}
           </button>
           {!inVersions && <button className="mini" type="button" aria-haspopup="dialog" onClick={() => duplicate(t)}>복제</button>}
-          <button className="mini" type="button" onClick={() => { setMsg(null); setVerFor(null); setGuideFor(t); }}>
+          <button className="mini" type="button" onClick={async () => {
+            setMsg(null); setVerFor(null);
+            // 열기 전에 최신 템플릿을 다시 읽는다(페이지를 연 뒤 바뀐 값으로 편집하도록)
+            const r = await api<{ templates: T[]; canDelete: boolean }>("/api/admin/templates");
+            const fresh = r.ok ? r.data.templates.find((x) => x.id === t.id) : undefined;
+            if (r.ok) setList(r.data.templates);
+            setGuideFor(fresh ?? t);
+          }}>
             AI 지침{hasAi(t.config) ? " ✓" : ""}
           </button>
           {canDelete && t.deletable && <button className="mini danger" type="button" onClick={() => remove(t)}>삭제</button>}

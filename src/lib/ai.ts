@@ -2,7 +2,7 @@
 // ANTHROPIC_API_KEY 가 없거나 호출이 두 번 실패하면 호출하는 쪽이 수동 입력 모드로 넘어간다.
 // 주의: 이 파일의 API 호출 부분은 아직 실제 키로 시험하지 못했다.
 
-import { READING_RULES, requiredBlock } from "./ai-rules";
+import { requiredBlock } from "./ai-rules";
 
 export function isAiEnabled(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
@@ -103,27 +103,6 @@ export function truthLiesPrompt(guidelines: string, intro: string, qa: { q: stri
 - 거짓 문장의 위치(lieIndex, 0~2)는 무작위로 정합니다.
 반드시 JSON 하나만 출력합니다. 코드 블록이나 다른 글은 쓰지 않습니다: {"statements":["...","...","..."],"lieIndex":1}`,
     messages: [{ role: "user", content: `소개 글:\n${intro || "(아직 없음)"}\n\n인터뷰 질문과 답변:\n${qa.map((x) => `질문: ${x.q}\n답: ${x.a}`).join("\n\n")}` }],
-  };
-}
-
-// 명리학 풀이: 계산된 사주 원국을 바탕으로 ① 소개 페이지에 싣는 성격·성향(공개) ② 생애주기 전체 풀이(본인만)를 쓴다.
-// guidelines: 공통 지침. pub: 공개 성격·성향 글에만 적용하는 지침, full: 본인용 생애주기 풀이에만 적용하는 지침(관리자 › 활동 템플릿 AI 지침)
-export function readingPrompt(guidelines: string, saju: string, pub = "", full = ""): { system: string; messages: Msg[] } {
-  const only = (t: string) => (t.trim() ? `\n   [이 글의 관리자 지침]\n${t.trim().split("\n").map((l) => `   - ${l.replace(/^[-•]\s*/, "")}`).join("\n")}` : "");
-  return {
-    system: `당신은 따뜻하고 신중한 명리학 상담가입니다. 반드시 한국어로 답합니다.
-아래에 만세력으로 정확히 계산한 사주 원국이 있습니다.
-[명리학 필수 지침]
-${READING_RULES.slice(0, 2).map((r) => `- ${r}`).join("\n")}
-
-[관리자 지침]
-${guidelines}
-
-두 가지 글을 씁니다. 각 글의 분량·구성·말투·금지 표현은 그 글 아래의 관리자 지침을 따릅니다.
-1) traits — 소개 페이지 맨 끝에 다른 회원에게 공개되는 "명리학으로 본 성격과 성향"${only(pub)}
-2) full — 본인만 보는 "생애주기 명리 풀이"(마크다운)${only(full)}
-반드시 JSON 하나만 출력합니다. 코드 블록이나 다른 글은 쓰지 않습니다: {"traits":"...","full":"..."}`,
-    messages: [{ role: "user", content: saju }],
   };
 }
 

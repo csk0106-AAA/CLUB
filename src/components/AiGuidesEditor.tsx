@@ -12,7 +12,7 @@ type Point = { key: string; label: string; hint: string };
 
 // 이 활동 설정에서 AI가 쓰이는 지점 — lib/ai-guides.ts aiPointsFor 와 같은 규칙
 export const aiPointKeys = (c: { preEvent: { steps: string[] } }): string[] =>
-  c.preEvent.steps.includes("ai_interview") ? ["followup", "draft", "truthlies", "revise", "reading", "readingFull"]
+  c.preEvent.steps.includes("ai_interview") ? ["followup", "draft", "truthlies", "revise"]
   : c.preEvent.steps.includes("worry_write") ? ["worry"]
   : [];
 
@@ -83,7 +83,7 @@ export function AiGuidesEditor(props: {
         <button className="mini" type="button" onClick={onClose}>닫기</button>
       </div>
       <span className="small">
-        이 활동 안에서 AI가 쓰이는 지점마다 지침을 정해요. 모든 AI에는 <b>필수 지침</b>(민감정보·신원정보·혐오 표현 금지 등)이 맨 위에 항상 들어가고, 그다음 이 활동의 <b>공통 지침</b>이 모든 세부 지침에 함께 들어가요. 세부 지침은 비어 있으면 없는 것으로 둬요. 필수·기본 지침은 관리자 › 모임설정에서 볼 수 있어요.
+        이 활동 안에서 AI가 쓰이는 지점마다 지침을 정해요. 모든 AI에는 <b>필수 지침</b>(민감정보·신원정보·혐오 표현 금지 등)이 맨 위에 항상 들어가고, 그다음 이 활동의 <b>공통 지침</b>이 모든 세부 지침에 함께 들어가요. 세부 지침은 비어 있으면 없는 것으로 둬요. 필수·기본 지침과 명리학 필수 지침(명리학 풀이에 항상 적용)은 관리자 › 모임설정에서 볼 수 있어요.
       </span>
       {err && <div className="msg bad" role="alert">{err}</div>}
       {!info && !err && <p className="small">불러오는 중이에요…</p>}
