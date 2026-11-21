@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { periodText, preStatus } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
-import { NOT_ATTENDEE, canJoin } from "@/lib/participants";
+import { NOT_ATTENDEE, canJoin, canAct, NOT_ACTION } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import { CATEGORIES, MAX_WORRIES, loadWorry, worryBody, worryRows } from "@/lib/worry";
 
@@ -42,6 +42,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (typeof w === "string") return bad(w, 404);
   // 고민은 이 활동에 참석하는 분만 쓴다. 불참하는 분은 AI 인터뷰로 프로필 북 소개만 작성한다.
   if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) return bad(`${NOT_ATTENDEE} 참여 대상이 아니면 고민은 쓰지 않고 프로필 소개만 작성해 주세요.`, 403);
+  if (!(await canAct(w.cfg, w.act, w.ev, g.s.mid, "pre:worry_write"))) return bad(NOT_ACTION, 403);
   const pre = preStatus(w.cfg, w.ev.startsAt);
   if (pre.status !== "open") return bad(`${WHY[pre.status]}${periodText(pre)}`, 403);
 

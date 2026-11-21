@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readConfig } from "@/lib/activities";
 import { bad, guard, parseJson } from "@/lib/api";
 import { hasBlock, sajuOpen, sajuWhenOf } from "@/lib/blocks";
-import { canJoin } from "@/lib/participants";
+import { canAct, canJoin } from "@/lib/participants";
 import { sajuDelete, sajuPatch, sajuPost } from "@/lib/saju-run";
 import { getStore } from "@/lib/store";
 import { myProfile } from "@/lib/who";
@@ -18,7 +18,7 @@ async function load(aid: string, memberId: string) {
   const cfg = readConfig(act?.config);
   const ev = act ? (await s.list("Events")).find((e) => e.id === act.eventId && e.published === "true") : undefined;
   if (!act || !cfg || !ev) return null;
-  const joined = await canJoin(cfg, act, ev, memberId);
+  const joined = (await canJoin(cfg, act, ev, memberId)) && (await canAct(cfg, act, ev, memberId, "block:saju"));
   return { act, cfg, ev, joined, enabled: hasBlock(cfg, "saju"), open: sajuOpen(cfg, ev) };
 }
 

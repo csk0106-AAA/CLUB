@@ -31,7 +31,7 @@ const CATALOGUE = `[이 앱이 이미 갖춘 기능 — 이것만 조합할 수 
    - 현장 작성 엔진: memberScreen "write" 단계가 있으면 타임캡슐처럼 개인 목표·팀 약속을 쓰고 봉인합니다.
    - 그 밖의 단계는 "진행 안내형": 진행자가 버튼을 누르면 회원 휴대폰에 단계 이름이 보일 뿐, 투표·작성·사람 고르기 입력을 실제로 받지는 않습니다.
 4. AI 지점 aiGuides(키별 지침 글): ${AI_POINTS.map((p) => `${p.key}(${p.label})`).join(", ")} — followup~reading 은 ai_interview 활동, worry 는 worry_write 활동에서만 쓰입니다. aiCommon(이 활동 공통 지침), interview { questions[], followUpMax 0~12 }.
-5. participants: all(전체 회원) | selected(관리자가 고른 회원, 출석 체크 후 시작)
+5. selectable: true 면 참여자마다 전체참여 / 선택참여(partialActions 의 액션만)를 고를 수 있음. 참여자는 일정에서 관리자가 고른다
    mode: all(전체 활동) | team(팀 활동, 팀 배정은 일정에서)
 6. host: { required(진행자가 있어야 하는지), note(진행자 안내 500자 이내) } — 진행자 사람과 접속번호는 일정에서 정합니다.
 7. name, description`;

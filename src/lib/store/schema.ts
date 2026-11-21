@@ -114,7 +114,8 @@ export const TABS = {
   // hosts: 진행자 여러 명 JSON [{memberId, code}] — 사람마다 접속번호가 따로(lib/hosts.ts). hostId/hostCode 는 예전 값(첫 진행자)
   EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode", "hosts"],
   // 활동별 출석 체크: 자동 명단(날짜 선택 기반)을 관리자가 고칠 때만 행이 생긴다. present: true(출석) / false(결석)
-  Attendance: ["id", "eventActivityId", "memberId", "present"],
+  // level: 참여 방식 full(전체참여) / partial(선택참여, 템플릿 선별 조건의 액션만)
+  Attendance: ["id", "eventActivityId", "memberId", "present", "level"],
   Teams: ["id", "eventActivityId", "name", "memberIds"],
   // 일정 조편성(여러 개 가능, 예: 저녁 게임 3개 조). teams 는 [{name, memberIds}] JSON. published 가 true 여야 회원에게 보인다.
   Groupings: ["id", "eventId", "title", "teams", "published", "updatedAt"],

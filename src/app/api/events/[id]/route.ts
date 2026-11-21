@@ -126,20 +126,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       req: a.req ?? "", reqDays: a.reqDays ? a.reqDays.split(",") : [], reqResult: a.reqResult ?? "", reqReason: a.reqReason ?? "",
     } : null,
     feeDue: attending && fee !== "" && a?.paid !== "true",
-    // '내가 누구일까요?'(프로필 북 익명 게임) 참여 대상인데 이미 실명 소개가 공개돼 아직 "프로필북 초기화 / 일부활동참여"를 고르지 않은 활동
-    whoPrompts: await whoPromptsFor(id, g.s.mid),
   });
 }
 
-async function whoPromptsFor(eventId: string, memberId: string): Promise<{ aid: string; name: string; canReset: boolean }[]> {
-  const { loadWho, whoState, windows } = await import("@/lib/who");
-  const { isWhoAmI, readConfig } = await import("@/lib/activities");
-  const acts = (await (await getStore()).list("EventActivities")).filter((a) => a.eventId === eventId && isWhoAmI(readConfig(a.config) ?? ({} as never)));
-  const out: { aid: string; name: string; canReset: boolean }[] = [];
-  for (const a of acts) {
-    const w = await loadWho(a.id);
-    if ("status" in w) continue;
-    if ((await whoState(w, memberId)) === "prompt") out.push({ aid: a.id, name: w.cfg.name, canReset: windows(w).pre.status !== "closed" });
-  }
-  return out;
-}

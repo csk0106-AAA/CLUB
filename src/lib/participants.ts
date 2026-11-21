@@ -3,11 +3,11 @@ import { inAudience, inClubOrObserver, readAudience } from "./audience";
 import { isGuest } from "./member-kind";
 import { getSetting, getStore, setSetting } from "./store";
 import type { Row } from "./store/types";
-import type { TemplateConfig } from "./template-schema";
+import { actionAllowed, type TemplateConfig } from "./template-schema";
 export const NOT_ATTENDEE = "이 활동의 참여 대상이 아니에요(일정 대상 회원 중 관리자가 고른 회원만 참여할 수 있어요).";
 
-// 관리자가 고른 회원만 참여하는 활동인지
-export const isLimited = (cfg: TemplateConfig): boolean => cfg.participants === "selected";
+// 관리자가 고른 회원만 참여하는 활동인지. 이제 모든 활동은 일정에서 활동참여자선택(예전 출석 체크)으로 참여자를 고른다.
+export const isLimited = (_cfg: TemplateConfig): boolean => true;
 
 // 활동 참여 대상
 //  all      : 전체 회원
@@ -16,8 +16,13 @@ export const isLimited = (cfg: TemplateConfig): boolean => cfg.participants === 
 
 // 관리자가 선택한 회원 번호들(출석 체크 결과)
 export async function rosterSet(act: Row): Promise<Set<string>> {
+  return new Set((await rosterLevels(act)).keys());
+}
+// 활동참여자와 참여 방식: full(전체참여, 모든 액션) / partial(선택참여, 템플릿 선별 조건의 액션만)
+export type Level = "full" | "partial";
+export async function rosterLevels(act: Row): Promise<Map<string, Level>> {
   const rows = await (await getStore()).list("Attendance");
-  return new Set(rows.filter((r) => r.eventActivityId === act.id && r.present === "true").map((r) => r.memberId));
+  return new Map(rows.filter((r) => r.eventActivityId === act.id && r.present === "true").map((r) => [r.memberId, r.level === "partial" ? "partial" : "full"] as [string, Level]));
 }
 
 export type AttendanceState = { confirmed: boolean; confirmedAt: string; by: string };
@@ -42,18 +47,21 @@ async function eventOf(act: Row, ev?: Row): Promise<Row | undefined> {
   return ev ?? (await (await getStore()).list("Events")).find((e) => e.id === act.eventId);
 }
 
-// '내가 누구일까요?' 참여 상태(참여 대상 안에서)
-//  none   : 참여 대상이 아님(프로필 북에서 실명으로 소개를 쓴다)
-//  prompt : 참여 대상이지만 이미 실명으로 공개한 소개가 있어 "프로필북 초기화 / 일부활동참여"를 아직 고르지 않음(맞히기 대상 아님)
-//  optout : "일부활동참여" — 실명 소개 그대로, 맞히기 대상에서만 빠지고 맞히기·투표 등은 참여 — Interviews.status "optout"
-//  in     : 게임 참여(프로필 북에 별칭으로 보이고, 이 활동에서 소개를 쓴다)
+// '내가 누구일까요?' 참여 상태(활동참여자 안에서)
+//  none   : 활동참여자가 아님(프로필 북에서 실명으로 소개를 쓴다)
+//  optout : 선택참여이고 선별 조건에 "AI 인터뷰로 소개 작성"이 없음 — 소개를 쓰지 않고(맞히기 대상 아님) 선별 조건의 액션만 한다
+//  prompt : (예전 상태, 지금은 쓰지 않음)
+//  in     : 게임 참여(프로필 북에 별칭으로 보이고, 이 활동에서 소개를 쓴다).
+//           북공개 회원(프로필 북에 실명 소개가 공개됨)은 활동참여자선택에서 선택참여로만 넣을 수 있다
+//           (전체참여는 회원이 소개를 "승인 취소"로 내린 뒤 — 그러면 활동에서 인터뷰부터 새로 한다).
 export type WhoState = "none" | "prompt" | "optout" | "in";
-export function whoStateOf(aid: string, memberId: string, inRoster: boolean, interviews: Row[], profiles: Row[]): WhoState {
+// (profiles 는 예전 호출과 맞추려고 남겨 둔 인자 — 북공개 회원은 활동참여자선택에서 전체참여로 넣을 수 없게 막는다)
+export function whoStateOf(aid: string, memberId: string, inRoster: boolean, interviews: Row[], _profiles: Row[], level?: Level, cfg?: TemplateConfig): WhoState {
   if (!inRoster) return "none";
   const iv = interviews.find((i) => i.memberId === memberId && i.eventActivityId === aid);
-  if (iv?.status === "optout") return "optout";
-  if (iv) return "in";
-  return profiles.find((p) => p.memberId === memberId)?.introStatus === "approved" ? "prompt" : "in";
+  if (iv?.status === "optout") return "optout"; // 예전 "일부활동참여"
+  if (cfg && !actionAllowed(cfg, level, "pre:ai_interview")) return "optout";
+  return "in";
 }
 
 // 소개 작성 활동이면 게임에 들어가는 회원(상태 in)만 남긴다
@@ -61,8 +69,9 @@ async function whoFilter(cfg: TemplateConfig, aid: string, ids: Iterable<string>
   const list = [...ids];
   if (!isWhoAmI(cfg)) return new Set(list);
   const s = await getStore();
-  const [interviews, profiles] = await Promise.all([s.list("Interviews"), s.list("Profiles")]);
-  return new Set(list.filter((id) => whoStateOf(aid, id, true, interviews, profiles) === "in"));
+  const act = (await s.list("EventActivities")).find((a) => a.id === aid);
+  const [interviews, profiles, levels] = await Promise.all([s.list("Interviews"), s.list("Profiles"), act ? rosterLevels(act) : Promise.resolve(new Map<string, Level>())]);
+  return new Set(list.filter((id) => whoStateOf(aid, id, true, interviews, profiles, levels.get(id), cfg) === "in"));
 }
 
 // 참여 대상(출석 체크·일정 대상)에 들어 있는지 — 소개 작성 활동의 참여 상태는 보지 않는다
@@ -75,6 +84,14 @@ export async function inRoster(cfg: TemplateConfig, act: Row, ev: Row, memberId:
   if (!isLimited(cfg)) return true;
   return (await rosterSet(act)).has(memberId);
 }
+
+// 이 회원이 이 액션(lib/template-schema.ts activityActions 의 키)을 할 수 있는지: 활동참여자이고, 선택참여면 선별 조건에 있는 액션만
+export async function canAct(cfg: TemplateConfig, act: Row, ev: Row, memberId: string, key: string): Promise<boolean> {
+  if (!(await inRoster(cfg, act, ev, memberId))) return false;
+  if (!key) return true;
+  return actionAllowed(cfg, (await rosterLevels(act)).get(memberId), key);
+}
+export const NOT_ACTION = "선택참여로 지정돼 이 활동에서는 할 수 없는 단계예요.";
 
 // 이 회원이 활동에 참여할 수 있는지.
 //  - 일정 대상(클럽 회원·참관자 또는 공개 대상)에 들어 있어야 한다.
@@ -109,7 +126,7 @@ async function rosterIds(cfg: TemplateConfig, act: Row, ev?: Row): Promise<Set<s
 export async function onsiteGate(cfg: TemplateConfig, act: Row): Promise<string | null> {
   if (!isLimited(cfg)) return null;
   const st = await attendanceState(act.id);
-  if (!st.confirmed) return "활동 전에 출석 체크를 완료해 주세요. 활동 탭의 “출석 체크”에서 참여할 사람을 고르고 완료를 눌러 주세요.";
+  if (!st.confirmed) return "활동 전에 활동참여자선택을 완료해 주세요. 활동 탭의 “활동참여자선택”에서 참여할 사람을 고르고 “선택 저장”을 눌러 주세요.";
   return null;
 }
 

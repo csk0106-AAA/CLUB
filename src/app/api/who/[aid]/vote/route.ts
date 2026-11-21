@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { onsiteKeyOf } from "@/lib/template-schema";
 import { z } from "zod";
 import { liveView } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
-import { NOT_ATTENDEE, canJoin } from "@/lib/participants";
+import { NOT_ATTENDEE, canJoin, canAct, NOT_ACTION } from "@/lib/participants";
 import { currentRound, liveRow } from "@/lib/rounds";
 import { getStore } from "@/lib/store";
 import { loadWho } from "@/lib/who";
@@ -21,6 +22,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   if (!parsed.success) return bad("1~3번 중에서 골라 주세요.");
 
   if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) return bad(NOT_ATTENDEE, 403);
+  if (!(await canAct(w.cfg, w.act, w.ev, g.s.mid, onsiteKeyOf(w.cfg, "vote")))) return bad(NOT_ACTION, 403);
   const cur = await currentRound(aid);
   if (!cur) return bad("지금 진행 중인 소개가 없어요.", 409);
   if (cur.targetMemberId === g.s.mid) return bad("내 차례에는 투표할 수 없어요.", 403);

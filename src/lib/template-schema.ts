@@ -82,7 +82,9 @@ export const templateConfigSchema = z.object({
   blocks: z.array(z.string()).optional(),
   // 사주풀이 블록을 여는 시점(활동 설정): interview(AI 인터뷰 뒤) / pre(사전 작성 기간) / event(일정 당일)
   sajuWhen: z.enum(["interview", "pre", "event"]).optional(),
-  // 선별 조건(템플릿에서 적는다): 선택 회원으로 할 때 관리자가 회원을 고르는 기준. 출석 체크 화면에 보인다.
+  // 선택참여 회원이 하는 액션(템플릿의 선별 조건, activityActions 의 키). 전체참여 회원은 모든 액션을 한다.
+  partialActions: z.array(z.string()).optional(),
+  // 선별 조건(예전 글 설명, 지금은 partialActions 를 쓴다): 선택 회원으로 할 때 관리자가 회원을 고르는 기준. 출석 체크 화면에 보인다.
   selectRule: z.string().max(2000).optional(),
   preEvent: preEventSchema,
   guessPhase: preEventSchema.optional(),
@@ -128,6 +130,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
     blocks: ["saju"],
     sajuWhen: "interview",
     selectable: true,
+    partialActions: ["guess", "onsite:vote"], // 선택참여: 맞히기와 거짓 투표만
     selectRule: "프로필 북에 실명 소개가 아직 공개되지 않은 회원을 고르세요. 익명(별칭) 소개를 보고 누구인지 맞히는 활동이에요.\n이미 실명 소개가 공개된 회원(북공개)을 고르면, 그 회원은 ‘북 초기화’(소개를 지우고 별칭으로 새로 작성, 맞히기 대상) 또는 ‘일부활동참여’(소개 그대로, 맞히기 대상에서만 빠지고 맞히기·투표 참여) 중 하나를 정해야 해요.",
     version: 1,
     participants: "selected", // 기본: 관리자가 선택한 회원만 참여(활동 전에 출석 체크)
@@ -155,7 +158,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
     name: "나의 고민은?",
     version: 1,
     participants: "selected", // 기본: 관리자가 선택한 회원만 참여(활동 전에 출석 체크)
-    selectable: true,
+    selectable: false,
     description: "고민을 미리 적어 두고, 현장에서 뽑아 15분씩 대화합니다.",
     preEvent: { enabled: true, opensBeforeDays: 14, closesBeforeDays: 1, steps: ["worry_write"] },
     onsite: {
@@ -172,7 +175,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
     name: "타임캡슐",
     version: 1,
     participants: "selected", // 기본: 관리자가 선택한 회원만 참여(활동 전에 출석 체크)
-    selectable: true,
+    selectable: false,
     description: "1년 뒤 목표와 팀 약속을 현장에서 쓰고 봉인합니다.",
     preEvent: { enabled: false, steps: [] }, // 사전 작성 없음: 현장에서 작성
     onsite: {
@@ -186,7 +189,7 @@ export const DEFAULT_TEMPLATES: TemplateConfig[] = [
 ];
 
 // 이 템플릿(활동)이 "선택 회원"으로 진행할 수 있는지(참여 범위)
-export const canSelect = (c: Pick<TemplateConfig, "selectable" | "participants">): boolean => c.selectable ?? c.participants === "selected";
+export const canSelect = (c: Pick<TemplateConfig, "selectable" | "participants">): boolean => c.selectable === true;
 
 // 활동 설명(자동): 템플릿 설정(사전 단계·현장 단계·방식 등)에서 만든다. 직접 고치지 않고, 활동을 바꾸면(AI에게 개발 요청 등) 따라 바뀐다.
 // lib/activities.ts readConfig 가 읽을 때마다 이 값으로 채운다.
@@ -237,3 +240,31 @@ export function withEventWindows<C extends Pick<TemplateConfig, "preEvent" | "gu
     ...(next.guessPhase ? { guessPhase: { ...dropWin(next.guessPhase), ...pickWin(own.guessPhase ?? next.guessPhase) } } : {}),
   };
 }
+
+// 활동 안의 액션(활동 흐름 순서). 템플릿의 선별 조건에서 선택참여 회원이 할 액션을 고를 때 쓴다.
+//  pre:ai_interview / pre:worry_write / block:saju / guess / onsite:<현장 단계 키>(회원이 직접 하는 단계만)
+export type ActivityAction = { key: string; label: string };
+const ACT_SCREENS = ["write", "vote", "iam_button", "pick_person"];
+export function activityActions(c: Pick<TemplateConfig, "preEvent" | "guessPhase" | "onsite" | "blocks" | "sajuWhen">): ActivityAction[] {
+  const out: ActivityAction[] = [];
+  const pre = c.preEvent.enabled ? c.preEvent.steps : [];
+  if (pre.includes("ai_interview")) out.push({ key: "pre:ai_interview", label: "(사전) AI 인터뷰로 소개 작성" });
+  if (pre.includes("worry_write")) out.push({ key: "pre:worry_write", label: "(사전) 고민 미리 적기" });
+  const saju = (c.blocks ?? []).includes("saju") || c.preEvent.steps.includes("reading_optional");
+  const sajuEvent = c.sajuWhen === "event" || (!c.sajuWhen && !pre.length);
+  if (saju && !sajuEvent) out.push({ key: "block:saju", label: "(사전) 명리학 사주풀이" });
+  if (c.preEvent.enabled && c.guessPhase?.enabled) out.push({ key: "guess", label: "(사전) 소개 보고 누구인지 맞히기" });
+  if (saju && sajuEvent) out.push({ key: "block:saju", label: "(현장) 명리학 사주풀이" });
+  for (const st of c.onsite.steps) if (ACT_SCREENS.includes(st.memberScreen)) out.push({ key: `onsite:${st.key}`, label: `(현장) ${st.label}` });
+  return out;
+}
+// 이 회원(전체참여 full / 선택참여 partial)이 이 액션을 하는지
+export function actionAllowed(c: Pick<TemplateConfig, "selectable" | "participants" | "partialActions">, level: "full" | "partial" | undefined, key: string): boolean {
+  if (level !== "partial") return true;
+  return canSelect(c) && (c.partialActions ?? []).includes(key);
+}
+// 회원 화면 종류로 현장 단계의 액션 키(예: 투표 → onsite:vote)
+export const onsiteKeyOf = (c: Pick<TemplateConfig, "onsite">, screen: string): string => {
+  const st = c.onsite.steps.find((x) => x.memberScreen === screen);
+  return st ? `onsite:${st.key}` : "";
+};

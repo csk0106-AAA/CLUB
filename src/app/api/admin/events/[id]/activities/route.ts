@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { liveView, preStatus, readConfig } from "@/lib/activities";
-import { canSelect } from "@/lib/template-schema";
 import { attendanceState, rosterSet } from "@/lib/participants";
 import { readHosts } from "@/lib/hosts";
 import { getStore } from "@/lib/store";
@@ -60,7 +59,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const tcfg = readConfig(tpl?.config);
   if (!tpl || !tcfg) return bad("템플릿을 찾을 수 없어요.", 404);
   // 참여 대상은 이 일정에서 정한다(고르지 않으면 템플릿 값)
-  const part = canSelect(tcfg) ? parsed.data.participants ?? tcfg.participants : "all";
+  const part = "selected"; // 모든 활동은 일정에서 활동참여자선택으로 참여자를 고른다
 
   const acts = (await s.list("EventActivities")).filter((a) => a.eventId === id);
   const order = acts.reduce((n, a) => Math.max(n, Number(a.order) || 0), 0) + 1;

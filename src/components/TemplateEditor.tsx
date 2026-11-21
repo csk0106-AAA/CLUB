@@ -1,7 +1,7 @@
 "use client";
 
 import { BlockPicker } from "./BlockPicker";
-import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect, describeTemplate } from "@/lib/template-schema";
+import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect, describeTemplate, activityActions } from "@/lib/template-schema";
 import { NumField } from "./NumField";
 import { DateField } from "./DateField";
 import { DragHandle, useDragSort } from "./DragSort";
@@ -74,22 +74,42 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
       <BlockPicker value={value} onChange={onChange} isNew={isNew} />
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <b style={{ font: `700 ${fs(17)} var(--display)` }}>참여 대상</b>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>참여 범위</b>
         {inEvent ? (
-          <span className="small">참여 범위와 선별 조건은 템플릿에서, 이 일정의 전체 참여 / 선택 참여는 활동 카드에서 정해요. 여기서 저장해도 바뀌지 않아요.</span>
+          <span className="small">참여 범위와 선별 조건은 템플릿에서 정해요. 이 일정의 참여자와 회원마다 전체참여 / 선택참여는 활동 카드의 “활동참여자선택”에서 정해요. 여기서 저장해도 바뀌지 않아요.</span>
         ) : (<>
         <label className="l" htmlFor="t-part">참여 범위</label>
         <select id="t-part" className="field" value={canSelect(value) ? "selectable" : "all"}
-          onChange={(e) => onChange(e.target.value === "all" ? { ...value, selectable: false, participants: "all" } : { ...value, selectable: true, participants: "selected" })}>
-          <option value="all">전체 참여만 (일정 대상 회원 모두 참여)</option>
-          <option value="selectable">선택 참여 가능 (일정에서 전체 참여 / 선택 참여를 골라요)</option>
+          onChange={(e) => onChange(e.target.value === "all" ? { ...value, selectable: false, participants: "selected" } : { ...value, selectable: true, participants: "selected" })}>
+          <option value="all">전체 참여만 (고른 참여자 모두 모든 액션)</option>
+          <option value="selectable">선택 참여 가능 (참여자마다 전체참여 / 선택참여)</option>
         </select>
-        <span className="small">선택 참여로 하면 일정에서 관리자가 참여할 사람을 고르고(출석 체크) 완료해야 활동을 시작할 수 있어요. 고르지 않은 회원은 활동에 들어가지 않아요.</span>
-        {canSelect(value) && (<>
-          <label className="l" htmlFor="t-rule" style={{ marginTop: 6 }}>선별 조건</label>
-          <textarea id="t-rule" className="field" rows={4} value={value.selectRule ?? ""} placeholder="관리자가 참여할 회원을 고르는 기준을 적어 주세요. 출석 체크 화면에 그대로 보여요."
-            onChange={(e) => onChange({ ...value, selectRule: e.target.value })} style={{ resize: "vertical" }} />
-        </>)}
+        <span className="small">활동 참여자는 일정 › 활동의 “활동참여자선택”에서 골라요. 전체참여 회원은 활동 안의 모든 액션에 참여하고, “선택 참여 가능”이면 일정에서 회원마다 선택참여(아래에서 고른 액션만)로 정할 수 있어요.</span>
+        {canSelect(value) && (() => {
+          const acts = activityActions(value);
+          const on = new Set(value.partialActions ?? []);
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+              <span className="l" style={{ margin: 0 }}>선별 조건: 선택참여 회원이 하는 액션</span>
+              {acts.length ? (
+                <div className="checks" role="group" aria-label="선택참여 회원이 하는 액션">
+                  {acts.map((x) => (
+                    <label key={x.key}>
+                      <input type="checkbox" checked={on.has(x.key)} onChange={(e) => {
+                        const n = new Set(on);
+                        if (e.target.checked) n.add(x.key);
+                        else n.delete(x.key);
+                        onChange({ ...value, partialActions: acts.map((y) => y.key).filter((k) => n.has(k)) });
+                      }} />
+                      {x.label}
+                    </label>
+                  ))}
+                </div>
+              ) : <span className="small">이 활동에는 회원이 하는 액션이 아직 없어요(사전 작성·현장 단계를 먼저 정해 주세요).</span>}
+              <span className="small">활동 흐름 순서대로 보여요. 체크하지 않은 액션은 선택참여 회원에게 열리지 않아요.</span>
+            </div>
+          );
+        })()}
         </>)}
         <label className="l" htmlFor="t-mode" style={{ marginTop: 6 }}>활동 방식</label>
         <select id="t-mode" className="field" value={modeOf(value)} onChange={(e) => onChange({ ...value, mode: e.target.value as "all" | "team" })}>

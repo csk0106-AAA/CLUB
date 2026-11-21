@@ -5,7 +5,7 @@ import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
 import { parseJson } from "./api";
 import { activityAiConfig } from "./ai-guides";
-import { inRoster, whoStateOf, type WhoState } from "./participants";
+import { inRoster, rosterLevels, whoStateOf, type WhoState } from "./participants";
 import { PROFILE_AID, whoV1 } from "./profile-book";
 
 export type Scope = "intro" | "truthlie" | "none";
@@ -105,8 +105,8 @@ export const normAlias = (s: string) => s.replace(/\s+/g, "").toLowerCase();
 export async function whoState(ctx: WhoCtx, memberId: string): Promise<WhoState> {
   if (ctx.book) return "none";
   const s = await getStore();
-  const [interviews, profiles] = await Promise.all([s.list("Interviews"), s.list("Profiles")]);
-  return whoStateOf(ctx.act.id, memberId, await inRoster(ctx.cfg, ctx.act, ctx.ev, memberId), interviews, profiles);
+  const [interviews, profiles, levels] = await Promise.all([s.list("Interviews"), s.list("Profiles"), rosterLevels(ctx.act)]);
+  return whoStateOf(ctx.act.id, memberId, await inRoster(ctx.cfg, ctx.act, ctx.ev, memberId), interviews, profiles, levels.get(memberId), ctx.cfg);
 }
 // 게임에 들어가는지(별칭·2진실 1거짓·신원 정보 검사)
 export const inGame = async (ctx: WhoCtx, memberId: string) => (await whoState(ctx, memberId)) === "in";

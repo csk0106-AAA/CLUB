@@ -6,7 +6,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { WhoWrite, type Note, type WhoState as State } from "@/components/WhoWrite";
-import { WhoChoice } from "@/components/WhoChoice";
+import { ActivitySaju } from "@/components/ActivitySaju";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -72,10 +72,21 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
           <span className="small">참여 대상으로 선택된 회원만 별칭으로 소개를 쓰고 맞히기에 참여해요. 내 소개는 프로필 북에서 실명으로 작성할 수 있어요.</span>
           <Link className="btn" href="/profiles/write" style={{ textDecoration: "none" }}>프로필 북에서 소개 작성하기</Link>
         </div>
-      ) : st.state === "optout" || st.state === "prompt" ? (
-        // 이미 실명 소개가 공개된 회원: 프로필북 초기화 / 일부활동참여(고른 뒤에도 마감 전이면 초기화로 바꿀 수 있다)
-        <WhoChoice aid={aid} canReset={st.pre.status !== "closed"} revealAt={st.revealAt} partial={st.state === "optout"}
-          onDone={(text) => { setNote({ tone: "info", text }); load(); }} />
+      ) : st.state === "optout" ? (
+        // 선택참여: 소개는 쓰지 않고 선별 조건의 액션만(맞히기·투표 등). 사주풀이가 선별 조건에 있으면 여기서 받는다.
+        <>
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <b style={{ font: `700 ${fs(16)} var(--display)` }}>선택참여로 함께해요</b>
+            <span className="small">이 활동에서는 소개를 쓰지 않아요. 위의 “누구일까요?” 맞히기와 현장 진행 중 열리는 단계 중 선택참여로 정해진 것에 참여할 수 있어요.</span>
+          </div>
+          <ActivitySaju aid={aid} />
+        </>
+      ) : st.state === "prompt" ? (
+        // 소개를 써야 하는데 프로필 북에 실명 소개가 이미 공개돼 있음: 앱에서 묻지 않고 관리자와 이야기한다
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <b style={{ font: `700 ${fs(16)} var(--display)` }}>관리자에게 문의해 주세요</b>
+          <span className="small">프로필 북에 실명 소개가 이미 공개돼 있어서 이 활동에서 별칭 소개를 새로 쓸 수 없어요. 관리자와 이야기해 프로필 북 소개를 내리거나 참여 방식을 바꿔 주세요.</span>
+        </div>
       ) : (
         <WhoWrite st={st} aid={aid} busy={busy} setBusy={setBusy} setNote={setNote} reload={load} />
       )}

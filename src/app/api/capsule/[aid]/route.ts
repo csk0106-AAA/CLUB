@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { onsiteKeyOf } from "@/lib/template-schema";
 import { z } from "zod";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { bad, guard, parseJson } from "@/lib/api";
 import { canWriteNow, capsuleCfg, capsuleRows, isOpened, loadCapsule, teamOf } from "@/lib/capsule";
-import { NOT_ATTENDEE, canJoin } from "@/lib/participants";
+import { NOT_ATTENDEE, canJoin, canAct, NOT_ACTION } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +65,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   const c = await loadCapsule(aid);
   if (typeof c === "string") return bad(c, 404);
   if (!(await canJoin(c.cfg, c.act, c.ev, g.s.mid))) return bad(NOT_ATTENDEE, 403);
+  if (!(await canAct(c.cfg, c.act, c.ev, g.s.mid, onsiteKeyOf(c.cfg, "write")))) return bad(NOT_ACTION, 403);
   if (!(await canWriteNow(c.cfg, aid))) return bad("지금은 작성할 수 없어요. 진행자가 작성을 열면 쓸 수 있어요.", 409);
   const cfg = await capsuleCfg(aid);
   if (isOpened(cfg.openAt)) return bad("이미 열린 타임캡슐은 고칠 수 없어요.", 409);

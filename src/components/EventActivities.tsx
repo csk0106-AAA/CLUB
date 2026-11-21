@@ -5,7 +5,7 @@ import { RowDelete } from "./RowDelete";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { families, sourceLabel, type TplRow } from "@/lib/template-families";
-import { canSelect, type TemplateConfig } from "@/lib/template-schema";
+import { activityActions, canSelect, type TemplateConfig } from "@/lib/template-schema";
 import { CapsuleAdmin } from "./CapsuleAdmin";
 import { DateField } from "./DateField";
 import { AiAssist } from "./AiAssist";
@@ -32,7 +32,8 @@ type Act = {
 type Tpl = TplRow;
 type Att = {
   confirmed: boolean; confirmedAt: string; by: string; selectedCount: number;
-  members: { id: string; name: string; answer: string; days: string; selected: boolean; published?: boolean; who?: { published: boolean; state: "in" | "partial" | "undecided" | "new" } }[];
+  // level: 전체참여(full) / 선택참여(partial), bookBlocked: 북공개라 전체참여로 넣을 수 없음(소개 작성 활동)
+  members: { id: string; name: string; answer: string; days: string; selected: boolean; published?: boolean; level?: "full" | "partial"; bookBlocked?: boolean }[];
 };
 
 const PRE_TEXT: Record<string, string> = {
@@ -186,7 +187,7 @@ function Schedule({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; 
       </div>
       {msg ? <span className={msg.tone === "bad" ? "msg bad" : "small"} role={msg.tone === "bad" ? "alert" : "status"} style={msg.tone === "ok" ? { color: "var(--accent-ink)", fontWeight: 700 } : undefined}>{msg.text}</span>
         : dirty && canEdit ? <span className="small" role="status">바꾼 일시를 저장하려면 “저장”을 눌러 주세요.</span>
-        : <span className="small">회원에게 보여 주는 안내용 정보예요. 참여 대상은 “출석 체크”에서 따로 정해요.</span>}
+        : <span className="small">회원에게 보여 주는 안내용 정보예요. 참여자는 “활동참여자선택”에서 따로 정해요.</span>}
     </div>
   );
 }
@@ -245,21 +246,27 @@ function PreWindows({ eventId, a, canEdit, evStart, onChange }: { eventId: strin
   );
 }
 
-// 출석 체크(참여 대상이 “관리자 선택 회원”일 때): 활동 전에 참여할 사람을 고르고 완료한다.
-// 완료해야 진행자가 활동을 시작할 수 있고, 선택된 회원만 활동에 참여하고 정보가 노출된다.
+// 활동참여자선택(예전 출석 체크): 일정에 넣은 활동에 참여할 사람을 고르고, 사람마다 전체참여 / 선택참여를 정한다.
+//  전체참여: 활동 안의 모든 액션 / 선택참여: 템플릿 선별 조건에서 고른 액션만(템플릿이 "선택 참여 가능"일 때)
+// 저장하면 완료돼 진행자가 활동을 시작할 수 있다. 고르지 않은 회원은 일정에 참석해도 이 활동에는 참여하지 않는다.
 function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act; canEdit: boolean; onChange: () => void }) {
   const base = `/api/admin/events/${eventId}/activities/${a.id}/attendance`;
   const [att, setAtt] = useState<Att | null>(null);
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [part, setPart] = useState<Set<string>>(new Set()); // 그중 선택참여
   const [dirty, setDirty] = useState(false);
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const partialOk = canSelect(a.config);
+  const actions = activityActions(a.config);
+  const partialActs = actions.filter((x) => (a.config.partialActions ?? []).includes(x.key));
 
   const load = useCallback(async () => {
     const r = await api<Att>(base);
     if (r.ok) {
       setAtt(r.data);
       setSel(new Set(r.data.members.filter((m) => m.selected).map((m) => m.id)));
+      setPart(new Set(r.data.members.filter((m) => m.selected && m.level === "partial").map((m) => m.id)));
       setDirty(false);
     } else setMsg({ tone: "bad", text: r.error });
   }, [base]);
@@ -267,24 +274,38 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
     load();
   }, [load]);
 
-  const toggle = (id: string) => {
+  const toggle = (m: Att["members"][number]) => {
     const n = new Set(sel);
-    if (n.has(id)) n.delete(id);
-    else n.add(id);
+    const p = new Set(part);
+    if (n.has(m.id)) { n.delete(m.id); p.delete(m.id); }
+    else {
+      n.add(m.id);
+      // 북공개 회원(소개 작성 활동)은 선택참여로만 넣는다
+      if (m.bookBlocked) p.add(m.id);
+    }
     setSel(n);
+    setPart(p);
+    setDirty(true);
+  };
+  const setLevel = (id: string, partial: boolean) => {
+    const p = new Set(part);
+    if (partial) p.add(id);
+    else p.delete(id);
+    setPart(p);
     setDirty(true);
   };
 
-  async function saveSel(): Promise<boolean> {
-    const r = await api(base, { method: "PUT", body: { selected: [...sel] } });
-    if (!r.ok) setMsg({ tone: "bad", text: r.error });
-    return r.ok;
-  }
-  // 선택 저장 = 고른 사람 저장 + 출석 체크 완료(한 명 이상일 때). 아무도 없으면 완료 상태를 푼다.
+  // 선택 저장 = 고른 사람·참여 방식 저장 + 완료(한 명 이상일 때). 아무도 없으면 완료 상태를 푼다.
   async function onSave() {
     setBusy(true);
     setMsg(null);
-    if (dirty && !(await saveSel())) return setBusy(false);
+    if (dirty) {
+      const r = await api(base, { method: "PUT", body: { selected: [...sel], partial: [...part].filter((id) => sel.has(id)) } });
+      if (!r.ok) {
+        setBusy(false);
+        return setMsg({ tone: "bad", text: r.error });
+      }
+    }
     const done = sel.size > 0;
     if (done !== att?.confirmed) {
       const r = await api(base, { body: { confirmed: done } });
@@ -293,82 +314,72 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
         return setMsg({ tone: "bad", text: r.error });
       }
     }
-    setMsg({ tone: "info", text: done ? `${sel.size}명을 저장했어요. 출석 체크가 완료돼 활동을 시작할 수 있어요.` : "아무도 선택하지 않아 출석 체크가 완료되지 않았어요. 참여할 사람을 골라 저장해 주세요." });
+    const np = [...part].filter((id) => sel.has(id)).length;
+    setMsg({ tone: "info", text: done ? `${sel.size}명을 저장했어요(전체참여 ${sel.size - np}명 · 선택참여 ${np}명). 활동을 시작할 수 있어요.` : "아무도 고르지 않아 완료되지 않았어요. 참여할 사람을 골라 저장해 주세요." });
     setBusy(false);
     await load();
     onChange();
-  }
-  // 이미 실명 소개가 공개된 참여자: 회원에게 묻기 / 일부활동참여 / 프로필북초기화(확인 뒤, 지운 소개는 백업되고 회원에게 알림)
-  async function whoDecide(m: Att["members"][number], decision: "ask" | "partial" | "update") {
-    if (decision === "update" && !window.confirm(`${m.name} 님의 프로필 북 소개를 초기화할까요?\n공개된 소개가 지워지고(백업은 남아요), 이 활동에서 별칭으로 새로 써야 해요. 회원에게 알림이 가요.`)) return;
-    setBusy(true);
-    setMsg(null);
-    const r = await api(`/api/admin/events/${eventId}/activities/${a.id}/who-decision`, { body: { memberId: m.id, decision } });
-    setBusy(false);
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg({ tone: "info", text: decision === "ask" ? `${m.name} 님에게 고르도록 알림을 보냈어요.` : decision === "partial" ? `${m.name} 님을 일부활동참여로 정했어요.` : `${m.name} 님의 프로필 북을 초기화하고 알림을 보냈어요.` });
-    await load();
   }
 
   async function preset() {
     setBusy(true);
     const r = await api(base, { method: "PUT", body: { preset: "applicants" } });
-    setMsg(r.ok ? { tone: "info", text: "일정에 참석을 신청한 회원으로 채웠어요. 필요하면 고쳐 주세요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: "일정에 참석을 신청한 회원으로 채웠어요(모두 전체참여). 필요하면 고쳐 주세요." } : { tone: "bad", text: r.error });
     setBusy(false);
     await load();
     onChange();
   }
 
   if (!att) return msg ? <div className="msg bad" role="alert">{msg.text}</div> : null;
+  const np = [...part].filter((id) => sel.has(id)).length;
 
   return (
     <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <b style={{ font: `700 ${fs(16)} var(--display)` }}>출석 체크</b>
-        <span className="pill blue">선택 {sel.size}명</span>
+        <b style={{ font: `700 ${fs(16)} var(--display)` }}>활동참여자선택</b>
+        <span className="pill blue">{sel.size}명{partialOk && np ? ` (선택참여 ${np})` : ""}</span>
         <span className={`pill ${att.confirmed ? "ok" : "warn"}`}>{att.confirmed ? "완료" : "미완료"}</span>
       </div>
       <div className="msg info" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <b>선택참여 회원 선별은 템플릿에서 선별 조건 확인 후 직접 회원을 선택하세요.</b>
-        {a.config.selectRule?.trim()
-          ? <span style={{ whiteSpace: "pre-wrap", fontSize: fs(13) }}><b>선별 조건</b> · {a.config.selectRule.trim()}</span>
-          : <span className="small">이 템플릿에는 선별 조건이 적혀 있지 않아요.</span>}
-        {!att.confirmed && <span className="small">고른 뒤 “선택 저장”을 누르면 출석 체크가 완료돼 활동을 시작할 수 있어요. 고르지 않은 회원은 활동에 들어가지 않아요.</span>}
+        <span>이 활동에 참여할 회원을 고르세요. 고르지 않은 회원은 일정에 참석해도 이 활동에는 참여하지 않아요.</span>
+        {partialOk ? (
+          <>
+            <b>선택참여 회원 선별은 템플릿에서 선별 조건 확인 후 직접 회원을 선택하세요.</b>
+            <span style={{ fontSize: fs(13) }}><b>전체참여</b> · 모든 액션 ({actions.map((x) => x.label).join(" → ") || "없음"})</span>
+            <span style={{ fontSize: fs(13) }}><b>선택참여</b> · {partialActs.length ? partialActs.map((x) => x.label).join(" → ") : "템플릿 선별 조건에 고른 액션이 없어요"}</span>
+          </>
+        ) : <span className="small">이 활동은 템플릿에서 “전체 참여만”이라 고른 회원 모두 전체참여예요.</span>}
       </div>
       {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="mini" type="button" disabled={busy} onClick={preset}>참석자로 채우기</button>
-          <button className="mini" type="button" onClick={() => { setSel(new Set(att.members.map((m) => m.id))); setDirty(true); }}>전체 선택</button>
-          <button className="mini" type="button" onClick={() => { setSel(new Set()); setDirty(true); }}>전체 해제</button>
+          <button className="mini" type="button" onClick={() => { setSel(new Set(att.members.filter((m) => partialOk || !m.bookBlocked).map((m) => m.id))); setPart(new Set(att.members.filter((m) => m.bookBlocked).map((m) => m.id))); setDirty(true); }}>전체 선택</button>
+          <button className="mini" type="button" onClick={() => { setSel(new Set()); setPart(new Set()); setDirty(true); }}>전체 해제</button>
         </div>
       )}
-      <span className="small" style={{ fontSize: fs(12) }}>참석·불참: 일정 신청 답 · 북공개: 프로필 북에 실명 소개가 공개됨</span>
-      <div className="checks" role="group" aria-label="참여할 사람">
-        {att.members.map((m) => (
-          <label key={m.id} style={sel.has(m.id) ? { borderColor: "var(--blue)", background: "var(--blue-bg)" } : undefined}>
-            <input type="checkbox" checked={sel.has(m.id)} disabled={!canEdit} onChange={() => toggle(m.id)} />
-            {m.name}
-            {m.answer && <span className={`pill ${m.answer === "참석" ? "ok" : "gray"}`}>{m.answer === "참석" ? "참석" : "불참"}</span>}
-            {m.published && <span className="pill warn" title="프로필 북에 실명 소개가 공개된 회원">북공개</span>}
-          </label>
-        ))}
-      </div>
-      {/* '내가 누구일까요?': 이미 실명 소개가 공개된 참여자는 프로필북 초기화 / 일부활동참여를 정해야 한다 */}
-      {att.members.some((m) => m.selected && m.who && (m.who.state === "undecided" || m.who.state === "partial")) && (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
-          <b style={{ fontSize: fs(14) }}>북공개 참여자</b>
-          <span className="small">북 초기화 또는 일부활동참여를 정해 주세요(선별 조건 참고). 저장한 참여자만 보여요.</span>
-          {att.members.filter((m) => m.selected && m.who && (m.who.state === "undecided" || m.who.state === "partial")).map((m) => (
-            <div key={m.id} className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-              <b className="grow" style={{ fontSize: fs(14) }}>{m.name} <span className={`pill ${m.who?.state === "partial" ? "gray" : "warn"}`}>{m.who?.state === "partial" ? "일부활동참여" : "미정"}</span></b>
-              {canEdit && m.who?.state === "undecided" && <button className="mini" type="button" disabled={busy} onClick={() => whoDecide(m, "ask")}>본인에게 묻기</button>}
-              {canEdit && m.who?.state === "undecided" && <button className="mini" type="button" disabled={busy} onClick={() => whoDecide(m, "partial")}>일부활동참여</button>}
-              {canEdit && <button className="mini danger" type="button" disabled={busy} onClick={() => whoDecide(m, "update")}>북 초기화</button>}
+      <span className="small" style={{ fontSize: fs(12) }}>참석·불참: 일정 신청 답 · 북공개: 프로필 북에 실명 소개가 공개됨{att.members.some((m) => m.bookBlocked) ? ` — 북공개 회원은 ${partialOk ? "선택참여로만 넣을 수 있어요" : "이 활동(전체 참여만)에 넣을 수 없어요"}. 전체참여가 필요하면 회원과 이야기해, 회원이 프로필 북 소개를 “승인 취소”로 내린 뒤 전체참여로 넣어 주세요(활동에서 인터뷰부터 새로 해요).` : ""}</span>
+      <div className="checks" role="group" aria-label="활동 참여자">
+        {att.members.map((m) => {
+          const on = sel.has(m.id);
+          return (
+            <div key={m.id} className="row" style={{ gap: 6, flexWrap: "wrap", padding: "4px 8px", border: "1px solid var(--line)", borderRadius: 10, ...(on ? { borderColor: "var(--blue)", background: "var(--blue-bg)" } : {}) }}>
+              <label className="row grow" style={{ gap: 6, cursor: canEdit ? "pointer" : "default", border: 0, padding: 0, background: "none", minWidth: 0 }}>
+                <input type="checkbox" checked={on} disabled={!canEdit || (m.bookBlocked && !partialOk)} onChange={() => toggle(m)} />
+                {m.name}
+                {m.answer && <span className={`pill ${m.answer === "참석" ? "ok" : "gray"}`}>{m.answer === "참석" ? "참석" : "불참"}</span>}
+                {m.published && <span className="pill warn" title="프로필 북에 실명 소개가 공개된 회원">북공개</span>}
+              </label>
+              {on && partialOk && (
+                <span className="seg" role="group" aria-label={`${m.name} 참여 방식`} style={{ flex: "0 0 auto" }}>
+                  <button type="button" aria-pressed={!part.has(m.id)} disabled={!canEdit || m.bookBlocked} onClick={() => setLevel(m.id, false)} style={{ minHeight: 30, fontSize: fs(12), padding: "0 8px" }}>전체참여</button>
+                  <button type="button" aria-pressed={part.has(m.id)} disabled={!canEdit} onClick={() => setLevel(m.id, true)} style={{ minHeight: 30, fontSize: fs(12), padding: "0 8px" }}>선택참여</button>
+                </span>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="btn" type="button" disabled={busy || (!dirty && att.confirmed === sel.size > 0)} style={{ width: "auto", minWidth: 160, minHeight: 46, fontSize: fs(15) }} onClick={onSave}>
@@ -377,11 +388,10 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
           {dirty && <span className="small">저장하지 않은 변경이 있어요.</span>}
         </div>
       )}
-      {att.confirmed && <span className="small">{fmtDateTime(att.confirmedAt)} ·{att.by} 님이 저장했어요. 늦게 온 분은 선택하고 “선택 저장”을 누르면 바로 참여할 수 있어요.</span>}
+      {att.confirmed && <span className="small">{fmtDateTime(att.confirmedAt)} ·{att.by} 님이 저장했어요. 늦게 온 분은 고르고 “선택 저장”을 누르면 바로 참여할 수 있어요.</span>}
     </div>
   );
 }
-
 
 // 소개 작성 현황(인원 수만). 승인 전 초안과 인터뷰 내용은 관리자에게도 보이지 않는다.
 function Progress({ eventId, aid }: { eventId: string; aid: string }) {
@@ -402,22 +412,6 @@ function Progress({ eventId, aid }: { eventId: string; aid: string }) {
 }
 
 // 일정 관리의 '활동' 탭: 템플릿에서 활동 추가, 일정별 수정, 진행자 컨트롤(시험 조작)
-// 넣을 때 참여 대상 처음 값: 선택 참여가 되는 템플릿이면 템플릿 기본값, 아니면 전체 참여
-const partOf = (c?: TemplateConfig): "all" | "selected" => (c && canSelect(c) ? c.participants : "all");
-
-// 활동을 넣을 때 참여 대상 고르기(템플릿이 선택 참여를 허용할 때만)
-function PartPick({ value, onChange, selectable }: { value: "all" | "selected"; onChange: (v: "all" | "selected") => void; selectable: boolean }) {
-  if (!selectable) return <span className="small"><b>참여 방식: 전체 참여</b> · 템플릿에서 전체 참여 활동으로 정해져 있어요.</span>;
-  return (
-    <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-      <legend className="l">참여 대상</legend>
-      <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="radio" name="act-part" checked={value === "all"} onChange={() => onChange("all")} /> <span><b>전체 참여</b> <span className="small">일정 대상 회원 모두 참여</span></span></label>
-      <label className="row" style={{ gap: 8, cursor: "pointer" }}><input type="radio" name="act-part" checked={value === "selected"} onChange={() => onChange("selected")} /> <span><b>선택 참여</b> <span className="small">출석 체크로 고른 회원만 참여</span></span></label>
-      <span className="small">넣은 뒤에도 활동 카드에서 바꿀 수 있어요.</span>
-    </fieldset>
-  );
-}
-
 export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
   const [acts, setActs] = useState<Act[] | null>(null);
   const [tpls, setTpls] = useState<Tpl[]>([]);
@@ -446,7 +440,6 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   const [pick, setPick] = useState(""); // 고른 템플릿(v1 id)
   const [pickVer, setPickVer] = useState(""); // 고른 버전 id (버전이 2개 이상일 때 두 번째 단계에서)
   const [addStep, setAddStep] = useState<1 | 2>(1);
-  const [addPart, setAddPart] = useState<"all" | "selected">("selected"); // 넣을 때 참여 대상
   const fams = families(tpls).filter((f) => !f.root.config.bookOnly); // 프로필 북 전용 템플릿은 일정에 넣지 않는다
   const nextVerOf = (templateId: string) => fams.find((f) => f.versions.some((v) => v.id === templateId))?.nextVersion;
   const [edit, setEdit] = useState<{ id: string; value: EditableConfig; orig: string } | null>(null);
@@ -487,7 +480,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   async function add(templateId: string) {
     setBusy(true);
     setAddErr("");
-    const r = await api(`/api/admin/events/${eventId}/activities`, { body: { templateId, participants: addPart } });
+    const r = await api(`/api/admin/events/${eventId}/activities`, { body: { templateId } });
     setBusy(false);
     if (!r.ok) return setAddErr(r.error);
     const v = tpls.find((t) => t.id === templateId);
@@ -511,20 +504,6 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   // 이 활동이 쓰는 템플릿 버전과, 그 버전을 쓰는 다른 일정 수
   const tplOf = (a: Act | undefined) => (a ? tpls.find((x) => x.id === a.templateId) : undefined);
   const otherEventsOf = (t: Tpl | undefined) => (t ? t.useEvents.filter((e) => e !== eventId).length : 0);
-
-  // 참여 대상 바꾸기(이 일정 활동에만, 템플릿은 그대로)
-  async function setPart(a: Act, participants: "all" | "selected") {
-    if (participants === a.config.participants) return;
-    const warn = participants === "all"
-      ? "전체 참여로 바꿀까요?\n일정 대상 회원 모두가 이 활동에 참여해요(출석 체크 결과는 남아 있지만 쓰지 않아요)."
-      : "선택 참여로 바꿀까요?\n출석 체크로 고른 회원만 참여하고, 활동 전에 출석 체크를 완료해야 시작할 수 있어요.";
-    if (!window.confirm(warn)) return;
-    setBusy(true);
-    const r = await api(`/api/admin/events/${eventId}/activities/${a.id}`, { method: "PATCH", body: { participants } });
-    setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: participants === "all" ? "전체 참여로 바꿨어요." : "선택 참여로 바꿨어요. 출석 체크에서 참여할 회원을 골라 주세요." } : { tone: "bad", text: r.error });
-    load();
-  }
 
   async function remove(a: Act) {
     if (!window.confirm(`“${a.config.name}” 활동을 이 일정에서 뺄까요?`)) return;
@@ -617,19 +596,8 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           </div>
           <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${fmtDateTime(a.pre.opensAt)} ~ ${fmtDateTime(a.pre.closesAt)}` : ""}</span>
           {a.config.preEvent.steps.includes("ai_interview") && <Progress eventId={eventId} aid={a.id} />}
-          <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {canEdit && canSelect(a.config) ? (
-              <select className="field" aria-label="참여 대상" value={a.config.participants} disabled={busy} style={{ width: "auto", minHeight: 40, fontSize: fs(14), padding: "4px 10px" }}
-                onChange={(e) => setPart(a, e.target.value as "all" | "selected")}>
-                <option value="all">참여 방식: 전체 참여</option>
-                <option value="selected">참여 방식: 선택 참여 (출석 체크)</option>
-              </select>
-            ) : (
-              <span className={`pill ${a.config.participants === "selected" ? "warn" : "gray"}`}>참여 방식: {a.config.participants === "selected" ? "선택 참여" : "전체 참여"}</span>
-            )}
-            {a.config.participants === "selected" && <span className="pill warn">{a.rosterCount}명{a.attendanceConfirmed ? " · 출석 체크 완료" : " · 미완료"}</span>}
-          </div>
-          {a.config.participants === "selected" && <Attendance eventId={eventId} a={a} canEdit={canEdit} onChange={load} />}
+          <span className="small">참여 범위: {canSelect(a.config) ? "선택 참여 가능 (회원마다 전체참여 / 선택참여)" : "전체 참여만"}{a.attendanceConfirmed ? ` · 참여자 ${a.rosterCount}명` : " · 참여자 선택 필요"}</span>
+          <Attendance eventId={eventId} a={a} canEdit={canEdit} onChange={load} />
           <Schedule eventId={eventId} a={a} canEdit={canEdit} onChange={load} />
           {a.config.preEvent.enabled && <PreWindows eventId={eventId} a={a} canEdit={canEdit} evStart={evStart} onChange={load} />}
           <HostSetting eventId={eventId} a={a} canEdit={canEdit} members={members} onChange={load} />
@@ -690,14 +658,14 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
 
       {canEdit && tpls.length > 0 && (
         <>
-          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setAddErr(""); setAddStep(1); setAddPart(partOf(fams.find((f) => f.id === pick)?.root.config)); setAddOpen(true); }}>+ 템플릿에서 활동 추가</button>
+          <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} onClick={() => { setAddErr(""); setAddStep(1); setAddOpen(true); }}>+ 템플릿에서 활동 추가</button>
           <Popup id="activity-add" title={addStep === 2 && pickFam ? `버전 고르기 · ${pickFam.root.config.name}` : "템플릿에서 활동 추가"} open={addOpen} onClose={() => setAddOpen(false)}>
             {addStep === 1 || !pickFam ? (
               <form onSubmit={(e) => { e.preventDefault(); next(); }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {addErr && <div className="msg bad" role="alert">{addErr}</div>}
                 <div>
                   <label className="l" htmlFor="act-pick">활동 템플릿</label>
-                  <select id="act-pick" className="field" value={pick} onChange={(e) => { setPick(e.target.value); setAddPart(partOf(fams.find((f) => f.id === e.target.value)?.root.config)); }}>
+                  <select id="act-pick" className="field" value={pick} onChange={(e) => setPick(e.target.value)}>
                     {fams.map((f) => <option key={f.id} value={f.id}>{f.root.config.name}{f.versions.length >= 2 ? ` (버전 ${f.versions.length}개)` : ""}</option>)}
                   </select>
                 </div>
@@ -706,7 +674,6 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                     {pickFam.root.config.description ? `${pickFam.root.config.description} · ` : ""}{modeOf(pickFam.root.config) === "team" ? "팀별" : "모두 함께"} · {pickFam.root.config.preEvent.enabled ? "사전 작성 있음" : "현장에서만"} · 현장 {pickFam.root.config.onsite.steps.length}단계
                   </span>
                 )}
-                <PartPick value={addPart} onChange={setAddPart} selectable={!!pickFam && canSelect(pickFam.root.config)} />
                 <span className="small">
                   {pickFam && pickFam.versions.length >= 2
                     ? "이 템플릿은 버전이 여러 개라서 다음 단계에서 쓸 버전을 골라요."
