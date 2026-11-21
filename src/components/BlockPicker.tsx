@@ -32,7 +32,7 @@ export function BlockPicker({ value, onChange, isNew }: { value: EditableConfig;
         </div>
       ) : (
         <>
-          <span className="small">체크한 블록이 이 활동에서 실제로 동작해요. 새 기능 블록이 필요하면 위의 “AI에게 개발 요청”으로 요청해 주세요.</span>
+          <span className="small">체크한 블록이 이 활동에서 실제로 동작해요. 새 기능블록이 필요하면 위의 “AI에게 요청 (기능 고치기·만들기)”이나 활동템플릿 › 기능블록의 “+ 새 기능블록 요청”으로 개발 요청을 남겨 주세요.</span>
           {BLOCKS.map((b) => {
             const on = hasBlock(value, b.key);
             return (

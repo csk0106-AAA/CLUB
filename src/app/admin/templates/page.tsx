@@ -35,13 +35,49 @@ const summary = (c: TemplateConfig) =>
   `${modeOf(c) === "team" ? "팀별 · " : "모두 함께 · "}${canSelect(c) ? "선택 참여 가능 · " : "전체 참여만 · "}${c.preEvent.enabled ? `사전 작성 있음 (일정 ${c.preEvent.opensBeforeDays ?? 14}일 전 ~ ${c.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 ${c.onsite.steps.length}단계`;
 
 // 기능블록 목록(읽기만): 코드로 만든 기능이라 버전이 없고, 바뀌면 쓰는 모든 활동에 함께 반영된다.
-// 넣고 빼기는 각 활동템플릿의 “기능 블록” 칸에서, 새 블록은 “AI에게 개발 요청”으로.
+// 넣고 빼기는 각 활동템플릿의 “기능 블록” 칸에서. 새 블록·고치기·없애기는 여기서 개발 요청으로 남긴다(개발자가 만든다).
 function BlockList({ fams }: { fams: Family[] }) {
   const [open, setOpen] = useState("");
+  // 개발 요청 창: 새 기능블록 / 이 블록 고치기·없애기
+  const [req, setReq] = useState<{ title: string; detail: string; why: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  async function send() {
+    if (!req) return;
+    setBusy(true);
+    const r = await api("/api/admin/dev-requests", { body: { ...req, templateId: "", eventId: "" } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setReq(null);
+    setMsg({ tone: "info", text: "개발 요청을 남겼어요. 개발자가 확인하고 만들어요. 진행 상황은 활동 템플릿 › 개발 요청에서 볼 수 있어요." });
+  }
   return (
     <>
+      <div className="row" style={{ flexWrap: "wrap" }}>
+        <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", minWidth: 200 }} onClick={() => { setMsg(null); setReq({ title: "새 기능블록: ", detail: "", why: "" }); }}>+ 새 기능블록 요청</button>
+      </div>
+      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <Popup id="block-request" width={560} title="기능블록 개발 요청" open={!!req} onClose={() => setReq(null)}
+        footer={req && (
+          <>
+            <button className="btn white" type="button" style={{ width: "auto", minWidth: 110, minHeight: 48 }} onClick={() => setReq(null)}>취소</button>
+            <button className="btn" type="button" disabled={busy || !req.title.trim() || !req.detail.trim()} style={{ width: "auto", minWidth: 160, minHeight: 48 }} onClick={send}>{busy ? "보내는 중…" : "개발 요청 보내기"}</button>
+          </>
+        )}>
+        {req && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span className="small">기능블록은 코드로 만드는 기능이라 개발자가 확인하고 만들어요(고치기·없애기도 같아요). 무엇이 어떻게 동작하면 좋을지 적어 주세요.</span>
+            <label className="l" htmlFor="br-t" style={{ marginBottom: 0 }}>제목</label>
+            <input id="br-t" className="field" maxLength={120} value={req.title} onChange={(e) => setReq({ ...req, title: e.target.value })} />
+            <label className="l" htmlFor="br-d" style={{ marginBottom: 0 }}>무엇이 어떻게 동작하면 좋을까요</label>
+            <textarea id="br-d" className="field" rows={5} maxLength={4000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }} value={req.detail} onChange={(e) => setReq({ ...req, detail: e.target.value })} />
+            <label className="l" htmlFor="br-w" style={{ marginBottom: 0 }}>왜 필요한가요 (선택)</label>
+            <textarea id="br-w" className="field" rows={2} maxLength={2000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }} value={req.why} onChange={(e) => setReq({ ...req, why: e.target.value })} />
+          </div>
+        )}
+      </Popup>
       <p className="small" style={{ margin: 0 }}>
-        기능블록은 개발된 기능이에요. 어느 활동템플릿에나 넣을 수 있고, 언제 열지 같은 설정은 활동템플릿에서 정해요. 코드로 만들어서 버전이 없고, 바뀌면 이 블록을 쓰는 모든 활동에 함께 반영돼요. 넣고 빼기는 활동템플릿의 “기능 블록” 칸에서, 새 기능블록은 활동템플릿 편집 창의 “AI에게 개발 요청”으로 요청해 주세요.
+        기능블록은 개발된 기능이에요. 어느 활동템플릿에나 넣을 수 있고, 언제 열지 같은 설정은 활동템플릿에서 정해요. 코드로 만들어서 버전이 없고, 바뀌면 이 블록을 쓰는 모든 활동에 함께 반영돼요. 넣고 빼기는 활동템플릿의 “기능 블록” 칸에서 해요. 새 기능블록이나 고치기·없애기는 “+ 새 기능블록 요청” 또는 카드의 “고치기·없애기 요청”으로 개발 요청을 남겨 주세요.
       </p>
       <div className="cards">
         {BLOCKS.map((b) => {
@@ -52,6 +88,7 @@ function BlockList({ fams }: { fams: Family[] }) {
               <b style={{ font: `700 ${fs(18)} var(--display)` }}>{b.name}</b>
               <span className="small">{b.summary}</span>
               <span className="small"><b>쓰는 활동템플릿</b> · {users.length ? users.join(", ") : "아직 없어요"}</span>
+              <button className="mini" type="button" aria-haspopup="dialog" onClick={() => { setMsg(null); setReq({ title: `기능블록 고치기·없애기: ${b.name}`, detail: "", why: "" }); }}>고치기·없애기 요청</button>
               {b.rulesNote && (
                 <>
                   <button className="mini" type="button" aria-expanded={open === b.key} onClick={() => setOpen(open === b.key ? "" : b.key)}>{open === b.key ? "지침 접기" : "지침 보기"}</button>
