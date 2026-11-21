@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { preStatus } from "@/lib/activities";
+import { preStatus, windowBase } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
 import { NOT_ATTENDEE, canJoin } from "@/lib/participants";
 import { getStore } from "@/lib/store";
@@ -13,7 +13,7 @@ async function mineOpen(ctx: Ctx, mid: string) {
   const w = await loadWorry(aid);
   if (typeof w === "string") return { err: bad(w, 404) };
   if (!(await canJoin(w.cfg, w.act, w.ev, mid))) return { err: bad(NOT_ATTENDEE, 403) };
-  if (preStatus(w.cfg, w.ev.startsAt).status !== "open") return { err: bad("작성 기간이 아니라 고칠 수 없어요.", 403) };
+  if (preStatus(w.cfg, windowBase(w.act, w.ev)).status !== "open") return { err: bad("작성 기간이 아니라 고칠 수 없어요.", 403) };
   const row = (await worryRows(aid)).find((x) => x.id === wid && x.memberId === mid);
   if (!row) return { err: bad("고민을 찾을 수 없어요.", 404) };
   if (row.drawnAt) return { err: bad("이미 뽑힌 고민은 고칠 수 없어요.", 409) };

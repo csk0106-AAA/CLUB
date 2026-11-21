@@ -1,4 +1,4 @@
-import { activityKind, guessStatus, liveView, preStatus, readConfig } from "./activities";
+import { activityKind, guessStatus, liveView, preStatus, readConfig, windowBase } from "./activities";
 import { canJoin } from "./participants";
 import type { Row } from "./store/types";
 
@@ -20,8 +20,8 @@ export async function activityShortcut(ev: Row, acts: Row[], lives: Row[], membe
     if (!page || !(await canJoin(cfg, a, ev, memberId))) continue;
     const now =
       liveView(cfg, lives.find((l) => l.eventActivityId === a.id)).active
-      || preStatus(cfg, ev.startsAt).status === "open"
-      || (kind === "who" && guessStatus(cfg, ev.startsAt).status === "open");
+      || preStatus(cfg, windowBase(a, ev)).status === "open"
+      || (kind === "who" && guessStatus(cfg, windowBase(a, ev)).status === "open");
     if (now) return page;
     if (!first) first = page;
   }

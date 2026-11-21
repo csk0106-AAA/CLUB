@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, guard } from "@/lib/api";
-import { activityKind, guessStatus, liveView, preStatus, readConfig } from "@/lib/activities";
+import { activityKind, guessStatus, liveView, preStatus, readConfig, windowBase } from "@/lib/activities";
 import { canJoin, isLimited } from "@/lib/participants";
 import { memberWorry } from "@/lib/worry";
 import { memberRound } from "@/lib/rounds";
@@ -35,8 +35,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       id: a.id,
       name: cfg.name,
       description: cfg.description,
-      pre: preStatus(cfg, ev.startsAt),
-      guess: guessStatus(cfg, ev.startsAt),
+      pre: preStatus(cfg, windowBase(a, ev)),
+      guess: guessStatus(cfg, windowBase(a, ev)),
       kind: activityKind(cfg),
       participants: isLimited(cfg) ? "selected" : "all",
       canJoin: await canJoin(cfg, a, ev, g.s.mid),

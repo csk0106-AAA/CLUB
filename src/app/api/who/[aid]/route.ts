@@ -57,7 +57,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
     // 기능 블록 사주풀이(lib/blocks.ts)와 여는 시점, 2진실 1거짓(사전 단계)
     blocks: { saju: hasBlock(w.cfg, "saju"), truthlies: w.cfg.preEvent.steps.includes("truth_lies") },
     sajuWhen: sajuWhenOf(w.cfg),
-    sajuOpen: sajuOpen(w.cfg, w.ev, !!w.book),
+    sajuOpen: sajuOpen(w.cfg, w.ev, !!w.book, Date.now(), w.act),
     // 프로필 북 실명 공개 시각(ISO). 이때까지 참여 회원은 프로필 북에 별칭으로만 보인다.
     revealAt: rt ? new Date(rt).toISOString() : "",
     profile: {

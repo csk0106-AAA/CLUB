@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { guessStatus, isWhoAmI, periodText, preStatus, readConfig, type PreStatus } from "./activities";
+import { guessStatus, isWhoAmI, periodText, preStatus, readConfig, type PreStatus, windowBase } from "./activities";
 import { getSetting, getStore, DEFAULT_GUIDELINES, DEFAULT_QUESTIONS } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
@@ -42,21 +42,21 @@ const WHY: Record<string, string> = {
 // 사전 작성 기간(작성)이 열려 있어야 쓸 수 있다.
 export function writeClosed(ctx: WhoCtx): NextResponse | null {
   if (ctx.book) return null; // 프로필 북 작성은 기간 없이 언제나
-  const p = preStatus(ctx.cfg, ctx.ev.startsAt);
+  const p = preStatus(ctx.cfg, windowBase(ctx.act, ctx.ev));
   if (p.status === "open") return null;
   return NextResponse.json({ error: `${WHY[p.status]}${periodText(p)}` }, { status: 403 });
 }
 
 // 사전 추측 기간
 export function guessClosed(ctx: WhoCtx): NextResponse | null {
-  const p = guessStatus(ctx.cfg, ctx.ev.startsAt);
+  const p = guessStatus(ctx.cfg, windowBase(ctx.act, ctx.ev));
   if (p.status === "open") return null;
   return NextResponse.json({ error: `${WHY[p.status]}${periodText(p)}` }, { status: 403 });
 }
 
 export function windows(ctx: WhoCtx): { pre: PreStatus; guess: PreStatus } {
   if (ctx.book) return { pre: { enabled: true, status: "open", opensAt: "", closesAt: "" }, guess: { enabled: false, status: "none", opensAt: "", closesAt: "" } };
-  return { pre: preStatus(ctx.cfg, ctx.ev.startsAt), guess: guessStatus(ctx.cfg, ctx.ev.startsAt) };
+  return { pre: preStatus(ctx.cfg, windowBase(ctx.act, ctx.ev)), guess: guessStatus(ctx.cfg, windowBase(ctx.act, ctx.ev)) };
 }
 
 // 인터뷰 필수 질문: 활동 템플릿에 있으면 그것, 없으면 AI 설정 화면의 기본값

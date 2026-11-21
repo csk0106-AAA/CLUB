@@ -222,6 +222,7 @@ function PreWindows({ eventId, a, canEdit, evStart, onChange }: { eventId: strin
   return (
     <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
       <b style={{ font: `700 ${fs(15)} var(--display)` }}>사전 작성 기간</b>
+      <span className="small">“며칠 전”은 {a.startsAt ? "이 활동의 시작 일시" : "일정 시작 일시(활동 일시를 넣으면 활동 시작 기준)"}를 기준으로 해요. 0일 전은 그날이고, 시각을 비우면 기준 시각이에요.</span>
       <fieldset disabled={!canEdit || busy} style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
         <WindowFields id={`pw-${a.id}`} win={w.pre} defaults={{ open: 14, close: 1 }} eventStartsAt={evStart} onChange={(pre) => { setW({ ...w, pre }); setMsg(null); }} />
         {w.guess?.enabled && (
@@ -599,7 +600,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           <span className="small">참여 범위: {canSelect(a.config) ? "선택 참여 가능 (회원마다 전체참여 / 선택참여)" : "전체 참여만"}{a.attendanceConfirmed ? ` · 참여자 ${a.rosterCount}명` : " · 참여자 선택 필요"}</span>
           <Attendance eventId={eventId} a={a} canEdit={canEdit} onChange={load} />
           <Schedule eventId={eventId} a={a} canEdit={canEdit} onChange={load} />
-          {a.config.preEvent.enabled && <PreWindows eventId={eventId} a={a} canEdit={canEdit} evStart={evStart} onChange={load} />}
+          {a.config.preEvent.enabled && <PreWindows eventId={eventId} a={a} canEdit={canEdit} evStart={a.startsAt || evStart} onChange={load} />}
           <HostSetting eventId={eventId} a={a} canEdit={canEdit} members={members} onChange={load} />
           {a.config.preEvent.steps.includes("worry_write") && (
             <Link href={`/host/worry/${eventId}/${a.id}`} className="btn blue" style={{ width: "auto", alignSelf: "flex-start", minHeight: 46, fontSize: fs(16), textDecoration: "none" }}>

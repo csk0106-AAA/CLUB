@@ -19,7 +19,7 @@ async function load(aid: string, memberId: string) {
   const ev = act ? (await s.list("Events")).find((e) => e.id === act.eventId && e.published === "true") : undefined;
   if (!act || !cfg || !ev) return null;
   const joined = (await canJoin(cfg, act, ev, memberId)) && (await canAct(cfg, act, ev, memberId, "block:saju"));
-  return { act, cfg, ev, joined, enabled: hasBlock(cfg, "saju"), open: sajuOpen(cfg, ev) };
+  return { act, cfg, ev, joined, enabled: hasBlock(cfg, "saju"), open: sajuOpen(cfg, ev, false, Date.now(), act) };
 }
 
 // GET: 이 활동에 사주풀이가 있는지, 지금 받을 수 있는지, 내 풀이

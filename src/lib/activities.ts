@@ -65,6 +65,10 @@ export function windowStatus(win: Win | undefined, startsAt: string, now = Date.
   return { enabled: true, status, opensAt: fmt(w.opens), closesAt: fmt(w.closes) };
 }
 
+// 사전 작성·사전 맞히기 기간의 기준 시각: 활동 일시(시작)가 있으면 그것, 없으면 일정 시작.
+//  2일 이상 일정에서 다음날 이후에 하는 활동도 활동 직전까지 받을 수 있게.
+export const windowBase = (act: { startsAt?: string } | undefined, ev: { startsAt?: string }): string => act?.startsAt || ev.startsAt || "";
+
 export function preStatus(cfg: TemplateConfig, startsAt: string, now = Date.now()): PreStatus {
   return windowStatus(cfg.preEvent, startsAt, now);
 }

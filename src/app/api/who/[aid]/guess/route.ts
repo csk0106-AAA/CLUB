@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { guessStatus } from "@/lib/activities";
+import { guessStatus, windowBase } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -25,7 +25,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { aid } = await ctx.params;
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
-  const gs = guessStatus(w.cfg, w.ev.startsAt);
+  const gs = guessStatus(w.cfg, windowBase(w.act, w.ev));
   if (gs.status === "before" || gs.status === "none" || gs.status === "unknown") {
     return NextResponse.json({ guess: gs, targets: [], candidates: [] });
   }

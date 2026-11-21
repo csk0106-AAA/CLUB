@@ -61,7 +61,8 @@ function kst(t: string | undefined): number {
 
 // 지금 사주풀이를 새로 받을 수 있는지(받은 풀이를 보는 것은 언제나 된다)
 //  book: 프로필 북 "소개 작성하기"는 기간이 없다
-export function sajuOpen(c: Pick<TemplateConfig, "preEvent" | "sajuWhen">, ev: { startsAt?: string; endsAt?: string }, book = false, now = Date.now()): boolean {
+//  act: 활동 일시(사전 작성 기간의 기준은 활동 시작, 없으면 일정 시작)
+export function sajuOpen(c: Pick<TemplateConfig, "preEvent" | "sajuWhen">, ev: { startsAt?: string; endsAt?: string }, book = false, now = Date.now(), act?: { startsAt?: string }): boolean {
   if (book) return true;
   const when = sajuWhenOf(c);
   if (when === "event") {
@@ -72,6 +73,6 @@ export function sajuOpen(c: Pick<TemplateConfig, "preEvent" | "sajuWhen">, ev: {
     return now >= start && now <= end;
   }
   if (!c.preEvent.enabled) return false;
-  const w = preWindowTimes(c.preEvent, ev.startsAt ?? "");
+  const w = preWindowTimes(c.preEvent, act?.startsAt || ev.startsAt || "");
   return !!w && now >= w.opens && now <= w.closes;
 }

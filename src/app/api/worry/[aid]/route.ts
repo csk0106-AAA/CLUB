@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { periodText, preStatus } from "@/lib/activities";
+import { periodText, preStatus, windowBase } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
 import { NOT_ATTENDEE, canJoin, canAct, NOT_ACTION } from "@/lib/participants";
 import { getStore } from "@/lib/store";
@@ -27,7 +27,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     activity: { id: aid, name: w.cfg.name },
     event: { id: w.ev.id, name: w.ev.name },
     canJoin: await canJoin(w.cfg, w.act, w.ev, g.s.mid),
-    pre: preStatus(w.cfg, w.ev.startsAt),
+    pre: preStatus(w.cfg, windowBase(w.act, w.ev)),
     max: MAX_WORRIES,
     categories: CATEGORIES,
     mine: mine.map((x) => ({ id: x.id, body: x.body, category: x.category, anonymous: x.anonymous === "true", drawn: Boolean(x.drawnAt) })),
@@ -43,7 +43,7 @@ export async function POST(req: Request, ctx: Ctx) {
   // 고민은 이 활동에 참석하는 분만 쓴다. 불참하는 분은 AI 인터뷰로 프로필 북 소개만 작성한다.
   if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) return bad(`${NOT_ATTENDEE} 참여 대상이 아니면 고민은 쓰지 않고 프로필 소개만 작성해 주세요.`, 403);
   if (!(await canAct(w.cfg, w.act, w.ev, g.s.mid, "pre:worry_write"))) return bad(NOT_ACTION, 403);
-  const pre = preStatus(w.cfg, w.ev.startsAt);
+  const pre = preStatus(w.cfg, windowBase(w.act, w.ev));
   if (pre.status !== "open") return bad(`${WHY[pre.status]}${periodText(pre)}`, 403);
 
   const parsed = worryBody.safeParse(await req.json().catch(() => null));

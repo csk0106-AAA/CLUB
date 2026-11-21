@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
-import { liveView, preStatus, readConfig } from "@/lib/activities";
+import { liveView, preStatus, readConfig, windowBase } from "@/lib/activities";
 import { attendanceState, rosterSet } from "@/lib/participants";
 import { readHosts } from "@/lib/hosts";
 import { getStore } from "@/lib/store";
@@ -31,7 +31,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       templateId: a.templateId,
       templateVersion: Number(a.templateVersion) || 1,
       config,
-      pre: preStatus(config, ev.startsAt),
+      pre: preStatus(config, windowBase(a, ev)),
       live: liveView(config, live),
       // 활동의 날짜와 진행 시간은 안내용 정보다(참여 대상 판정과 연결하지 않는다).
       startsAt: a.startsAt,

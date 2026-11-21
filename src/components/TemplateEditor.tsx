@@ -63,7 +63,7 @@ export function WindowFields<W extends PreWindow>({ id, win, onChange, eventStar
         <input className="field num" type="time" aria-label="마감 시각" value={win.closesTime ?? ""} onChange={(e) => onChange({ ...win, closesTime: e.target.value || undefined })} />
       </div>
       <span className="small">
-        {w ? `실제 기간: ${kstText(w.opens)} ~ ${kstText(w.closes)}${w.closes <= w.opens ? " · 마감이 시작보다 빨라요" : ""}` : "시각을 비워 두면 일정 시작 시각 기준이에요(예: 일정이 14:00 시작이면 14:00). 0일 전 = 일정 당일이에요."}
+        {w ? `실제 기간: ${kstText(w.opens)} ~ ${kstText(w.closes)}${w.closes <= w.opens ? " · 마감이 시작보다 빨라요" : ""}` : "시각을 비워 두면 기준 시각(활동 시작, 없으면 일정 시작)이에요. 0일 전 = 그날이에요."}
       </span>
     </div>
   );
