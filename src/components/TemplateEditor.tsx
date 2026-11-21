@@ -17,6 +17,13 @@ export const SCREEN_LABELS: Record<string, string> = {
   pick_person: "명단에서 사람 고르기 (아직 없음)",
   view: "결과 보기",
 };
+// 활동 종류에 따라 같은 화면이라도 실제로 보이는 내용이 달라 이름을 바꿔 보여 준다.
+//  나의 고민은?(worry): 회원 화면은 고민 진행 상황(뽑힘 → 대화 → 이름 오픈)을 따라 저절로 바뀐다.
+const KIND_SCREEN_LABELS: Record<string, Record<string, string>> = {
+  worry: { wait: "대기 화면 (고민 뽑기 전)", view: "뽑힌 고민 보기 (내용·타이머, 작성자는 이름 오픈 뒤)" },
+};
+export const screenLabel = (c: Pick<EditableConfig, "preEvent" | "onsite">, k: string): string =>
+  KIND_SCREEN_LABELS[kindOfConfig(c)]?.[k] ?? SCREEN_LABELS[k] ?? k;
 export const UNLOCK_LABELS: Record<string, string> = {
   host_click: "진행자가 버튼을 누르면 켜짐",
   immediate: "단계가 시작되면 바로 켜짐",
@@ -215,7 +222,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>현장 진행 단계</b>
         {steps.length > 1 && <span className="small">단계 왼쪽 위 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
-        <span className="small">회원 휴대폰 화면은 이 활동에 만들어진 화면만 고를 수 있어요({({ who: "소개·맞히기 활동", worry: "고민 활동", capsule: "작성 활동", "": "일반 활동" } as const)[kindOfConfig(value)]}: {screensFor(value).map((k) => SCREEN_LABELS[k]).join(" · ")}).</span>
+        <span className="small">회원 휴대폰 화면은 이 활동에 만들어진 화면만 고를 수 있어요({({ who: "소개·맞히기 활동", worry: "고민 활동", capsule: "작성 활동", "": "일반 활동" } as const)[kindOfConfig(value)]}: {screensFor(value).map((k) => screenLabel(value, k)).join(" · ")}).{kindOfConfig(value) === "worry" ? " 고민 활동은 진행 상황에 따라 회원 화면이 저절로 바뀌어요: 고민이 뽑히면 내용·타이머가 보이고, 진행자가 “이름 오픈”을 누르면 작성자가 보여요." : ""}</span>
         {steps.map((st, i) => {
           const row = ds.item(i);
           return (
@@ -231,7 +238,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
                 <label className="l" htmlFor={`s-s-${i}`}>회원 휴대폰에 보이는 화면</label>
                 <select id={`s-s-${i}`} className="field" value={st.memberScreen} onChange={(e) => setStep(i, { memberScreen: e.target.value as typeof st.memberScreen })}>
                   {[...screensFor(value), ...(screensFor(value).includes(st.memberScreen) ? [] : [st.memberScreen])].map((k) => (
-                    <option key={k} value={k}>{SCREEN_LABELS[k] ?? k}{screensFor(value).includes(k) ? "" : " (이 활동에는 없는 화면)"}</option>
+                    <option key={k} value={k}>{screenLabel(value, k)}{screensFor(value).includes(k) ? "" : " (이 활동에는 없는 화면)"}</option>
                   ))}
                 </select>
                 {!screensFor(value).includes(st.memberScreen) && <span className="small" style={{ color: "var(--red, #c33)" }}>이 활동에는 없는 화면이에요. 다른 화면으로 바꿔 주세요.</span>}

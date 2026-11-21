@@ -5,7 +5,7 @@ import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 import { templateConfigSchema } from "@/lib/template-schema";
 import { Mascot } from "./Mascot";
-import { SCREEN_LABELS, UNLOCK_LABELS, type EditableConfig } from "./TemplateEditor";
+import { screenLabel, UNLOCK_LABELS, type EditableConfig } from "./TemplateEditor";
 
 type Dev = { title: string; detail: string; why: string };
 type Result = { canDo: boolean; summary: string; config?: EditableConfig; devRequest?: Dev };
@@ -27,7 +27,7 @@ export function diffConfig(a: EditableConfig, b: EditableConfig): string[] {
   const newKeys = new Set(b.onsite.steps.map((s) => s.key));
   for (const s of b.onsite.steps) {
     const o = oldSteps.get(s.key);
-    const desc = `${SCREEN_LABELS[s.memberScreen] ?? s.memberScreen} · ${UNLOCK_LABELS[s.unlock] ?? s.unlock}${s.hostButton ? ` · 버튼 “${s.hostButton}”` : ""}`;
+    const desc = `${screenLabel(b, s.memberScreen)} · ${UNLOCK_LABELS[s.unlock] ?? s.unlock}${s.hostButton ? ` · 버튼 “${s.hostButton}”` : ""}`;
     if (!o) out.push(`단계 추가: “${s.label}” (${desc})`);
     else if (!same(o, s)) out.push(`단계 변경: “${o.label}”${o.label !== s.label ? ` → “${s.label}”` : ""} (${desc})`);
   }

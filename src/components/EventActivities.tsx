@@ -13,7 +13,7 @@ import { AiGuidesEditor, aiPointKeys } from "./AiGuidesEditor";
 import { Popup } from "./Popup";
 import { SaveChoices, savedText, type SaveMode } from "./SaveChoices";
 import { TeamBoard } from "./TeamBoard";
-import { modeOf, SCREEN_LABELS, TemplateEditor, WindowFields, type EditableConfig } from "./TemplateEditor";
+import { modeOf, screenLabel, TemplateEditor, WindowFields, type EditableConfig } from "./TemplateEditor";
 import { fs } from "@/lib/fs";
 
 type Act = {
@@ -642,7 +642,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             </div>
             <div className="msg info" role="status">
               {a.live.active
-                ? `현재 단계: ${a.live.stepLabel} · 회원 화면: ${a.live.unlocked ? `켜짐 (${SCREEN_LABELS[a.live.memberScreen] ?? a.live.memberScreen})` : "잠김 (대기 화면)"}`
+                ? `현재 단계: ${a.live.stepLabel} · 회원 화면: ${a.live.unlocked ? `켜짐 (${screenLabel(a.config, a.live.memberScreen)})` : "잠김 (대기 화면)"}`
                 : "현장 진행 전이에요. 버튼을 누르면 회원 화면이 템플릿 설정대로 바뀌어요."}
             </div>
             {canEdit && (
