@@ -20,6 +20,8 @@ export type PostSummary = {
   responded: boolean;
   closed: boolean;
   audienceText: string;
+  // 투표·설문 글: 대상 인원·참여 인원·마감("" 없음)
+  vote?: { target: number; done: number; deadline: string } | null;
   mine: boolean;
   // 마지막으로 알림을 본 뒤: "new" 새로 올라온 글, "updated" 수정된 글(종 아이콘 숫자에 센 글과 같다)
   fresh: "" | "new" | "updated";
@@ -50,6 +52,8 @@ export type PostFull = {
   data: Record<string, unknown>;
   audience: Audience;
   audienceText: string;
+  // 투표·설문 글: 대상 인원·참여 인원·마감("" 없음)
+  vote?: { target: number; done: number; deadline: string } | null;
   notice: boolean;
   pinned: boolean;
   files: FileMeta[];

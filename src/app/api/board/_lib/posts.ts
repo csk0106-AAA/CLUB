@@ -6,6 +6,7 @@ import { DATA_SCHEMA, isClosed, isForm, isWriteForm, RESPONSE_FORMS, resultsToOf
 import { duesAccount, duesAmount, readDues, type DuesRule } from "@/lib/dues";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { memberClubs } from "@/lib/lists";
+import { isGuest } from "@/lib/member-kind";
 import { joinView, latestJoin } from "@/lib/club-requests";
 import { clubText } from "@/lib/club-label";
 import { canManage, cleanAudience, manageHref, managedOf } from "@/lib/published";
@@ -105,6 +106,13 @@ export async function summaries(me: Me, posts: Row[], fresh: Map<string, "new" |
       responded: mine.has(p.id),
       closed: typeof data.deadline === "string" ? isClosed(data.deadline) : false,
       audienceText: audienceLabel(audienceOf(p), { events: evs }),
+      // 투표·설문: 대상 인원(공개 대상, 전체 회원이면 대기·참관·탈퇴 회원 빼고), 참여 인원, 마감(모든 회원에게 보인다)
+      vote: p.form === "poll" || p.form === "survey" ? (() => {
+        const a = audienceOf(p);
+        const target = a.mode === "all" ? members.filter((m) => !isGuest(m.kind)).length : new Set(a.memberIds).size;
+        const done = new Set(responses.filter((r) => r.postId === p.id).map((r) => r.memberId)).size;
+        return { target, done, deadline: typeof data.deadline === "string" ? data.deadline : "" };
+      })() : null,
       mine: p.authorId === me.row.id,
       fresh: fresh.get(p.id) ?? "",
       // 반응·댓글 수(회칙·회비 글은 받지 않아서 0)

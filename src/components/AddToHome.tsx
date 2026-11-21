@@ -66,7 +66,8 @@ export function AddToHome() {
             <li>Chrome 에서 {addr} 를 열어요.</li>
             <li><b>⋮</b> (점 세 개)를 눌러요.</li>
             <li><b>“설치 및 바로가기 만들기”</b>를 눌러요.</li>
-            <li><b>“바로가기 만들기”</b>를 누르면 홈 화면에 아이콘이 생겨요.</li>
+            <li><b>“설치”</b>를 누르면 홈 화면에 앱 아이콘이 생겨요.</li>
+            <li>“바로가기 만들기”로 추가하면 열 때마다 브라우저에 새 탭이 생겨요. 꼭 <b>“설치”</b>를 골라 주세요.</li>
           </ol>
         </details>
         <details key={`s-${os}`} open={os === "samsung"}>

@@ -22,6 +22,13 @@ import { fs } from "@/lib/fs";
 type Me = { name: string; consent: boolean; avatar: AvatarView };
 
 // 홈(로그인 다음 화면): 인사 + 로그아웃·알림 아이콘, 다가오는 나의 일정 카드(참석 신청한 일정, 가까운 순 3개, 롤링), 그 아래 게시글 목록(고정 글 먼저, 그다음 최신 글. 나에게 공개된 글만).
+// 마감 일시 짧게: "2026-11-30T18:00" → "11/30 18:00", "2026-11-30" → "11/30"
+function deadlineText(d: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/.exec(d);
+  if (!m) return d;
+  return `${Number(m[2])}/${Number(m[3])}${m[4] ? ` ${m[4]}` : ""}`;
+}
+
 export default function BoardPage() {
   const router = useRouter();
   const [who, setWho] = useState<Me | null>(null);
@@ -154,7 +161,13 @@ export default function BoardPage() {
                   )}
                 </span>
                 {/* 제목 아래에는 공개 대상만(전체 회원 공개 글은 줄 없음). 내용 요약·반응·댓글·첨부 수는 목록에서 보이지 않는다 */}
-                {p.audienceText !== "전체 회원" && <span className="meta"><span>{p.audienceText}</span></span>}
+                {p.vote ? (
+                  // 투표·설문: 대상 인원 중 참여 인원과 마감(모든 회원에게)
+                  <span className="meta">
+                    <span>{p.form === "poll" ? "투표" : "응답"} <b className="num">{p.vote.done}</b>/{p.vote.target}명{p.audienceText !== "전체 회원" ? " · 선택한 회원 대상" : ""}</span>
+                    <span>· {p.vote.deadline ? (p.closed ? `마감됨 (${deadlineText(p.vote.deadline)})` : `${deadlineText(p.vote.deadline)} 마감`) : "마감 없음"}</span>
+                  </span>
+                ) : p.audienceText !== "전체 회원" && <span className="meta"><span>{p.audienceText}</span></span>}
               </Link>
             </li>
           ))}

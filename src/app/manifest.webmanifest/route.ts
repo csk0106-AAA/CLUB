@@ -17,7 +17,10 @@ export async function GET() {
     {
       name,
       short_name: shortName,
+      id: "/",
       start_url: "/",
+      // 설치한 앱을 다시 열 때 새 창을 만들지 않고 이미 열린 창을 쓴다(Chrome)
+      launch_handler: { client_mode: ["navigate-existing", "auto"] },
       display: "standalone",
       background_color: "#4c4e52",
       theme_color: "#5a5c61",
