@@ -8,6 +8,7 @@ import { api } from "@/lib/client";
 type Stage = {
   event: { id: string; name: string };
   activity: { id: string; name: string; participants: string };
+  buttons?: { draw: string; reveal: string }; // 진행자 버튼 글자(템플릿)
   missingSteps: string[];
   serverNow: number;
   categories: string[];
@@ -115,6 +116,8 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
   if (!st) return <div className="host">{error ? <p role="alert">{error}</p> : <p className="sub">불러오는 중이에요…</p>}</div>;
 
   const c = st.current;
+  const drawLabel = st.buttons?.draw ?? "고민 뽑기";
+  const revealLabel = st.buttons?.reveal ?? "이름 오픈";
   const elapsed = c && !c.paused && !c.timeUp && now ? Math.max(0, now - recv) : 0;
   const remaining = c ? Math.max(0, c.remainingMs - elapsed) : 0;
   const timeUp = c ? c.timeUp || (!c.paused && remaining <= 0) : false;
@@ -143,7 +146,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
               <div className="roulette spin" aria-hidden="true">{spin}</div>
             </>
           )}
-          {!spin && !c && <><h2>“고민 뽑기”를 눌러 주세요</h2><p className="sub" style={{ margin: 0 }}>이미 나온 고민은 다시 나오지 않아요. 남은 고민 {st.counts.remaining}개.</p></>}
+          {!spin && !c && <><h2>“{drawLabel}”를 눌러 주세요</h2><p className="sub" style={{ margin: 0 }}>이미 나온 고민은 다시 나오지 않아요. 남은 고민 {st.counts.remaining}개.</p></>}
           {!spin && c && (
             <>
               <span className="sub">{c.orderNo}번째 고민 · {c.category}</span>
@@ -162,7 +165,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
           <div className="panel">
             <h3>대화 시간</h3>
             <div className="num" style={{ font: "700 clamp(64px, 10vw, 120px)/1 var(--display)", color: timeUp ? "#ff5a52" : "#ffffff" }} aria-label="남은 시간">{c ? (timeUp ? "00:00" : fmt(remaining)) : "--:--"}</div>
-            <span className="sub">{!c ? "고민을 뽑으면 시작돼요" : timeUp ? (c.nameRevealed ? "시간이 끝났어요." : "시간이 끝났어요. 이름 오픈을 눌러 주세요.") : c.paused ? "일시정지 중" : `기본 ${c.minutes}분`}</span>
+            <span className="sub">{!c ? "고민을 뽑으면 시작돼요" : timeUp ? (c.nameRevealed ? "시간이 끝났어요." : `시간이 끝났어요. ${revealLabel}을 눌러 주세요.`) : c.paused ? "일시정지 중" : `기본 ${c.minutes}분`}</span>
             {c && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {c.paused ? <button className="btn white" type="button" disabled={busy} style={{ minHeight: 52 }} onClick={() => act("resume")}>계속</button>
@@ -182,14 +185,14 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
       <div className="controls" role="group" aria-label="진행자 버튼">
         {canDraw && (
           <>
-            <button className="btn" type="button" disabled={busy || !!spin || st.counts.remaining === 0} onClick={draw}>{c ? "다음 고민 뽑기" : "고민 뽑기"}</button>
+            <button className="btn" type="button" disabled={busy || !!spin || st.counts.remaining === 0} onClick={draw}>{c ? `다음 ${drawLabel}` : drawLabel}</button>
             <select className="field" aria-label="카테고리 지정" value={cat} onChange={(e) => setCat(e.target.value)} style={{ flex: "1 1 220px", minHeight: 64, fontSize: 20 }}>
               <option value="">카테고리: 전체</option>
               {st.categories.map((k) => <option key={k} value={k}>{k} ({st.counts.byCategory[k] ?? 0})</option>)}
             </select>
           </>
         )}
-        {c && !c.nameRevealed && <button className="btn blue" type="button" disabled={busy} onClick={() => act("reveal")}>이름 오픈</button>}
+        {c && !c.nameRevealed && <button className="btn blue" type="button" disabled={busy} onClick={() => act("reveal")}>{revealLabel}</button>}
         {c && <button className="btn white" type="button" disabled={busy} onClick={() => act("tips")}>AI 관점 3가지</button>}
       </div>
     </div>

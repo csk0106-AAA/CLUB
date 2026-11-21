@@ -31,6 +31,11 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({
     event: { id: w.ev.id, name: w.ev.name },
     activity: { id: aid, name: w.cfg.name, participants: w.cfg.participants },
+    // 진행자 버튼 글자(템플릿 단계의 진행자 버튼, 비어 있으면 기본 글자)
+    buttons: {
+      draw: w.cfg.onsite.steps.find((s) => s.key === "draw")?.hostButton || "고민 뽑기",
+      reveal: w.cfg.onsite.steps.find((s) => s.key === "reveal")?.hostButton || "이름 오픈",
+    },
     missingSteps: missingWorrySteps(w.cfg),
     live: liveView(w.cfg, await liveRow(aid)),
     serverNow: Date.now(),

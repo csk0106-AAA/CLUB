@@ -24,6 +24,13 @@ const KIND_SCREEN_LABELS: Record<string, Record<string, string>> = {
 };
 export const screenLabel = (c: Pick<EditableConfig, "preEvent" | "onsite">, k: string): string =>
   KIND_SCREEN_LABELS[kindOfConfig(c)]?.[k] ?? SCREEN_LABELS[k] ?? k;
+// 진행자 버튼 이름 후보: 그 활동 종류의 기본 버튼만(다른 활동의 버튼을 섞지 않는다)
+const HOST_BUTTONS: Record<string, string[]> = {
+  who: ["소개 열기", "“저예요” 열기", "투표", "정답 공개"],
+  worry: ["고민 뽑기", "이름 오픈"],
+  capsule: ["타임캡슐 작성하기", "봉인하기"],
+  "": ["시작"],
+};
 export const UNLOCK_LABELS: Record<string, string> = {
   host_click: "진행자가 버튼을 누르면 켜짐",
   immediate: "단계가 시작되면 바로 켜짐",
@@ -74,7 +81,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="grid2">
-        <div><label className="l" htmlFor="t-name">활동 이름</label><input id="t-name" className="field" value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} /></div>
+        <div><label className="l" htmlFor="t-name">활동 이름</label><input id="t-name" className="field" autoComplete="off" value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} /></div>
         <div><span className="l">설명 (자동)</span><div className="small" style={{ lineHeight: 1.6, padding: "6px 0" }}>{describeTemplate(value)}</div></div>
       </div>
 
@@ -222,6 +229,7 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>현장 진행 단계</b>
         {steps.length > 1 && <span className="small">단계 왼쪽 위 ⠿ 손잡이를 끌어서 순서를 바꿔요.</span>}
+        <datalist id="host-btn-list">{(HOST_BUTTONS[kindOfConfig(value)] ?? []).map((b) => <option key={b} value={b} />)}</datalist>
         <span className="small">회원 휴대폰 화면은 이 활동에 만들어진 화면만 고를 수 있어요({({ who: "소개·맞히기 활동", worry: "고민 활동", capsule: "작성 활동", "": "일반 활동" } as const)[kindOfConfig(value)]}: {screensFor(value).map((k) => screenLabel(value, k)).join(" · ")}).{kindOfConfig(value) === "worry" ? " 고민 활동은 진행 상황에 따라 회원 화면이 저절로 바뀌어요: 고민이 뽑히면 내용·타이머가 보이고, 진행자가 “이름 오픈”을 누르면 작성자가 보여요." : ""}</span>
         {steps.map((st, i) => {
           const row = ds.item(i);
@@ -232,8 +240,8 @@ export function TemplateEditor({ value, onChange, eventStartsAt, inEvent, isNew 
               <b className="grow">{i + 1}. {st.label || "새 단계"}</b>
             </div>
             <div className="grid2">
-              <div><label className="l" htmlFor={`s-l-${i}`}>단계 이름</label><input id={`s-l-${i}`} className="field" value={st.label} onChange={(e) => setStep(i, { label: e.target.value })} /></div>
-              <div><label className="l" htmlFor={`s-b-${i}`}>진행자 버튼 이름 (비우면 버튼 없음)</label><input id={`s-b-${i}`} className="field" value={st.hostButton ?? ""} onChange={(e) => setStep(i, { hostButton: e.target.value || undefined })} /></div>
+              <div><label className="l" htmlFor={`s-l-${i}`}>단계 이름</label><input id={`s-l-${i}`} className="field" autoComplete="off" value={st.label} onChange={(e) => setStep(i, { label: e.target.value })} /></div>
+              <div><label className="l" htmlFor={`s-b-${i}`}>진행자 버튼에 보이는 글자 (비우면 버튼 없음)</label><input id={`s-b-${i}`} className="field" autoComplete="off" list="host-btn-list" value={st.hostButton ?? ""} onChange={(e) => setStep(i, { hostButton: e.target.value || undefined })} /><span className="small">글자만 바뀌고, 버튼이 하는 일은 이 단계에 따라 정해져요.</span></div>
               <div>
                 <label className="l" htmlFor={`s-s-${i}`}>회원 휴대폰에 보이는 화면</label>
                 <select id={`s-s-${i}`} className="field" value={st.memberScreen} onChange={(e) => setStep(i, { memberScreen: e.target.value as typeof st.memberScreen })}>
