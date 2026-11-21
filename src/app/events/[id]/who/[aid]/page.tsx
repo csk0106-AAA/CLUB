@@ -6,6 +6,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { WhoWrite, type Note, type WhoState as State } from "@/components/WhoWrite";
+import { WhoChoice } from "@/components/WhoChoice";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -14,7 +15,6 @@ type Cand = { id: string; name: string; trip: string };
 
 // 사전 추측 후보 동그라미 색(돌아가며). 글자색은 globals.css .avatar 의 어두운 색이라 대비 4.5:1 이상.
 const AVATAR = ["var(--chip)", "var(--red-bg)", "var(--soft)", "var(--line)"];
-const OPTOUT = "이미 실명과 내소개 내용이 노출 된 회원입니다. 본 활동에는 참여 할 수 없습니다.";
 
 export default function WhoPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
@@ -34,18 +34,6 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   useEffect(() => {
     load();
   }, [load]);
-
-  // 이미 실명·소개가 공개된 회원: 업데이트할지 고른다
-  async function decide(update: boolean) {
-    if (update && !window.confirm("기존 내소개 내용은 삭제 됩니다. 새로 진행하시겠습니까?")) update = false;
-    if (!update) window.alert(OPTOUT);
-    setBusy(true);
-    const r = await api<{ state: string; alias?: string }>(`/api/who/${aid}/join`, { body: { decision: update ? "update" : "optout" } });
-    setBusy(false);
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setNote(update ? { tone: "info", text: `기존 내 소개를 지웠어요. 이제 별칭 “${r.data.alias ?? ""}”(으)로 이 활동에 참여해요. 인터뷰부터 시작해 주세요.` } : null);
-    await load();
-  }
 
   if (!st) {
     return (
@@ -84,19 +72,10 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
           <span className="small">참여 대상으로 선택된 회원만 별칭으로 소개를 쓰고 맞히기에 참여해요. 내 소개는 프로필 북에서 실명으로 작성할 수 있어요.</span>
           <Link className="btn" href="/profiles/write" style={{ textDecoration: "none" }}>프로필 북에서 소개 작성하기</Link>
         </div>
-      ) : st.state === "optout" ? (
-        <div className="msg info" role="status">{OPTOUT}</div>
-      ) : st.state === "prompt" ? (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <b style={{ font: `700 ${fs(17)} var(--display)` }}>내 소개 업데이트를 진행하시겠습니까?</b>
-          <span className="small">
-            이 활동의 참여 대상으로 선택됐어요. 지금 프로필 북에는 내 실명과 소개가 공개돼 있어요. 업데이트하면 기존 소개를 지우고, 이 활동에서 별칭으로 새로 작성해요{st.revealAt ? ` (${fmtDateTime(st.revealAt)}에 다시 실명 공개)` : ""}.
-          </span>
-          <div className="row" style={{ gap: 8 }}>
-            <button className="btn" type="button" disabled={busy} style={{ flex: 1 }} onClick={() => decide(true)}>네</button>
-            <button className="btn white" type="button" disabled={busy} style={{ flex: 1 }} onClick={() => decide(false)}>아니요</button>
-          </div>
-        </div>
+      ) : st.state === "optout" || st.state === "prompt" ? (
+        // 이미 실명 소개가 공개된 회원: 프로필북 초기화 / 일부활동참여(고른 뒤에도 마감 전이면 초기화로 바꿀 수 있다)
+        <WhoChoice aid={aid} canReset={st.pre.status !== "closed"} revealAt={st.revealAt} partial={st.state === "optout"}
+          onDone={(text) => { setNote({ tone: "info", text }); load(); }} />
       ) : (
         <WhoWrite st={st} aid={aid} busy={busy} setBusy={setBusy} setNote={setNote} reload={load} />
       )}

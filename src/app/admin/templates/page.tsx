@@ -111,7 +111,10 @@ function Templates() {
               {fam && fam.latest.id === t.id && count > 1 && <span className="pill warn">최신</span>}
             </>
           ) : (
-            <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "템플릿" : "내가 만든 템플릿"} v1</span>
+            <>
+              <span className={`pill ${t.origin === "default" ? "ok" : "blue"}`}>{t.origin === "default" ? "템플릿" : "내가 만든 템플릿"} v1</span>
+              {t.config.bookOnly && <span className="pill warn" title="프로필 북 “소개 작성하기”에서 최신 버전을 써요. 일정에는 넣지 않아요.">프로필 북 전용</span>}
+            </>
           )}
           <span className="grow" />
           {!inVersions && fam && count >= 2 && (

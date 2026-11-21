@@ -4,7 +4,7 @@ import { guessStatus } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
-import { NOT_ATTENDEE, joinSet } from "@/lib/participants";
+import { NOT_ATTENDEE, canJoin, joinSet } from "@/lib/participants";
 import { guessClosed, loadWho } from "@/lib/who";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
   // 이 활동의 참석자만 맞히기에 참여하고, 참석자의 소개만 노출된다. 불참하는 분의 소개는 프로필 북에만 실린다.
   const join = await joinSet(w.cfg, w.act, w.ev);
-  if (join && !join.has(g.s.mid)) {
+  if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) {
     return NextResponse.json({ guess: gs, targets: [], candidates: [], notJoin: true });
   }
 
@@ -79,7 +79,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
 
   const join = await joinSet(w.cfg, w.act, w.ev);
-  if (join && !join.has(g.s.mid)) return bad(NOT_ATTENDEE, 403);
+  if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) return bad(NOT_ATTENDEE, 403);
 
   const s = await getStore();
   const target = (await s.list("Profiles")).find((p) => p.id === parsed.data.profileId && p.introStatus === "approved" && (!join || join.has(p.memberId)));

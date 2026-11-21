@@ -126,8 +126,8 @@ export async function writeGate(ctx: WhoCtx, memberId: string): Promise<NextResp
   if (st === "in") return null;
   const msg = st === "none"
     ? "이 활동의 참여 대상이 아니에요. 프로필 북에서 ‘소개 작성하기’로 소개를 쓸 수 있어요."
-    : st === "optout" ? "이미 실명과 내 소개가 공개된 회원이라 이 활동에는 참여하지 않아요."
-      : "먼저 ‘내 소개 업데이트’를 할지 골라 주세요.";
+    : st === "optout" ? "“일부활동참여”를 골라 실명 소개를 그대로 두었어요. 이 활동에서는 소개를 쓰지 않고 맞히기·투표에 참여해요."
+      : "먼저 “프로필북 초기화” 또는 “일부활동참여”를 골라 주세요.";
   return NextResponse.json({ error: msg }, { status: 403 });
 }
 

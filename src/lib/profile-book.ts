@@ -3,20 +3,25 @@ import { randomNickname } from "./nickname";
 import { joinSet } from "./participants";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
+import { familyRows } from "./template-versions";
 import { DEFAULT_TEMPLATES, type TemplateConfig } from "./template-schema";
 
 // 프로필 북의 "소개 작성하기"(일정 활동이 아닌 곳에서 쓰는 내 소개).
-//  '내가 누굴까요?' 템플릿 v1(id who-am-i)의 질문·AI 지침을 그대로 쓰고(템플릿을 고치면 여기에도 반영), 2진실 1거짓은 없다.
+//  프로필 북 전용 활동 템플릿 "내 소개(프로필 북)"(id profile-intro)의 **최신 버전** 질문·AI 지침을 쓴다(템플릿 화면에서 따로 관리).
+//  게임용 '내가 누굴까요?'와 지침이 섞이지 않는다. 2진실 1거짓은 없다. 전용 템플릿이 없으면 '내가 누굴까요?' v1 을 쓴다.
 //  인터뷰는 Interviews.eventActivityId = PROFILE_AID 로 저장한다. 완료하면 프로필 북에 실명으로 바로 보인다.
 export const PROFILE_AID = "profile-book";
 export const WHO_V1_ID = "who-am-i";
+export const BOOK_TEMPLATE_ID = "profile-intro";
 
-// 템플릿 v1 설정(관리자가 고친 저장본, 없으면 기본값)
+// 프로필 북 소개 작성에 쓰는 템플릿: 전용 템플릿 묶음의 최신 버전 → 없으면 '내가 누굴까요?' v1 → 없으면 기본값
 export async function whoV1(): Promise<{ row: Row; cfg: TemplateConfig }> {
-  const t = (await (await getStore()).list("ActivityTemplates")).find((x) => x.id === WHO_V1_ID);
+  const rows = await (await getStore()).list("ActivityTemplates");
+  const fam = familyRows(rows, BOOK_TEMPLATE_ID);
+  const t = fam[fam.length - 1] ?? rows.find((x) => x.id === WHO_V1_ID);
   const cfg = readConfig(t?.config) ?? DEFAULT_TEMPLATES.find((d) => d.id === WHO_V1_ID)!;
   // 활동 행 모양: templateId 로 AI 지침·질문을 템플릿에서 읽는다(lib/ai-guides.ts activityAiConfig)
-  const row: Row = { id: PROFILE_AID, eventId: "", templateId: t ? WHO_V1_ID : "", config: JSON.stringify(cfg), startsAt: "", endsAt: "" };
+  const row: Row = { id: PROFILE_AID, eventId: "", templateId: t?.id ?? "", config: JSON.stringify(cfg), startsAt: "", endsAt: "" };
   return { row, cfg };
 }
 

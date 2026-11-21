@@ -32,7 +32,7 @@ type Act = {
 type Tpl = TplRow;
 type Att = {
   confirmed: boolean; confirmedAt: string; by: string; selectedCount: number;
-  members: { id: string; name: string; answer: string; days: string; selected: boolean }[];
+  members: { id: string; name: string; answer: string; days: string; selected: boolean; who?: { published: boolean; state: "in" | "partial" | "undecided" | "new" } }[];
 };
 
 const PRE_TEXT: Record<string, string> = {
@@ -220,6 +220,18 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
     await load();
     onChange();
   }
+  // 이미 실명 소개가 공개된 참여자: 회원에게 묻기 / 일부활동참여 / 프로필북초기화(확인 뒤, 지운 소개는 백업되고 회원에게 알림)
+  async function whoDecide(m: Att["members"][number], decision: "ask" | "partial" | "update") {
+    if (decision === "update" && !window.confirm(`${m.name} 님의 프로필 북 소개를 초기화할까요?\n공개된 소개가 지워지고(백업은 남아요), 이 활동에서 별칭으로 새로 써야 해요. 회원에게 알림이 가요.`)) return;
+    setBusy(true);
+    setMsg(null);
+    const r = await api(`/api/admin/events/${eventId}/activities/${a.id}/who-decision`, { body: { memberId: m.id, decision } });
+    setBusy(false);
+    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    setMsg({ tone: "info", text: decision === "ask" ? `${m.name} 님에게 고르도록 알림을 보냈어요.` : decision === "partial" ? `${m.name} 님을 일부활동참여로 정했어요.` : `${m.name} 님의 프로필 북을 초기화하고 알림을 보냈어요.` });
+    await load();
+  }
+
   async function preset() {
     setBusy(true);
     const r = await api(base, { method: "PUT", body: { preset: "applicants" } });
@@ -253,9 +265,25 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
             <input type="checkbox" checked={sel.has(m.id)} disabled={!canEdit} onChange={() => toggle(m.id)} />
             {m.name}
             {m.answer && <span className={`pill ${m.answer === "참석" ? "ok" : "gray"}`}>{m.answer === "참석" ? "일정 신청" : "불참"}</span>}
+            {m.who?.published && <span className="pill warn" title="프로필 북에 실명 소개가 공개된 회원">소개 공개됨</span>}
           </label>
         ))}
       </div>
+      {/* '내가 누굴까요?': 이미 실명 소개가 공개된 참여자는 프로필북 초기화 / 일부활동참여를 정해야 한다 */}
+      {att.members.some((m) => m.selected && m.who && (m.who.state === "undecided" || m.who.state === "partial")) && (
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
+          <b style={{ fontSize: fs(14) }}>내 소개가 이미 공개된 참여자</b>
+          <span className="small">이 활동은 프로필 북을 익명으로 하고 누구인지 맞히는 게임이에요. 이 회원들은 <b>프로필북 초기화</b>(소개를 지우고 별칭으로 새로 써서 맞히기 대상) 또는 <b>일부활동참여</b>(소개 그대로, 맞히기 대상만 빠짐)를 정해야 해요. 정하지 않으면 맞히기 대상에 들어가지 않아요. 저장한 참여자만 보여요.</span>
+          {att.members.filter((m) => m.selected && m.who && (m.who.state === "undecided" || m.who.state === "partial")).map((m) => (
+            <div key={m.id} className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+              <b className="grow" style={{ fontSize: fs(14) }}>{m.name} <span className={`pill ${m.who?.state === "partial" ? "gray" : "warn"}`}>{m.who?.state === "partial" ? "일부활동참여" : "미정"}</span></b>
+              {canEdit && m.who?.state === "undecided" && <button className="mini" type="button" disabled={busy} onClick={() => whoDecide(m, "ask")}>회원에게 묻기</button>}
+              {canEdit && m.who?.state === "undecided" && <button className="mini" type="button" disabled={busy} onClick={() => whoDecide(m, "partial")}>일부활동참여</button>}
+              {canEdit && <button className="mini danger" type="button" disabled={busy} onClick={() => whoDecide(m, "update")}>프로필북초기화</button>}
+            </div>
+          ))}
+        </div>
+      )}
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="btn" type="button" disabled={busy || (!dirty && att.confirmed === sel.size > 0)} style={{ width: "auto", minWidth: 160, minHeight: 46, fontSize: fs(15) }} onClick={onSave}>
@@ -317,7 +345,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   const [pick, setPick] = useState(""); // 고른 템플릿(v1 id)
   const [pickVer, setPickVer] = useState(""); // 고른 버전 id (버전이 2개 이상일 때 두 번째 단계에서)
   const [addStep, setAddStep] = useState<1 | 2>(1);
-  const fams = families(tpls);
+  const fams = families(tpls).filter((f) => !f.root.config.bookOnly); // 프로필 북 전용 템플릿은 일정에 넣지 않는다
   const nextVerOf = (templateId: string) => fams.find((f) => f.versions.some((v) => v.id === templateId))?.nextVersion;
   const [edit, setEdit] = useState<{ id: string; value: EditableConfig; orig: string } | null>(null);
   const [editErr, setEditErr] = useState("");
@@ -336,7 +364,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     else setMsg({ tone: "bad", text: a.error });
     if (t.ok) {
       setTpls(t.data.templates);
-      setPick((p) => p || families(t.data.templates)[0]?.id || "");
+      setPick((p) => p || families(t.data.templates).filter((f) => !f.root.config.bookOnly)[0]?.id || "");
     }
   }, [eventId]);
   useEffect(() => {

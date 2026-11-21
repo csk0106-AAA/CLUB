@@ -4,6 +4,7 @@ import { bad, guardEv } from "@/lib/api";
 import { attendanceState, rosterSet, saveAttendanceState } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
+import { isWhoAmI, readConfig } from "@/lib/activities";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; aid: string }> };
@@ -21,9 +22,19 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { id, aid } = await ctx.params;
   const c = await load(id, aid);
   if (!c) return bad("활동을 찾을 수 없어요.", 404);
-  const [members, selected, applies, state] = await Promise.all([
-    c.s.list("Members"), rosterSet(c.act), c.s.list("EventApplies"), attendanceState(aid),
+  const [members, selected, applies, state, profiles, interviews] = await Promise.all([
+    c.s.list("Members"), rosterSet(c.act), c.s.list("EventApplies"), attendanceState(aid), c.s.list("Profiles", { omit: ["draftMd", "introMd", "readingMd"] }), c.s.list("Interviews", { omit: ["messages"] }),
   ]);
+  // '내가 누굴까요?'(프로필 북 익명 게임)면 회원마다 내 소개 공개 여부와 참여 상태를 함께 보여 준다
+  const who = isWhoAmI(readConfig(c.act.config) ?? ({} as never));
+  const whoOf = (mid: string) => {
+    if (!who) return undefined;
+    const iv = interviews.find((i) => i.memberId === mid && i.eventActivityId === aid);
+    const published = profiles.find((p) => p.memberId === mid)?.introStatus === "approved";
+    // in: 이 활동에서 소개 작성(맞히기 대상) / partial: 일부활동참여 / undecided: 소개가 공개돼 있어 아직 안 고름 / new: 공개된 소개 없음(선택하면 바로 대상)
+    const st = iv?.status === "optout" ? "partial" : iv ? "in" : published ? "undecided" : "new";
+    return { published, state: st };
+  };
   return NextResponse.json({
     confirmed: state.confirmed,
     confirmedAt: state.confirmedAt,
@@ -33,7 +44,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       .filter((m) => (!isGuest(m.kind) || applies.some((a) => a.eventId === id && a.memberId === m.id && a.answer === "참석")))
       .map((m) => {
         const ap = applies.find((a) => a.eventId === id && a.memberId === m.id);
-        return { id: m.id, name: m.name, answer: ap?.answer ?? "", days: ap?.days ?? "", selected: selected.has(m.id) };
+        return { id: m.id, name: m.name, answer: ap?.answer ?? "", days: ap?.days ?? "", selected: selected.has(m.id), who: whoOf(m.id) };
       }),
   });
 }

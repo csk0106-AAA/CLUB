@@ -142,6 +142,8 @@ export const TABS = {
     "traitsMd", "traitsShown",
     // sajuInfo: 본인이 입력한 정보와 사주 원국(JSON). 생애주기 풀이 첫머리에 본인에게만 보여 준다. 풀이를 지우면 함께 지운다.
     "sajuInfo",
+    // introBackup: "프로필북 초기화"로 지운 소개 백업 JSON {at, by, introMd, draftMd, approvedAt}(lib/who-join.ts)
+    "introBackup",
   ],
   Interviews: ["id", "memberId", "eventActivityId", "messages", "status", "updatedAt"],
   TruthLies: ["id", "memberId", "eventActivityId", "statements", "lieIndex", "status", "approvedAt"],

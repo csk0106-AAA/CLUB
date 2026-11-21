@@ -244,6 +244,38 @@ export async function migrateAiRules(s: Store): Promise<{ backedUp: number } | n
   return { backedUp: rows.length };
 }
 
+// 한 번만: 프로필 북 전용 템플릿 "내 소개(프로필 북)"(id profile-intro)을 만든다.
+//  '내가 누굴까요?' v1 의 인터뷰 질문·후속 질문 설정·AI 지침(후속 질문·소개 글·수정 요청)·공통 지침을 복사하되
+//  게임 관련(2진실 1거짓 지침, 공통 지침의 2진실 1거짓 문장)은 빼고, 겹친 문장은 한 번만 남긴다.
+export async function migrateBookTemplate(s: Store): Promise<{ created: boolean } | null> {
+  const flag = "bookTemplateCreated";
+  if (await s.get("Settings", flag)) return null;
+  const rows = await s.list("ActivityTemplates");
+  let created = false;
+  if (!rows.some((r) => r.id === "profile-intro")) {
+    const who = readConfig(rows.find((r) => r.id === "who-am-i")?.config);
+    const common = [...new Set((who?.aiCommon ?? "").split("\n").map((l) => l.trim()).filter((l) => l && !l.includes("2진실")))].join("\n");
+    const g = who?.aiGuides ?? {};
+    const cfg: TemplateConfig = {
+      id: "profile-intro",
+      name: "내 소개(프로필 북)",
+      version: 1,
+      description: "프로필 북의 “소개 작성하기”에서 쓰는 AI 인터뷰예요(실명 소개, 2진실 1거짓 없음). 일정에는 넣지 않아요.",
+      participants: "all",
+      preEvent: { enabled: true, steps: ["ai_interview", "reading_optional", "approve"] },
+      onsite: { steps: [{ key: "view", label: "소개 보기", memberScreen: "view", unlock: "immediate" }] },
+      ...(common ? { aiCommon: common } : {}),
+      aiGuides: Object.fromEntries(["followup", "draft", "revise"].filter((k) => g[k]?.trim()).map((k) => [k, g[k]])),
+      ...(who?.interview ? { interview: who.interview } : {}),
+      bookOnly: true,
+    };
+    await s.insert("ActivityTemplates", { id: "profile-intro", name: cfg.name, version: "1", config: JSON.stringify(cfg), origin: "default", createdAt: new Date().toISOString() });
+    created = true;
+  }
+  await s.insert("Settings", { id: flag, value: JSON.stringify({ at: new Date().toISOString(), created }) });
+  return { created };
+}
+
 // 지울 수 있는지: 일정 활동이 쓰는 버전은 지울 수 없고, v1 은 다른 버전이 없는 직접 만든 템플릿만 지운다.
 export function deleteBlock(rows: Row[], acts: Row[], r: Row): string | null {
   if (r.origin === "default") return "기본 템플릿은 지울 수 없어요. 복제해서 쓰세요.";

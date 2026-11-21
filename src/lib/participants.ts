@@ -44,8 +44,8 @@ async function eventOf(act: Row, ev?: Row): Promise<Row | undefined> {
 
 // '내가 누굴까요?' 참여 상태(참여 대상 안에서)
 //  none   : 참여 대상이 아님(프로필 북에서 실명으로 소개를 쓴다)
-//  prompt : 참여 대상이지만 이미 실명으로 공개한 소개가 있어 "내 소개 업데이트"를 할지 아직 고르지 않음(게임에 들어가지 않음)
-//  optout : 업데이트하지 않기로 함(이 활동에 참여하지 않음) — Interviews.status "optout"
+//  prompt : 참여 대상이지만 이미 실명으로 공개한 소개가 있어 "프로필북 초기화 / 일부활동참여"를 아직 고르지 않음(맞히기 대상 아님)
+//  optout : "일부활동참여" — 실명 소개 그대로, 맞히기 대상에서만 빠지고 맞히기·투표 등은 참여 — Interviews.status "optout"
 //  in     : 게임 참여(프로필 북에 별칭으로 보이고, 이 활동에서 소개를 쓴다)
 export type WhoState = "none" | "prompt" | "optout" | "in";
 export function whoStateOf(aid: string, memberId: string, inRoster: boolean, interviews: Row[], profiles: Row[]): WhoState {
@@ -79,10 +79,10 @@ export async function inRoster(cfg: TemplateConfig, act: Row, ev: Row, memberId:
 // 이 회원이 활동에 참여할 수 있는지.
 //  - 일정 대상(클럽 회원·참관자 또는 공개 대상)에 들어 있어야 한다.
 //  - selected 이면 관리자가 선택한 회원(출석 체크)만 가능하다.
-//  - 소개 작성 활동('내가 누굴까요?')은 참여 상태가 in 인 회원만(이미 공개한 소개가 있는데 업데이트를 고르지 않았거나 안 하기로 한 회원은 빠진다).
+//  - 소개 작성 활동('내가 누굴까요?')은 맞히기·투표·저예요 등 참여는 참여 대상이면 되고(일부활동참여·미정 포함),
+//    소개를 쓰고 맞히기 대상이 되는 건 참여 상태 in 인 회원만이다(joinSet, lib/who.ts writeGate).
 export async function canJoin(cfg: TemplateConfig, act: Row, ev: Row, memberId: string): Promise<boolean> {
-  if (!(await inRoster(cfg, act, ev, memberId))) return false;
-  return (await whoFilter(cfg, act.id, [memberId])).has(memberId);
+  return inRoster(cfg, act, ev, memberId);
 }
 
 // 참여 대상 회원 번호 집합. 제한이 없으면 null(전체 회원).

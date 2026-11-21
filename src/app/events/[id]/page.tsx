@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { EventHero } from "@/components/EventHero";
 import { FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, type FeeView } from "@/components/EventInfoCard";
 import { LiveActivities, LiveNowBanner } from "@/components/LiveActivities";
+import { WhoChoice } from "@/components/WhoChoice";
 import { EventMinutes } from "@/components/EventMinutes";
 import { EventPhotos } from "@/components/EventPhotos";
 import { MemberTabs } from "@/components/MemberTabs";
@@ -38,6 +39,7 @@ type Detail = {
   costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
   apply: { answer: string; days: string[]; paid: boolean; payNotice: string; payUndoAt?: string; payUndoReason?: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string; req?: string; reqDays?: string[]; reqResult?: string; reqReason?: string } | null;
   feeDue: boolean;
+  whoPrompts?: { aid: string; name: string; canReset: boolean }[];
 };
 
 // 일정 시작까지 남은 날: "D-35", 진행 중이면 "오늘 진행", 끝났으면 빈 문자열
@@ -214,6 +216,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </button>
         )
       )}
+
+      {/* '내가 누굴까요?' 참여 대상인데 이미 실명 소개가 공개된 회원: 프로필북 초기화 / 일부활동참여 */}
+      {(d.whoPrompts ?? []).map((w) => (
+        <WhoChoice key={w.aid} aid={w.aid} name={w.name} canReset={w.canReset} onDone={(text) => { window.alert(text); load(); }} />
+      ))}
 
       {/* 현장 진행 중인 활동이 있으면: 들어가기(저예요·투표 등은 활동 화면에서) */}
       <LiveNowBanner eventId={id} />

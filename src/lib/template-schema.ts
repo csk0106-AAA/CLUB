@@ -98,6 +98,8 @@ export const templateConfigSchema = z.object({
   // 나의 고민은?(고민 엔진): 대화 타이머 기본 시간과 "+N분" 연장 단위(분). 비어 있으면 15분 / 5분
   worry: z.object({ talkMinutes: z.number().int().min(1).max(120).optional(), extendMinutes: z.number().int().min(1).max(60).optional() }).optional(),
   derivedFrom: z.string().optional(), // v1 템플릿 id
+  // 프로필 북 전용(프로필 북 "소개 작성하기"에서만 쓰고 일정에는 넣지 않는다, lib/profile-book.ts)
+  bookOnly: z.boolean().optional(),
   sourceEvent: z.object({ id: z.string(), name: z.string(), date: z.string() }).optional(),
 });
 
