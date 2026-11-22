@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 import { Mascot } from "@/components/Mascot";
-import { SajuPanel, type SajuInfo } from "@/components/SajuPanel";
+import { Md, SajuPanel, type SajuInfo } from "@/components/SajuPanel";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -334,6 +334,18 @@ export function WhoWrite(props: {
     await reload();
   });
 
+  // 배포된 뒤 별칭 바꾸기: 공개 중인 별칭이 갑자기 바뀌지 않게, 배포를 잠시 취소하고 별칭 칸을 연다
+  const changeAliasAfterApprove = () => {
+    if (!window.confirm("별칭을 바꾸려면 배포를 잠시 취소해야 해요(다른 회원에게 잠시 안 보여요). 바꾼 뒤 “최종 배포”를 다시 눌러 주세요. 진행할까요?")) return;
+    run(async () => {
+      const r = await api(`/api/who/${aid}/approve`, { method: "DELETE" });
+      if (!r.ok) return setNote({ tone: "bad", text: r.error });
+      await reload();
+      setAlias(st.profile.alias);
+      setEditAlias(true);
+      setNote({ tone: "info", text: "배포를 잠시 취소했어요. 새 별칭을 정한 뒤 “최종 배포”를 다시 눌러 주세요." });
+    });
+  };
   const unapprove = () => run(async () => {
     const r = await api(`/api/who/${aid}/approve`, { method: "DELETE" });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
@@ -464,7 +476,7 @@ export function WhoWrite(props: {
       </details>
 
       {/* 단계: ① 공통 질문 ② AI 추가 질문 ③ 명리학 사주풀이 */}
-      {iv.messages.length > 0 && !introOnly && (() => {
+      {iv.messages.length > 0 && !introOnly && !approved && (() => {
         const extra = iv.extra ?? 0;
         const commonDone = iv.answered >= iv.required;
         const aiState = !extra ? "" : iv.aiPlan === "none" ? "안 함" : interviewDone ? "완료" : commonDone ? "진행 중" : "대기";
@@ -485,13 +497,6 @@ export function WhoWrite(props: {
         );
       })()}
 
-      {/* 인터뷰를 마친 뒤: 기존 인터뷰 수정하기 / AI 인터뷰 다시 하기 */}
-      {(interviewDone || introOnly) && (
-        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          {interviewDone && <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={startEdit}>기존 인터뷰 수정하기</button>}
-          <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={restart}>AI 인터뷰 다시 하기</button>
-        </div>
-      )}
 
       {/* 1. 인터뷰 (별칭은 인터뷰가 끝난 뒤 AI가 소개 글과 함께 제안한다) */}
       {!interviewDone && !introOnly && (
@@ -658,16 +663,33 @@ export function WhoWrite(props: {
       {/* 3. 미리보기 · 수정 · 승인 */}
       {(interviewDone || introOnly) && hasDraft && (
         <section aria-label="미리보기와 승인" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            <h2 className="h3 grow">{inAct && hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
-            <span className={`chip ${approved ? "violet" : "gray"}`}>{approved ? "배포됨 ✓" : "초안 · 나만 보여요"}</span>
-            {!approved && interviewDone && (
-              <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글 다시 만들기"}</button>
-            )}
-          </div>
+          {approved ? (
+            // 배포 완료: 지금 상태와 할 수 있는 일을 한눈에
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, borderColor: "var(--green)" }}>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>내 소개를 배포했어요 ✓</b>
+                <button className="mini" type="button" disabled={busy} onClick={unapprove}>소개 고치기</button>
+              </div>
+              {inAct ? (
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <span className="small">프로필 북에는 별칭</span>
+                  <b style={{ font: `700 ${fs(16)} var(--display)` }}>“{st.profile.alias}”</b>
+                  <span className="small grow">(으)로 보여요{st.revealAt ? ` · ${fmtDateTime(st.revealAt)}에 실명 공개` : ""}.</span>
+                  <button className="mini" type="button" disabled={busy} onClick={changeAliasAfterApprove}>별칭 바꾸기</button>
+                </div>
+              ) : <span className="small">프로필 북에 실명으로 보여요.</span>}
+            </div>
+          ) : (
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              <h2 className="h3 grow">내 소개 <span className="chip gray" style={{ verticalAlign: "middle" }}>초안 · 나만 보여요</span></h2>
+              {interviewDone && (
+                <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글 다시 만들기"}</button>
+              )}
+            </div>
+          )}
 
           {/* 별칭(게임 참여일 때만): 랜덤으로 정해진 별칭을 확인하고, 필요하면 고쳐서 '바꾸기' */}
-          {inAct && ((!hasAlias || editAlias) && !approved ? (
+          {inAct && !approved && ((!hasAlias || editAlias) ? (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label className="l" htmlFor="alias">{hasAlias ? "새 별칭" : "별칭을 정해 주세요"}</label>
               <span className="small">이름과 회사명이 드러나면 안 되고, 다른 회원과 겹치면 안 돼요. 바꾸면 소개 글 속 별칭도 함께 바뀌어요.</span>
@@ -690,11 +712,20 @@ export function WhoWrite(props: {
               <span className="small">내 별칭</span>
               <b style={{ font: `700 ${fs(15)} var(--display)` }}>{st.profile.alias}</b>
               <span className="grow" />
-              {!approved && <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>}
+              <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>
             </div>
           ))}
-          <label className="l" htmlFor="intro">{approved ? "소개 글 (고치려면 아래 “승인 취소하고 다시 고치기”를 눌러 주세요)" : "소개 글 (직접 고칠 수 있어요)"}</label>
-          <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} disabled={approved} onChange={(e) => setIntro(e.target.value)} />
+          {approved ? (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span className="l" style={{ margin: 0 }}>소개 글</span>
+              <Md text={intro} />
+            </div>
+          ) : (
+            <>
+              <label className="l" htmlFor="intro">소개 글 (직접 고칠 수 있어요)</label>
+              <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} onChange={(e) => setIntro(e.target.value)} />
+            </>
+          )}
           {!approved && hits.length > 0 && hasHit(intro, hits) && (
             <div className="id-hit-box" role="note" aria-label="신원이 드러나는 말 표시">
               <span className="small"><b>빨갛게 표시한 말</b>을 지우거나 일반적인 표현으로 바꿔 주세요.</span>
@@ -776,9 +807,7 @@ export function WhoWrite(props: {
             </div>
           )}
           <div className="footer-actions">
-            {approved ? (
-              <button className="btn white" type="button" disabled={busy} onClick={unapprove}>승인 취소하고 다시 고치기</button>
-            ) : (
+            {approved ? null : (
               <>
                 {/* 임시 저장 · 최종 배포를 한 줄로 같은 크기(1:1) */}
                 <div className="row" style={{ gap: 8 }}>
@@ -790,6 +819,18 @@ export function WhoWrite(props: {
             )}
           </div>
         </section>
+      )}
+
+      {/* 자주 쓰지 않는 작업: 인터뷰 수정·다시 하기(접어 둔다) */}
+      {(interviewDone || introOnly) && (
+        <details className="card">
+          <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>인터뷰 수정·다시 하기</summary>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            {interviewDone && <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={startEdit}>기존 인터뷰 수정하기</button>}
+            <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={restart}>AI 인터뷰 다시 하기</button>
+          </div>
+          <span className="small" style={{ display: "block", marginTop: 6 }}>기존 인터뷰 수정하기: 질문별 내 답을 고치고 소개 글을 다시 만들어요. AI 인터뷰 다시 하기: 공통 질문부터 다시 해요.</span>
+        </details>
       )}
     </>
   );
