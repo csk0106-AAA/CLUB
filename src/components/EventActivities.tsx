@@ -423,9 +423,19 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     api<{ members: { id: string; name: string }[] }>("/api/public/club").then((r) => r.ok && setMembers(r.data.members));
   }, []);
   // 진행자 화면의 "활동으로 돌아가기"(#act-활동id): 활동 목록을 불러온 뒤 그 활동으로 스크롤하고 잠깐 강조한다
+  // 활동 카드 펼치기: 처음에는 요약만 보이고, 펼치면 활동별 설정(참여자 선택·일시·진행자·현장 진행 등)이 보인다
+  const [openActs, setOpenActs] = useState<Set<string>>(new Set());
+  const [openInit, setOpenInit] = useState(false);
+  const toggleAct = (id: string) => setOpenActs((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const scrolled = useRef(false);
   useEffect(() => {
-    if (!acts || scrolled.current) return;
+    if (!acts) return;
+    if (!openInit) {
+      setOpenInit(true);
+      const h0 = window.location.hash.startsWith("#act-") ? window.location.hash.slice(5) : "";
+      setOpenActs(new Set(acts.filter((x) => x.id === h0 || x.live.active || acts.length === 1).map((x) => x.id)));
+    }
+    if (scrolled.current) return;
     const h = window.location.hash;
     if (!h.startsWith("#act-")) return;
     scrolled.current = true;
@@ -434,7 +444,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     el.scrollIntoView({ block: "start", behavior: "smooth" });
     el.classList.add("act-flash");
     window.setTimeout(() => el.classList.remove("act-flash"), 1800);
-  }, [acts]);
+  }, [acts, openInit]);
   // 일정 시작 일시: 활동 설정의 사전 단계 기간을 실제 날짜·시각으로 미리 보여 주는 데 쓴다
   const [evStart, setEvStart] = useState("");
   useEffect(() => {
@@ -578,6 +588,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             <span className={`pill ${a.pre.enabled ? "blue" : "warn"}`}>{a.pre.enabled ? "사전 작성 있음" : "현장에서만"}</span>
             <span className="pill gray">{modeOf(a.config) === "team" ? "팀별" : "모두 함께"}</span>
             <span className="grow" />
+            <button className="mini" type="button" aria-expanded={openActs.has(a.id)} onClick={() => toggleAct(a.id)}>{openActs.has(a.id) ? "접기 ▴" : "설정 펼치기 ▾"}</button>
             {canEdit && (
               <>
                 <button className="mini" type="button" onClick={() => { const { id: _i, version: _v, ...rest } = a.config; void _i; void _v; setEditErr(""); setEdit({ id: a.id, value: rest, orig: JSON.stringify(rest) }); }}>수정</button>
@@ -597,6 +608,18 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               </>
             )}
           </div>
+          {/* 접혀 있을 때: 한 줄 요약(일시 · 참여자 · 사전 작성 · 현장 진행) */}
+          {!openActs.has(a.id) && (
+            <span className="small" style={{ cursor: "pointer" }} onClick={() => toggleAct(a.id)}>
+              {[
+                a.startsAt ? `활동 ${fmtDateTime(a.startsAt)}` : "활동 일시 미정",
+                a.attendanceConfirmed ? `참여자 ${a.rosterCount}명` : "참여자 선택 필요",
+                a.pre.enabled ? PRE_TEXT[a.pre.status] : "",
+                a.live.active ? `현장 진행 중 · ${a.live.stepLabel}` : "",
+              ].filter(Boolean).join(" · ")}
+            </span>
+          )}
+          {openActs.has(a.id) && (<>
           <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${fmtDateTime(a.pre.opensAt)} ~ ${fmtDateTime(a.pre.closesAt)}` : ""}</span>
           {a.config.preEvent.steps.includes("ai_interview") && <Progress eventId={eventId} aid={a.id} />}
           <span className="small">참여 범위: {canSelect(a.config) ? "선택 참여 가능 (회원마다 전체참여 / 선택참여)" : "전체 참여만"}{a.attendanceConfirmed ? ` · 참여자 ${a.rosterCount}명` : " · 참여자 선택 필요"}</span>
@@ -656,6 +679,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             )}
             <span className="small" style={{ fontSize: fs(12) }}>잠그기: 회원 화면을 대기 화면으로 잠가요(다시 열기로 지금 단계를 다시 켜요) · 처음으로: 현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로). 진행자 전체화면으로 진행할 때는 전체화면 위쪽에서 잠그기·다시 열기를 바로 누를 수 있어요(처음으로는 리허설 뒤 정리용이라 여기에만 있어요).</span>
           </div>
+          </>)}
         </div>
       ))}
 
