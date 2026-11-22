@@ -20,7 +20,7 @@ export type CarReq = {
   createdAt: string; handledAt: string; fromCarId: string; seen: boolean; note: string;
 };
 export const REQ_LABEL: Record<CarReqStatus, string> = {
-  pending: "승인 대기", approved: "배정(확정 전)", confirmed: "확정", waiting: "신청 대기", rejected: "반려", canceled: "취소", changed: "변경됨",
+  pending: "승인 대기", approved: "배정됨", confirmed: "배정됨", waiting: "신청 대기", rejected: "반려", canceled: "취소", changed: "변경됨",
 };
 
 export const toReq = (r: Row): CarReq => ({

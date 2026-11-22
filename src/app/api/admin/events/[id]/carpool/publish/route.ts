@@ -3,7 +3,7 @@ import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
 import { approve, confirmAll, reject, setSelf } from "@/lib/car-requests";
 import { autoAssign, carpoolState, cars, saveCarpoolState } from "@/lib/carpool";
-import { confirmByAdmin, markDue, runCarpoolDue } from "@/lib/car-auto";
+import { confirmByAdmin, markDue, runCarpoolDue, confirmIfClosed } from "@/lib/car-auto";
 import { addAlerts } from "@/lib/member-alerts";
 import { pushTo } from "@/lib/push";
 import { getStore } from "@/lib/store";
@@ -67,6 +67,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!d.reqId) return bad("신청을 골라 주세요.");
     const why = d.action === "approve" ? await approve(id, d.reqId) : await reject(id, d.reqId, d.note ?? "");
     if (why) return bad(why, 409);
+    await confirmIfClosed(id, g.s.mid);
     if (d.action === "reject") {
       const r = await s.get("CarRequests", d.reqId);
       if (r?.memberId) await pushTo([r.memberId], "alerts", g.s.mid).catch(() => undefined);
@@ -76,6 +77,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (d.action === "self") {
     if (!d.memberId || !d.dir || d.on === undefined) return bad("회원과 구간을 골라 주세요.");
     await setSelf(id, d.memberId, d.dir, d.on);
+    await confirmIfClosed(id, g.s.mid);
     return NextResponse.json({ ok: true });
   }
   // 확정 취소: 확정된 배정을 "확정 전"으로 되돌린다(자리는 그대로). 다시 "확정(알림)"을 누르면 다시 안내된다.

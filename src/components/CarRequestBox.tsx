@@ -34,7 +34,7 @@ const TONE: Record<string, string> = { pending: "blue", waiting: "gray", approve
 const LABEL: Record<Dir, string> = { go: "갈 때", back: "올 때" };
 const emptyLeg = (): LegForm => ({ on: true, from: "", departAt: "", to: "", arriveAt: "", seats: 5, memo: "" });
 // 회원이 보는 상태 이름: 승인 단계가 없으므로 approved = "배정(확정 전)"
-const shown = (m: Mine) => (m.status === "approved" ? "배정됨 · 확정 전" : m.label);
+const shown = (m: Mine) => (m.status === "approved" ? "배정됨" : m.label);
 
 // 일정 화면 › 차량: 차량모집(내 차로 지원하기) + 차량신청.
 // 차량신청은 승인 없이 자리가 있으면 바로 배정(확정 전), 정원이 차면 대기 → 자리가 나면 자동 배정. 관리자가 확정하면 종 알림.
@@ -83,7 +83,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
     setBusy(true);
     const r = await api<{ status: string }>(base, { body: { action: "request", carId: car.id, dir: leg.dir } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: r.data.status === "waiting" ? "신청 대기했어요. 자리가 나면 자동으로 배정되고 알려 드려요." : "배정됐어요. 관리자가 확정하면 알림이 가요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: r.data.status === "waiting" ? "신청 대기했어요. 자리가 나면 자동으로 배정되고 알려 드려요." : "배정됐어요. 마감 전까지 바꿀 수 있어요." } : { tone: "bad", text: r.error });
     load();
   }
   async function cancel(m: Mine) {
@@ -196,9 +196,9 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
                     {people.map((p, i) => {
                       const me = !!d.myName && p.name === d.myName;
                       return (
-                        <span key={i} className={`chip ${me ? "violet" : "line"}`} title={p.ok ? "확정" : "배정됨 · 확정 전"}
-                          style={{ ...(me ? { fontWeight: 800, outline: "2px solid var(--accent-ink)" } : {}), ...(p.ok ? {} : { opacity: 0.7, fontStyle: "italic" }) }}>
-                          {p.name}{me ? " (나)" : ""}{p.ok ? "" : " · 확정 전"}
+                        <span key={i} className={`chip ${me ? "violet" : "line"}`} 
+                          style={me ? { fontWeight: 800, outline: "2px solid var(--accent-ink)" } : undefined}>
+                          {p.name}{me ? " (나)" : ""}
                         </span>
                       );
                     })}
@@ -253,8 +253,15 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
           <div key={dir} className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             <b style={{ fontSize: fs(14), flex: "0 0 auto" }}>{LABEL[dir]}</b>
             <span className="grow small" style={{ fontWeight: 700 }}>
-              {role === "self" ? "개별 이동" : role === "driver" ? `${car} (운전·지원)` : car || "배정된 차량 없음"}
+              {role === "self" ? "개별 이동" : role === "driver" ? `${car} (운전·지원)` : car || (() => {
+                const w = d.mine.find((m) => m.dir === dir && (m.status === "waiting" || m.status === "pending"));
+                return w ? `${d.cars.find((c) => c.id === w.carId)?.name ?? "차량"} ${w.status === "waiting" ? `신청 대기${w.waitRank ? ` ${w.waitRank}번` : ""}` : "신청 중"}` : "배정된 차량 없음";
+              })()}
             </span>
+            {!role && (() => {
+              const w = d.mine.find((m) => m.dir === dir && (m.status === "waiting" || m.status === "pending"));
+              return w && !d.waitClosed ? <button type="button" className="mini" disabled={busy} onClick={() => cancel(w)}>대기 취소</button> : null;
+            })()}
             {role === "rider" && <button type="button" className="mini" disabled={busy} onClick={() => leave(dir)}>배정취소</button>}
             {role !== "self" && role !== "driver" && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별이동</button>}
             {role === "self" && !d.waitClosed && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별이동 취소</button>}
@@ -287,7 +294,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
       <ActionNote msg={msg} />
 
       {/* 1) 차량신청: 처음에는 접어 두고(일정 화면이 복잡하지 않게), 접힌 줄에 단계별 요약을 보여 준다 */}
-      <Fold key={d.phase} title="차량배정" badge={d.phase === "open" && d.open ? <span className="pill ok">신청 중</span> : d.phase === "confirmed" ? <span className="pill ok">확정</span> : undefined}
+      <Fold key={d.phase} title="차량배정" badge={d.phase === "open" ? <span className="pill ok">신청 중</span> : d.phase === "confirmed" || d.phase === "closed" ? <span className="pill gray">마감</span> : undefined}
         summary={d.phase === "confirmed" || d.phase === "closed" ? rideLine : d.phase === "open" ? (d.waitUntil ? `차량신청 마감 ${fmtDateTime(d.waitUntil)}` : "차량신청을 받고 있어요") : d.phase === "admin" ? "관리자가 차량을 배정 중이에요" : "차량배정 정보가 아직 없어요"}>
         {d.phase === "admin" && <span className="small" style={{ fontWeight: 700 }}>관리자가 차량을 배정 중입니다. 배정이 완료되면 안내드리겠습니다.</span>}
         {d.phase === "none" && <span className="small">차량배정 정보가 없습니다. 업데이트 되면 알려드릴께요.</span>}
@@ -295,10 +302,9 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
           <>
             {d.openFrom && Date.parse(d.openFrom) > Date.now() && <span className="small">차량신청 시작: {fmtDateTime(d.openFrom)}</span>}
             {d.waitUntil && <span className="small" style={{ fontWeight: 700 }}>차량신청 마감: {fmtDateTime(d.waitUntil)}</span>}
-            <span className="small">지금까지 등록된 차량으로 신청을 받습니다. 신청할 수 있는 차량이 더 등록되면 목록에 바로 더해지고 알려 드려요.</span>
+            <span className="small">마감 전까지는 배정을 직접 바꿀 수 있어요. 마감 시각이 되면 그때의 배정으로 마감되고 알려 드려요.</span>
             {!d.attending && <div className="msg info">참석 신청하면 차량을 신청할 수 있어요.</div>}
             {myRideBlock}
-            {myReqs}
             {carList(true)}
           </>
         )}
@@ -312,7 +318,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
         )}
         {d.phase === "confirmed" && (
           <>
-            <span className="small" style={{ fontWeight: 700 }}>차량배정이 확정되었습니다. 회원님이 탑승할 차량은 {rideLine} 입니다.</span>
+            <span className="small" style={{ fontWeight: 700 }}>차량신청이 마감되었습니다. 회원님이 탈 차량은 {rideLine} 입니다.</span>
             {myRideBlock}
             {/* 내 차 먼저(출발·도착·확정 명단), 다른 차는 접어서 */}
             {carList(false, (c) => c.name === d.myRide?.go || c.name === d.myRide?.back)}
@@ -322,8 +328,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
                 {carList(!d.waitClosed && !d.adminOnly, (c) => c.name !== d.myRide?.go && c.name !== d.myRide?.back)}
               </details>
             )}
-            {d.waitClosed || d.adminOnly ? askBlock : d.attending && <span className="small">변경을 원하시면 위 다른 차량의 “이 차로 바꾸기”를 누르거나 내 신청을 취소할 수 있어요. 바꾸면 관리자가 다시 확정한 뒤 알려 드려요.</span>}
-            {!d.waitClosed && myReqs}
+            {(d.waitClosed || d.adminOnly) && askBlock}
           </>
         )}
       </Fold>

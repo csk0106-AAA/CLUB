@@ -259,8 +259,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
       <div key={mid} className={`car-person${pick?.mid === mid ? " picked" : ""}`} draggable={canEdit && !busy} onDragStart={(e) => { e.dataTransfer.setData("text/plain", `${mid}|${where}`); e.dataTransfer.effectAllowed = "move"; }}>
         <button type="button" className="car-name" disabled={!canEdit || busy} aria-pressed={pick?.mid === mid} title="눌러서 고른 뒤 다른 차의 “넣기”를 누르면 옮겨요"
           onClick={() => setPick(pick?.mid === mid ? null : { mid, where })}>{nm(mid)}</button>
-        {q?.status === "confirmed" && <span className="pill ok">확정</span>}
-        {where && q?.status !== "confirmed" && <span className="pill warn">확정 전</span>}
+        {d.adminOnly && q?.status === "confirmed" && <span className="pill ok">안내됨</span>}
         {canEdit && (
           <select aria-label={`${nm(mid)} 옮기기`} className="field car-move" value={where} disabled={busy} onChange={(e) => move(mid, where, e.target.value)}>
             {targets.map((t) => <option key={t.key || "pool"} value={t.key}>{t.label}</option>)}
@@ -357,7 +356,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
             ))}
           </div>
             <span className="grow" />
-            <span className={`pill ${d.published ? "ok" : "warn"}`} style={{ flex: "none" }}>{d.published ? "확정됨" : "확정 전"}</span>
+            <span className={`pill ${d.published ? "ok" : "warn"}`} style={{ flex: "none" }}>{d.adminOnly ? (d.published ? "안내됨" : "배정 중") : d.published ? "마감" : "신청 중"}</span>
           </div>
           {shown.length === 0 && <div className="msg info">{LABEL[dir]} 운행하는 차량이 없어요.</div>}
           {/* 배정 대기: 이 구간에 아직 차가 없는 참석자. 스크롤해도 화면 위에 붙어 있어 아래 차에도 끌어 놓을 수 있다 */}
@@ -461,13 +460,16 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
             <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
               <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={() => act("auto")}>빈 좌석 자동 배정</button>
               <span className="grow" />
-              {d.published && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={() => { if (window.confirm("확정을 취소할까요?\n확정된 분들에게 취소 알림이 가고 “확정 전”으로 돌아가요. 자리는 그대로이고, 다시 “확정 (알림)”을 누르면 다시 안내돼요.")) act("unpublish"); }}>확정 취소</button>}
-              <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 160 }} onClick={() => act("publish")}>
-                {`확정 (알림)${unconfirmed ? ` · 확정 전 ${unconfirmed}명` : ""}`}
-              </button>
+              {d.adminOnly && (
+                <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 160 }} onClick={() => act("publish")}>
+                  {`배정 완료 (알림)${unconfirmed ? ` · 새로 ${unconfirmed}명` : ""}`}
+                </button>
+              )}
             </div>
           )}
-          {canEdit && <span className="small">“확정 전” 표시가 있는 분은 아직 회원에게 확정 알림이 가지 않았어요. “확정 (알림)”을 누르면 확정되고, 탑승자·운전자에게 종 알림이 가요. 확정한 뒤 바꾼 배정은 다시 누르면 바뀐 분들에게 알려요.</span>}
+          {canEdit && (d.adminOnly
+            ? <span className="small">관리자 배정: 다 정했으면 “배정 완료 (알림)”을 눌러 회원에게 알려요. 그 뒤 바꾼 배정은 바뀐 회원에게 바로 알려요.</span>
+            : <span className="small">회원은 차량신청 마감 전까지 배정을 직접 바꿀 수 있어요. 마감 시각{d.waitUntil ? `(${fmtDateTime(d.waitUntil)})` : ""}이 되면 그때의 배정으로 자동 마감되고 회원에게 안내돼요. 마감 뒤 관리자가 바꾼 배정은 그 회원에게 바로 알려요.{d.waitUntil ? "" : " 마감 일시를 꼭 정해 주세요."}</span>)}
         </>
       )}
 

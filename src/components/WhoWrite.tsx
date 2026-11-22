@@ -740,8 +740,8 @@ export function WhoWrite(props: {
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6, cursor: approved ? "default" : "pointer" }}
               onClick={approved ? undefined : openIntroEdit} title={approved ? undefined : "눌러서 고치기"}>
               <div className="row" style={{ gap: 6 }}>
-                <span className="l grow" style={{ margin: 0 }}>소개 글</span>
-                {!approved && <span className="small">눌러서 고치기 ✎</span>}
+                <span className="grow" style={{ margin: 0, font: `700 ${fs(17)} var(--display)` }}>소개 글</span>
+                {!approved && <span style={{ fontSize: fs(15), fontWeight: 700, color: "var(--accent-ink)" }}>눌러서 고치기 ✎</span>}
               </div>
               <Md text={intro} />
             </div>
@@ -801,9 +801,9 @@ export function WhoWrite(props: {
           {tlOn && (
             <>
               <div className="row" style={{ flexWrap: "wrap" }}>
-                <h3 className="h3 grow">2진실 1거짓</h3>
+                <h3 className="h3 grow" style={{ fontSize: fs(19) }}>2진실 1거짓</h3>
                 {!approved && st.aiEnabled && (
-                  <button className="mini" type="button" disabled={busy} onClick={regenTl}>{busy ? "만드는 중…" : "다시 만들기"}</button>
+                  <button className="mini" type="button" disabled={busy} style={{ fontSize: fs(15), minHeight: 42, padding: "0 14px" }} onClick={regenTl}>{busy ? "만드는 중…" : "다시 만들기"}</button>
                 )}
               </div>
               <span className="small" style={{ fontSize: fs(12), marginTop: -6 }}>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
 import { applyInput, autoName, carInput, carpoolState, cars, conflict, inputPeople, saveCarpoolState, seatOwner, selfOf, timeIssue, toCar, toRow } from "@/lib/carpool";
-import { askOwnerInfo } from "@/lib/car-auto";
+import { askOwnerInfo, confirmIfClosed } from "@/lib/car-auto";
 import { dropCar, syncRemoved } from "@/lib/car-requests";
 import { addAlerts } from "@/lib/member-alerts";
 import { getStore } from "@/lib/store";
@@ -36,6 +36,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   await s.update("Carpools", cid, toRow(next));
   // 뺀 탑승자의 신청은 취소로, 빈자리에는 대기자를 올린다(확정한 배정은 그대로 보이고, 바꾼 것은 다시 "확정"을 눌러야 알린다)
   await syncRemoved(id, before, next);
+  await confirmIfClosed(id, g.s.mid); // 마감(안내) 뒤 바꾼 배정은 그 회원에게 바로 알림
   // 차에 넣은 사람은 그 구간 개별 이동에서 뺀다
   const st = await carpoolState(id);
   for (const d of ["go", "back"] as const) {

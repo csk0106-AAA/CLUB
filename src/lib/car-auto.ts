@@ -12,8 +12,8 @@ import { isGuest } from "./member-kind";
 
 // 카풀 시각에 맞춘 자동 처리(따로 도는 예약 작업이 없어서, 화면·알림 숫자를 읽을 때 지난 시각이 있으면 그때 처리한다).
 //  차량모집 마감(recruitUntil): 차량신청이 열렸다고 참석자에게 알림
-//  차량신청 마감(waitUntil): 신청을 닫고 관리자에게 "확정해 주세요" 알림(확정은 관리자가 "확정(알림)"을 눌러야 한다)
-//  일정 시작 3일 전까지 확정하지 않았으면 관리자에게 리마인드(한 번)
+//  차량신청 마감(waitUntil): 그때의 배정으로 자동 마감(관리자 확정 없이) — 배정된 회원·운전자에게 알림, 관리자에게도 마감 알림
+//  관리자 배정(adminOnly)만 관리자가 "배정 완료(알림)"을 누른다. 일정 시작 3일 전까지 안 눌렀으면 리마인드(한 번)
 // 처리할 일정은 Settings "carpoolDue" = { 일정 id: true } 로 모아 둔다(관리자가 시각을 저장할 때 넣는다).
 const DUE = "carpoolDue";
 const passed = (iso?: string) => !!iso && Date.now() > kstTime(iso);
@@ -63,11 +63,12 @@ async function run(): Promise<void> {
       await saveCarpoolState(eventId, { recruitDone: true });
       if (!st.open) await tell(`${ev.name} 차량신청이 시작됐어요. 차량을 골라 신청해 주세요.`);
     }
-    // 2) 차량신청 마감 → 신청이 닫히고 관리자에게 확정 요청 알림(자동 확정은 하지 않는다)
+    // 2) 차량신청 마감 → 그때의 배정으로 자동 마감하고 회원에게 알림(관리자 확정 없이). 관리자에게는 마감됐다고만 알린다.
     if (passed(st.waitUntil) && !st.confirmDone) {
       await saveCarpoolState(eventId, { confirmDone: true });
+      if (!st.adminOnly) await confirmByAdmin(eventId, ev.name, href, "");
       const mgr = await managersOf(eventId);
-      await addAlerts(mgr, { eventId, text: `${ev.name} 차량신청이 마감됐어요. 배정을 확인하고 “확정(알림)”을 눌러 주세요.`, href: `/admin/events/${eventId}?tab=car` });
+      await addAlerts(mgr, { eventId, text: `${ev.name} 차량신청이 마감됐어요. 배정된 회원에게 안내했어요. 마감 뒤 바꾼 배정은 그 회원에게 바로 알려요.`, href: `/admin/events/${eventId}?tab=car` });
       await pushTo(mgr, "alerts").catch(() => undefined);
     }
     const after = await carpoolState(eventId);
@@ -117,12 +118,13 @@ async function remindUnconfirmed(): Promise<void> {
     const start = ev?.startsAt ? kstTime(ev.startsAt) : NaN;
     if (!ev || Number.isNaN(start) || start <= now || start - now > 3 * 86_400_000) continue;
     const st = await carpoolState(id);
+    if (!st.adminOnly) continue; // 신청 방식은 마감 때 자동으로 안내된다
     const unconfirmed = reqRows.some((r) => r.eventId === id && r.status === "approved");
     const anyRider = carRows.some((c) => c.eventId === id && ((JSON.parse(c.riders || "[]") as string[]).length || (JSON.parse(c.backRiders || "[]") as string[]).length));
     if (st.published && !unconfirmed) continue;
     if (!anyRider && !unconfirmed) continue;
     const mgr = await managersOf(id);
-    await addAlerts(mgr, { eventId: id, text: `${ev.name} 시작이 3일 안으로 다가왔는데 차량배정이 아직 확정되지 않았어요. 배정을 확인하고 “확정(알림)”을 눌러 주세요.`, href: `/admin/events/${id}?tab=car` });
+    await addAlerts(mgr, { eventId: id, text: `${ev.name} 시작이 3일 안으로 다가왔는데 차량배정이 아직 확정되지 않았어요. 배정을 확인하고 “배정 완료 (알림)”을 눌러 주세요.`, href: `/admin/events/${id}?tab=car` });
     await pushTo(mgr, "alerts").catch(() => undefined);
     done[id] = true;
     changed = true;
@@ -199,4 +201,15 @@ async function remindUnassigned(): Promise<void> {
     changed = true;
   }
   if (changed) await setSetting(REMIND_MEMBERS, done);
+}
+
+// 마감(안내)된 뒤 관리자가 배정을 바꾸면: 바뀐 회원에게 바로 알린다(관리자가 따로 확정하지 않아도 되게)
+export async function confirmIfClosed(eventId: string, byId: string): Promise<void> {
+  const st = await carpoolState(eventId);
+  if (!st.published) return;
+  const told = await confirmAll(eventId);
+  if (!told.length) return;
+  const ev = await (await getStore()).get("Events", eventId);
+  await addAlerts(told, { eventId, text: `${ev?.name ?? "일정"} 차량 배정이 바뀌었어요. 탈 차량을 확인해 주세요.`, href: `/events/${eventId}#cars` });
+  await pushTo(told, "alerts", byId).catch(() => undefined);
 }
