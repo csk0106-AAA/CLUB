@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote, type ActionMsg } from "@/components/ActionNote";
 import { ActivitySaju } from "@/components/ActivitySaju";
 import { use, useCallback, useEffect, useState, useRef } from "react";
 import { ActivityLiveBox } from "@/components/LiveActivities";
@@ -28,7 +29,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
   const { id, aid } = use(params);
   const router = useRouter();
   const [d, setD] = useState<Data | null>(null);
-  const [note, setNote] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [note, setNote] = useState<ActionMsg>(null);
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<string | null>(null); // null: 새로 쓰기
   const [body, setBody] = useState("");
@@ -106,10 +107,13 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       } else setChecked(body);
     }
     const payload = { body, category: cat, anonymous: anon };
-    const r = edit ? await api(`/api/worry/${aid}/${edit}`, { method: "PATCH", body: payload }) : await api(`/api/worry/${aid}`, { body: payload });
+    // 고치던 고민이 그새 지워졌으면(목록에 없음) 새 고민으로 저장한다
+    const target = edit && d?.mine.some((m) => m.id === edit) ? edit : null;
+    const r = target ? await api(`/api/worry/${aid}/${target}`, { method: "PATCH", body: payload }) : await api(`/api/worry/${aid}`, { body: payload });
     setBusy(false);
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setNote({ tone: "info", text: edit ? "고쳤어요." : "저장했어요. 뽑히기 전에는 아무에게도 보이지 않아요." });
+    // 결과는 저장 버튼 바로 아래에(위쪽에 나오면 눌러도 반응이 없는 것처럼 보인다)
+    if (!r.ok) return setNote({ tone: "bad", text: r.error, at: "bottom" });
+    setNote({ tone: "info", text: target ? "고쳤어요." : "저장했어요. 뽑히기 전에는 아무에게도 보이지 않아요.", at: "bottom" });
     reset();
     load();
   }
@@ -118,6 +122,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
     if (!window.confirm("이 고민을 지울까요?")) return;
     const r = await api(`/api/worry/${aid}/${m.id}`, { method: "DELETE" });
     setNote(r.ok ? { tone: "info", text: "지웠어요." } : { tone: "bad", text: r.error });
+    if (r.ok && edit === m.id) reset(); // 고치던 고민을 지웠으면 입력 칸도 비운다
     load();
   }
 
@@ -136,7 +141,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
         <Mascot size={32} />
         <p className="lead">고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 일정에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 진행자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
       </div>
-      {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
+      <ActionNote msg={note} />
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
       {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(d.pre.opensAt)} ~ ${fmtDateTime(d.pre.closesAt)} 예요.` : ""}</div>}
 
@@ -219,6 +224,8 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
           </div>
         </form>
       )}
+      {/* 저장 결과: 저장 버튼 바로 아래(저장하면 입력 칸이 비워지므로 여기서 알려 준다) */}
+      <ActionNote msg={note} at="bottom" />
 
       {/* 다 썼으면 여기서 마무리: 고민은 저장할 때마다 이미 저장돼 있다 */}
       {d.mine.length > 0 && edit === null && (
