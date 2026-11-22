@@ -219,9 +219,9 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
     <div id="cars" style={{ display: "flex", flexDirection: "column", gap: 12, scrollMarginTop: 16 }}>
       <ActionNote msg={msg} />
 
-      {/* 1) 차량신청: 단계에 따라 펼침·안내가 바뀐다 */}
+      {/* 1) 차량신청: 처음에는 접어 두고(일정 화면이 복잡하지 않게), 접힌 줄에 단계별 요약을 보여 준다 */}
       <Fold key={d.phase} title="차량배정" badge={d.phase === "open" && d.open ? <span className="pill ok">신청 중</span> : d.phase === "confirmed" ? <span className="pill ok">확정</span> : undefined}
-        defaultOpen={d.phase === "open" || d.phase === "confirmed" || d.phase === "admin"}>
+        summary={d.phase === "confirmed" || d.phase === "closed" ? rideLine : d.phase === "open" ? (d.waitUntil ? `차량신청 마감 ${fmtDateTime(d.waitUntil)}` : "차량신청을 받고 있어요") : d.phase === "admin" ? "관리자가 차량을 배정 중이에요" : "차량배정 정보가 아직 없어요"}>
         {d.phase === "admin" && <span className="small" style={{ fontWeight: 700 }}>관리자가 차량을 배정 중입니다. 배정이 완료되면 안내드리겠습니다.</span>}
         {d.phase === "none" && <span className="small">차량배정 정보가 없습니다. 업데이트 되면 알려드릴께요.</span>}
         {d.phase === "open" && (
@@ -271,7 +271,8 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
 
       {/* 2) 차량모집 지원: 모집 중이거나 내가 지원한 차가 있을 때 */}
       {d.recruitOn && (d.recruiting || d.myCar) && (
-        <Fold title="차량모집 지원" badge={d.myCar && d.myCar.missing.length > 0 ? <span className="pill warn">정보 입력 필요</span> : d.recruiting ? <span className="pill blue">모집 중</span> : undefined} defaultOpen={!!d.myCar}>
+        <Fold title="차량모집 지원" badge={d.myCar && d.myCar.missing.length > 0 ? <span className="pill warn">정보 입력 필요</span> : d.recruiting ? <span className="pill blue">모집 중</span> : undefined}
+          summary={d.myCar ? "내가 지원한 차량이 있어요" : d.recruitUntil ? `차량모집 마감 ${fmtDateTime(d.recruitUntil)}` : "차를 함께 탈 수 있게 지원해 주세요"}>
           {!d.attending ? <div className="msg info">참석 신청하면 차량을 지원할 수 있어요.</div> : d.myCar ? (
             <div className="car-offer">
               <b>내가 지원한 차량 · {d.myCar.name}</b>
