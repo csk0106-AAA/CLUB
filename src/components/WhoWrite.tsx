@@ -340,12 +340,7 @@ export function WhoWrite(props: {
       setHits(r.hits ?? []);
       return setNote({ tone: "bad", text: r.error });
     }
-    setNote({
-      tone: "info",
-      text: inAct
-        ? `배포했어요. 다른 회원은 별칭으로 내 소개를 읽어요${st.revealAt ? `(${fmtDateTime(st.revealAt)}부터 실명)` : ""}.`
-        : "배포했어요. 프로필 북에 내 이름과 소개가 보여요.",
-    });
+    setNote({ tone: "info", text: "배포했어요." });
     await reload();
   });
 
@@ -687,12 +682,16 @@ export function WhoWrite(props: {
                 <button className="mini" type="button" disabled={busy} onClick={unapprove}>소개 고치기</button>
               </div>
               {inAct ? (
-                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                  <span className="small">프로필 북에는 별칭</span>
-                  <b style={{ font: `700 ${fs(16)} var(--display)` }}>“{st.profile.alias}”</b>
-                  <span className="small grow">(으)로 보여요{st.revealAt ? ` · ${fmtDateTime(st.revealAt)}에 실명 공개` : ""}.</span>
-                  <button className="mini" type="button" disabled={busy} onClick={changeAliasAfterApprove}>별칭 바꾸기</button>
-                </div>
+                <>
+                  <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                    <span style={{ flex: "1 1 auto", minWidth: 0, lineHeight: 1.5 }}>
+                      <span className="small">프로필 북 별칭 </span>
+                      <b style={{ font: `700 ${fs(16)} var(--display)`, overflowWrap: "anywhere" }}>“{st.profile.alias}”</b>
+                    </span>
+                    <button className="mini" type="button" disabled={busy} style={{ flex: "0 0 auto" }} onClick={changeAliasAfterApprove}>별칭 바꾸기</button>
+                  </div>
+                  {st.revealAt && <span className="small">{fmtDateTime(st.revealAt)}에 실명과 함께 공개돼요.</span>}
+                </>
               ) : <span className="small">프로필 북에 실명으로 보여요.</span>}
             </div>
           ) : (
