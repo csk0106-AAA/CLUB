@@ -131,6 +131,7 @@ export function WhoWrite(props: {
   const [hits, setHits] = useState<string[]>([]); // 신원 검사에 걸린 말(글 안에 표시)
   const [answer, setAnswer] = useState("");
   const [editAlias, setEditAlias] = useState(false);
+  const [editIntro, setEditIntro] = useState(false); // 소개 글 수정 도구(입력 칸·빠르게 고치기·AI 수정 요청) 펼치기
   // 기존 인터뷰 수정하기: 질문별 답변 고치기
   const [editing, setEditing] = useState<{ q: string; a: string; skipped?: boolean }[] | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
@@ -683,12 +684,18 @@ export function WhoWrite(props: {
               ) : <span className="small">프로필 북에 실명으로 보여요.</span>}
             </div>
           ) : (
-            <div className="row" style={{ flexWrap: "wrap" }}>
-              <h2 className="h3 grow">내 소개 <span className="chip gray" style={{ verticalAlign: "middle" }}>초안 · 나만 보여요</span></h2>
-              {interviewDone && (
-                <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글 다시 만들기"}</button>
-              )}
-            </div>
+            <>
+              {/* 인터뷰부터 바꾸기(흐름상 소개 글보다 먼저라 위쪽, 큰 작업이라 작은 버튼) */}
+              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                <span className="small grow">답한 내용을 바꾸려면</span>
+                {interviewDone && <button className="mini" type="button" disabled={busy} onClick={startEdit}>인터뷰 답 고치기</button>}
+                <button className="mini" type="button" disabled={busy} onClick={restart}>인터뷰 처음부터 다시 하기</button>
+              </div>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <h2 className="h3 grow">내 소개 <span className="chip gray" style={{ verticalAlign: "middle" }}>초안 · 나만 보여요</span></h2>
+                <button className="mini" type="button" aria-expanded={editIntro} onClick={() => setEditIntro(!editIntro)}>{editIntro ? "수정 닫기" : "소개 글 수정"}</button>
+              </div>
+            </>
           )}
 
           {/* 별칭(게임 참여일 때만): 랜덤으로 정해진 별칭을 확인하고, 필요하면 고쳐서 '바꾸기' */}
@@ -718,7 +725,7 @@ export function WhoWrite(props: {
               <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>
             </div>
           ))}
-          {approved ? (
+          {approved || !editIntro ? (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="l" style={{ margin: 0 }}>소개 글</span>
               <Md text={intro} />
@@ -729,16 +736,25 @@ export function WhoWrite(props: {
               <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} onChange={(e) => setIntro(e.target.value)} />
             </>
           )}
-          {!approved && hits.length > 0 && hasHit(intro, hits) && (
+          {!approved && !editIntro && hits.length > 0 && hasHit(intro, hits) && (
+            <div className="msg bad" role="alert" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span>소개 글에 신원이 드러나는 말이 있어요. “소개 글 수정”을 눌러 고쳐 주세요.</span>
+              <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => setEditIntro(true)}>소개 글 수정</button>
+            </div>
+          )}
+          {!approved && editIntro && hits.length > 0 && hasHit(intro, hits) && (
             <div className="id-hit-box" role="note" aria-label="신원이 드러나는 말 표시">
               <span className="small"><b>빨갛게 표시한 말</b>을 지우거나 일반적인 표현으로 바꿔 주세요.</span>
               <p><Marked text={intro} hits={hits} /></p>
             </div>
           )}
 
-          {!approved && (
+          {!approved && editIntro && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span className="l" id="quick-l">빠르게 고치기</span>
+              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                <span className="l grow" id="quick-l" style={{ margin: 0 }}>빠르게 고치기</span>
+                {interviewDone && <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "인터뷰 답으로 새로 만들기"}</button>}
+              </div>
               <div className="quick" role="group" aria-labelledby="quick-l">
                 <button className="btn white" type="button" disabled={busy || intro.trim().length < 2} onClick={() => revise("더 짧게 줄여 주세요.")}>더 짧게</button>
                 <button className="btn white" type="button" disabled={busy || intro.trim().length < 2} onClick={() => revise("말투를 더 부드럽게 해 주세요.")}>부드럽게</button>
@@ -824,17 +840,6 @@ export function WhoWrite(props: {
         </section>
       )}
 
-      {/* 자주 쓰지 않는 작업: 인터뷰 수정·다시 하기(접어 둔다) */}
-      {(interviewDone || introOnly) && (
-        <details className="card">
-          <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>인터뷰 수정·다시 하기</summary>
-          <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-            {interviewDone && <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={startEdit}>기존 인터뷰 수정하기</button>}
-            <button className="btn white" type="button" style={{ flex: "1 1 160px" }} disabled={busy} onClick={restart}>AI 인터뷰 다시 하기</button>
-          </div>
-          <span className="small" style={{ display: "block", marginTop: 6 }}>기존 인터뷰 수정하기: 질문별 내 답을 고치고 소개 글을 다시 만들어요. AI 인터뷰 다시 하기: 공통 질문부터 다시 해요.</span>
-        </details>
-      )}
     </>
   );
 }

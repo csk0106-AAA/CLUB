@@ -37,7 +37,9 @@ export default function ProfileWritePage() {
   return (
     <main className="app">
       <LessonHeader href="/profiles" closeLabel="프로필 북으로 돌아가기" title="내 소개 작성하기" done={progress?.done} total={progress?.total} />
-      {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
+      {note && (note.tone === "bad"
+        ? <div className="msg bad" role="alert">{note.text}</div>
+        : <p className="small" role="status" style={{ margin: 0, color: "var(--accent-ink)", fontWeight: 700 }}>✓ {note.text}</p>)}
       {!st && !note && <p className="small">불러오는 중이에요…</p>}
       {st && (st.blockedBy ? (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>

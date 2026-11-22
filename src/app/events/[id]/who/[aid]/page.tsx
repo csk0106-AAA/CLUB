@@ -68,7 +68,9 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
         {sajuTabOn(st) && <button type="button" role="tab" aria-selected={tab === "saju"} onClick={() => setTab("saju")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(명리학)</button>}
         <button type="button" role="tab" aria-selected={tab === "guess"} onClick={() => setTab("guess")} style={{ minHeight: 40, fontSize: fs(13) }}>누구일까요?</button>
       </div>
-      {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
+      {note && (note.tone === "bad"
+        ? <div className="msg bad" role="alert">{note.text}</div>
+        : <p className="small" role="status" style={{ margin: 0, color: "var(--accent-ink)", fontWeight: 700 }}>✓ {note.text}</p>)}
 
       {tab === "guess" ? (
         <Guess aid={aid} setNote={setNote} onProgress={setGuessProg} />
