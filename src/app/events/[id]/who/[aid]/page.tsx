@@ -21,6 +21,10 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   const router = useRouter();
   const [st, setSt] = useState<State | null>(null);
   const [tab, setTab] = useState<"write" | "guess">("write");
+  // 알림(새 소개가 올라왔어요)에서 ?tab=guess 로 들어오면 “누구일까요?” 맞히기 탭부터 연다
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "guess") setTab("guess");
+  }, []);
   const [note, setNote] = useState<Note>(null);
   const [busy, setBusy] = useState(false);
   const [guessProg, setGuessProg] = useState<{ done: number; total: number } | null>(null);

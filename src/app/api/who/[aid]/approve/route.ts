@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { notifyNewWhoIntro } from "@/lib/who-notify";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { findIdentity, termsFrom } from "@/lib/identity";
@@ -35,7 +36,9 @@ export async function POST(req: Request, ctx: Ctx) {
   // 게임 참여(별칭으로 가려짐)일 때만 별칭이 필요하고 신원 정보를 검사한다. 프로필 북 작성은 실명으로 공개된다.
   const inAct = await inGame(w, g.s.mid);
   if (inAct && !profile.alias) return bad("별칭을 먼저 정해 주세요.");
-  if (inAct && (!d.statements || d.lieIndex === undefined)) return bad("2진실 1거짓은 문장 3개와 거짓 번호가 필요해요.");
+  // 2진실 1거짓은 사전 단계에 그 단계가 있는 활동만
+  const tlOn = inAct && w.cfg.preEvent.steps.includes("truth_lies");
+  if (tlOn && (!d.statements || d.lieIndex === undefined)) return bad("2진실 1거짓은 문장 3개와 거짓 번호가 필요해요.");
 
   const terms = termsFrom(await s.list("Members"));
   const hitsIntro = inAct ? findIdentity(d.introMd, terms) : [];
@@ -52,12 +55,14 @@ export async function POST(req: Request, ctx: Ctx) {
     introMd: d.introMd, draftMd: d.introMd, introStatus: "approved", approvedAt: now, updatedAt: now,
     ...(profile.firstApprovedAt ? {} : { firstApprovedAt: profile.approvedAt || now }),
   });
-  if (inAct && d.statements) {
+  if (tlOn && d.statements) {
     const tl = await myTruthLies(g.s.mid, aid);
     const tlPatch = { statements: JSON.stringify(d.statements), lieIndex: String(d.lieIndex), status: "approved", approvedAt: now };
     if (tl) await s.update("TruthLies", tl.id, tlPatch);
     else await s.insert("TruthLies", { memberId: g.s.mid, eventActivityId: aid, ...tlPatch });
   }
+  // '내가 누구일까요?' 별칭 소개: 아직 맞히지 않은 참여자에게 맞히기 알림
+  if (inAct) await notifyNewWhoIntro(w, g.s.mid).catch(() => undefined);
   // 프로필 북에 새 소개가 올라오거나 바뀌었다는 알림(본인 제외, 내용 없이 숫자만)
   await notifyProfilePush(g.s.mid);
   return NextResponse.json({ ok: true, inActivity: inAct });
