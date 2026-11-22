@@ -26,6 +26,8 @@ export async function GET() {
   const groups = await getPermGroups();
   const apps = await s.list("MemberApps");
   const all = await s.list("Members");
+  const pinRows = await s.list("Pins");
+  const pinOf = (id: string) => pinRows.find((p) => p.id === id);
   const nameOf = (id: string) => all.find((x) => x.id === id)?.name ?? "";
   // 탈퇴회원이 있으면 회원구분 목록에 "탈퇴회원"을 더해 둔다(필터·회원구분 화면에 보이게)
   if (all.some((m) => isWithdrawn(m.kind))) await ensureWithdrawnKind();
@@ -36,6 +38,8 @@ export async function GET() {
     perms: ownPerms(m), // 개인 권한(예전 권한 이름은 지금 이름으로)
     clubs: memberClubs(m),
     effective: effectivePerms({ ...m, extra: _extra }, groups),
+    hasPin: !!pinOf(m.id)?.pinHash, // 로그인 PIN 을 만들었는지(해시는 내보내지 않는다)
+    hasAdminPin: !!pinOf(m.id)?.adminPinHash, // 관리자용 PIN 을 만들었는지
     groups: groupKeysOf(m),
     permsCustom: isPermsCustom({ extra: _extra }),
     fields: readFields({ extra: _extra }),

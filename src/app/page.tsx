@@ -11,7 +11,8 @@ import { SignupSheet } from "@/components/SignupSheet";
 import { fs } from "@/lib/fs";
 import { NameSearch } from "@/components/NameSearch";
 
-type Club = { clubName: string; displayName: string; members: { id: string; name: string }[]; requirement?: string; coverUrl?: string };
+// pinOn: 로그인 PIN 적용 중(2026-12-12부터)
+type Club = { clubName: string; displayName: string; members: { id: string; name: string }[]; requirement?: string; coverUrl?: string; pinOn?: boolean };
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +23,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [signup, setSignup] = useState(false);
+  // 처음 로그인: 연락처 뒷자리 4자리가 맞으면 PIN 만들기 화면(만든 뒤 바로 로그인)
+  const [setupName, setSetupName] = useState("");
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [forgotMsg, setForgotMsg] = useState("");
 
   // pick: 이 이름을 골라 둔다(회원 신청을 마친 뒤)
   function loadClub(pick?: string) {
@@ -58,6 +64,45 @@ export default function LoginPage() {
         setError(d?.error ?? `서버에서 오류가 났어요(코드 ${r.status}). 잠시 후 다시 시도하고, 계속되면 관리자에게 이 코드를 알려 주세요.`);
         return;
       }
+      if (d.needPin) {
+        setSetupName(d.name ?? "");
+        return;
+      }
+      done(d);
+    } catch {
+      setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // PIN 만들기(처음 로그인): 연락처 4자리를 함께 보내 서버가 다시 확인한다
+  async function savePin(e: React.FormEvent) {
+    e.preventDefault();
+    if (pin !== pin2) return setError("PIN 두 번이 서로 달라요.");
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/auth/pin-setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberId, code, pin }) });
+      const d = await r.json().catch(() => null);
+      if (!r.ok || !d) return setError(d?.error ?? `서버에서 오류가 났어요(코드 ${r.status}).`);
+      done(d);
+    } catch {
+      setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // PIN 을 잊었어요: 관리자에게 초기화 요청
+  async function forgot() {
+    if (!memberId) return setForgotMsg("먼저 이름을 골라 주세요.");
+    const r = await fetch("/api/auth/pin-forgot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberId }) });
+    setForgotMsg(r.ok ? "관리자에게 PIN 초기화를 요청했어요. 초기화되면 연락처 뒷자리 4자리로 들어와 새 PIN 을 만들어 주세요." : "요청하지 못했어요. 잠시 후 다시 눌러 주세요.");
+  }
+
+  // 로그인 마친 뒤 이동
+  function done(d: { host?: boolean }) {
       resetTabsCache();
       resetHeaderCache();
       // 로그인 직후 한 번: 회원 신청 상태 안내(대기회원·참관회원·반려·정보 입력, components/ApplyNotice.tsx)
@@ -67,11 +112,6 @@ export default function LoginPage() {
       const next = new URLSearchParams(window.location.search).get("next") ?? "";
       const safeNext = next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "";
       router.push(d.host ? "/host" : safeNext || "/board");
-    } catch {
-      setError("연결이 불안정해요. 잠시 후 다시 눌러 주세요.");
-    } finally {
-      setBusy(false);
-    }
   }
 
   return (
@@ -101,17 +141,36 @@ export default function LoginPage() {
         <div className="msg info">아직 등록된 회원이 없어요. 아래에서 신청하거나 관리자에게 문의해 주세요.</div>
       )}
 
-      {club && club.members.length > 0 && (
+      {club && setupName && (
+        <form onSubmit={savePin} style={{ display: "contents" }}>
+          <div className="msg info" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <b>{setupName} 님, 로그인 PIN 을 만들어 주세요</b>
+            <span>앞으로는 연락처 뒷자리 대신 이 PIN 으로 로그인해요. 숫자 6자리로 정해 주세요.</span>
+          </div>
+          <div><label className="l" htmlFor="pn">새 PIN (숫자 6자리)</label><PasswordField id="pn" inputMode="numeric" autoComplete="new-password" value={pin} onChange={setPin} /></div>
+          <div><label className="l" htmlFor="pn2">새 PIN 한 번 더</label><PasswordField id="pn2" inputMode="numeric" autoComplete="new-password" value={pin2} onChange={setPin2} /></div>
+          <p className="hint">같은 숫자 반복(000000), 연속 숫자(123456), 연락처 뒷자리 4자리가 들어간 번호는 쓸 수 없어요. PIN 은 관리자도 볼 수 없어요.</p>
+          {error && <div className="msg bad" role="alert">{error}</div>}
+          <div className="footer-actions" style={{ marginTop: 4 }}>
+            <button className="btn" type="submit" disabled={busy || pin.length !== 6 || pin2.length !== 6}>{busy ? "저장 중…" : "PIN 만들고 들어가기"}</button>
+            <button className="btn white" type="button" disabled={busy} onClick={() => { setSetupName(""); setPin(""); setPin2(""); setCode(""); setError(""); }}>처음으로</button>
+          </div>
+        </form>
+      )}
+      {club && club.members.length > 0 && !setupName && (
         <form onSubmit={submit} style={{ display: "contents" }}>
           <div>
             <label className="l" htmlFor="nm">이름</label>
             <NameSearch id="nm" members={club.members} value={memberId} onChange={setMemberId} />
           </div>
           <div>
-            <label className="l" htmlFor="cd">초대코드 (내 연락처 뒷자리 4자리)</label>
+            <label className="l" htmlFor="cd">{club.pinOn ? "PIN (처음 로그인이면 연락처 뒷자리 4자리)" : "초대코드 (내 연락처 뒷자리 4자리)"}</label>
             <PasswordField id="cd" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} />
           </div>
-          <p className="hint">진행자로 지정되었다면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5회 틀리면 1분간 잠겨요.</p>
+          {club.pinOn ? <p className="hint">처음 로그인하면 연락처 뒷자리 4자리로 들어와 나만의 6자리 PIN 을 만들어요. 그다음부터는 PIN 으로 로그인해요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 진행자라면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 5번 틀리면 15분 동안 잠겨요.</p>
+            : <p className="hint">진행자로 지정되었다면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5번 틀리면 15분 동안 잠겨요. 12월 12일부터는 나만의 6자리 PIN 으로 로그인해요(처음 한 번 만들어요).</p>}
+          {club.pinOn && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={forgot}>PIN을 잊었어요</button>}
+          {forgotMsg && <p className="small" role="status" style={{ margin: 0 }}>{forgotMsg}</p>}
           {error && <div className="msg bad" role="alert">{error}</div>}
           {/* 로그인 화면은 버튼을 화면 맨 아래로 밀지 않는다(회원 신청이 바로 아래, 화면 가운데쯤 오게) */}
           <div className="footer-actions" style={{ marginTop: 4 }}>

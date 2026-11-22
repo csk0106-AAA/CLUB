@@ -12,7 +12,7 @@ import { useTabOrder } from "./useTabOrder";
 // 하위 메뉴 주소를 순서 저장용 key 로("/admin/dues/payments" → "dues-payments")
 const subKey = (href: string) => href.replace(/^\/admin\/?/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "home";
 
-type Me = { name: string; perms: string[]; admin: boolean; consent: boolean; clubOfficerOf?: string[] };
+type Me = { name: string; perms: string[]; admin: boolean; consent: boolean; pinOn?: boolean; clubOfficerOf?: string[] };
 
 export type AdminMode = "group" | "members" | "events" | "clubs" | "templates";
 const MODES: { key: AdminMode; href: string; label: string }[] = [
@@ -41,6 +41,11 @@ export function AdminGate(props: {
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState("");
   const [code, setCode] = useState("");
+  // 관리자용 PIN 만들기(처음 또는 초기화 뒤): 공용 비밀번호를 확인한 다음 단계
+  const [adminSetup, setAdminSetup] = useState<"new" | "reset" | null>(null);
+  const [shared, setShared] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [newPin2, setNewPin2] = useState("");
   const [busy, setBusy] = useState(false);
   // 위쪽 메뉴(관리자 구분)와 하위 메뉴: 끌어서 순서 바꾸기(모든 관리자 공통)
   const modeOrder = useTabOrder("admin", true);
@@ -61,9 +66,26 @@ export function AdminGate(props: {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const r = await api("/api/auth/admin", { body: { passcode: code } });
+    if (adminSetup) {
+      // 관리자용 PIN 만들기: 앞에서 확인한 공용 비밀번호와 함께 보낸다
+      if (newPin !== newPin2) { setBusy(false); return setError("관리자용 PIN 두 번이 서로 달라요."); }
+      const r = await api("/api/auth/admin", { body: { passcode: shared, newPin } });
+      setBusy(false);
+      if (!r.ok) return setError(r.error);
+      setAdminSetup(null); setShared(""); setNewPin(""); setNewPin2(""); setCode("");
+      await loadMe();
+      return;
+    }
+    const r = await api<{ ok?: boolean; needAdminPin?: boolean; reset?: boolean }>("/api/auth/admin", { body: { passcode: code } });
     setBusy(false);
     if (!r.ok) return setError(r.error);
+    if (r.data.needAdminPin) {
+      // 공용 비밀번호 확인 → 관리자용 PIN 만들기
+      setShared(code);
+      setAdminSetup(r.data.reset ? "reset" : "new");
+      setCode("");
+      return;
+    }
     setCode("");
     await loadMe();
   }
@@ -114,15 +136,27 @@ export function AdminGate(props: {
     return (
       <main className="app with-tabs">
         <h1 className="title">관리자 확인</h1>
-        <p className="small" style={{ margin: 0 }}>{me.name} 님, 관리자 비밀번호를 한 번 더 입력해 주세요.</p>
+        {adminSetup ? (
+          <p className="small" style={{ margin: 0 }}>{me.name} 님, {adminSetup === "reset" ? "관리자용 PIN 을 다시 만들어 주세요." : "관리자 화면에 쓸 나만의 관리자용 PIN 을 만들어 주세요. 다음부터는 이 PIN 으로 들어와요."}</p>
+        ) : (
+          <p className="small" style={{ margin: 0 }}>{me.pinOn ? `${me.name} 님, 관리자용 PIN 을 입력해 주세요. 처음이거나 초기화됐다면 관리자 공용 비밀번호를 넣어 주세요.` : `${me.name} 님, 관리자 비밀번호를 한 번 더 입력해 주세요.`}</p>
+        )}
         <form onSubmit={unlock} style={{ display: "contents" }}>
-          <div>
-            <label className="l" htmlFor="pc">관리자 비밀번호</label>
-            <PasswordField id="pc" autoComplete="current-password" value={code} onChange={setCode} />
-          </div>
+          {adminSetup ? (
+            <>
+              <div><label className="l" htmlFor="apn">새 관리자용 PIN (숫자 6자리)</label><PasswordField id="apn" inputMode="numeric" autoComplete="new-password" value={newPin} onChange={setNewPin} /></div>
+              <div><label className="l" htmlFor="apn2">한 번 더</label><PasswordField id="apn2" inputMode="numeric" autoComplete="new-password" value={newPin2} onChange={setNewPin2} /></div>
+              <span className="small">로그인 PIN 과 다른 번호로 정해 주세요. 같은 숫자 반복·연속 숫자·연락처 뒷자리가 들어간 번호는 쓸 수 없어요.</span>
+            </>
+          ) : (
+            <div>
+              <label className="l" htmlFor="pc">{me.pinOn ? "관리자용 PIN (처음이면 관리자 공용 비밀번호)" : "관리자 비밀번호"}</label>
+              <PasswordField id="pc" autoComplete="current-password" value={code} onChange={setCode} />
+            </div>
+          )}
           {error && <div className="msg bad" role="alert">{error}</div>}
           <div className="footer-actions">
-            <button className="btn" type="submit" disabled={busy || !code}>{busy ? "확인 중…" : "확인"}</button>
+            <button className="btn" type="submit" disabled={busy || (adminSetup ? newPin.length !== 6 || newPin2.length !== 6 : !code)}>{busy ? "확인 중…" : adminSetup ? "PIN 만들고 들어가기" : "확인"}</button>
           </div>
         </form>
         <MemberTabs on="admin" />

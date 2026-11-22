@@ -2,6 +2,8 @@
 // 값은 모두 문자열로 저장하고, 객체/배열은 JSON 문자열로 저장한다.
 export const TABS = {
   Settings: ["id", "value"],
+  // 개인 PIN 해시(lib/pin.ts): id = 회원 id. 회원 명단·내보내기에 나오지 않게 따로 둔다.
+  Pins: ["id", "pinHash", "adminPinHash", "updatedAt"],
   Members: [
     "id", "no", "name", "kind", "position", "gender", "company", "title",
     "birth", "phone", "ageGroup", "perms", "extra",

@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 //  - 아직 뽑히지 않은 고민 본문, 승인 전 소개 초안, 승인 전 2진실 1거짓은 비움
 //  - 명리 생애주기 풀이와 입력 정보는 비움(본인만), 공개하지 않은 성격·성향도 비움
 //  - 초대코드는 제외
-const SKIP: TabName[] = ["Interviews"];
+const SKIP: TabName[] = ["Interviews", "Pins"]; // Pins: PIN 해시는 내려받지 않는다
 
 function redact(tab: TabName, r: Row): Row {
   const x = { ...r };

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { pinActive } from "@/lib/pin";
 import { coverUrl, readCovers } from "@/lib/covers";
 import { getRequirement } from "@/lib/member-apps";
 import { getClubNames, getStore } from "@/lib/store";
@@ -15,6 +16,7 @@ export async function GET() {
   const n = await getClubNames();
   const members = (await s.list("Members")).map((m) => ({ id: m.id, name: m.name }));
   return NextResponse.json({
+    pinOn: pinActive(), // 로그인 PIN 적용 중인지(2026-12-12부터)
     clubName: n.clubName || "모임", clubShortName: n.clubShortName, displayName: n.displayName, members,
     requirement: await getRequirement(),
     coverUrl: await (async () => { const m = await readCovers(); return m.org ? coverUrl({ scope: "org" }, m.org, false, m.focus.org ?? "") : ""; })(),

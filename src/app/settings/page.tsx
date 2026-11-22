@@ -1,5 +1,6 @@
 "use client";
 
+import { PinChange } from "@/components/PinChange";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,7 @@ import { writeMapPref } from "@/lib/map-pref";
 import { typePhone } from "@/lib/phone";
 
 type Me = {
-  name: string; perms: string[]; admin: boolean; consent: boolean; gender: string;
+  name: string; perms: string[]; admin: boolean; consent: boolean; gender: string; pinOn?: boolean; // pinOn: 로그인 PIN 적용 중(2026-12-12부터)
   company: string; title: string; phone: string;
   clubs: { name: string; role: string }[]; clubOptions: string[]; headClubs: string[];
   prefs: Prefs;
@@ -347,6 +348,8 @@ export default function SettingsPage() {
           </section>
 
           {/* 2. 화면 모드: 어두운 화면(기본) / 밝은 화면 / 폰 설정 따라. 누르면 바로 바뀌고 회원 설정에 저장(다른 기기에서도 같게) */}
+          {me.pinOn && <PinChange />}
+
           <section className="sect" aria-labelledby="s-mode">
             <h2 id="s-mode">화면 모드</h2>
             <div className="sect-body" style={{ gap: 8 }}>

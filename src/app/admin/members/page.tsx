@@ -23,6 +23,7 @@ type M = {
   company: string; title: string; birth: string; phone: string; ageGroup: string; perms: string[];
   clubs: Seat[]; // 클럽 [{name, role}] (role 이 비면 일반 회원)
   effective: string[]; // 최종 권한(그룹 ∪ 개인)
+  hasPin?: boolean; hasAdminPin?: boolean; // 로그인 PIN·관리자용 PIN 을 만들었는지
   fields: Record<string, string>; // 관리자가 만든 추가 항목(열)의 값
   genderEdit?: { from: string; to: string; at: string } | null; // 회원이 직접 바꾼 성별 기록
   approvedAt?: string; // 관리자가 회원 승인한 마지막 날짜(직접 넣은 회원은 넣은 날짜)
@@ -436,6 +437,18 @@ function Members() {
   }
   const kindTabs = [...kinds.map((k) => k.value), ...[...counts.keys()].filter((k) => k !== "미지정" && !kinds.some((x) => x.value === k))];
 
+  // PIN 초기화: 회원 PIN(회원관리 권한) / 관리자용 PIN(모든 권한). 지운 뒤 회원에게 알림이 간다.
+  async function resetPin(m: M, kind: "member" | "admin") {
+    const what = kind === "member" ? "로그인 PIN" : "관리자용 PIN";
+    if (!window.confirm(`${m.name} 님의 ${what}을 초기화할까요?\n${kind === "member" ? "다음 로그인 때 연락처 뒷자리 4자리로 들어와 새 PIN 을 만들어요." : "관리자 화면에 들어갈 때 공용 관리자 비밀번호를 거쳐 새 PIN 을 만들어요."}`)) return;
+    setBusy(true);
+    const r = await api(`/api/admin/members/${m.id}/pin`, { body: { kind } });
+    setBusy(false);
+    if (!r.ok) return window.alert(r.error);
+    window.alert(`${m.name} 님의 ${what}을 초기화했어요. 회원에게 알림이 갔어요.`);
+    await load();
+  }
+
   // 회원 추가(팝업)와 회원 수정(명단에서 펼침)이 함께 쓰는 입력 양식
   const memberForm = (
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -529,6 +542,19 @@ function Members() {
                   <button className="btn" type="button" disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 44 }} onClick={() => restore(m)}>탈퇴 해지</button>
                 </div>
               )}
+              {/* 로그인 PIN·관리자용 PIN: 볼 수는 없고 초기화만 */}
+              <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span className="small">로그인 PIN</span>
+                <span className={`pill ${m.hasPin ? "ok" : "gray"}`}>{m.hasPin ? "만듦" : "아직 없음(연락처 4자리로 로그인)"}</span>
+                {m.hasPin && <button className="mini" type="button" disabled={busy} onClick={() => resetPin(m, "member")}>PIN 초기화</button>}
+                {m.effective.length > 0 && (
+                  <>
+                    <span className="small" style={{ marginLeft: 8 }}>관리자용 PIN</span>
+                    <span className={`pill ${m.hasAdminPin ? "ok" : "gray"}`}>{m.hasAdminPin ? "만듦" : "아직 없음"}</span>
+                    {m.hasAdminPin && <button className="mini" type="button" disabled={busy} onClick={() => resetPin(m, "admin")}>관리자용 PIN 초기화</button>}
+                  </>
+                )}
+              </div>
               {/* 가입·탈퇴 이력 */}
               <details open={isWithdrawn(m.kind) || undefined}>
                 <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>가입·탈퇴 이력 ({h.length})</summary>

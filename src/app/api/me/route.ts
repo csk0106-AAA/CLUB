@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { pinActive } from "@/lib/pin";
 import { z } from "zod";
 import { bad, guard, parseJson } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
@@ -31,6 +32,7 @@ async function view(s: Sess, me: Member) {
     livePerms: effectivePerms(me as Parameters<typeof effectivePerms>[0], await getPermGroups()),
     admin: s.admin,
     consent: Boolean(extra.consentAt),
+    pinOn: pinActive(), // 로그인 PIN·관리자용 PIN 적용 중인지(2026-12-12부터)
     bookGuide,
     gender: me.gender === "남" || me.gender === "여" ? me.gender : "",
     company: me.company ?? "",
