@@ -54,6 +54,14 @@ export function quickAnswers(q: string): string[] {
   return [];
 }
 
+// 채팅에 보일 질문 글: 보기(①②③)와 “(예/아니요)”는 아래 버튼으로 보이므로 질문에서 뺀다
+export function questionOnly(q: string): string {
+  if (quickAnswers(q).length === 0) return q;
+  const i = q.search(/[①②③④⑤]/);
+  const head = (i > 0 ? q.slice(0, i) : q).replace(/\(\s*예\s*\/\s*아니요\s*\)/g, "").trim();
+  return head || q;
+}
+
 const RESET_ASK = "기존 내 소개 글은 지워지고 공통 질문부터 다시 해요. 이전 AI 추가 질문 답변은 공통 질문을 마친 뒤 다시 할지, 유지할지 골라요. 새로 진행할까요?";
 
 // 인터뷰 답변 하나 고치기(타이핑 또는 음성)
@@ -506,7 +514,7 @@ export function WhoWrite(props: {
                       {divider}
                       <div className="say">
                         <Mascot size={32} />
-                        <div className="bubble">{m.text}</div>
+                        <div className="bubble">{questionOnly(m.text)}</div>
                       </div>
                     </div>
                   );
@@ -625,8 +633,19 @@ export function WhoWrite(props: {
       )}
 
       {/* 인터뷰 마지막 단계: 명리학 사주 보기 / 안 보기 (고르기 전에는 소개 글 만들기를 보여 주지 않는다) */}
-      {interviewDone && iv.notice && !hasDraft && (
-        <div className="say"><Mascot size={32} /><div className="bubble">{iv.notice}</div></div>
+      {/* 인터뷰를 마친 뒤: 마쳤다는 안내와 다음 할 일(버튼)을 먼저 보여 주고, 명리학 풀이는 그 아래에 */}
+      {interviewDone && !hasDraft && (
+        <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {iv.notice && <div className="say"><Mascot size={32} /><div className="bubble">{iv.notice}</div></div>}
+          {sajuAfterIv && !readingChosen ? (
+            <div className="msg info">인터뷰를 마쳤어요. 다음은 <b>명리학 사주풀이</b>예요(받지 않아도 돼요). 아래에서 사주를 볼지 고르면 소개 글을 만들 수 있어요.</div>
+          ) : (
+            <>
+              <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {tlOn ? "별칭과 소개 글, 2진실 1거짓을" : inAct ? "별칭과 소개 글을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
+              <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : tlOn ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
+            </>
+          )}
+        </section>
       )}
       {interviewDone && !hasDraft && sajuAfterIv && (
         <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />
@@ -634,14 +653,6 @@ export function WhoWrite(props: {
       {/* 여는 시점이 사전 작성 기간·일정 당일이면 그때 따로 보여 준다(소개 글 만들기와 상관없이) */}
       {sajuOn && !sajuAfterIv && !hasDraft && (st.sajuOpen || readingChosen) && (
         <SajuPanel aid={aid} r={reading} canWrite={!!st.sajuOpen} onChanged={reload} />
-      )}
-
-      {/* 2. 초안 만들기 */}
-      {interviewDone && !hasDraft && (!sajuAfterIv || readingChosen) && (
-        <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {tlOn ? "별칭과 소개 글, 2진실 1거짓을" : inAct ? "별칭과 소개 글을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
-          <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : tlOn ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
-        </section>
       )}
 
       {/* 3. 미리보기 · 수정 · 승인 */}
