@@ -86,6 +86,15 @@ export function WhoWrite(props: {
   const sajuAfterIv = sajuOn && (st.sajuWhen ?? "interview") === "interview"; // 인터뷰 뒤(소개 글 만들기 전에 고른다)
 
   const [alias, setAlias] = useState(st.profile.alias);
+  const [aliasIdeas, setAliasIdeas] = useState<string[]>([]); // AI 별칭 추천 후보
+  const [aliasBusy, setAliasBusy] = useState(false);
+  async function suggestAlias() {
+    setAliasBusy(true);
+    const r = await api<{ aliases: string[] }>(`/api/who/${aid}/alias`, { method: "PUT", body: {} });
+    setAliasBusy(false);
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setAliasIdeas(r.data.aliases);
+  }
   const [intro, setIntro] = useState(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
   const [stmts, setStmts] = useState<string[]>(st.truthLies.statements);
   const [lie, setLie] = useState(st.truthLies.lieIndex);
@@ -496,6 +505,14 @@ export function WhoWrite(props: {
               <label className="l" htmlFor="alias">{hasAlias ? "새 별칭" : "별칭을 정해 주세요"}</label>
               <span className="small">이름과 회사명이 드러나면 안 되고, 다른 회원과 겹치면 안 돼요. 바꾸면 소개 글 속 별칭도 함께 바뀌어요.</span>
               <input id="alias" className="field" value={alias} maxLength={20} onChange={(e) => setAlias(e.target.value)} placeholder="예: 평상 위의 독서가" />
+              {/* AI 추천: 인터뷰 내용으로 후보 3개 → 누르면 칸에 채워짐(“바꾸기”를 눌러야 저장) */}
+              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                <button className="mini" type="button" disabled={aliasBusy || busy} onClick={suggestAlias}>{aliasBusy ? "추천 만드는 중…" : aliasIdeas.length ? "AI 추천 다시 받기" : "AI 추천 받기"}</button>
+                {aliasIdeas.map((a) => (
+                  <button key={a} type="button" className={`chip ${alias === a ? "violet" : "line"}`} style={{ cursor: "pointer" }} onClick={() => setAlias(a)}>{a}</button>
+                ))}
+              </div>
+              {aliasIdeas.length > 0 && <span className="small">마음에 드는 별칭을 누르면 칸에 들어가요. “{hasAlias ? "바꾸기" : "정하기"}”를 눌러야 저장돼요.</span>}
               <div className="row">
                 <button className="btn" type="button" disabled={busy || alias.trim().length < 2} style={{ width: "auto", minWidth: 120 }} onClick={saveAlias}>{hasAlias ? "바꾸기" : "정하기"}</button>
                 {hasAlias && <button className="btn white" type="button" style={{ width: "auto", minWidth: 100 }} onClick={() => setEditAlias(false)}>취소</button>}
