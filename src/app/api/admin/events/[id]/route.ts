@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { VIS_KEYS } from "@/lib/event-visibility";
+import { readVisibility, VIS_KEYS } from "@/lib/event-visibility";
 import { MAX_PHOTO_LIMIT } from "@/lib/event-photos";
 import { z } from "zod";
 import { bad, canDeleteEvent, guardEv } from "@/lib/api";
@@ -150,7 +150,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
     ...(pinned === undefined ? {} : { pinned: String(pinned) }),
     ...(showPrep === undefined ? {} : { showPrep: showPrep ? "true" : "" }),
     ...(showCosts === undefined ? {} : { showCosts: showCosts ? "true" : "" }),
-    ...(visibility === undefined ? {} : { visibility: JSON.stringify(Object.fromEntries(VIS_KEYS.map((k) => [k, visibility[k] !== false]))) }),
+    // 보낸 항목만 바꾸고 나머지는 지금 값(없으면 유형 기본값) 그대로
+    ...(visibility === undefined ? {} : { visibility: JSON.stringify(((cur) => Object.fromEntries(VIS_KEYS.map((k) => [k, typeof visibility[k] === "boolean" ? visibility[k] : cur[k]])))(readVisibility(before))) }),
     ...(supports === undefined ? {} : { supports: JSON.stringify(supports) }),
     // 사진 최대 장수를 바꿔 저장하면 회원들의 장수 늘리기 요청을 처리한 것으로 비운다(처리할 일에서 사라짐)
     ...(photoLimit === undefined || photoLimit === (before.photoLimit ?? "") ? {} : { photoLimit: photoLimit ? String(Number(photoLimit)) : "", photoReqs: "" }),

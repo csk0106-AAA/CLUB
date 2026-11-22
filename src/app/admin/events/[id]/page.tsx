@@ -1,6 +1,6 @@
 "use client";
 
-import { EventVisibility } from "@/components/EventVisibility";
+import { VisSwitch } from "@/components/VisSwitch";
 import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -507,8 +507,6 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           </div>
           {!ev.club && <EventJoiners eventId={id} onChanged={load} />}
           <EventAudience key={`${ev.id}-${ev.club ?? ""}`} eventId={id} audience={ev.audience} club={ev.club || undefined} onSaved={load} />
-          {/* 미응답·불참 회원에게 공개할 항목(누르면 바로 저장) */}
-          <EventVisibility eventId={id} type={ev.type} visibility={(ev as { visibility?: string }).visibility} onSaved={load} />
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           {/* 일정 이름 · 장소 한 줄, 시작 일시 · 끝나는 일시 · 사진 최대 장수 한 줄(globals.css .grid2.pair) */}
           <div className="grid2 pair">
@@ -544,7 +542,10 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           </div>
 
           <div>
-            <label className="l" htmlFor="o-book">안내 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
+            <div className="row" style={{ gap: 6, justifyContent: "space-between", flexWrap: "wrap" }}>
+              <label className="l" htmlFor="o-book">안내 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
+              <span className="row" style={{ gap: 6 }}><VisSwitch eventId={id} k="notice" inline /></span>
+            </div>
             <textarea id="o-book" className="field" rows={6} maxLength={2000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
               placeholder={"예)\n숙소: 대명 홍천 소노펠리체, 객실 10실 (예약번호 0000)\n체크인 15:00 / 체크아웃 11:00\n저녁: 18:30 ○○식당 (20명)"}
               value={ev.booking} onChange={(e) => set("booking", e.target.value)} />
@@ -580,15 +581,16 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
         </form>
       )}
 
-      {tab === "minutes" && ev.type === "회의" && <EventMinutes eventId={id} admin />}
-      {tab === "act" && <EventActivities eventId={id} canEdit={canEditActs} />}
+      {tab === "minutes" && ev.type === "회의" && <><VisSwitch eventId={id} k="minutes" /><EventMinutes eventId={id} admin /></>}
+      {tab === "act" && <><VisSwitch eventId={id} k="activities" canEdit={canEditActs} /><EventActivities eventId={id} canEdit={canEditActs} /></>}
       {tab === "sched" && <EventItems eventId={id} kind="schedule" canEdit />}
       {tab === "prep" && <EventItems eventId={id} kind="prep" canEdit />}
       {tab === "cost" && <EventItems eventId={id} kind="costs" canEdit />}
-      {tab === "group" && <GroupsPanel eventId={id} canEdit />}
-      {tab === "car" && <CarpoolPanel eventId={id} canEdit />}
-      {tab === "room" && <RoomsPanel eventId={id} canEdit />}
-      {tab === "photo" && <EventPhotos eventId={id} admin />}
+      {/* 조편성·차량·숙소·사진첩: 위쪽 오른쪽에 "미응답·불참에게 보이기" */}
+      {tab === "group" && <><VisSwitch eventId={id} k="groups" /><GroupsPanel eventId={id} canEdit /></>}
+      {tab === "car" && <><VisSwitch eventId={id} k="cars" note="끄면 미응답·불참 회원은 차량 목록·탑승 신청을 볼 수 없어요." /><CarpoolPanel eventId={id} canEdit /></>}
+      {tab === "room" && <><VisSwitch eventId={id} k="rooms" /><RoomsPanel eventId={id} canEdit /></>}
+      {tab === "photo" && <><VisSwitch eventId={id} k="photos" note="켜 두면 보기·좋아요·댓글·내려받기는 누구나, 사진 올리기는 참석자만 해요." /><EventPhotos eventId={id} admin /></>}
 
       {tab === "apply" && (() => {
         const FILTERS: { k: "all" | "참석" | "불참" | ""; l: string; n: number }[] = [
@@ -704,6 +706,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
 
       {tab === "fee" && (
         <>
+          <VisSwitch eventId={id} k="fee" note="켜 두면 참석 전에도 참석 일수별 예상 회비가 보여요." />
           {/* 회비 설정(개요에서 옮겨 옴): 입금 기한·계좌·예금주와 조건별 회비 줄. 아래 "회비 저장"으로 저장해요. */}
           {/* 입금 기한 · 입금 계좌 · 예금주 한 줄(좁으면 계좌가 넓게) */}
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.45fr) minmax(0, 1.25fr) minmax(0, 0.8fr)", gap: 6 }}>

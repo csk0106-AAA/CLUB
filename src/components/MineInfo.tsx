@@ -11,6 +11,8 @@ type Data = {
   dayPlaces?: Record<string, string>;
   groups: { title: string; team: string; members: string[]; teams?: { name: string; members: string[]; mine: boolean }[] }[];
   groupsPending?: number;
+  // 미응답·불참이라 닫힌 항목 중 이 일정에 실제로 있는 것(groups·rooms·cars) → 잠긴 칸으로 보여 준다
+  lockedCards?: string[];
   rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[]; people?: string[] }[] };
   carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number; people?: string[] }[] };
 };
@@ -32,7 +34,8 @@ function People({ label, names }: { label: string; names: string[] }) {
 // 회원이 보는 일정 정보: 일정, 내 조편성(배포된 것), 내 카풀(배포된 것)
 // placeholder: 조편성·카풀이 아직 배포되지 않았을 때 "조 편성 후 알려 드려요" 카드를 보여 준다.
 // noSchedule: 일정 칸은 빼고 그린다(일정 화면은 일정을 "펼쳐서 보기" 칸으로 따로 보여 준다).
-export function MineInfo({ eventId, placeholder = false, noSchedule = false }: { eventId: string; placeholder?: boolean; noSchedule?: boolean }) {
+// lockedCard: 미응답·불참에게 닫힌 항목을 그릴 잠긴 칸(회원 일정 화면이 넘겨준다)
+export function MineInfo({ eventId, placeholder = false, noSchedule = false, lockedCard }: { eventId: string; placeholder?: boolean; noSchedule?: boolean; lockedCard?: (title: string) => React.ReactNode }) {
   const [d, setD] = useState<Data | null>(null);
   useEffect(() => {
     let stop = false;
@@ -53,9 +56,12 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
   // 아직 배정 전인 칸: 참석 회원(placeholder)에게만 "배정 전" 안내를 보여 준다
   const waitCard = (title: string, text: string) =>
     placeholder ? <section className="card" aria-label={title}>{head(title)}<div className="small">{text}</div></section> : null;
+  const lockedSet = new Set(d.lockedCards ?? []);
+  const LOCK_TITLE: Record<string, string> = { groups: "조편성", rooms: "숙소 배정", cars: "차량 배정" };
   return (
     <>
-      {d.groups.length === 0 && waitCard("조편성", (d.groupsPending ?? 0) > 0 ? "조편성을 준비하고 있어요. 확정되면 여기에 보여요." : "조 편성 전이에요. 정해지면 여기에 보여요.")}
+      {lockedCard && [...lockedSet].map((k) => <span key={k} style={{ display: "contents" }}>{lockedCard(LOCK_TITLE[k] ?? k)}</span>)}
+      {!lockedSet.has("groups") && d.groups.length === 0 && waitCard("조편성", (d.groupsPending ?? 0) > 0 ? "조편성을 준비하고 있어요. 확정되면 여기에 보여요." : "조 편성 전이에요. 정해지면 여기에 보여요.")}
       {/* 조편성: 한 줄 요약(내 조 2팀 · 조원 5명), 조원 명단·전체 조는 펼쳐서 보기 */}
       {d.groups.map((g, i) => (
         <Fold key={i} title={`조편성 · ${g.title}`}
@@ -89,8 +95,8 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false }: {
           )}
         </Fold>
       ))}
-      {!d.rooms?.published && waitCard("숙소 배정", "숙소 배정 전이에요. 정해지면 여기에 보여요.")}
-      {d.rooms?.published && d.rooms.mine.length === 0 && waitCard("숙소 배정", "배정된 방이 없어요.")}
+      {!lockedSet.has("rooms") && !d.rooms?.published && waitCard("숙소 배정", "숙소 배정 전이에요. 정해지면 여기에 보여요.")}
+      {!lockedSet.has("rooms") && d.rooms?.published && d.rooms.mine.length === 0 && waitCard("숙소 배정", "배정된 방이 없어요.")}
       {!noSchedule && d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>일정</b>

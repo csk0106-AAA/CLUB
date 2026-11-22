@@ -1,5 +1,6 @@
 "use client";
 
+import { VisSwitch } from "./VisSwitch";
 import { ActionNote } from "@/components/ActionNote";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RowDelete } from "./RowDelete";
@@ -261,7 +262,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const suggest = attend > 0 ? Math.ceil(need / attend / 1000) * 1000 : 0;
   // 비용 목록 칸: 위 요약과 어울리게 작은 글씨
   const cs = { minHeight: 36, fontSize: fs(13), padding: "0 8px" } as const;
-  // 참석자 공개 스위치(준비목록·비용 공통): "참석자에게 보이기 [스위치]" — 미응답·불참은 일정의 공개 범위(lib/event-visibility.ts)를 따른다
+  // 참석자 공개 스위치(준비목록·비용 공통): "참석자에게 보이기 [스위치]" 옆에 "미응답·불참에게 보이기 [스위치]"(components/VisSwitch.tsx)
   const visSwitch = kind !== "schedule" && shown !== null ? (
     <>
       <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>참석자에게 보이기</span>
@@ -274,7 +275,12 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   return (
     <>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
-      {kind === "schedule" && <span className="small">여기에 적은 일정은 회원의 일정 화면에도 보여요.</span>}
+      {kind === "schedule" && (
+        <div className="row" style={{ gap: 6, justifyContent: "space-between", flexWrap: "wrap" }}>
+          <span className="small">여기에 적은 일정은 참석자의 일정 화면에 보여요.</span>
+          <span className="row" style={{ gap: 6 }}><VisSwitch eventId={eventId} k="schedule" canEdit={canEdit} inline /></span>
+        </div>
+      )}
       {kind === "costs" && (
         // 비용: 요약 카드 위 한 줄 "1인 회비 제안 ○원 [기본 회비로 정하기]"
         <span className="row" style={{ gap: 4, flexWrap: "wrap", minWidth: 0, whiteSpace: "nowrap" }} title={support ? `(예산 합계 - 지원금) ÷ 참석 ${attend}명` : `예산 합계 ÷ 참석 ${attend}명`}>
@@ -308,7 +314,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       {/* 비용 목록 바로 위 한 줄: 왼쪽 "공개 [스위치]" · 오른쪽 + 비용 추가(준비목록과 같은 배치) */}
       {kind === "costs" && (
         <div className="row" style={{ gap: 6, justifyContent: "space-between" }}>
-          <span className="row" style={{ gap: 6 }}>{visSwitch}</span>
+          <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>{visSwitch}<VisSwitch eventId={eventId} k="costs" canEdit={canEdit} inline /></span>
           {canEdit && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", flex: "none", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>}
         </div>
       )}
@@ -317,7 +323,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       {/* 준비목록: 한 줄에 왼쪽 "공개 [스위치]" · 오른쪽 "+ 준비 목록 추가" */}
       {kind === "prep" && (visSwitch || canEdit) && (
         <div className="row" style={{ gap: 6, justifyContent: "space-between" }}>
-          <span className="row" style={{ gap: 6 }}>{visSwitch}</span>
+          <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>{visSwitch}<VisSwitch eventId={eventId} k="prep" canEdit={canEdit} inline /></span>
           {canEdit && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 준비 목록 추가</button>}
         </div>
       )}

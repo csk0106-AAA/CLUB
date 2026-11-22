@@ -55,7 +55,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const observers = readObservers(e.observers);
   const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
   // 미응답·불참 회원에게 닫힌 항목(참석했거나 관리하는 사람은 모두 본다, lib/event-visibility.ts)
-  const locked = lockedFor(e, attending || preview);
+  //  준비목록·비용은 참석자에게도 안 보이는(관리자만) 경우 잠긴 칸을 보이지 않는다
+  const locked = lockedFor(e, attending || preview).filter((k) => !(k === "prep" && e.showPrep !== "true") && !(k === "costs" && e.showCosts !== "true") && !(k === "minutes" && e.type !== "회의")
+    && !(k === "fee" && !payable(mf.amount) && !((e.feeRules ?? "").length > 2)));
   const feeOpen = !locked.includes("fee");
   const fee = feeOpen && mf.known && payable(mf.amount) ? mf.amount : "";
   // 참석 전: 참석 일수별 예상 회비(1일·2일 등 다르면 모두)
@@ -63,9 +65,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const feeOptions = !attending && feeOpen && dayN > 1
     ? Array.from({ length: dayN }, (_, i) => ({ days: i + 1, amount: feeFor(e, { kind: me?.kind, position: me?.position }, i + 1) })).filter((x) => payable(x.amount))
     : [];
-  // 관리자가 "회원에게 보이기"를 켠 준비목록·비용(읽기만)
-  const showPrep = e.showPrep === "true" && !locked.includes("prepCost");
-  const showCosts = e.showCosts === "true" && !locked.includes("prepCost");
+  // 관리자가 "참석자에게 보이기"를 켠 준비목록·비용(읽기만, 미응답·불참은 항목별 공개 범위를 따른다)
+  const showPrep = e.showPrep === "true" && !locked.includes("prep");
+  const showCosts = e.showCosts === "true" && !locked.includes("costs");
   const [prepRows, costRows] = await Promise.all([showPrep ? s.list("EventPrep") : [], showCosts ? s.list("EventCosts") : []]);
   const prep = showPrep
     ? prepRows.filter((r) => r.eventId === id).map((r) => ITEMS.prep.view(r)).sort((a, b) => Number(a.done) - Number(b.done))

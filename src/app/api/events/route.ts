@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { lockedFor as visLocked } from "@/lib/event-visibility";
 import { getSession } from "@/lib/auth";
 import { memberFee, payable } from "@/lib/fee";
 import { eventJoinable, eventVisible, inClubOrObserver } from "@/lib/audience";
@@ -111,7 +112,8 @@ export async function GET() {
           const c = coverOf.get(e.id);
           // 사진첩을 볼 수 있는 사람(lib/event-photos.ts photoAccess 와 같은 기준): 참석 대상 회원, 또는 관리자 2차 인증을 마친
           // 일정관리 권한자·만든 사람·편집자·(클럽 일정이면) 클럽관리 권한자
-          const canSee = eventJoinable(e, me ?? session.mid) || (session.admin && (manager || perms.includes("clubs") && !!(e.club ?? "").trim() || ownEv(e)));
+          //  사진첩이 미응답·불참에게 닫혀 있으면 참석한 회원만
+          const canSee = (eventJoinable(e, me ?? session.mid) && (attending || !visLocked(e, false).includes("photos"))) || (session.admin && (manager || perms.includes("clubs") && !!(e.club ?? "").trim() || ownEv(e)));
           if (c && canSee) return `/api/events/${e.id}/photos/${c.id}?size=thumb`;
           return defaultCoverUrl(covers, e.club);
         })(),

@@ -223,7 +223,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       <span className="small">🔒 참석 신청하면 볼 수 있어요</span>
     </button>
   );
-  const hasFee = !!e.fee || !!e.feePending;
+  const hasFee = !locked.has("fee") && (!!e.fee || !!e.feePending);
   const actNames = d.activities.map((a) => a.name);
   // 참석인데 여러 날 일정(워크숍) 날짜를 아직 안 골랐으면(예: 클럽 관리자가 참석 요청을 승인한 직후) 날짜를 고르게 한다.
   const needDays = e.type === "워크숍" && answer === "참석" && e.canApply !== false && (d.apply?.days.length ?? 0) === 0 && days.length > 0;
@@ -266,7 +266,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       </EventHero>
 
       {/* 일정이 끝나면 사진첩을 맨 위로(함께 찍은 사진을 먼저 보도록) */}
-      {ended && <EventPhotos eventId={id} carousel />}
+      {ended && (locked.has("photos") ? <LockedFold title="사진첩" /> : <EventPhotos eventId={id} carousel />)}
 
       {/* 주요 활동: 미응답·불참에게 닫혀 있으면 잠긴 칸 */}
       {locked.has("activities") && e.hasActivities && <LockedFold title="주요 활동" />}
@@ -286,6 +286,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </Fold>
       )}
+      {locked.has("fee") && <LockedFold title="내 참가비" />}
       {!hasFee && answer !== "참석" && (e.feeOptions?.length ?? 0) > 0 && (
         <Fold title="내 참가비" summary={`참석하면 ${e.feeOptions!.map((o) => `${o.days}일 ${Number(o.amount).toLocaleString()}원`).join(" · ")}`}>
           <FeeOptions options={e.feeOptions!} />
@@ -316,13 +317,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <NoticeText text={e.booking.trim()} />
         </Fold>
       )}
-      {locked.has("schedule") && <LockedFold title="일정" />}
+      {locked.has("schedule") && <LockedFold title="세부일정" />}
       {schedule.length > 0 && (
         <Fold title="일정" summary={`세부 일정 ${schedule.length}개`}>
           <ScheduleView items={schedule} dayPlaces={dayPlaces} />
         </Fold>
       )}
-      {/* 관리자가 "참석자에게 보이기"를 켠 준비목록·비용(읽기만) */}
+      {/* 관리자가 "참석자에게 보이기"를 켠 준비목록·비용(읽기만). 미응답·불참에게 닫혀 있으면 잠긴 칸 */}
+      {locked.has("prep") && <LockedFold title="준비목록" />}
+      {locked.has("costs") && <LockedFold title="비용" />}
       {d.prep && (d.prep.length > 0 || (d.prepFiles?.length ?? 0) > 0) && (
         <Fold title="준비목록" summary={`${d.prep.filter((x) => x.done).length}/${d.prep.length} 준비됨${d.prepFiles?.length ? ` · 파일 ${d.prepFiles.length}개` : ""}`}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -371,10 +374,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {e.type === "회의" && (locked.has("minutes") ? <LockedFold title="회의록" /> : <EventMinutes eventId={id} />)}
       {/* 사진첩: 참석한 회원이 올리고 함께 본다(참석 대상이 아니면 그리지 않는다) */}
-      {!ended && <EventPhotos eventId={id} carousel />}
-      {locked.has("assign") ? <LockedFold title="조편성·숙소·차량" /> : <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />}
+      {!ended && (locked.has("photos") ? <LockedFold title="사진첩" /> : <EventPhotos eventId={id} carousel />)}
+      {/* 조편성·숙소·차량: 닫힌 항목은 MineInfo 가 잠긴 칸으로 그린다(그 항목이 이 일정에 있을 때만) */}
+      <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule lockedCard={(t) => <LockedFold title={t} />} />
       {/* 차량 신청: 관리자가 신청을 받거나 확정했을 때(참석 신청자만 신청할 수 있다) */}
-      {!e.preview && !locked.has("assign") && <CarRequestBox eventId={id} />}
+      {!e.preview && !locked.has("cars") && <CarRequestBox eventId={id} />}
       {e.canObserve && <ObserversCard eventId={id} />}
 
       {/* 참석을 취소해서 회비를 돌려받는 중 / 돌려받음 */}

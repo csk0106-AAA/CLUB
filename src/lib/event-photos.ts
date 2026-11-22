@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { lockedFor as visLocked } from "@/lib/event-visibility";
 import { guard, guardEv, parseJson } from "./api";
 import { eventJoinable } from "./audience";
 import type { Session } from "./auth";
@@ -56,8 +57,9 @@ export async function photoAccess(ctx: { params: Promise<{ id: string }> }): Pro
   const manager = g.s.admin ? "s" in (await guardEv(ctx)) : false;
   const joinable = eventJoinable(e, me ?? g.s.mid);
   const attending = applies.some((a) => a.eventId === id && a.memberId === g.s.mid && a.answer === "참석");
-  const canView = manager || joinable;
-  if (!canView) return { err: NextResponse.json({ error: "이 일정의 사진첩은 참석 대상 회원만 볼 수 있어요." }, { status: 404 }) };
+  // 사진첩이 미응답·불참에게 닫혀 있으면(lib/event-visibility.ts) 참석한 회원만 본다
+  const canView = manager || (joinable && (attending || !visLocked(e, false).includes("photos")));
+  if (!canView) return { err: NextResponse.json({ error: joinable ? "이 일정의 사진첩은 참석 신청한 회원만 볼 수 있어요." : "이 일정의 사진첩은 참석 대상 회원만 볼 수 있어요." }, { status: 404 }) };
   return { s: g.s, e, manager, canView, canUpload: manager || (joinable && attending), attending };
 }
 

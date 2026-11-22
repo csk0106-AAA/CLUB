@@ -35,9 +35,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   const c = await ctxOf(ctx);
   if ("err" in c) return c.err;
   const { g, id, members, attending } = c;
-  // 미응답·불참 회원에게 조편성·숙소·차량이 닫혀 있으면 차량 목록을 보내지 않는다(lib/event-visibility.ts)
+  // 미응답·불참 회원에게 차량 배정이 닫혀 있으면 차량 목록을 보내지 않는다(lib/event-visibility.ts)
   const evRow = await (await getStore()).get("Events", id);
-  const assignLocked = !!evRow && lockedFor(evRow, c.attending).includes("assign");
+  const assignLocked = !!evRow && lockedFor(evRow, c.attending).includes("cars");
   await runCarpoolDue(); // 마감 시각이 지났으면 먼저 자동 처리
   const [all, reqs, state] = await Promise.all([cars(id), carRequests(id), carpoolState(id)]);
   const mine0 = all.find((x) => x.ownerId === g.s.mid);
