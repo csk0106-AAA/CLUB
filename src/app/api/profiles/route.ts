@@ -14,6 +14,9 @@ export const dynamic = "force-dynamic";
 //  - 실명 공개 전인 '내가 누구일까요?' 활동에 참여 중인 회원은 이름 대신 별칭(랜덤 닉네임)으로만 보이고,
 //    회사·직책·클럽·프로필 사진도 내려주지 않는다(별칭의 주인을 알아챌 수 없게). 실명 공개 시점이 지나면 실명으로.
 //  - key: 상세 화면 주소(별칭 회원은 프로필 번호, 그 밖에는 "m-회원번호"). 별칭 회원의 회원 번호는 내려주지 않는다.
+type Sortable = { mine: boolean; isNew?: boolean; fresh?: string | null };
+const rank = (x: Sortable): number => (x.mine ? 0 : x.isNew && x.fresh ? 1 : x.fresh ? 2 : x.isNew ? 3 : 4);
+
 export async function GET() {
   const g = await guard();
   if ("err" in g) return g.err;
@@ -46,7 +49,8 @@ export async function GET() {
 
   return NextResponse.json({
     // 신규 회원(승인 후 한 달)이 맨 위(최근 승인 먼저), 그다음 이름순
-    items: items.sort((a, b) => Number(b.isNew) - Number(a.isNew) || (a.isNew && b.isNew ? b.since.localeCompare(a.since) : 0) || a.name.localeCompare(b.name, "ko")),
+    // 정렬: 내 프로필 > 신규 회원이면서 소개 글 업데이트(NEW/UP) > 소개 글 업데이트 > 신규 회원 > 그 외. 같은 묶음 안에서는 신규 회원은 최근 순, 그다음 이름 순
+    items: items.sort((a, b) => rank(a) - rank(b) || (a.isNew && b.isNew ? b.since.localeCompare(a.since) : 0) || a.name.localeCompare(b.name, "ko")),
     maskedCount: items.filter((i) => i.masked).length,
   });
 }
