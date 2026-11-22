@@ -24,6 +24,7 @@ type Data = {
   mySelf: Record<Dir, boolean>; // 개별 이동을 골랐는지(구간별)
   adminOnly: boolean; recruitOn: boolean; // 관리자배정 / 차량모집을 켰는지
   myName?: string; // 탑승자 명단에서 내 이름 강조
+  myRole?: Record<Dir, "rider" | "driver" | "self" | "">; // 구간별 내 역할
 };
 type Who = "me" | "member" | "other"; // 운전자: 나 / 다른 회원 / 회원 아닌 사람
 type Offer = { who: Who; driverId: string; driverName: string; name: string; plate: string; go: LegForm; back: LegForm };
@@ -40,6 +41,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
   const base = `/api/events/${eventId}/cars`;
   const [d, setD] = useState<Data | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pickOther, setPickOther] = useState(false); // 확정 뒤 다른 차량 목록 펼치기
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [offer, setOffer] = useState<Offer | null>(null);
   const [offerErr, setOfferErr] = useState("");
@@ -225,6 +227,46 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
       </div>
     );
   });
+  // 탑승 취소(배정된 차에서 내리기)
+  async function leave(dir: Dir) {
+    if (!window.confirm(`${LABEL[dir]} ${d?.myRide?.[dir] ?? ""} 탑승을 취소할까요? 자리가 비고, 관리자에게 알림이 가요.`)) return;
+    setBusy(true);
+    setMsg(null);
+    const r = await api(base, { body: { action: "leave", dir } });
+    setBusy(false);
+    setMsg(r.ok ? { tone: "info", text: `${LABEL[dir]} 탑승을 취소했어요. 개별 이동하거나 다른 차량을 신청할 수 있어요.` } : { tone: "bad", text: r.error });
+    await load();
+  }
+  // 확정·마감 뒤 "내 탑승": 구간마다 지금 상태와 바꿀 수 있는 것
+  const myRideBlock = d.attending && (d.phase === "confirmed" || d.phase === "closed") && (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
+      <b style={{ fontSize: fs(15) }}>내 탑승</b>
+      {(["go", "back"] as Dir[]).map((dir) => {
+        const role = d.myRole?.[dir] ?? "";
+        const car = d.myRide?.[dir] ?? "";
+        return (
+          <div key={dir} className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <b style={{ fontSize: fs(14), flex: "0 0 auto" }}>{LABEL[dir]}</b>
+            <span className="grow small" style={{ fontWeight: 700 }}>
+              {role === "self" ? "개별 이동" : role === "driver" ? `${car} (운전·지원)` : car || "배정된 차량 없음"}
+            </span>
+            {role === "rider" && <button type="button" className="mini" disabled={busy} onClick={() => leave(dir)}>탑승 취소</button>}
+            {role !== "self" && role !== "driver" && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별 이동으로</button>}
+            {role === "self" && !d.waitClosed && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별 이동 취소</button>}
+          </div>
+        );
+      })}
+      {/* 다른 차량 신청: 마감 전이면 직접(목록에서 “신청”·“이 차로 바꾸기”), 마감 뒤에는 관리자에게 요청 */}
+      {!d.waitClosed && !d.adminOnly ? (
+        <>
+          <button type="button" className="mini" style={{ alignSelf: "flex-start" }} onClick={() => setPickOther(!pickOther)}>{pickOther ? "차량 목록 접기" : "다른 차량 신청하기"}</button>
+          {pickOther && carList(true)}
+        </>
+      ) : (
+        <span className="small">다른 차량이 필요하면 아래 “관리자에게 변경·취소 요청”을 눌러 주세요. 탑승 취소와 개별 이동은 지금도 직접 할 수 있어요.</span>
+      )}
+    </div>
+  );
   // 마감 뒤 변경 안내
   const askBlock = d.attending && (
     <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -266,6 +308,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
         {d.phase === "closed" && (
           <>
             <span className="small" style={{ fontWeight: 700 }}>차량신청이 마감되었습니다. 회원님의 신청 차량은 {rideLine} 입니다.</span>
+            {myRideBlock}
             {carList(false)}
             {askBlock}
           </>
@@ -273,6 +316,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
         {d.phase === "confirmed" && (
           <>
             <span className="small" style={{ fontWeight: 700 }}>차량배정이 확정되었습니다. 회원님이 탑승할 차량은 {rideLine} 입니다.</span>
+            {myRideBlock}
             {/* 내 차 먼저(출발·도착·확정 명단), 다른 차는 접어서 */}
             {carList(false, (c) => c.name === d.myRide?.go || c.name === d.myRide?.back)}
             {d.cars.some((c) => c.name !== d.myRide?.go && c.name !== d.myRide?.back) && (

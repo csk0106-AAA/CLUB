@@ -230,6 +230,25 @@ export async function markSeen(eventId: string, mid: string): Promise<void> {
 }
 
 // 개별 이동 켜기: 그 구간에 탄 차가 있으면 빼고(자리는 대기자에게), 신청 대기도 취소. 끄기: 개별 이동에서만 뺀다(배정 대기로).
+// 탑승 취소: 이 구간에 배정된 차에서 내린다(신청도 취소). 자리를 비우는 일이라 마감 뒤에도 회원이 직접 할 수 있다.
+//  자리가 나면 대기한 사람을 올리고(마감 전), 차 주인에게 알린다. 내린 차 이름을 돌려준다("" 이면 탄 차가 없었음).
+export async function leaveCar(eventId: string, mid: string, dir: Dir, note = "탑승을 취소했어요"): Promise<string> {
+  const s = await getStore();
+  for (const r of (await carRequests(eventId)).filter((x) => x.memberId === mid && x.dir === dir && (OPEN.includes(x.status) || SEATED.includes(x.status)))) {
+    await setStatus(r.id, { status: "canceled", note });
+  }
+  let left = "";
+  for (const car of (await cars(eventId)).filter((c) => c[dir].riders.includes(mid))) {
+    car[dir].riders = car[dir].riders.filter((x) => x !== mid);
+    await s.update("Carpools", car.id, toRow(car));
+    left = car.name;
+    const name = (await s.list("Members")).find((m) => m.id === mid)?.name ?? "회원";
+    await addAlerts(carOwners(car).filter((x) => x !== mid), { eventId, text: `${name} 님이 내 차(${car.name}) ${dir === "go" ? "갈 때" : "올 때"} 탑승을 취소했어요.`, href: evHref(eventId) });
+    await promote(eventId, car.id, dir);
+  }
+  return left;
+}
+
 export async function setSelf(eventId: string, mid: string, dir: Dir, on: boolean): Promise<void> {
   const st = await carpoolState(eventId);
   const cur = selfOf(st, dir).filter((x) => x !== mid);
