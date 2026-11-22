@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AudiencePicker } from "@/components/AudiencePicker";
 import { DateField } from "@/components/DateField";
@@ -12,6 +12,8 @@ import { api } from "@/lib/client";
 import { EVENT_TYPES, isLight } from "@/lib/event-types";
 
 const ALL: Audience = { mode: "all", events: [], clubs: [], memberIds: [] };
+// 유형 템플릿 요약(lib/event-template.ts templateSummary)
+type Tpl = { type: string; fromName: string; savedAt: string; startsAt: string; counts: { schedule: number; prep: number; costs: number; activities: number } };
 
 // 일정 페이지의 "+ 일정 만들기" 창. 만들면 그 일정의 관리 화면(/admin/events/[id])으로 가서 내용을 채운다.
 // fixedClub 을 주면(클럽관리 › 클럽 › 클럽일정관리) 그 클럽 일정만 만든다.
@@ -40,6 +42,15 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
   const [busy, setBusy] = useState(false);
 
   const dirty = !!(name.trim() || startsAt || place.trim());
+  // 유형 템플릿: 이 유형의 템플릿이 있으면 "템플릿으로 채우기"(기본 켜짐)
+  const [tpls, setTpls] = useState<Record<string, Tpl>>({});
+  const [useTpl, setUseTpl] = useState(true);
+  useEffect(() => {
+    if (!open) return;
+    api<{ templates: Record<string, Tpl> }>("/api/admin/event-templates").then((r) => { if (r.ok) setTpls(r.data.templates); });
+  }, [open]);
+  const tpl = tpls[type];
+  const withTpl = !!tpl && useTpl;
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +66,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
       setNeedPass(false);
     }
     const body = {
-      type, name, pinned, startsAt, endsAt, place, photoLimit,
+      type, name, pinned, startsAt, endsAt, place, photoLimit, useTemplate: withTpl,
       ...(isClub ? { club, audience } : { audience }),
     };
     const r = await api<{ event: { id: string } }>("/api/admin/events", { body });
@@ -111,6 +122,16 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
         ) : (
           <AudiencePicker value={audience} onChange={setAudience} legend="누구에게 보일까요?" membersOnly />
         )}
+        {tpl && (
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--soft)" }}>
+            <label htmlFor="n-tpl" style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 700 }}>
+              <input id="n-tpl" type="checkbox" checked={useTpl} onChange={(e) => setUseTpl(e.target.checked)} />
+              {type} 템플릿으로 채우기
+            </label>
+            <span className="small">“{tpl.fromName}”의 세부일정 {tpl.counts.schedule}개 · 활동 {tpl.counts.activities}개 · 준비목록 {tpl.counts.prep}개 · 비용 {tpl.counts.costs}개, 회비·안내·공개 범위를 복사해요. 날짜는 시작 날짜에 맞춰 옮겨요.</span>
+            {withTpl && <span className="small">시작 날짜를 꼭 골라 주세요. 날짜만 고르면 시각은 템플릿과 같게, 끝나는 일시를 비우면 템플릿과 같은 기간으로 정해져요.</span>}
+          </div>
+        )}
         <div className="checks">
           <label htmlFor="n-pin">
             <input id="n-pin" type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
@@ -130,7 +151,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
         )}
         {err && <div className="msg bad" role="alert">{err}</div>}
         <button className="btn" type="submit"
-          disabled={busy || !name.trim() || (isClub && !club) || (needPass && !code) || (audience.mode !== "all" && audience.mode !== "clubs" && audience.memberIds.length === 0)}
+          disabled={busy || !name.trim() || (withTpl && !startsAt) || (isClub && !club) || (needPass && !code) || (audience.mode !== "all" && audience.mode !== "clubs" && audience.memberIds.length === 0)}
           style={{ width: "auto", minWidth: 180, alignSelf: "flex-start" }}>
           {busy ? "만드는 중…" : "만들기"}
         </button>

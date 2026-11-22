@@ -22,6 +22,7 @@ import type { SchedItem } from "@/components/ScheduleBoard";
 import { readDayPlaces } from "@/lib/day-places";
 import { EditorsBox } from "@/components/EditorsBox";
 import { EventDuplicate } from "@/components/EventDuplicate";
+import { EventTemplateSave } from "@/components/EventTemplateSave";
 import { EventAudience } from "./EventAudience";
 import { EventJoiners } from "./EventJoiners";
 import { matches as nameMatches } from "@/components/NameSearch";
@@ -129,11 +130,13 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const [opts, setOpts] = useState<Opts>({ kinds: [], positions: [], clubs: [], dues: { account: "", holder: "" } });
   const [prefilled, setPrefilled] = useState("");
   const [canDelete, setCanDelete] = useState(false); // 일정관리 권한자·만든 사람만 삭제
+  const [canTpl, setCanTpl] = useState(false); // 유형 템플릿 저장: 일정관리 권한자만
   const router = useRouter();
 
   useEffect(() => {
     api<{ perms: string[] }>("/api/me").then((r) => {
       if (r.ok) setCanEditActs(r.data.perms.includes("all") || r.data.perms.includes("templates") || r.data.perms.includes("events"));
+      if (r.ok) setCanTpl(r.data.perms.includes("all") || r.data.perms.includes("events"));
     });
   }, []);
 
@@ -572,6 +575,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <span className="small grow" style={{ minWidth: 200 }}>같은 설정으로 다음 일정을 만들려면 복제하세요. 세부일정·준비목록·비용 항목·활동까지 새 초안으로 복사돼요.</span>
             <EventDuplicate variant="page" ev={{ id: ev.id, name: ev.name, startsAt: ev.startsAt, club: ev.club }} />
           </div>
+          {/* 유형 템플릿: 일정 만들기에서 같은 유형을 고르면 이 일정 내용으로 채우기 */}
+          {canTpl && ev.type !== "클럽" && <EventTemplateSave eventId={id} type={ev.type} />}
           {canDelete && (
             <div className="row" style={{ flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 4 }}>
               <span className="small grow" style={{ minWidth: 200 }}>일정을 지우면 참석 신청·회비·세부일정·활동 기록도 함께 지워지고 되돌릴 수 없어요. 회원에게만 감추려면 “공개 취소”를 쓰세요.</span>

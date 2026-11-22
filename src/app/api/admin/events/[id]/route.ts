@@ -121,7 +121,7 @@ const patch = z.object({
   showPrep: z.boolean().optional(), // 준비목록을 회원에게 보이기
   showCosts: z.boolean().optional(), // 비용을 회원에게 보이기
   supports: supportsInput.optional(), // 지원금(연·월회비 지원, 회원 지원)
-  photoLimit: z.string().regex(/^(d{1,4})?$/).optional(), // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
+  photoLimit: z.string().regex(/^(\d{1,4})?$/).optional(), // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
   approval: z.enum(["", "admin"]).optional(), // 참석 확정 방식("" 바로 참석 / admin 관리자 승인 후, lib/attend-approval.ts)
   visibility: z.record(z.string(), z.boolean()).optional(), // 미응답·불참 회원에게 공개할 항목(lib/event-visibility.ts)
 });

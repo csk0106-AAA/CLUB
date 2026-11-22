@@ -11,6 +11,7 @@ import { isLight } from "@/lib/event-types";
 import { EVENT_TYPES } from "@/lib/schemas";
 import { fixLegacyTypes } from "@/lib/event-migrate";
 import { getStore } from "@/lib/store";
+import { fillFromTemplate, readTemplates, templateEventFields, templateTimes } from "@/lib/event-template";
 import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,8 @@ const body = z.object({
   endsAt: z.string().regex(/^(\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?)?$/).optional(),
   place: z.string().trim().max(120).optional(),
   audience: audienceInput.optional(), // 공개 대상(클럽이 아닌 일정, 비우면 전체 회원)
-  photoLimit: z.string().regex(/^(d{1,4})?$/).optional(), // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
+  photoLimit: z.string().regex(/^(\d{1,4})?$/).optional(), // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
+  useTemplate: z.boolean().optional(), // 이 유형의 템플릿으로 채우기(lib/event-template.ts)
 });
 
 // 일정 만들기: 일정관리(모든 종류) 또는 일정 만들기 권한(evMain: 정기모임·워크숍·회의·미팅 / evClub: 클럽·회의·미팅)
@@ -63,7 +65,14 @@ export async function POST(req: Request) {
   if ("err" in g) return g.err;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("일정 유형과 이름을 입력해 주세요. 일시는 달력에서 골라 주세요.");
-  const { type, name, startsAt = "", endsAt = "", place = "" } = parsed.data;
+  const { type, name, place = "" } = parsed.data;
+  let { startsAt = "", endsAt = "" } = parsed.data;
+  // 유형 템플릿: 날짜만 골랐으면 템플릿 시작 시각, 끝을 비웠으면 템플릿 진행 시간만큼
+  const tpl = parsed.data.useTemplate ? (await readTemplates())[type] : undefined;
+  if (parsed.data.useTemplate && !tpl) return bad(`${type} 템플릿이 없어요. 템플릿 없이 만들어 주세요.`);
+  if (tpl && !startsAt) return bad("템플릿으로 만들려면 시작 날짜를 골라 주세요(세부일정 날짜를 맞춰요).");
+  const tt = tpl ? templateTimes(tpl, startsAt, endsAt) : null;
+  if (tt) ({ startsAt, endsAt } = tt);
   const allowed = creatableTypes(g.s.perms);
   // 클럽 일정(클럽관리 › 클럽 › 일정 만들기)은 정기모임·워크숍·회의·미팅 유형도 고를 수 있다 — 클럽 일정을 만들 수 있으면 된다
   const forClub = !!(parsed.data.club ?? "").trim();
@@ -105,6 +114,9 @@ export async function POST(req: Request) {
     status: "초안", published: "false", pinned: String(parsed.data.pinned === true),
     // 만든 사람: 일정 만들기 권한자는 자기가 만든 일정만 고칠 수 있다(lib/api.ts guardEv)
     createdBy: g.s.mid,
+    // 템플릿 칸(장소는 입력한 값이 있으면 그것, 클럽 일정이면 계좌는 클럽 것)
+    ...(tpl && tt ? { ...templateEventFields(tpl, tt.days, !!club), ...(place ? { place } : {}), ...(photoLimit ? { photoLimit } : {}) } : {}),
   });
+  if (tpl && tt) await fillFromTemplate(ev.id, tpl, tt.days);
   return NextResponse.json({ event: ev });
 }

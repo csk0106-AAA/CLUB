@@ -52,6 +52,7 @@ export async function POST(req: Request, ctx: Ctx) {
     supports: ev.supports ?? "", audience: ev.audience ?? "",
     dayPlaces: Object.keys(movedPlaces).length ? JSON.stringify(movedPlaces) : "",
     showPrep: ev.showPrep ?? "", showCosts: ev.showCosts ?? "", photoLimit: ev.photoLimit ?? "",
+    visibility: ev.visibility ?? "", approval: ev.approval ?? "",
     createdBy: g.s.mid,
   });
   const nid = copy.id;
