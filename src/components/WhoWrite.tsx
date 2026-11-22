@@ -46,6 +46,14 @@ const WHEN: Record<string, string> = {
   unknown: "일정 날짜가 정해지면 작성 기간이 열려요.",
   none: "이 활동에는 사전 작성이 없어요.",
 };
+// AI 질문에서 바로 누를 수 있는 답 읽기: ①②③④ 보기, 또는 질문 끝의 “(예/아니요)”
+export function quickAnswers(q: string): string[] {
+  const opts = [...q.matchAll(/([①②③④⑤])\s*([^①②③④⑤\n]+)/g)].map((m) => `${m[1]} ${m[2].trim().replace(/[,.·]\s*$/, "")}`);
+  if (opts.length >= 2) return opts;
+  if (/\(\s*예\s*\/\s*아니요\s*\)/.test(q)) return ["예", "아니요"];
+  return [];
+}
+
 const RESET_ASK = "기존 내 소개 글은 지워지고 공통 질문부터 다시 해요. 이전 AI 추가 질문 답변은 공통 질문을 마친 뒤 다시 할지, 유지할지 골라요. 새로 진행할까요?";
 
 // 인터뷰 답변 하나 고치기(타이핑 또는 음성)
@@ -213,6 +221,17 @@ export function WhoWrite(props: {
     // 아직 다듬기를 거치지 않은 글이면 먼저 다듬어 보여 준다(고칠 것이 없으면 바로 보낸다)
     if (st.aiEnabled && answer.trim() !== checked.trim() && answer !== checked && (await polish(answer))) return;
     const r = await api(`/api/who/${aid}/interview`, { body: { answer } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setAnswer("");
+    setPolished(null);
+    setPolishMsg("");
+    setChecked("");
+    await reload();
+  });
+
+  // 보기·예/아니요 버튼으로 바로 답하기(짧은 답이라 AI 다듬기 없이 보낸다)
+  const quickSend = (text: string) => run(async () => {
+    const r = await api(`/api/who/${aid}/interview`, { body: { answer: text } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setAnswer("");
     setPolished(null);
@@ -543,6 +562,23 @@ export function WhoWrite(props: {
                       <span className={`pill ${common < iv.required ? "blue" : "ok"}`}>공통 질문 {common}/{iv.required}</span>
                       {extra > 0 && <span className={`pill ${iv.answered < iv.required ? "gray" : "blue"}`}>AI 추가 질문 {ai}/{extra}</span>}
                       <span className="small">{left > 0 ? `남은 질문 약 ${left}개 · 약 ${left}분` : "거의 끝났어요"}</span>
+                    </div>
+                  );
+                })()}
+                {/* 지금 질문에 보기(①②③)나 (예/아니요)가 있으면 눌러서 바로 답한다 */}
+                {(() => {
+                  const last = iv.messages[iv.messages.length - 1];
+                  const qa = last?.role === "ai" ? quickAnswers(last.text) : [];
+                  if (!qa.length) return null;
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span className="l" style={{ margin: 0 }}>눌러서 바로 답하기</span>
+                      <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                        {qa.map((t) => (
+                          <button key={t} type="button" className="btn white" disabled={busy || polishing} style={{ width: "auto", minHeight: 44, textAlign: "left" }} onClick={() => quickSend(t)}>{t}</button>
+                        ))}
+                      </div>
+                      <span className="small">맞는 답이 없으면 아래에 직접 적어도 돼요.</span>
                     </div>
                   );
                 })()}
