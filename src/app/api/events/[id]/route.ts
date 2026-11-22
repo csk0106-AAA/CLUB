@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guard, parseJson } from "@/lib/api";
-import { memberFee, payable } from "@/lib/fee";
+import { feeFor, memberFee, payable } from "@/lib/fee";
+import { lockedFor } from "@/lib/event-visibility";
 import { eventJoinable, eventVisible, inClubOrObserver, readObservers } from "@/lib/audience";
 import { defaultCoverUrl, eventCoverUrl, readCovers } from "@/lib/covers";
 import { bestPhoto } from "@/lib/event-photos";
@@ -53,10 +54,18 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const leaders = club ? clubLeaders(members, club) : [];
   const observers = readObservers(e.observers);
   const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
-  const fee = mf.known && payable(mf.amount) ? mf.amount : "";
+  // 미응답·불참 회원에게 닫힌 항목(참석했거나 관리하는 사람은 모두 본다, lib/event-visibility.ts)
+  const locked = lockedFor(e, attending || preview);
+  const feeOpen = !locked.includes("fee");
+  const fee = feeOpen && mf.known && payable(mf.amount) ? mf.amount : "";
+  // 참석 전: 참석 일수별 예상 회비(1일·2일 등 다르면 모두)
+  const dayN = eventDays(e.startsAt, e.endsAt);
+  const feeOptions = !attending && feeOpen && dayN > 1
+    ? Array.from({ length: dayN }, (_, i) => ({ days: i + 1, amount: feeFor(e, { kind: me?.kind, position: me?.position }, i + 1) })).filter((x) => payable(x.amount))
+    : [];
   // 관리자가 "회원에게 보이기"를 켠 준비목록·비용(읽기만)
-  const showPrep = e.showPrep === "true";
-  const showCosts = e.showCosts === "true";
+  const showPrep = e.showPrep === "true" && !locked.includes("prepCost");
+  const showCosts = e.showCosts === "true" && !locked.includes("prepCost");
   const [prepRows, costRows] = await Promise.all([showPrep ? s.list("EventPrep") : [], showCosts ? s.list("EventCosts") : []]);
   const prep = showPrep
     ? prepRows.filter((r) => r.eventId === id).map((r) => ITEMS.prep.view(r)).sort((a, b) => Number(a.done) - Number(b.done))
@@ -67,7 +76,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     ? (await listEventFileMeta(id)).sort((p, q) => (p.createdAt ?? "").localeCompare(q.createdAt ?? ""))
       .map((r) => fileMeta(r, (mid) => members.find((m) => m.id === mid)?.name ?? ""))
     : null;
-  const activities = acts
+  const activities = locked.includes("activities") ? [] : acts
     .filter((x) => x.eventId === id)
     .sort((p, q) => Number(p.order) - Number(q.order))
     .map((x) => ({ id: x.id, name: parseJson<{ name?: string }>(x.config, {}).name ?? "활동" }));
@@ -91,7 +100,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       startsAt: e.startsAt,
       endsAt: e.endsAt,
       place: e.place,
-      booking: e.booking,
+      booking: locked.includes("notice") ? "" : e.booking,
+      locked, // 미응답·불참이라 닫힌 항목(누르면 참석 신청 안내)
+      feeOptions, // 참석 전: 참석 일수별 예상 회비
+      hasActivities: acts.some((x) => x.eventId === id), // 닫혀 있어도 "주요 활동"이 있는지(잠긴 칸을 보여 주려고)
       status: e.status,
       fee, // 이 회원이 낼 회비("" = 없음 또는 아직 모름)
       feePending: !mf.known, // 참석 날짜를 골라야 회비가 정해짐
@@ -129,3 +141,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   });
 }
 
+
+// 일정 일수(시작일~끝일, 최대 7일)
+function eventDays(startsAt?: string, endsAt?: string): number {
+  if (!startsAt) return 1;
+  const a = Date.parse(`${startsAt.slice(0, 10)}T00:00:00Z`);
+  const b = Date.parse(`${(endsAt || startsAt).slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return 1;
+  return Math.min(7, Math.round((b - a) / 86_400_000) + 1);
+}

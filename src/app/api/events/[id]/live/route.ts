@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { lockedFor } from "@/lib/event-visibility";
 import { memberGuide } from "@/lib/template-schema";
 import { bad, guard } from "@/lib/api";
 import { activityKind, guessStatus, liveView, preStatus, readConfig, windowBase } from "@/lib/activities";
@@ -24,6 +25,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 다른 클럽 일정은 개요만 읽을 수 있고 활동에는 들어갈 수 없다.
   if (!eventJoinable(ev, me ?? g.s.mid)) return bad("이 클럽 회원만 활동에 참여할 수 있어요.", 403);
 
+  // 미응답·불참 회원에게 주요 활동이 닫혀 있으면 보내지 않는다(lib/event-visibility.ts)
+  const going = (await s.list("EventApplies")).some((x) => x.eventId === id && x.memberId === g.s.mid && x.answer === "참석");
+  if (lockedFor(ev, going).includes("activities")) return NextResponse.json({ activities: [], locked: true });
   const mine = acts
     .filter((a) => a.eventId === id)
     .sort((a, b) => Number(a.order) - Number(b.order))

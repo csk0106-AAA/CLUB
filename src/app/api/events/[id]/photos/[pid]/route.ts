@@ -51,7 +51,6 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청 형식이 맞지 않아요.");
   const patch: Record<string, string> = {};
-  if (parsed.data.like !== undefined && !r.canUpload) return bad("참석 신청한 회원만 좋아요를 누를 수 있어요.", 403);
   if (parsed.data.like !== undefined) {
     const likes = new Set(parseJson<string[]>(r.p.likes, []));
     if (parsed.data.like) likes.add(r.s.mid);

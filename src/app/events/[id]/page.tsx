@@ -25,6 +25,8 @@ type Detail = {
     preview?: boolean; draft?: boolean; // 관리하는 사람이 공개 대상 밖·공개전 일정을 회원 화면으로 보는 중
     going?: number; // 참석 인원
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
+    // 미응답·불참이라 닫힌 항목(lib/event-visibility.ts), 참석하면 낼 예상 회비(참석 일수별), 주요 활동이 있는지(닫혀 있어도)
+    locked?: string[]; feeOptions?: { days: number; amount: string }[]; hasActivities?: boolean;
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
     canApply?: boolean; // false: 내가 속하지 않은 클럽 일정(읽기만)
     attendReq?: AttendReq; // 클럽 관리자에게 보낸 내 참석 요청(참관/가입 + 참석)
@@ -73,6 +75,17 @@ const canManageOf = (p?: string[]) => !!p && ["all", "events"].some((x) => p.inc
 //  위: D-day · 회비 알림 · 일정 카드(유형·이름·일시·장소)
 //  가운데: 주요 활동 · 내 참가비 · 안내 · 일정 — "펼쳐서 보기"로 여닫는다(관리자 개요의 "회원에게 보이는 모습"과 같은 조각)
 //  아래: 참석 신청(참석 신청했어요 … 일정으로 돌아가기)
+// 참석 전: 참석 일수별 예상 회비(1일·2일 등 다르면 모두 보여 주고 참석 신청을 이끈다)
+function FeeOptions({ options }: { options: { days: number; amount: string }[] }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span className="small" style={{ fontWeight: 700 }}>참석하면 낼 예상 회비</span>
+      {options.map((o) => <span key={o.days} className="small">· {o.days}일 참석: <b>{Number(o.amount).toLocaleString()}원</b></span>)}
+      <span className="small">아래에서 참석 신청하고 참석 날짜를 고르면 회비가 정해져요.</span>
+    </div>
+  );
+}
+
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -198,6 +211,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const answer = d.apply?.answer ?? "";
   const days = eventDays(e.startsAt, e.endsAt);
   const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
+  // 미응답·불참이라 닫힌 항목(참석하면 모두 열림)
+  const locked = new Set(e.locked ?? []);
+  // 잠긴 칸: 제목만 보이고, 누르면 참석 신청 안내
+  const LockedFold = ({ title }: { title: string }) => (
+    <button type="button" className="card" onClick={() => {
+      if (e.canApply === false || e.preview) return void window.alert("참석한 회원만 볼 수 있는 정보예요.");
+      if (window.confirm(`“${title}”은 참석 신청하면 볼 수 있어요. 지금 참석 신청하러 갈까요?`)) document.getElementById("apply")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }} style={{ display: "flex", alignItems: "center", gap: 8, textAlign: "left", width: "100%", cursor: "pointer" }}>
+      <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>{title}</b>
+      <span className="small">🔒 참석 신청하면 볼 수 있어요</span>
+    </button>
+  );
   const hasFee = !!e.fee || !!e.feePending;
   const actNames = d.activities.map((a) => a.name);
   // 참석인데 여러 날 일정(워크숍) 날짜를 아직 안 골랐으면(예: 클럽 관리자가 참석 요청을 승인한 직후) 날짜를 고르게 한다.
@@ -243,6 +268,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {/* 일정이 끝나면 사진첩을 맨 위로(함께 찍은 사진을 먼저 보도록) */}
       {ended && <EventPhotos eventId={id} carousel />}
 
+      {/* 주요 활동: 미응답·불참에게 닫혀 있으면 잠긴 칸 */}
+      {locked.has("activities") && e.hasActivities && <LockedFold title="주요 활동" />}
       {/* 주요 활동: 펼치면 예전 일정 홈의 활동 길(함께할 활동)과 진행 중 카드. 일정 당일에는 처음부터 펼쳐 둔다. */}
       {actNames.length > 0 && (
         <Fold title="주요 활동" summary={actNames.join(" · ")} defaultOpen={dd === "오늘 진행"}>
@@ -259,9 +286,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </Fold>
       )}
+      {!hasFee && answer !== "참석" && (e.feeOptions?.length ?? 0) > 0 && (
+        <Fold title="내 참가비" summary={`참석하면 ${e.feeOptions!.map((o) => `${o.days}일 ${Number(o.amount).toLocaleString()}원`).join(" · ")}`}>
+          <FeeOptions options={e.feeOptions!} />
+        </Fold>
+      )}
       {hasFee && (
         <Fold title="내 참가비" summary={feeSummary(e, fee)}>
           <FeeDetail ev={e} fee={fee} />
+          {answer !== "참석" && (e.feeOptions?.length ?? 0) > 0 && <FeeOptions options={e.feeOptions!} />}
           {d.apply?.paid && <div className="small" style={{ color: "var(--green-t)" }}>회비 입금 확인됨 ✓</div>}
           {/* 입금 안내 보기(회비 안내 화면) · 입금 알리기(회비 안내의 "입금했어요"와 같은 동작) */}
           {d.feeDue && (
@@ -277,11 +310,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           )}
         </Fold>
       )}
+      {locked.has("notice") && <LockedFold title="안내" />}
       {e.booking?.trim() && (
         <Fold title="안내" summary={noticeSummary(e.booking)}>
           <NoticeText text={e.booking.trim()} />
         </Fold>
       )}
+      {locked.has("schedule") && <LockedFold title="일정" />}
       {schedule.length > 0 && (
         <Fold title="일정" summary={`세부 일정 ${schedule.length}개`}>
           <ScheduleView items={schedule} dayPlaces={dayPlaces} />
@@ -334,12 +369,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </Fold>
       )}
 
-      {e.type === "회의" && <EventMinutes eventId={id} />}
+      {e.type === "회의" && (locked.has("minutes") ? <LockedFold title="회의록" /> : <EventMinutes eventId={id} />)}
       {/* 사진첩: 참석한 회원이 올리고 함께 본다(참석 대상이 아니면 그리지 않는다) */}
       {!ended && <EventPhotos eventId={id} carousel />}
-      <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />
+      {locked.has("assign") ? <LockedFold title="조편성·숙소·차량" /> : <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />}
       {/* 차량 신청: 관리자가 신청을 받거나 확정했을 때(참석 신청자만 신청할 수 있다) */}
-      {!e.preview && <CarRequestBox eventId={id} />}
+      {!e.preview && !locked.has("assign") && <CarRequestBox eventId={id} />}
       {e.canObserve && <ObserversCard eventId={id} />}
 
       {/* 참석을 취소해서 회비를 돌려받는 중 / 돌려받음 */}

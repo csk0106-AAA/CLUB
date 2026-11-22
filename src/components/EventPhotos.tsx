@@ -196,7 +196,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
             {curIdx < photos.length - 1 && <button type="button" className="ph-nav r" aria-label="다음 사진" onClick={() => setOpen(photos[curIdx + 1].id)}>›</button>}
             {/* 사진 오른쪽 아래: 좋아요 · 내려받기(목록 사진과 같은 아이콘) */}
             <div className="ph-acts">
-              <button type="button" className={`ph-act${cur.liked ? " on" : ""}`} aria-pressed={cur.liked} aria-label={`좋아요 ${cur.likes}개${cur.liked ? ", 누름" : ""}`} onClick={() => like(cur)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
+              <button type="button" className={`ph-act${cur.liked ? " on" : ""}`} aria-pressed={cur.liked} aria-label={`좋아요 ${cur.likes}개${cur.liked ? ", 누름" : ""}`} onClick={() => like(cur)}>
                 <span aria-hidden="true">{cur.liked ? "♥" : "♡"}</span>{cur.likes > 0 && <span>{cur.likes}</span>}
               </button>
               <a className="ph-act" href={`${src(eventId, cur.id)}?dl=1`} download aria-label={`${cur.name} 님의 사진 내려받기`}>
@@ -207,7 +207,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
           {cur.caption && <p style={{ margin: 0, overflowWrap: "anywhere" }}>{cur.caption}</p>}
           <span className="small">{cur.name} · {when(cur.createdAt)} · {curIdx + 1}/{photos.length}</span>
           {/* 사진 댓글: 좋아요·답글 */}
-          <PhotoComments eventId={eventId} photoId={cur.id} canWrite={list.canUpload} />
+          <PhotoComments eventId={eventId} photoId={cur.id} canWrite />
         </div>
       )}
     </Popup>
@@ -260,7 +260,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
                   <img src={src(eventId, p.id)} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" />
                 </button>
                 <div className="ph-acts">
-                  <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
+                  <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)}>
                     <span aria-hidden="true">{p.liked ? "♥" : "♡"}</span>{p.likes > 0 && <span>{p.likes}</span>}
                   </button>
                   <a className="ph-act" href={`${src(eventId, p.id)}?dl=1`} download aria-label={`${p.name} 님의 사진 내려받기`}>
@@ -277,7 +277,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
             ))}
           </ul>
         )}
-        {!list.canUpload && list.photos.length > 0 && !list.attending && <p className="small" style={{ margin: 0 }}>참석 신청하면 사진 올리기·좋아요·댓글을 할 수 있어요.</p>}
+        {!list.canUpload && list.photos.length > 0 && !list.attending && <p className="small" style={{ margin: 0 }}>좋아요·댓글·내려받기는 누구나 할 수 있고, 사진은 참석 신청한 회원이 올려요.</p>}
         {viewer}
         {/* 장수가 찼을 때: 관리자 요청 / 취소 */}
         <Popup id="photo-full" open={full} onClose={() => setFull(false)} title="사진이 가득 찼어요" width={420}
@@ -344,7 +344,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
               </button>
               {/* 회원 화면 사진첩과 같은 아이콘: 좋아요 · 내려받기 · 지우기(관리자는 모든 사진) */}
               <div className="ph-acts sm">
-                <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)} disabled={!list.canUpload} title={list.canUpload ? undefined : "참석 신청하면 좋아요를 누를 수 있어요"}>
+                <button type="button" className={`ph-act${p.liked ? " on" : ""}`} aria-pressed={p.liked} aria-label={`좋아요 ${p.likes}개${p.liked ? ", 누름" : ""}`} onClick={() => like(p)}>
                   <span aria-hidden="true">{p.liked ? "♥" : "♡"}</span>{p.likes > 0 && <span>{p.likes}</span>}
                 </button>
                 <a className="ph-act" href={`${src(eventId, p.id)}?dl=1`} download aria-label={`${p.name} 님의 사진 내려받기`}>
@@ -364,7 +364,7 @@ export function EventPhotos({ eventId, admin, carousel }: { eventId: string; adm
         <button type="button" className="btn white" onClick={() => setMore(true)}>사진 {photos.length - PREVIEW}장 더 보기 ▾</button>
       )}
       {!list.canUpload && list.photos.length > 0 && !list.attending && (
-        <p className="small" style={{ margin: 0 }}>참석 신청하면 사진 올리기·좋아요·댓글을 할 수 있어요.</p>
+        <p className="small" style={{ margin: 0 }}>좋아요·댓글·내려받기는 누구나 할 수 있고, 사진은 참석 신청한 회원이 올려요.</p>
       )}
 
       {viewer}

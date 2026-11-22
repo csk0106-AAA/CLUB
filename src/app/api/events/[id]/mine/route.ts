@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { lockedFor } from "@/lib/event-visibility";
 import { bad, guard, parseJson } from "@/lib/api";
 import { teams, teamsState } from "@/lib/capsule";
 import { DIRS, DIR_LABEL, carpoolState, cars, driverLabel, legSeats } from "@/lib/carpool";
@@ -88,9 +89,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         .map((r) => ({ date: r.date, name: r.name, memo: r.memo, mates: r.guests.filter((x) => x !== g.s.mid).map(nm), people: r.guests.map(nmMe) }))
     : [];
 
+  // 미응답·불참 회원에게 세부 일정이 닫혀 있으면 보내지 않는다(lib/event-visibility.ts)
+  const myApply = (await (await getStore()).list("EventApplies")).find((x) => x.eventId === id && x.memberId === g.s.mid);
+  const schedLocked = lockedFor(ev, myApply?.answer === "참석").includes("schedule");
   return NextResponse.json({
     rooms: { published: roomSt.published, mine: myRooms },
-    schedule: sched.filter((r) => r.eventId === id).sort((a, b) => a.at.localeCompare(b.at)).map((r) => ({ at: r.at, title: r.title, place: r.place ?? "", memo: r.memo ?? "" })),
+    schedule: schedLocked ? [] : sched.filter((r) => r.eventId === id).sort((a, b) => a.at.localeCompare(b.at)).map((r) => ({ at: r.at, title: r.title, place: r.place ?? "", memo: r.memo ?? "" })),
     dayPlaces: readDayPlaces(ev.dayPlaces), // 세부일정 날짜별 기본 위치
     groups: myGroups,
     groupsPending,

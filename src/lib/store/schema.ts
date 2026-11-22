@@ -37,6 +37,8 @@ export const TABS = {
     "audience",
     // club: 클럽 일정이면 클럽 이름. 이때 대상은 그 클럽 회원(실시간) + observers(참관자 회원 id JSON 배열)
     "club", "observers",
+    // visibility: 미응답·불참 회원에게 공개할 항목 JSON(lib/event-visibility.ts, 비면 일정 유형 기본값)
+    "visibility",
     // coverAt: 일정 대표사진을 올린 시각(사진 내용은 CoverData "event:<id>", lib/covers.ts). 비어 있으면 없음.
     "coverAt",
     // audSeenAt: 신규 회원 알림을 관리자가 확인한 시각(lib/new-joiners.ts)

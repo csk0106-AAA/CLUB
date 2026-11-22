@@ -1,5 +1,6 @@
 "use client";
 
+import { EventVisibility } from "@/components/EventVisibility";
 import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -205,8 +206,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     // 참관자는 신청현황 탭에서 따로 저장하고, 공개 대상(audience)은 이 화면에서 바꾸지 않는다.
     // 맨 위 고정(pinned)은 스위치를 누를 때 바로 저장한다.
     // 준비목록·비용 "회원에게 보이기"는 각 탭에서 따로 저장한다(여기서는 보내지 않는다)
-    const { id: _id, type: _t, published: _p, observers: _o, audience: _a, pinned: _pin, showPrep: _sp, showCosts: _sc, ...fields } = ev as Ev & { observers?: unknown; audience?: unknown; showPrep?: unknown; showCosts?: unknown };
-    void _id; void _t; void _p; void _o; void _a; void _pin; void _sp; void _sc;
+    const { id: _id, type: _t, published: _p, observers: _o, audience: _a, pinned: _pin, showPrep: _sp, showCosts: _sc, visibility: _vis, ...fields } = ev as Ev & { observers?: unknown; audience?: unknown; showPrep?: unknown; showCosts?: unknown; visibility?: unknown };
+    void _id; void _t; void _p; void _o; void _a; void _pin; void _sp; void _sc; void _vis;
     const r = await api(`/api/admin/events/${id}`, {
       method: "PATCH",
       // 기본 회비 칸은 없앴다: 회비는 모두 회비 줄(feeRules)로 저장하고 예전 fee 값은 비운다.
@@ -506,6 +507,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           </div>
           {!ev.club && <EventJoiners eventId={id} onChanged={load} />}
           <EventAudience key={`${ev.id}-${ev.club ?? ""}`} eventId={id} audience={ev.audience} club={ev.club || undefined} onSaved={load} />
+          {/* 미응답·불참 회원에게 공개할 항목(누르면 바로 저장) */}
+          <EventVisibility eventId={id} type={ev.type} visibility={(ev as { visibility?: string }).visibility} onSaved={load} />
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           {/* 일정 이름 · 장소 한 줄, 시작 일시 · 끝나는 일시 · 사진 최대 장수 한 줄(globals.css .grid2.pair) */}
           <div className="grid2 pair">

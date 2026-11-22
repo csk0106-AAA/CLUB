@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { VIS_KEYS } from "@/lib/event-visibility";
 import { MAX_PHOTO_LIMIT } from "@/lib/event-photos";
 import { z } from "zod";
 import { bad, canDeleteEvent, guardEv } from "@/lib/api";
@@ -122,6 +123,7 @@ const patch = z.object({
   supports: supportsInput.optional(), // 지원금(연·월회비 지원, 회원 지원)
   photoLimit: z.string().regex(/^(d{1,4})?$/).optional(), // 사진첩 최대 장수("" = 참석 인원 × 10장 × 일수)
   approval: z.enum(["", "admin"]).optional(), // 참석 확정 방식("" 바로 참석 / admin 관리자 승인 후, lib/attend-approval.ts)
+  visibility: z.record(z.string(), z.boolean()).optional(), // 미응답·불참 회원에게 공개할 항목(lib/event-visibility.ts)
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -130,7 +132,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const parsed = patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 회비는 숫자만 넣어 주세요.");
-  const { published, pinned, feeRules: rules, audience, showPrep, showCosts, supports, photoLimit, ...rest } = parsed.data;
+  const { published, pinned, feeRules: rules, audience, showPrep, showCosts, supports, photoLimit, visibility, ...rest } = parsed.data;
   if (photoLimit && (Number(photoLimit) < 1 || Number(photoLimit) > MAX_PHOTO_LIMIT)) return bad(`사진 최대 장수는 1~${MAX_PHOTO_LIMIT}장으로 정해 주세요.`);
   const s = await getStore();
   const before = (await s.list("Events")).find((e) => e.id === id);
@@ -148,6 +150,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     ...(pinned === undefined ? {} : { pinned: String(pinned) }),
     ...(showPrep === undefined ? {} : { showPrep: showPrep ? "true" : "" }),
     ...(showCosts === undefined ? {} : { showCosts: showCosts ? "true" : "" }),
+    ...(visibility === undefined ? {} : { visibility: JSON.stringify(Object.fromEntries(VIS_KEYS.map((k) => [k, visibility[k] !== false]))) }),
     ...(supports === undefined ? {} : { supports: JSON.stringify(supports) }),
     // 사진 최대 장수를 바꿔 저장하면 회원들의 장수 늘리기 요청을 처리한 것으로 비운다(처리할 일에서 사라짐)
     ...(photoLimit === undefined || photoLimit === (before.photoLimit ?? "") ? {} : { photoLimit: photoLimit ? String(Number(photoLimit)) : "", photoReqs: "" }),
@@ -158,7 +161,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   // 회원에게 공개된 일정이 새로 공개되거나 내용이 바뀌면 알림(배지·휴대폰)
   // (진행 상태·맨 위 고정만 바꾼 것은 알리지 않는다)
   // (회원에게 보이기 설정만 바꾼 것도 알리지 않는다)
-  const changed = Object.keys(parsed.data).some((k) => !["status", "pinned", "showPrep", "showCosts", "supports", "photoLimit"].includes(k));
+  const changed = Object.keys(parsed.data).some((k) => !["status", "pinned", "showPrep", "showCosts", "supports", "photoLimit", "visibility"].includes(k));
   if (row.published === "true" && changed) {
     await notifyEvent(id, before.published === "true" ? "update" : "new");
   }

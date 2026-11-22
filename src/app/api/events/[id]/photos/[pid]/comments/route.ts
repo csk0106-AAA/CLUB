@@ -53,7 +53,7 @@ const input = z.object({
 export async function POST(req: Request, ctx: Ctx) {
   const r = await photoOf(ctx);
   if ("err" in r) return r.err;
-  if (!r.canUpload) return bad("참석 신청한 회원만 댓글을 쓸 수 있어요.", 403);
+  // 사진첩을 볼 수 있는 회원(참석 대상)은 모두 댓글을 쓸 수 있다(올리기만 참석자)
   const parsed = input.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad(parsed.error.issues[0]?.message ?? "댓글 내용을 확인해 주세요.");
   const all = await r.store.list("PhotoComments");
@@ -75,7 +75,6 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const c = await r.store.get("PhotoComments", cid);
   if (!c || c.photoId !== r.p.id) return bad("댓글을 찾을 수 없어요.", 404);
   const raw = (await req.json().catch(() => null)) as { like?: unknown; body?: unknown } | null;
-  if (!r.canUpload) return bad("참석 신청한 회원만 좋아요·댓글을 쓸 수 있어요.", 403);
   if (raw && typeof raw.like === "boolean") {
     await r.store.update("PhotoComments", c.id, { likes: JSON.stringify(toggleLike(c, r.s.mid, raw.like)) });
   } else {
