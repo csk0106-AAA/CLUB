@@ -69,8 +69,9 @@ export async function parsePost(raw: unknown, me: Me, fixedForm?: string): Promi
 }
 
 // 고정 글 먼저, 그다음 최신 글
+// 정렬: 고정 글 먼저, 그다음 최근 순. 내용을 고친 글(updatedAt — 글 수정할 때만 바뀐다)도 위로 올라온다.
 export const sortPosts = (a: Row, b: Row) =>
-  (b.pinned === "true" ? 1 : 0) - (a.pinned === "true" ? 1 : 0) || (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+  (b.pinned === "true" ? 1 : 0) - (a.pinned === "true" ? 1 : 0) || (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "");
 
 async function eventNames(): Promise<Record<string, string>> {
   const ev = await (await getStore()).list("Events");

@@ -105,8 +105,11 @@ export default function EventsPage() {
   const drafts = events?.filter((e) => e.draft) ?? [];
   const pinned = shown.filter((e) => e.pinned && !e.past);
   // 다가오는 일정: 날짜순(서버 순서는 참석 상태로 묶여 있어 타임라인에서는 날짜로 다시 정렬)
-  const upcoming = shown.filter((e) => !e.past && !e.pinned && e.startsAt).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  const undated = shown.filter((e) => !e.past && !e.pinned && !e.startsAt);
+  //  같은 날 안에서는 내가 참석 신청한 일정을 먼저(날짜별 묶음은 그대로)
+  const going = (e: Ev) => (e.myAnswer === "참석" ? 0 : 1);
+  const upcoming = shown.filter((e) => !e.past && !e.pinned && e.startsAt)
+    .sort((a, b) => dayKey(a.startsAt).localeCompare(dayKey(b.startsAt)) || going(a) - going(b) || a.startsAt.localeCompare(b.startsAt));
+  const undated = shown.filter((e) => !e.past && !e.pinned && !e.startsAt).sort((a, b) => going(a) - going(b));
   const past = shown.filter((e) => e.past); // 서버가 최근 것 먼저 보낸다
 
   // 다가오는 일정을 날짜(한국 시간)별로 묶는다

@@ -189,6 +189,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const e = d.event;
   const dd = dday(e.startsAt, e.endsAt);
+  // 일정이 끝났는지(끝나는 시각, 없으면 시작 날의 끝). 끝나면 사진첩을 맨 위(큰 사진 바로 아래)로 올린다.
+  const ended = (() => {
+    if (!e.startsAt) return false;
+    const end = e.endsAt ? new Date(e.endsAt.length === 10 ? `${e.endsAt}T23:59:59` : e.endsAt) : new Date(`${e.startsAt.slice(0, 10)}T23:59:59`);
+    return Date.now() > end.getTime();
+  })();
   const answer = d.apply?.answer ?? "";
   const days = eventDays(e.startsAt, e.endsAt);
   const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
@@ -233,6 +239,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       <EventHero ev={e}>
         {e.observer && <div className="small">참관자로 초대받았어요.</div>}
       </EventHero>
+
+      {/* 일정이 끝나면 사진첩을 맨 위로(함께 찍은 사진을 먼저 보도록) */}
+      {ended && <EventPhotos eventId={id} carousel />}
 
       {/* 주요 활동: 펼치면 예전 일정 홈의 활동 길(함께할 활동)과 진행 중 카드. 일정 당일에는 처음부터 펼쳐 둔다. */}
       {actNames.length > 0 && (
@@ -327,7 +336,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
       {e.type === "회의" && <EventMinutes eventId={id} />}
       {/* 사진첩: 참석한 회원이 올리고 함께 본다(참석 대상이 아니면 그리지 않는다) */}
-      <EventPhotos eventId={id} carousel />
+      {!ended && <EventPhotos eventId={id} carousel />}
       <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />
       {/* 차량 신청: 관리자가 신청을 받거나 확정했을 때(참석 신청자만 신청할 수 있다) */}
       {!e.preview && <CarRequestBox eventId={id} />}
