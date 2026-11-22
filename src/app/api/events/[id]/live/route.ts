@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { memberGuide } from "@/lib/template-schema";
 import { bad, guard } from "@/lib/api";
 import { activityKind, guessStatus, liveView, preStatus, readConfig, windowBase } from "@/lib/activities";
 import { canJoin, isLimited } from "@/lib/participants";
@@ -35,6 +36,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       id: a.id,
       name: cfg.name,
       description: cfg.description,
+      guide: memberGuide(cfg), // 회원에게 보이는 활동 안내(목록)
       pre: preStatus(cfg, windowBase(a, ev)),
       guess: guessStatus(cfg, windowBase(a, ev)),
       kind: activityKind(cfg),

@@ -52,10 +52,14 @@ export async function ask(system: string, messages: Msg[], maxTokens = 1500): Pr
 const BASE = (guidelines: string) =>
   `당신은 모임 회원의 소개 글을 돕는 편집자입니다. 반드시 한국어로 답하세요.\n\n[관리자 지침]\n${guidelines}`;
 
-export function followUpPrompt(guidelines: string, qa: { q: string; a: string }[]): { system: string; messages: Msg[] } {
+// skipped: 회원이 "답변안함"으로 넘긴 질문 — 답하기 어렵거나 피하고 싶은 주제로 보고, 같은·비슷한 주제는 다시 묻지 않는다
+export function followUpPrompt(guidelines: string, qa: { q: string; a: string }[], skipped: string[] = []): { system: string; messages: Msg[] } {
+  const avoid = skipped.length
+    ? `\n\n[회원이 답하지 않고 넘긴 질문 — 이 주제는 회원이 말하기 어렵거나 피하고 싶은 주제입니다. 같은 주제를 다른 말로 바꾸거나 돌려서 묻는 것도 하지 말고, 전혀 다른 주제로 물으세요]\n${skipped.map((q) => `- ${q}`).join("\n")}`
+    : "";
   return {
-    system: `${BASE(guidelines)}\n\n지금까지의 질문과 답을 보고, 더 알고 싶은 후속 질문을 한 문장으로만 하세요. 신원이 드러나는 것은 묻지 마세요. 더 물을 것이 없으면 정확히 "없음"이라고만 답하세요.`,
-    messages: [{ role: "user", content: qa.map((x) => `질문: ${x.q}\n답: ${x.a}`).join("\n\n") }],
+    system: `${BASE(guidelines)}\n\n지금까지의 질문과 답을 보고, 더 알고 싶은 후속 질문을 한 문장으로만 하세요. 신원이 드러나는 것은 묻지 마세요. 더 물을 것이 없으면 정확히 "없음"이라고만 답하세요.${avoid}`,
+    messages: [{ role: "user", content: qa.map((x) => `질문: ${x.q}\n답: ${x.a}`).join("\n\n") || "(아직 답한 질문이 없어요)" }],
   };
 }
 

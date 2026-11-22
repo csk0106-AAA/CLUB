@@ -287,3 +287,24 @@ export function screensFor(c: Pick<TemplateConfig, "preEvent" | "onsite">): stri
   if (k === "worry") return ["wait", "view"];
   return ["wait", "write", "view"];
 }
+
+// 회원에게 보여 주는 활동 안내(목록). 관리자 용어(기능 블록 등) 없이 쉬운 말로, 활동 흐름 순서대로.
+export function memberGuide(c: Pick<TemplateConfig, "preEvent" | "guessPhase" | "onsite" | "mode" | "reveal" | "blocks" | "sajuWhen">): string[] {
+  const out: string[] = [];
+  const pre = c.preEvent.enabled ? c.preEvent.steps : [];
+  const saju = (c.blocks ?? []).includes("saju") || c.preEvent.steps.includes("reading_optional");
+  const when = c.sajuWhen ?? (pre.includes("ai_interview") ? "interview" : c.preEvent.enabled ? "pre" : "event");
+  if (pre.includes("ai_interview")) out.push(`일정 전: AI 인터뷰로 내 소개를 써요${pre.includes("alias") ? "(프로필 북에는 별칭으로 보여요)" : ""}.`);
+  if (pre.includes("truth_lies")) out.push("인터뷰 답변으로 “2진실 1거짓” 문장을 만들어요. 현장에서 다른 회원들이 거짓을 맞혀요.");
+  if (saju) out.push(`원하면 명리학 사주풀이를 받을 수 있어요(${when === "interview" ? "AI 인터뷰를 마친 뒤" : when === "pre" ? "사전 작성 기간" : "일정 당일"}).`);
+  if (pre.includes("worry_write")) out.push("일정 전: 고민이나 조언을 구하고 싶은 질문을 미리 적어요.");
+  if (c.preEvent.enabled && c.guessPhase?.enabled) out.push("일정 전: 다른 회원의 별칭 소개를 보고 누구인지 맞혀 봐요.");
+  if (c.onsite.steps.length) out.push(`일정 당일: ${c.onsite.steps.map((x) => x.label).join(" → ")}`);
+  if (pre.includes("ai_interview") && pre.includes("alias")) {
+    const r = c.reveal;
+    out.push(`실명 공개: ${!r || r.mode === "end" ? "활동(일정)이 끝날 때" : r.mode === "after" ? `일정이 끝나고 ${r.hours ?? 0}시간 뒤` : (r.at ?? "").replace("T", " ")} 실명과 소개가 프로필 북에 공개돼요.`);
+  }
+  const mode = c.mode ?? (!pre.includes("ai_interview") && !pre.includes("worry_write") && c.onsite.steps.some((x) => x.memberScreen === "write") ? "team" : "all");
+  if (mode === "team") out.push("팀별로 진행해요.");
+  return out;
+}

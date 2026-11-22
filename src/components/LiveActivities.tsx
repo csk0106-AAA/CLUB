@@ -30,6 +30,7 @@ type Live = {
   id: string;
   name: string;
   description: string;
+  guide?: string[]; // 회원에게 보이는 활동 안내(목록)
   pre: { enabled: boolean; status: string; opensAt: string; closesAt: string };
   guess: { enabled: boolean; status: string; opensAt: string; closesAt: string };
   kind: string;
@@ -232,7 +233,15 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
               <b style={{ font: `700 ${fs(17)} var(--display)` }}>{a.name}</b>
               <span className={`pill ${b.tone}`}>{b.text}</span>
             </div>
-            {a.description && <span className="small">{a.description}</span>}
+            {/* 활동 안내: 접어 두고 펼쳐서 읽는다(쉬운 말 목록) */}
+            {(a.guide?.length ?? 0) > 0 ? (
+              <details>
+                <summary className="small" style={{ cursor: "pointer", fontWeight: 700 }}>활동 안내 보기</summary>
+                <ol style={{ margin: "6px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4, fontSize: fs(13), lineHeight: 1.6 }}>
+                  {a.guide!.map((t, i) => <li key={i}>{t}</li>)}
+                </ol>
+              </details>
+            ) : a.description && <span className="small">{a.description}</span>}
             {a.startsAt && (
               <span className="small">
                 활동 시간: {fmtRange(a.startsAt, a.endsAt)}

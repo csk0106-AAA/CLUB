@@ -6,7 +6,7 @@ import { generateTruthLies, keyWords, qaPairs } from "@/lib/truthlies";
 import { findIdentity, generalize, termsFrom } from "@/lib/identity";
 import { getStore } from "@/lib/store";
 import { guidelinesFor } from "@/lib/ai-guides";
-import { inGame, loadWho, myInterview, myProfile, myTruthLies, normAlias, writeClosed, writeGate } from "@/lib/who";
+import { inGame, loadWho, myInterview, myProfile, myTruthLies, normAlias, writeClosed, writeGate, dropStaleTruthLies } from "@/lib/who";
 
 type Ctx = { params: Promise<{ aid: string }> };
 
@@ -90,6 +90,9 @@ export async function POST(_req: Request, ctx: Ctx) {
     if (tl) await s.update("TruthLies", tl.id, tlPatch);
     else await s.insert("TruthLies", { memberId: g.s.mid, eventActivityId: aid, ...tlPatch });
   }
+
+  // 다른 활동에 남은 예전 2진실 1거짓(공개 전)은 예전 인터뷰로 만든 것이라 지운다
+  await dropStaleTruthLies(g.s.mid, aid);
 
   // leaked: 세 번 써도 소개 글에 남은 2진실 1거짓 단어(화면에서 직접 지우도록 알려 준다)
   return NextResponse.json({ mode, alias, inActivity: inAct, draftMd: intro, statements: inAct ? statements : [], lieIndex, leaked, remaining: inAct ? findIdentity(intro, terms) : [] });

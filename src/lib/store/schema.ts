@@ -146,7 +146,10 @@ export const TABS = {
     // introBackup: "프로필북 초기화"로 지운 소개 백업 JSON {at, by, introMd, draftMd, approvedAt}(lib/who-join.ts)
     "introBackup",
   ],
-  Interviews: ["id", "memberId", "eventActivityId", "messages", "status", "updatedAt"],
+  // aiPlan: 공통 질문 뒤 AI 추가 질문 — ""(아직 안 물음) / go(진행) / none(안 함) / kept(이전 답 유지)
+  // choose: 지금 회원에게 묻는 중인 것 — ""(없음) / ai(진행할지) / redo(다시 진행할지, 이전 AI 답이 있을 때) / keep(이전 AI 답 유지할지)
+  // stash: "AI 인터뷰 다시 하기" 때 보관한 이전 AI 질문·답(JSON ChatMsg[]), notice: 채팅 끝에 보여 줄 안내
+  Interviews: ["id", "memberId", "eventActivityId", "messages", "status", "updatedAt", "aiPlan", "choose", "stash", "notice"],
   TruthLies: ["id", "memberId", "eventActivityId", "statements", "lieIndex", "status", "approvedAt"],
   Guesses: ["id", "eventActivityId", "guesserId", "targetMemberId", "chosenMemberId", "createdAt"],
   // 나의 고민은?

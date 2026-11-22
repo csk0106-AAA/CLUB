@@ -30,7 +30,12 @@ export type WhoState = {
     sajuInfo: SajuInfo | null;
     sajuRedo?: boolean; // 명리 풀이를 다시 받을 수 있는지(모임설정 "한 번만")
   };
-  interview: { messages: Msg[]; status: string; answered: number; required: number; canSkip?: boolean }; // canSkip: 지금 질문은 답변안함 가능
+  // extra: AI 추가 질문 최대 개수, canSkip: 지금 질문은 답변안함 가능
+  interview: {
+    messages: Msg[]; status: string; answered: number; required: number; extra?: number; canSkip?: boolean;
+    // 공통 질문 뒤 AI 추가 질문: aiPlan(go·none·kept), choose(지금 묻는 것: ai·redo·keep), notice(채팅 끝 안내), stashCount(보관한 이전 AI 답 수)
+    aiPlan?: string; choose?: string; notice?: string; stashCount?: number;
+  };
   truthLies: { statements: string[]; lieIndex: number; status: string };
 };
 export type Note = { tone: "bad" | "info"; text: string } | null;
@@ -41,7 +46,7 @@ const WHEN: Record<string, string> = {
   unknown: "일정 날짜가 정해지면 작성 기간이 열려요.",
   none: "이 활동에는 사전 작성이 없어요.",
 };
-const RESET_ASK = "기존 내소개 내용은 삭제 됩니다. 새로 진행하시겠습니까?";
+const RESET_ASK = "기존 내 소개 글은 지워지고 공통 질문부터 다시 해요. 이전 AI 추가 질문 답변은 공통 질문을 마친 뒤 다시 할지, 유지할지 골라요. 새로 진행할까요?";
 
 // 인터뷰 답변 하나 고치기(타이핑 또는 음성)
 // 신원 검사에 걸린 말을 글 안에서 찾아 <mark>로 표시한다(띄어쓰기·대소문자는 무시하고 찾는다)
@@ -185,6 +190,13 @@ export function WhoWrite(props: {
 
   const startInterview = () => run(async () => {
     const r = await api(`/api/who/${aid}/interview`, { body: {} });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    await reload();
+  });
+
+  // 공통 질문 뒤 채팅으로 묻는 것에 답하기(AI 추가 질문 진행·이전 답 유지 등)
+  const choose = (choice: "go" | "none" | "no" | "keep" | "drop") => run(async () => {
+    const r = await api(`/api/who/${aid}/interview`, { body: { choice } });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     await reload();
   });
@@ -338,7 +350,7 @@ export function WhoWrite(props: {
       setIntro("");
       const s = await api(`/api/who/${aid}/interview`, { body: {} });
       if (!s.ok) setNote({ tone: "bad", text: s.error });
-      else setNote({ tone: "info", text: "기존 내 소개를 지웠어요. AI 인터뷰를 처음부터 다시 시작해요." });
+      else setNote({ tone: "info", text: "기존 내 소개를 지웠어요. 공통 질문부터 다시 시작해요." });
       await reload();
     });
   };
@@ -389,13 +401,42 @@ export function WhoWrite(props: {
       {/* 내 소개 작성 안내: 펼쳐서 읽고 접은 뒤 인터뷰를 시작한다 */}
       <details className="card who-guide">
         <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>내 소개 작성 안내 <span className="small">(눌러서 펼치기·접기)</span></summary>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-          {inAct && <span className="small">이 활동에 참여해요. 프로필 북에는 실명 대신 별칭 “{st.profile.alias}”(으)로 보여요{st.revealAt ? `. ${fmtDateTime(st.revealAt)}에 실명과 소개가 함께 공개돼요` : ""}.</span>}
-          {!st.aiEnabled && <span className="small">AI가 아직 연결되지 않아 정해진 질문으로 진행해요. 소개 글은 내 답변을 모아 초안을 만들고 직접 다듬어요.</span>}
-          <span className="small">질문에 답하면 소개 글을 만들 수 있어요. 약 10분이면 끝나고, 중간에 나가도 저장돼서 이어서 쓸 수 있어요.{inAct ? " 이름과 회사명은 쓰지 않아도 돼요." : ""}</span>
-          <span className="small">인터뷰 중에도 앞 질문의 내 답 옆 “다시 쓰기”를 누르면 그 답을 고칠 수 있어요.</span>
-        </div>
+        {!st.aiEnabled && <div className="msg info" style={{ marginTop: 8 }}>AI가 아직 연결되지 않아 정해진 질문으로 진행해요. 소개 글은 내 답변을 모아 초안을 만들고 직접 다듬어요.</div>}
+        <ol className="who-guide-list" style={{ margin: "8px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8, fontSize: fs(14), lineHeight: 1.6 }}>
+          {inAct && <li>프로필 북에는 실명 대신 별칭 <b>“{st.profile.alias}”</b>(으)로 보여요.</li>}
+          {inAct && <li>활동이 끝나면{st.revealAt ? `(${fmtDateTime(st.revealAt)})` : ""} 실명과 내 소개가 프로필 북에 공개돼요.</li>}
+          <li>질문에 답하면 소개 글을 만들 수 있어요. 음성으로 답하면 AI가 오타·오류를 다듬고, 회원님이 확인한 뒤 답변을 올려요.</li>
+          <li>공통 질문 <b>{iv.required}개</b>를 진행하고{(iv.extra ?? 0) > 0 ? <>, 답변한 내용을 바탕으로 AI가 추가 질문 <b>최대 {iv.extra}개</b>를 이어서 해요</> : null}. <b>약 {iv.required + (iv.extra ?? 0)}분</b> 걸려요.</li>
+          <li>중간에 나가도(위쪽 X) 저장돼요. 다시 들어와서 이어서 하면 돼요.</li>
+          {inAct && <li>이름과 회사명은 쓰지 말아 주세요.</li>}
+          <li>모든 질문은 “답변안함”으로 넘길 수 있어요. 다만 활동 진행과 프로필 북 소개를 위해 <b>공통 질문 5개 정도는 답해 주시길</b> 권해요.</li>
+          {sajuOn && <li>AI 인터뷰가 끝나면 <b>명리학 사주풀이</b>를 해 드려요. 생년월일과 성별만 넣으면, 나만 볼 수 있는 자세한 풀이를 받아 볼 수 있어요.</li>}
+          {sajuOn && <li>명리학으로 본 나의 성격과 성향을 내 소개에 더할 수 있어요. 회원들이 호감을 가질 수 있게 AI가 정성껏 써 드려요.</li>}
+          <li>모든 소개 글은 수정 요청·직접 수정·삭제를 할 수 있어요. 인터뷰 중에도 내 답 옆 “다시 쓰기”를 누르면 다시 답할 수 있어요.</li>
+        </ol>
       </details>
+
+      {/* 단계: ① 공통 질문 ② AI 추가 질문 ③ 명리학 사주풀이 */}
+      {iv.messages.length > 0 && !introOnly && (() => {
+        const extra = iv.extra ?? 0;
+        const commonDone = iv.answered >= iv.required;
+        const aiState = !extra ? "" : iv.aiPlan === "none" ? "안 함" : interviewDone ? "완료" : commonDone ? "진행 중" : "대기";
+        const sajuState = !sajuOn ? "" : readingChosen ? (st.profile.readingStatus === "done" ? "완료" : "안 함") : interviewDone ? "진행 중" : "대기";
+        const steps = [
+          { t: "공통 질문", s: commonDone ? "완료" : "진행 중" },
+          ...(aiState ? [{ t: "AI 추가 질문", s: aiState }] : []),
+          ...(sajuState ? [{ t: "명리학 사주풀이", s: sajuState }] : []),
+        ];
+        return (
+          <div className="row" role="list" aria-label="인터뷰 단계" style={{ gap: 6, flexWrap: "wrap" }}>
+            {steps.map((x, i) => (
+              <span key={x.t} role="listitem" className={`pill ${x.s === "진행 중" ? "blue" : x.s === "완료" ? "ok" : "gray"}`} style={{ fontSize: fs(13) }}>
+                {"①②③"[i]} {x.t} · {x.s}
+              </span>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* 인터뷰를 마친 뒤: 기존 인터뷰 수정하기 / AI 인터뷰 다시 하기 */}
       {(interviewDone || introOnly) && (
@@ -416,10 +457,18 @@ export function WhoWrite(props: {
             <>
               <div role="log" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {iv.messages.map((m, i) => {
+                  // 구분선: 첫 질문 앞 "공통 질문", 공통 질문을 다 마친 뒤 첫 AI 질문 앞 "AI 추가 질문"
+                  const before = iv.messages.slice(0, i).filter((x) => x.role === "me").length;
+                  const divider = m.role === "ai" && (i === 0 || (before === iv.required && iv.messages[i - 1]?.role === "me"))
+                    ? <div className="small" style={{ textAlign: "center", fontWeight: 700, color: "var(--sub)", margin: "4px 0" }}>— {i === 0 ? `① 공통 질문 ${iv.required}개` : "② AI 추가 질문"} —</div>
+                    : null;
                   if (m.role === "ai") return (
-                    <div key={i} className="say">
-                      <Mascot size={32} />
-                      <div className="bubble">{m.text}</div>
+                    <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {divider}
+                      <div className="say">
+                        <Mascot size={32} />
+                        <div className="bubble">{m.text}</div>
+                      </div>
                     </div>
                   );
                   // 몇 번째 내 답인지(다시 쓰기에 쓴다)
@@ -446,9 +495,57 @@ export function WhoWrite(props: {
                     </div>
                   );
                 })}
+                {iv.choose && (
+                  <div className="say">
+                    <Mascot size={32} />
+                    <div className="bubble" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {iv.choose === "ai" && (
+                        <>
+                          <span>공통 질문을 모두 마쳤어요. 답변을 바탕으로 AI가 추가 질문을 <b>최대 {iv.extra ?? 0}개</b> 더 드릴 수 있어요. 진행할까요?</span>
+                          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                            <button className="btn" type="button" disabled={busy} style={{ width: "auto" }} onClick={() => choose("go")}>AI 추가 질문 진행</button>
+                            <button className="btn white" type="button" disabled={busy} style={{ width: "auto" }} onClick={() => choose("none")}>안 하고 마치기</button>
+                          </div>
+                        </>
+                      )}
+                      {iv.choose === "redo" && (
+                        <>
+                          <span>공통 질문을 다시 마쳤어요. 이전에 답한 AI 추가 질문이 <b>{iv.stashCount ?? 0}개</b> 있어요. AI 추가 질문도 다시 진행할까요?</span>
+                          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                            <button className="btn" type="button" disabled={busy} style={{ width: "auto" }} onClick={() => choose("go")}>다시 진행 (이전 답은 지워요)</button>
+                            <button className="btn white" type="button" disabled={busy} style={{ width: "auto" }} onClick={() => choose("no")}>다시 진행 안 함</button>
+                          </div>
+                        </>
+                      )}
+                      {iv.choose === "keep" && (
+                        <>
+                          <span>이전 AI 추가 질문 답변을 유지할까요? 유지하면 <b>바뀐 공통 답변과 맞지 않게 된 답변은 지워요.</b></span>
+                          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                            <button className="btn" type="button" disabled={busy} style={{ width: "auto" }} onClick={() => choose("keep")}>{busy ? "확인하는 중…" : "유지하기"}</button>
+                            <button className="btn white" type="button" disabled={busy} style={{ width: "auto" }} onClick={() => choose("drop")}>모두 지우고 마치기</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div ref={chatEnd} />
               </div>
-              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {!iv.choose && <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* 진행 상황: 공통 질문 n/N · AI 추가 질문 n/M · 남은 시간 */}
+                {(() => {
+                  const extra = iv.extra ?? 0;
+                  const common = Math.min(iv.answered, iv.required);
+                  const ai = Math.max(0, iv.answered - iv.required);
+                  const left = Math.max(0, iv.required - common) + Math.max(0, extra - ai);
+                  return (
+                    <div className="row" role="status" style={{ gap: 6, flexWrap: "wrap", fontSize: fs(13) }}>
+                      <span className={`pill ${common < iv.required ? "blue" : "ok"}`}>공통 질문 {common}/{iv.required}</span>
+                      {extra > 0 && <span className={`pill ${iv.answered < iv.required ? "gray" : "blue"}`}>AI 추가 질문 {ai}/{extra}</span>}
+                      <span className="small">{left > 0 ? `남은 질문 약 ${left}개 · 약 ${left}분` : "거의 끝났어요"}</span>
+                    </div>
+                  );
+                })()}
                 <label className="l" htmlFor="ans">내 답변</label>
                 <textarea id="ans" ref={ansRef} className="field" rows={3} style={{ padding: 10, lineHeight: 1.6, fontSize: fs(16), minHeight: 110, resize: "vertical" }} value={answer} onChange={(e) => setAnswer(e.target.value)} readOnly={polishing} />
                 {/* AI 오타 다듬기: 상태·되돌리기·다시 다듬기 */}
@@ -465,13 +562,16 @@ export function WhoWrite(props: {
                 {iv.canSkip && (
                   <button className="btn white" type="button" disabled={busy} onClick={skipQuestion}>답변안함 (이 질문 넘기기)</button>
                 )}
-              </div>
+              </div>}
             </>
           )}
         </section>
       )}
 
       {/* 인터뷰 마지막 단계: 명리학 사주 보기 / 안 보기 (고르기 전에는 소개 글 만들기를 보여 주지 않는다) */}
+      {interviewDone && iv.notice && !hasDraft && (
+        <div className="say"><Mascot size={32} /><div className="bubble">{iv.notice}</div></div>
+      )}
       {interviewDone && !hasDraft && sajuAfterIv && (
         <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />
       )}

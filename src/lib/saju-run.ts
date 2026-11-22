@@ -26,10 +26,13 @@ async function ensureProfile(memberId: string): Promise<Row> {
   return (await getStore()).insert("Profiles", { memberId, alias: "", introStatus: "none", updatedAt: new Date().toISOString() });
 }
 
-// 다시 받기: 모임설정의 "명리학 풀이는 한 번만"(sajuOnce)을 켜면, 한 번 받은 회원은 다시 만들 수 없다(비용 때문에).
-//  테스트 기간에는 꺼 두어 다시 받을 수 있다. 받은 기록은 sajuUsed:<회원> 과 풀이 상태로 본다(풀이를 지워도 기록은 남는다).
+// 다시 받기: 기본은 "한 번만"(sajuOnce, 설정 전에도 한 번만) — 한 번 받은 회원은 다시 만들 수 없다(비용 때문에). 받은 풀이는 계속 볼 수 있다.
+//  관리자가 모임설정에서 회원마다 "다시 받기 허용"(sajuRetry:<회원>)을 켜면 한 번 더 받을 수 있고, 다 받으면 다시 막힌다.
+//  모두 다시 받게 하려면(테스트 기간) 모임설정의 "다시 받기 허용"으로 바꾼다.
+//  받은 기록은 sajuUsed:<회원> 과 풀이 상태로 본다(풀이를 지워도 기록은 남는다).
 export async function sajuCanRedo(memberId: string, profile?: Row): Promise<boolean> {
-  if (!(await getSetting<boolean>("sajuOnce", false))) return true;
+  if (!(await getSetting<boolean>("sajuOnce", true))) return true;
+  if (await getSetting<boolean>(`sajuRetry:${memberId}`, false)) return true;
   if (await getSetting<boolean>(`sajuUsed:${memberId}`, false)) return false;
   const st = (profile ?? (await myProfile(memberId)))?.readingStatus ?? "";
   return !(st === "done" || st.startsWith("part"));
@@ -72,7 +75,10 @@ export async function sajuPost(memberId: string, raw: unknown, act: Row | undefi
       readingStatus: done ? "done" : "part2",
       updatedAt: new Date().toISOString(),
     });
-    if (done) await setSetting(`sajuUsed:${memberId}`, true);
+    if (done) {
+      await setSetting(`sajuUsed:${memberId}`, true);
+      await setSetting(`sajuRetry:${memberId}`, false); // 관리자가 허용한 한 번을 썼다
+    }
     return NextResponse.json({ readingStatus: done ? "done" : "part2", part });
   }
 

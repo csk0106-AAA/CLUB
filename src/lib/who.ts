@@ -95,6 +95,15 @@ export async function myInterview(memberId: string, aid: string): Promise<{ row?
   return { row, messages: parseJson<ChatMsg[]>(row?.messages, []) };
 }
 
+// 내 소개 글은 회원마다 하나라서, 어디서든 소개 글을 새로 만들거나 인터뷰를 다시 하면 다른 활동에 남은 예전 2진실 1거짓(공개 전)은
+// 예전 인터뷰로 만든 것이라 지운다(그 활동에서 "소개 글과 함께 다시 만들기"로 새로 만든다). 이미 공개(approved)된 것은 건드리지 않는다.
+export async function dropStaleTruthLies(memberId: string, exceptAid: string): Promise<void> {
+  const s = await getStore();
+  for (const t of (await s.list("TruthLies")).filter((x) => x.memberId === memberId && x.eventActivityId !== exceptAid && x.status !== "approved")) {
+    await s.remove("TruthLies", t.id);
+  }
+}
+
 export async function myTruthLies(memberId: string, aid: string): Promise<Row | undefined> {
   return (await (await getStore()).list("TruthLies")).find((t) => t.memberId === memberId && t.eventActivityId === aid);
 }
@@ -132,10 +141,17 @@ export async function writeGate(ctx: WhoCtx, memberId: string): Promise<NextResp
 }
 
 // canSkip: 지금 묻는 질문이 "답변안함"을 허용하는지(필수 질문은 질문마다, AI 후속 질문은 fuSkip)
-export function interviewView(messages: ChatMsg[], status: string, required: number, skips: boolean[] = [], fuSkip = false) {
+// extra: AI 추가 질문 최대 개수(진행 상황·예상 시간 안내에 쓴다)
+// row: 인터뷰 행(aiPlan·choose·stash·notice — 공통 질문 뒤 AI 추가 질문을 할지 채팅으로 묻는다)
+export function interviewView(messages: ChatMsg[], status: string, required: number, skips: boolean[] = [], fuSkip = false, extra = 0, row?: Row) {
   const answered = messages.filter((m) => m.role === "me").length;
   const waiting = (status || "active") !== "done" && messages[messages.length - 1]?.role === "ai";
-  return { messages, status: status || "active", answered, required, canSkip: waiting && (answered < required ? skips[answered] === true : fuSkip) };
+  return {
+    messages, status: status || "active", answered, required, extra,
+    canSkip: waiting && (answered < required ? skips[answered] === true : fuSkip),
+    aiPlan: row?.aiPlan ?? "", choose: row?.choose ?? "", notice: row?.notice ?? "",
+    stashCount: Math.floor(parseJson<ChatMsg[]>(row?.stash, []).length / 2),
+  };
 }
 
 // 답한 것만("답변안함" 뺀 것) — 소개 글·후속 질문·2진실 1거짓에 쓴다

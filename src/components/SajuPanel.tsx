@@ -199,6 +199,9 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
             건강·재물·직업·연애·결혼·인간관계를 담은 생애주기 전체 풀이는 나만 볼 수 있어요.
             입력한 생년월일과 태어난 시간은 생애주기 풀이 첫머리에 나만 볼 수 있게 함께 보관하고, 다른 회원과 관리자에게는 보이지 않아요. 풀이를 지우면 함께 지워져요.
           </span>
+          <span className="t" style={{ display: "block", marginTop: 6, fontWeight: 700, color: "var(--red, #c33)" }}>
+            명리학 풀이는 다시 만들 수 없어요. 생년월일과 성별, 태어난 시간을 꼭 확인한 뒤 “풀이 만들기”를 눌러 주세요. 받은 풀이는 언제든 다시 볼 수 있어요.
+          </span>
         </div>
       </div>
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}>

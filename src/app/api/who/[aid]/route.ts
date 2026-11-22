@@ -6,7 +6,7 @@ import { guard, parseJson } from "@/lib/api";
 import { isAiEnabled } from "@/lib/ai";
 import { ensureAlias, maskedMembers, PROFILE_AID } from "@/lib/profile-book";
 import { getStore } from "@/lib/store";
-import { interviewView, loadWho, myInterview, myProfile, myTruthLies, questions, skippable, followUpSkippable, whoState, windows } from "@/lib/who";
+import { interviewView, loadWho, myInterview, myProfile, myTruthLies, questions, skippable, followUpSkippable, whoState, windows, followUpMax } from "@/lib/who";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
     }
   }
 
-  const [profile, iv, tl, qs, skips, fuSkip] = await Promise.all([myProfile(g.s.mid), myInterview(g.s.mid, aid), myTruthLies(g.s.mid, aid), questions(w.act), skippable(w.act), followUpSkippable(w.act)]);
+  const [profile, iv, tl, qs, skips, fuSkip, fuMax] = await Promise.all([myProfile(g.s.mid), myInterview(g.s.mid, aid), myTruthLies(g.s.mid, aid), questions(w.act), skippable(w.act), followUpSkippable(w.act), followUpMax(w.act)]);
   const rt = w.book ? null : revealTime(w.cfg, w.act, w.ev);
   return NextResponse.json({
     activity: { id: aid, name: w.book ? "내 소개 작성하기" : w.cfg.name },
@@ -74,7 +74,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
       sajuInfo: parseJson<unknown>(profile?.sajuInfo, null),
       sajuRedo: await sajuCanRedo(g.s.mid, profile ?? undefined), // 명리 풀이를 다시 받을 수 있는지(모임설정 "한 번만")
     },
-    interview: interviewView(iv.messages, iv.row?.status ?? "", qs.length, skips, fuSkip),
+    interview: interviewView(iv.messages, iv.row?.status ?? "", qs.length, skips, fuSkip, isAiEnabled() ? fuMax : 0, iv.row),
     truthLies: {
       statements: parseJson<string[]>(tl?.statements, ["", "", ""]),
       lieIndex: tl?.lieIndex ? Number(tl.lieIndex) : 0,

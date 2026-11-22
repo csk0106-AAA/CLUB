@@ -53,7 +53,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   const ivStarted = iv.messages.length > 0;
   const progress =
     tab === "guess" ? guessProg
-    : ivStarted ? { done: iv.status === "done" ? Math.max(iv.answered, iv.required) : iv.answered, total: Math.max(1, iv.required) }
+    : ivStarted ? { done: iv.status === "done" ? Math.max(iv.answered, iv.required + (iv.extra ?? 0)) : iv.answered, total: Math.max(1, iv.required + (iv.extra ?? 0)) }
     : null;
 
   return (
