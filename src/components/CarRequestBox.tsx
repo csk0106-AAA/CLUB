@@ -23,6 +23,7 @@ type Data = {
   phase: Phase; published: boolean; myRide: Record<Dir, string>; hasCarpool: boolean;
   mySelf: Record<Dir, boolean>; // 개별 이동을 골랐는지(구간별)
   adminOnly: boolean; recruitOn: boolean; // 관리자배정 / 차량모집을 켰는지
+  myName?: string; // 탑승자 명단에서 내 이름 강조
 };
 type Who = "me" | "member" | "other"; // 운전자: 나 / 다른 회원 / 회원 아닌 사람
 type Offer = { who: Who; driverId: string; driverName: string; name: string; plate: string; go: LegForm; back: LegForm };
@@ -160,9 +161,10 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
         <li key={car.id} className="car-item">
           <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
             <b className="grow">{car.name}{car.mine && <span className="small"> (내가 지원한 차)</span>}</b>
+            {(d.myRide?.go === car.name || d.myRide?.back === car.name) && <span className="pill warn">내가 타는 차</span>}
             <span className="chip line">{car.kind === "rental" ? "외부 대절" : "회원 차량"}</span>
           </div>
-          <span className="small">{[car.crew, car.plate].filter(Boolean).join(" · ")}</span>
+          <span className="small" style={d.myName && car.crew.includes(d.myName) ? { color: "var(--accent-ink)", fontWeight: 700 } : undefined}>{[car.crew, car.plate].filter(Boolean).join(" · ")}{d.myName && car.crew.includes(d.myName) ? " (나)" : ""}</span>
           {car.legs.map((leg) => {
             const full = leg.taken >= leg.seats;
             const mineHere = d.mine.find((m) => m.carId === car.id && m.dir === leg.dir && ["pending", "waiting", "approved", "confirmed"].includes(m.status));
@@ -186,7 +188,23 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
                 {leg.waiting > 0 && <span className="small">신청 대기 {leg.waiting}명</span>}
                 {leg.departAt && <span className="small">{fmtDateTime(leg.departAt)} 출발</span>}
                 {leg.memo && <span className="small">메모 · {leg.memo}</span>}
-                {d.published && leg.crewList.length > 0 && <span className="small">확정: {leg.crewList.join(", ")}</span>}
+                {/* 탑승자: 운전자 줄 밑에 따로 한 줄, 오른쪽 정렬. 내 이름은 진하게 강조 */}
+                {(d.published || leg.riders.length > 0) && (
+                  <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    <span className="small" style={{ flex: "0 0 auto" }}>탑승자 {leg.riders.length}명</span>
+                    <span style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }} aria-label={`${leg.label} 탑승자`}>
+                      {leg.riders.length === 0 && <span className="small">탑승자 없음</span>}
+                      {leg.riders.map((n, i) => {
+                        const me = !!d.myName && n === d.myName;
+                        return (
+                          <span key={i} className={`chip ${me ? "violet" : "line"}`} style={me ? { fontWeight: 800, outline: "2px solid var(--accent-ink)" } : undefined}>
+                            {n}{me ? " (나)" : ""}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  </div>
+                )}
                 {mineHere && <span className="small" style={{ fontWeight: 700 }}>내 상태: {shown(mineHere)}</span>}
               </div>
             );

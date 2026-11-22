@@ -59,6 +59,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     recruitOn: !!state.recruitOn, // 차량모집을 켰는지(꺼져 있으면 "차량모집 지원" 칸을 숨긴다)
     published: !!state.published,
     // 내가 탈 차(구간별 그룹명): 탑승자로 배정됐거나, 내가 운전하거나, 내가 지원한 차
+    myName: nm(g.s.mid), // 탑승자 명단에서 내 이름을 눈에 띄게
     mySelf: { go: selfOf(state, "go").includes(g.s.mid), back: selfOf(state, "back").includes(g.s.mid) }, // 내가 개별 이동을 골랐는지
     myRide: Object.fromEntries(DIRS.map((d) => [d, selfOf(state, d).includes(g.s.mid) ? "개별 이동" : all.find((c) => c[d].on && (c[d].riders.includes(g.s.mid) || (c.kind !== "rental" && c.driverId === g.s.mid) || c.ownerId === g.s.mid))?.name ?? ""])),
     hasCarpool: all.length > 0 || !!state.recruitOn || !!state.open || !!state.published || !!state.adminOnly,
