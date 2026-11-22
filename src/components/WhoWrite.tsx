@@ -131,7 +131,9 @@ export function WhoWrite(props: {
   const [hits, setHits] = useState<string[]>([]); // 신원 검사에 걸린 말(글 안에 표시)
   const [answer, setAnswer] = useState("");
   const [editAlias, setEditAlias] = useState(false);
-  const [editIntro, setEditIntro] = useState(false); // 소개 글 수정 도구(입력 칸·빠르게 고치기·AI 수정 요청) 펼치기
+  const [editIntro, setEditIntro] = useState(false); // 소개 글을 그 자리에서 고치는 중
+  const [introBefore, setIntroBefore] = useState(""); // 고치기 전 글(취소하면 되돌린다)
+  const openIntroEdit = () => { setIntroBefore(intro); setEditIntro(true); };
   // 기존 인터뷰 수정하기: 질문별 답변 고치기
   const [editing, setEditing] = useState<{ q: string; a: string; skipped?: boolean }[] | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
@@ -289,6 +291,15 @@ export function WhoWrite(props: {
           ? { tone: "bad", text: `소개 글에 2진실 1거짓 내용(${r.data.leaked.join(", ")})이 남아 있어요. 소개 글에서 지우거나 “다시 만들기”를 눌러 주세요.` }
           : { tone: "info", text: tlOn ? "별칭, 소개 글, 2진실 1거짓을 만들었어요. 2진실 1거짓 내용은 소개 글에 넣지 않았어요. 읽어 보고 고칠 부분을 알려 주세요." : inAct ? "별칭과 소개 글을 만들었어요. 읽어 보고 고칠 부분을 알려 주세요." : "소개 글을 만들었어요. 읽어 보고 고칠 부분을 알려 주세요." },
     );
+    await reload();
+  });
+
+  // 소개 글 그 자리에서 저장(초안). 2진실 1거짓은 지금 화면 값 그대로 함께 저장한다.
+  const saveIntro = () => run(async () => {
+    const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, ...(tlOn ? { statements: stmts, lieIndex: lie } : {}) } });
+    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    setEditIntro(false);
+    setNote({ tone: "info", text: tlOn && intro.trim() !== (tlIntro ?? "").trim() ? "소개 글을 저장했어요. 2진실 1거짓도 다시 만들어 주세요." : "소개 글을 저장했어요." });
     await reload();
   });
 
@@ -693,7 +704,7 @@ export function WhoWrite(props: {
               </div>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <h2 className="h3 grow">내 소개 <span className="chip gray" style={{ verticalAlign: "middle" }}>초안 · 나만 보여요</span></h2>
-                <button className="mini" type="button" aria-expanded={editIntro} onClick={() => setEditIntro(!editIntro)}>{editIntro ? "수정 닫기" : "소개 글 수정"}</button>
+                {!editIntro && <button className="mini" type="button" onClick={openIntroEdit}>소개 글 수정</button>}
               </div>
             </>
           )}
@@ -726,20 +737,28 @@ export function WhoWrite(props: {
             </div>
           ))}
           {approved || !editIntro ? (
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span className="l" style={{ margin: 0 }}>소개 글</span>
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6, cursor: approved ? "default" : "pointer" }}
+              onClick={approved ? undefined : openIntroEdit} title={approved ? undefined : "눌러서 고치기"}>
+              <div className="row" style={{ gap: 6 }}>
+                <span className="l grow" style={{ margin: 0 }}>소개 글</span>
+                {!approved && <span className="small">눌러서 고치기 ✎</span>}
+              </div>
               <Md text={intro} />
             </div>
           ) : (
-            <>
-              <label className="l" htmlFor="intro">소개 글 (직접 고칠 수 있어요)</label>
-              <textarea id="intro" className="field" rows={10} style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15), marginTop: -6 }} value={intro} onChange={(e) => setIntro(e.target.value)} />
-            </>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label className="l" htmlFor="intro" style={{ margin: 0 }}>소개 글 고치기</label>
+              <textarea id="intro" className="field" rows={12} autoFocus style={{ padding: 12, lineHeight: 1.65, fontSize: fs(15) }} value={intro} onChange={(e) => setIntro(e.target.value)} />
+              <div className="row" style={{ gap: 8 }}>
+                <button className="btn" type="button" disabled={busy || intro.trim().length < 2} style={{ flex: "1 1 0" }} onClick={saveIntro}>{busy ? "저장 중…" : "저장"}</button>
+                <button className="btn white" type="button" disabled={busy} style={{ flex: "1 1 0" }} onClick={() => { setIntro(introBefore); setEditIntro(false); }}>취소</button>
+              </div>
+            </div>
           )}
           {!approved && !editIntro && hits.length > 0 && hasHit(intro, hits) && (
             <div className="msg bad" role="alert" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span>소개 글에 신원이 드러나는 말이 있어요. “소개 글 수정”을 눌러 고쳐 주세요.</span>
-              <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={() => setEditIntro(true)}>소개 글 수정</button>
+              <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={openIntroEdit}>소개 글 수정</button>
             </div>
           )}
           {!approved && editIntro && hits.length > 0 && hasHit(intro, hits) && (
@@ -750,7 +769,9 @@ export function WhoWrite(props: {
           )}
 
           {!approved && editIntro && (
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <details className="card">
+            <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: fs(14) }}>AI에게 고쳐 달라고 하기</summary>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
               <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                 <span className="l grow" id="quick-l" style={{ margin: 0 }}>빠르게 고치기</span>
                 {interviewDone && <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "인터뷰 답으로 새로 만들기"}</button>}
@@ -774,6 +795,7 @@ export function WhoWrite(props: {
               <input id="rev" className="field" value={reviseText} onChange={(e) => setReviseText(e.target.value)} />
               <button className="btn blue" type="button" disabled={busy || !reviseText.trim()} onClick={() => revise()}>{busy ? "고치는 중…" : "이렇게 고쳐 주세요"}</button>
             </div>
+            </details>
           )}
 
           {tlOn && (
