@@ -94,10 +94,13 @@ function AnswerEdit({ idx, q, value, skipped, onChange }: { idx: number; q: stri
 }
 
 /* ───────────── 내 소개 작성(활동·프로필 북 공통) ───────────── */
+// part: "intro" 내 소개(인터뷰 → 소개 글·2진실 1거짓 → 배포) / "saju" 내 소개(명리학 사주풀이). 명리학은 인터뷰와 상관없이 따로 받는다.
+export const sajuTabOn = (st: WhoState) => st.aiEnabled && st.blocks?.saju !== false;
 export function WhoWrite(props: {
-  st: WhoState; aid: string; busy: boolean; setBusy: (b: boolean) => void; setNote: (n: Note) => void; reload: () => Promise<void>;
+  st: WhoState; aid: string; busy: boolean; setBusy: (b: boolean) => void; setNote: (n: Note) => void; reload: () => Promise<void>; part?: "intro" | "saju";
 }) {
   const { st, aid, busy, setBusy, setNote, reload } = props;
+  const part = props.part ?? "intro";
   const open = st.pre.status === "open";
   const approved = st.profile.introStatus === "approved";
   const inAct = st.inActivity;
@@ -437,6 +440,19 @@ export function WhoWrite(props: {
   // 인터뷰 없이 이미 공개된 소개가 있는 경우(예전 방식): 다시 하기만 할 수 있다
   const introOnly = approved && iv.messages.length === 0;
 
+  // 내 소개(명리학) 탭: 인터뷰와 상관없이 따로 받는다(여는 시점: 인터뷰 뒤·사전 작성 기간이면 작성 기간 안, 일정 당일이면 그날)
+  if (part === "saju") {
+    if (!sajuOn) return <div className="msg info">이 활동에는 명리학 사주풀이가 없어요.</div>;
+    const canSaju = sajuAfterIv ? open : !!st.sajuOpen;
+    return (
+      <section aria-label="내 소개(명리학)" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <span className="small">생년월일과 성별을 넣으면 명리학으로 본 나의 <b>성격과 성향</b>(내 소개 끝에 실을 수 있어요)과 <b>나만 보는 생애주기 풀이</b>를 받아요. AI 인터뷰와는 따로라서 언제 받아도 괜찮아요.</span>
+        {!canSaju && !readingChosen && <div className="msg info">지금은 명리학 풀이를 받을 수 있는 때가 아니에요.</div>}
+        <SajuPanel aid={aid} r={reading} canWrite={canSaju} published={approved} onChanged={reload} />
+      </section>
+    );
+  }
+
   // 기존 인터뷰 수정 화면
   if (editing) {
     return (
@@ -469,22 +485,21 @@ export function WhoWrite(props: {
           <li>중간에 나가도(위쪽 X) 저장돼요. 다시 들어와서 이어서 하면 돼요.</li>
           {inAct && <li>이름과 회사명은 쓰지 말아 주세요.</li>}
           <li>모든 질문은 “답변안함”으로 넘길 수 있어요. 다만 활동 진행과 프로필 북 소개를 위해 <b>공통 질문 5개 정도는 답해 주시길</b> 권해요.</li>
-          {sajuOn && <li>AI 인터뷰가 끝나면 <b>명리학 사주풀이</b>를 해 드려요. 생년월일과 성별만 넣으면, 나만 볼 수 있는 자세한 풀이를 받아 볼 수 있어요.</li>}
+          {sajuOn && <li><b>“내 소개(명리학)”</b> 탭에서 <b>명리학 사주풀이</b>를 따로 받을 수 있어요(인터뷰와 상관없이 언제든). 생년월일과 성별만 넣으면, 나만 볼 수 있는 자세한 풀이를 받아 볼 수 있어요.</li>}
           {sajuOn && <li>명리학으로 본 나의 성격과 성향을 내 소개에 더할 수 있어요. 회원들이 호감을 가질 수 있게 AI가 정성껏 써 드려요.</li>}
           <li>모든 소개 글은 수정 요청·직접 수정·삭제를 할 수 있어요. 인터뷰 중에도 내 답 옆 “다시 쓰기”를 누르면 다시 답할 수 있어요.</li>
         </ol>
       </details>
 
-      {/* 단계: ① 공통 질문 ② AI 추가 질문 ③ 명리학 사주풀이 */}
+      {/* 단계: ① 공통 질문 ② AI 추가 질문 (명리학은 따로 탭) */}
       {iv.messages.length > 0 && !introOnly && !approved && (() => {
         const extra = iv.extra ?? 0;
         const commonDone = iv.answered >= iv.required;
         const aiState = !extra ? "" : iv.aiPlan === "none" ? "안 함" : interviewDone ? "완료" : commonDone ? "진행 중" : "대기";
-        const sajuState = !sajuOn ? "" : readingChosen ? (st.profile.readingStatus === "done" ? "완료" : "안 함") : interviewDone ? "진행 중" : "대기";
         const steps = [
           { t: "공통 질문", s: commonDone ? "완료" : "진행 중" },
           ...(aiState ? [{ t: "AI 추가 질문", s: aiState }] : []),
-          ...(sajuState ? [{ t: "명리학 사주풀이", s: sajuState }] : []),
+
         ];
         return (
           <div className="row" role="list" aria-label="인터뷰 단계" style={{ gap: 6, flexWrap: "wrap" }}>
@@ -642,22 +657,10 @@ export function WhoWrite(props: {
       {interviewDone && !hasDraft && (
         <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {iv.notice && <div className="say"><Mascot size={32} /><div className="bubble">{iv.notice}</div></div>}
-          {sajuAfterIv && !readingChosen ? (
-            <div className="msg info">인터뷰를 마쳤어요. 다음은 <b>명리학 사주풀이</b>예요(받지 않아도 돼요). 아래에서 사주를 볼지 고르면 소개 글을 만들 수 있어요.</div>
-          ) : (
-            <>
-              <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {tlOn ? "별칭과 소개 글, 2진실 1거짓을" : inAct ? "별칭과 소개 글을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
-              <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : tlOn ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
-            </>
-          )}
+          <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {tlOn ? "별칭과 소개 글, 2진실 1거짓을" : inAct ? "별칭과 소개 글을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
+          <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : tlOn ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
+          {sajuOn && !readingChosen && <span className="small">명리학 사주풀이는 위의 “내 소개(명리학)” 탭에서 따로 받을 수 있어요.</span>}
         </section>
-      )}
-      {interviewDone && !hasDraft && sajuAfterIv && (
-        <SajuPanel aid={aid} r={reading} canWrite={open} onChanged={reload} />
-      )}
-      {/* 여는 시점이 사전 작성 기간·일정 당일이면 그때 따로 보여 준다(소개 글 만들기와 상관없이) */}
-      {sajuOn && !sajuAfterIv && !hasDraft && (st.sajuOpen || readingChosen) && (
-        <SajuPanel aid={aid} r={reading} canWrite={!!st.sajuOpen} onChanged={reload} />
       )}
 
       {/* 3. 미리보기 · 수정 · 승인 */}
@@ -798,8 +801,8 @@ export function WhoWrite(props: {
             </>
           )}
 
-          {/* 명리학: 성격·성향(소개 페이지 맨 끝에 공개, 뺄 수 있음) + 생애주기 풀이(나만) */}
-          {sajuOn && (sajuAfterIv || st.sajuOpen || readingChosen) && <SajuPanel aid={aid} r={reading} canWrite={sajuAfterIv ? open : !!st.sajuOpen} published={approved} onChanged={reload} />}
+          {/* 명리학(성격·성향)은 “내 소개(명리학)” 탭에서 받고, 싣기를 켜면 배포할 때 소개 끝에 함께 실려요 */}
+          {sajuOn && st.profile.readingStatus === "done" && <span className="small">명리학으로 본 성격·성향{reading.traitsShown ? "은 배포할 때 소개 끝에 함께 실려요" : "은 지금 소개에 싣지 않게 해 두었어요"}. “내 소개(명리학)” 탭에서 바꿀 수 있어요.</span>}
 
           {approveErr && !approved && (
             <div className="msg bad" role="alert">

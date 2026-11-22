@@ -5,7 +5,7 @@ import { ActivityLiveBox } from "@/components/LiveActivities";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
-import { WhoWrite, type Note, type WhoState as State } from "@/components/WhoWrite";
+import { sajuTabOn, WhoWrite, type Note, type WhoState as State } from "@/components/WhoWrite";
 import { ActivitySaju } from "@/components/ActivitySaju";
 import { api, fmtDate, fmtDateTime } from "@/lib/client";
 import { fs } from "@/lib/fs";
@@ -20,10 +20,11 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   const { id, aid } = use(params);
   const router = useRouter();
   const [st, setSt] = useState<State | null>(null);
-  const [tab, setTab] = useState<"write" | "guess">("write");
+  const [tab, setTab] = useState<"write" | "saju" | "guess">("write");
   // 알림(새 소개가 올라왔어요)에서 ?tab=guess 로 들어오면 “누구일까요?” 맞히기 탭부터 연다
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "guess") setTab("guess");
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "guess" || t === "saju") setTab(t);
   }, []);
   const [note, setNote] = useState<Note>(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +54,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
   const ivStarted = iv.messages.length > 0;
   const progress =
     tab === "guess" ? guessProg
+    : tab === "saju" ? null
     : ivStarted ? { done: iv.status === "done" ? Math.max(iv.answered, iv.required + (iv.extra ?? 0)) : iv.answered, total: Math.max(1, iv.required + (iv.extra ?? 0)) }
     : null;
 
@@ -62,13 +64,18 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
       {/* 이 활동의 설명·시간·진행 상황(일정의 활동 길에서 아이콘을 눌러 들어옴) */}
       <ActivityLiveBox eventId={id} activityId={aid} />
       <div className="seg" role="tablist" aria-label="내가 누구일까요? 메뉴">
-        <button type="button" role="tab" aria-selected={tab === "write"} onClick={() => setTab("write")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개 작성</button>
+        <button type="button" role="tab" aria-selected={tab === "write"} onClick={() => setTab("write")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(인터뷰)</button>
+        {sajuTabOn(st) && <button type="button" role="tab" aria-selected={tab === "saju"} onClick={() => setTab("saju")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(명리학)</button>}
         <button type="button" role="tab" aria-selected={tab === "guess"} onClick={() => setTab("guess")} style={{ minHeight: 40, fontSize: fs(13) }}>누구일까요?</button>
       </div>
       {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
 
       {tab === "guess" ? (
         <Guess aid={aid} setNote={setNote} onProgress={setGuessProg} />
+      ) : tab === "saju" && st.state === "in" ? (
+        <WhoWrite st={st} aid={aid} busy={busy} setBusy={setBusy} setNote={setNote} reload={load} part="saju" />
+      ) : tab === "saju" && st.state === "optout" ? (
+        <ActivitySaju aid={aid} />
       ) : st.state === "none" ? (
         // 참여 대상이 아니면 프로필 북에서 실명으로 소개를 쓴다
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
-import { WhoWrite, type Note, type WhoState } from "@/components/WhoWrite";
+import { sajuTabOn, WhoWrite, type Note, type WhoState } from "@/components/WhoWrite";
 import { api } from "@/lib/client";
 import { fs } from "@/lib/fs";
 
@@ -17,6 +17,7 @@ export default function ProfileWritePage() {
   const [st, setSt] = useState<WhoState | null>(null);
   const [note, setNote] = useState<Note>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"write" | "saju">("write"); // 내 소개(인터뷰) / 내 소개(명리학)
 
   const load = useCallback(async () => {
     const r = await api<WhoState>(`/api/who/${AID}`);
@@ -47,7 +48,13 @@ export default function ProfileWritePage() {
       ) : (
         <>
           <p className="small" style={{ margin: 0, fontSize: fs(13) }}>AI와의 인터뷰를 통해 나를 소개하세요. 다 쓰고 배포하면 프로필 북에 내 이름과 함께 보여요.</p>
-          <WhoWrite st={st} aid={AID} busy={busy} setBusy={setBusy} setNote={setNote} reload={load} />
+          {sajuTabOn(st) && (
+            <div className="seg" role="tablist" aria-label="내 소개 메뉴">
+              <button type="button" role="tab" aria-selected={tab === "write"} onClick={() => setTab("write")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(인터뷰)</button>
+              <button type="button" role="tab" aria-selected={tab === "saju"} onClick={() => setTab("saju")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(명리학)</button>
+            </div>
+          )}
+          <WhoWrite st={st} aid={AID} busy={busy} setBusy={setBusy} setNote={setNote} reload={load} part={tab === "saju" && sajuTabOn(st) ? "saju" : "intro"} />
         </>
       ))}
     </main>
