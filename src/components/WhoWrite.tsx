@@ -847,7 +847,16 @@ export function WhoWrite(props: {
             </div>
           )}
           <div className="footer-actions">
-            {approved ? null : (
+            {approved ? (
+              <>
+                {/* 배포한 뒤에도 같은 자리에: 소개 고치기 · 배포 완료(누를 수 없음) */}
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn white" type="button" disabled={busy} style={{ flex: "1 1 0", minWidth: 0 }} onClick={unapprove}>소개 고치기</button>
+                  <button className="btn" type="button" disabled style={{ flex: "1 1 0", minWidth: 0, opacity: 1 }}>배포 완료 ✓</button>
+                </div>
+                <p className="hint center">다른 회원에게 보이고 있어요. 고치려면 “소개 고치기”를 눌러 주세요.</p>
+              </>
+            ) : (
               <>
                 {/* 임시 저장 · 최종 배포를 한 줄로 같은 크기(1:1) */}
                 <div className="row" style={{ gap: 8 }}>
