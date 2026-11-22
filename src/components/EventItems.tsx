@@ -229,7 +229,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
       setShown(prev);
       return setNote({ tone: "bad", text: r.error });
     }
-    setNote({ tone: "info", text: v ? `${TITLE[kind]} 회원 공개(읽기만)` : `${TITLE[kind]} 회원 비공개` });
+    setNote({ tone: "info", text: v ? `${TITLE[kind]}: 참석자에게 보여요(읽기만). 미응답·불참 회원에게도 보이려면 일정 편집의 “미응답·불참 회원에게 공개”에서 켜 주세요.` : `${TITLE[kind]}: 관리자만 봐요.` });
   }
   async function remove(id: string) {
     if (!window.confirm("지울까요?")) return;
@@ -261,12 +261,12 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const suggest = attend > 0 ? Math.ceil(need / attend / 1000) * 1000 : 0;
   // 비용 목록 칸: 위 요약과 어울리게 작은 글씨
   const cs = { minHeight: 36, fontSize: fs(13), padding: "0 8px" } as const;
-  // 회원 공개 스위치(준비목록·비용 공통): "공개 [스위치]"
+  // 참석자 공개 스위치(준비목록·비용 공통): "참석자에게 보이기 [스위치]" — 미응답·불참은 일정의 공개 범위(lib/event-visibility.ts)를 따른다
   const visSwitch = kind !== "schedule" && shown !== null ? (
     <>
-      <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>공개</span>
-      <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} aria-label={`${TITLE[kind]} 회원 공개`}
-        title={shown ? "회원 일정 화면에 보여요(읽기만)" : "관리자만 봐요"}
+      <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>참석자에게 보이기</span>
+      <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} aria-label={`${TITLE[kind]} 참석자에게 보이기`}
+        title={shown ? "참석자의 일정 화면에 보여요(읽기만)" : "관리자만 봐요"}
         disabled={!canEdit} onClick={() => setVisible(!shown)} style={{ transform: "scale(0.75)", flex: "none", margin: "0 -6px" }} />
     </>
   ) : null;

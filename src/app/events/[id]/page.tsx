@@ -34,7 +34,7 @@ type Detail = {
     guest?: boolean; // 대기회원·참관회원: 참석하려면 참관 신청(관리자 승인)
   };
   activities: { id: string; name: string }[];
-  // 관리자가 회원에게 보이기를 켠 준비목록·비용(null = 안 보임)
+  // 관리자가 참석자에게 보이기를 켠 준비목록·비용(null = 안 보임). 미응답·불참은 일정의 공개 범위를 따른다
   prep?: { id: string; item: string; owner: string; done: boolean }[] | null;
   prepFiles?: { id: string; name: string; size: number }[] | null;
   costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
@@ -322,7 +322,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <ScheduleView items={schedule} dayPlaces={dayPlaces} />
         </Fold>
       )}
-      {/* 관리자가 "회원에게 보이기"를 켠 준비목록·비용(읽기만) */}
+      {/* 관리자가 "참석자에게 보이기"를 켠 준비목록·비용(읽기만) */}
       {d.prep && (d.prep.length > 0 || (d.prepFiles?.length ?? 0) > 0) && (
         <Fold title="준비목록" summary={`${d.prep.filter((x) => x.done).length}/${d.prep.length} 준비됨${d.prepFiles?.length ? ` · 파일 ${d.prepFiles.length}개` : ""}`}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>

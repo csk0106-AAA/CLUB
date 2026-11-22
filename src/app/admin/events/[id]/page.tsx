@@ -205,7 +205,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     setMsg(null);
     // 참관자는 신청현황 탭에서 따로 저장하고, 공개 대상(audience)은 이 화면에서 바꾸지 않는다.
     // 맨 위 고정(pinned)은 스위치를 누를 때 바로 저장한다.
-    // 준비목록·비용 "회원에게 보이기"는 각 탭에서 따로 저장한다(여기서는 보내지 않는다)
+    // 준비목록·비용 "참석자에게 보이기"는 각 탭에서 따로 저장한다(여기서는 보내지 않는다)
     const { id: _id, type: _t, published: _p, observers: _o, audience: _a, pinned: _pin, showPrep: _sp, showCosts: _sc, visibility: _vis, ...fields } = ev as Ev & { observers?: unknown; audience?: unknown; showPrep?: unknown; showCosts?: unknown; visibility?: unknown };
     void _id; void _t; void _p; void _o; void _a; void _pin; void _sp; void _sc; void _vis;
     const r = await api(`/api/admin/events/${id}`, {
