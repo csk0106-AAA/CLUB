@@ -1,5 +1,6 @@
 "use client";
 
+import { IconMapPin } from "./Icons";
 import { ActionNote } from "@/components/ActionNote";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapButton } from "./MapButton";
@@ -11,7 +12,7 @@ import { NameSearch } from "./NameSearch";
 import { Popup } from "./Popup";
 
 type Dir = "go" | "back";
-type Leg = { dir: Dir; label: string; from: string; to: string; departAt: string; arriveAt: string; taken: number; waiting: number; riders: string[]; crewList: string[]; seats: number; memo: string };
+type Leg = { dir: Dir; label: string; from: string; to: string; departAt: string; arriveAt: string; taken: number; waiting: number; riders: string[]; crewList: string[]; seats: number; memo: string; seated?: { name: string; ok: boolean }[] };
 type Car = { id: string; name: string; kind: "member" | "rental"; plate: string; driver: string; crew: string; seats: number; memo: string; mine: boolean; legs: Leg[] };
 type Phase = "none" | "open" | "closed" | "confirmed" | "admin";
 type Mine = { id: string; carId: string; dir: Dir; status: string; label: string; note: string; createdAt: string; handledAt: string; isNew: boolean; waitRank: number };
@@ -171,43 +172,47 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
             const full = leg.taken >= leg.seats;
             const mineHere = d.mine.find((m) => m.carId === car.id && m.dir === leg.dir && ["pending", "waiting", "approved", "confirmed"].includes(m.status));
             const canAsk = canAskAll && d.open && d.attending && !car.mine && !mineHere && (!full || !d.waitClosed);
+            const people = leg.seated ?? leg.riders.map((n) => ({ name: n, ok: true }));
+            const pin = (place: string, what: string) => place && (
+              <MapButton place={place} label={`${what} ${place} 지도 보기`} style={{ minHeight: 26, padding: "0 5px", marginLeft: 3, display: "inline-grid", placeItems: "center", verticalAlign: "middle" }}><IconMapPin size={15} /></MapButton>
+            );
             return (
-              <div key={leg.dir} className="car-leg">
-                {/* 한 줄: 갈 때 · 출발지 → 도착지 ……… [신청 3/4] (신청할 수 없으면 3/4 표시만) */}
-                <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                  <b style={{ fontSize: fs(14) }}>{leg.label}</b>
-                  <span className="small grow">{leg.from || leg.to ? <>{leg.from || "?"}{leg.from && <MapButton place={leg.from} label={`출발지 ${leg.from} 지도 보기`} style={{ minHeight: 26, padding: "0 6px", marginLeft: 4 }}>지도</MapButton>} → {leg.to || "?"}{leg.to && <MapButton place={leg.to} label={`도착지 ${leg.to} 지도 보기`} style={{ minHeight: 26, padding: "0 6px", marginLeft: 4 }}>지도</MapButton>}</> : ""}</span>
-                  {canAsk ? (
-                    <button type="button" className={`btn car-ask${full ? " white" : ""}`} disabled={busy} onClick={() => request(car, leg)}
-                      aria-label={`${car.name} ${leg.label} ${full ? "신청 대기" : "신청"} (${leg.taken}/${leg.seats}석)`}>
-                      <span>{full ? (openReq(leg.dir) ? "이 차로 신청 대기" : "신청 대기") : seated(leg.dir) || openReq(leg.dir) ? "이 차로 바꾸기" : "신청"}</span>
-                      <span className="car-ask-n">{leg.taken}/{leg.seats}</span>
-                    </button>
-                  ) : (
-                    <span className={`pill ${full ? "bad" : "blue"}`}>{leg.taken}/{leg.seats}{full ? " 마감" : ""}</span>
-                  )}
+              <div key={leg.dir} className="car-leg" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {/* ① 구간: 갈 때 · 출발지 → 도착지 ······ 3/5 */}
+                <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <b style={{ fontSize: fs(14), flex: "0 0 auto" }}>{leg.label}</b>
+                  <span className="small grow">{leg.from || leg.to ? <>{leg.from || "?"}{pin(leg.from, "출발지")} → {leg.to || "?"}{pin(leg.to, "도착지")}</> : ""}</span>
+                  <span className={`pill ${full ? "bad" : "blue"}`} style={{ flex: "0 0 auto" }}>{leg.taken}/{leg.seats}{full ? " 마감" : ""}</span>
                 </div>
-                {leg.waiting > 0 && <span className="small">신청 대기 {leg.waiting}명</span>}
-                {leg.departAt && <span className="small">{fmtDateTime(leg.departAt)} 출발</span>}
-                {leg.memo && <span className="small">메모 · {leg.memo}</span>}
-                {/* 탑승자: 운전자 줄 밑에 따로 한 줄, 오른쪽 정렬. 내 이름은 진하게 강조 */}
-                {(d.published || leg.riders.length > 0) && (
-                  <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <span className="small" style={{ flex: "0 0 auto" }}>탑승자 {leg.riders.length}명</span>
-                    <span style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }} aria-label={`${leg.label} 탑승자`}>
-                      {leg.riders.length === 0 && <span className="small">탑승자 없음</span>}
-                      {leg.riders.map((n, i) => {
-                        const me = !!d.myName && n === d.myName;
-                        return (
-                          <span key={i} className={`chip ${me ? "violet" : "line"}`} style={me ? { fontWeight: 800, outline: "2px solid var(--accent-ink)" } : undefined}>
-                            {n}{me ? " (나)" : ""}
-                          </span>
-                        );
-                      })}
-                    </span>
-                  </div>
+                {/* ② 출발 시간 · 대기 · 메모(한 줄) */}
+                {(leg.departAt || leg.waiting > 0 || leg.memo) && (
+                  <span className="small">{[leg.departAt && `${fmtDateTime(leg.departAt)} 출발`, leg.waiting > 0 && `신청 대기 ${leg.waiting}명`, leg.memo && `메모 · ${leg.memo}`].filter(Boolean).join(" · ")}</span>
                 )}
+                {/* ③ 탑승자: 오른쪽 정렬, 내 이름은 진하게(확정 전인 분은 흐리게) */}
+                <div className="row" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <span className="small" style={{ flex: "0 0 auto" }}>탑승자 {people.length}명</span>
+                  <span style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }} aria-label={`${leg.label} 탑승자`}>
+                    {people.length === 0 && <span className="small">아직 없어요</span>}
+                    {people.map((p, i) => {
+                      const me = !!d.myName && p.name === d.myName;
+                      return (
+                        <span key={i} className={`chip ${me ? "violet" : "line"}`} title={p.ok ? "확정" : "배정됨 · 확정 전"}
+                          style={{ ...(me ? { fontWeight: 800, outline: "2px solid var(--accent-ink)" } : {}), ...(p.ok ? {} : { opacity: 0.7, fontStyle: "italic" }) }}>
+                          {p.name}{me ? " (나)" : ""}{p.ok ? "" : " · 확정 전"}
+                        </span>
+                      );
+                    })}
+                  </span>
+                </div>
+                {/* ④ 내 상태 · 신청 버튼(맨 아래) */}
                 {mineHere && <span className="small" style={{ fontWeight: 700 }}>내 상태: {shown(mineHere)}</span>}
+                {canAsk && (
+                  <button type="button" className={`btn car-ask${full ? " white" : ""}`} disabled={busy} onClick={() => request(car, leg)} style={{ alignSelf: "flex-end" }}
+                    aria-label={`${car.name} ${leg.label} ${full ? "신청 대기" : "신청"} (${leg.taken}/${leg.seats}석)`}>
+                    <span>{full ? (openReq(leg.dir) ? "이 차로 신청 대기" : "신청 대기") : seated(leg.dir) || openReq(leg.dir) ? "이 차로 바꾸기" : "이 차 신청"}</span>
+                    <span className="car-ask-n">{leg.taken}/{leg.seats}</span>
+                  </button>
+                )}
               </div>
             );
           })}
@@ -238,7 +243,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
     await load();
   }
   // 확정·마감 뒤 "내 탑승": 구간마다 지금 상태와 바꿀 수 있는 것
-  const myRideBlock = d.attending && (d.phase === "confirmed" || d.phase === "closed") && (
+  const myRideBlock = d.attending && (d.phase === "confirmed" || d.phase === "closed" || d.phase === "open") && (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
       <b style={{ fontSize: fs(15) }}>내 탑승</b>
       {(["go", "back"] as Dir[]).map((dir) => {
@@ -257,7 +262,9 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
         );
       })}
       {/* 다른 차량 신청: 마감 전이면 직접(목록에서 “신청”·“이 차로 바꾸기”), 마감 뒤에는 관리자에게 요청 */}
-      {!d.waitClosed && !d.adminOnly ? (
+      {d.phase === "open" ? (
+        <span className="small">아래 차량 목록에서 “이 차 신청”을 누르면 돼요. 차 없이 각자 가시면 “개별 이동으로”를 눌러 주세요.</span>
+      ) : !d.waitClosed && !d.adminOnly ? (
         <>
           <button type="button" className="mini" style={{ alignSelf: "flex-start" }} onClick={() => setPickOther(!pickOther)}>{pickOther ? "차량 목록 접기" : "다른 차량 신청하기"}</button>
           {pickOther && carList(true)}
@@ -290,17 +297,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
             {d.waitUntil && <span className="small" style={{ fontWeight: 700 }}>차량신청 마감: {fmtDateTime(d.waitUntil)}</span>}
             <span className="small">지금까지 등록된 차량으로 신청을 받습니다. 신청할 수 있는 차량이 더 등록되면 목록에 바로 더해지고 알려 드려요.</span>
             {!d.attending && <div className="msg info">참석 신청하면 차량을 신청할 수 있어요.</div>}
-            {/* 개별 이동: 차 없이 각자 이동(다시 누르면 취소) */}
-            {d.attending && (
-              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                <span className="small grow">차 없이 각자 가시나요?</span>
-                {(["go", "back"] as Dir[]).map((dir) => (
-                  <button key={dir} type="button" className={`mini${d.mySelf?.[dir] ? " on-self" : ""}`} aria-pressed={!!d.mySelf?.[dir]} disabled={busy} onClick={() => toggleSelf(dir)}>
-                    {d.mySelf?.[dir] ? `✓ ${LABEL[dir]} 개별 이동 (취소)` : `${LABEL[dir]} 개별 이동`}
-                  </button>
-                ))}
-              </div>
-            )}
+            {myRideBlock}
             {myReqs}
             {carList(true)}
           </>

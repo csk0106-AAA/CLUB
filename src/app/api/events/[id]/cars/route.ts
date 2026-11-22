@@ -77,6 +77,8 @@ export async function GET(_req: Request, ctx: Ctx) {
         taken: car[d].riders.length + driverSeat(car), // 찬 자리(승인·확정 + 회원 차량은 운전자)
         waiting: reqs.filter((r) => r.carId === car.id && r.dir === d && r.status === "waiting").length,
         riders: visibleRiders(car, d, reqs).map(nm), // 확정된 탑승자만
+        // 이 차에 배정된 모든 탑승자(ok: 확정, 아니면 배정됨·확정 전) — 차량별로 누가 타는지, 내가 어디 있는지 보여 준다
+        seated: car[d].riders.map((m) => ({ name: nm(m), ok: reqs.length === 0 || reqs.some((r) => r.carId === car.id && r.dir === d && r.memberId === m && r.status === "confirmed") })),
         // 확정 명단: 운전자(회원) · 지원자 · 확정된 탑승자
         crewList: confirmedCrew(car, d, visibleRiders(car, d, reqs), nm),
       })),

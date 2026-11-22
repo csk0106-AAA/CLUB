@@ -56,6 +56,10 @@ export function IconMegaphone({ size = 18, max }: P) {
 export function IconPin({ size = 18, max }: P) {
   return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6l-1 5 4 4v2H6v-2l4-4z" /><path d="M12 14v7" /></svg>;
 }
+// 지도(위치 핀)
+export function IconMapPin({ size = 18, max }: P) {
+  return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>;
+}
 // 첨부(클립)
 export function IconClip({ size = 18, max }: P) {
   return <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" /></svg>;

@@ -1,5 +1,6 @@
 "use client";
 
+import { IconMapPin } from "./Icons";
 import { useCallback, useEffect, useState } from "react";
 import { MapButton } from "./MapButton";
 import { api, fmtDateTime } from "@/lib/client";
@@ -410,7 +411,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
                     {[c.kind === "rental" ? "외부 대절" : "회원 차량", c.kind === "rental" && driverOf(c) && `운전 ${driverOf(c)}`, c.plate].filter(Boolean).join(" · ")}
                     {c.ownerId && c.ownerId !== c.driverId && <><br />지원 {nm(c.ownerId)}(운전 {driverOf(c) || "미정"})</>}
                     {c.ownerId && c.ownerId === c.driverId && <><br />차량모집 지원 · {nm(c.ownerId)}</>}
-                    {(leg.from || leg.to) && <><br />{leg.from || "?"}{leg.from && <MapButton place={leg.from} style={{ minHeight: 26, padding: "0 6px", marginLeft: 4 }}>지도</MapButton>} → {leg.to || "?"}{leg.to && <MapButton place={leg.to} style={{ minHeight: 26, padding: "0 6px", marginLeft: 4 }}>지도</MapButton>}</>}
+                    {(leg.from || leg.to) && <><br />{leg.from || "?"}{leg.from && <MapButton place={leg.from} label={`출발지 ${leg.from} 지도 보기`} style={{ minHeight: 26, padding: "0 5px", marginLeft: 4, display: "inline-grid", placeItems: "center", verticalAlign: "middle" }}><IconMapPin size={15} /></MapButton>} → {leg.to || "?"}{leg.to && <MapButton place={leg.to} label={`도착지 ${leg.to} 지도 보기`} style={{ minHeight: 26, padding: "0 5px", marginLeft: 4, display: "inline-grid", placeItems: "center", verticalAlign: "middle" }}><IconMapPin size={15} /></MapButton>}</>}
                     {/* 출발 시간은 한 줄 아래로 */}
                     {leg.departAt && <><br />{fmtDateTime(leg.departAt)} 출발</>}
                     {leg.memo && <><br />메모 · {leg.memo}</>}
