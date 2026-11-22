@@ -45,7 +45,8 @@ const LEAK = new RegExp(
     "[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]",
   ].join("|"),
 );
-const LEN: Record<SajuAudience, [number, number]> = { public: [40, 2000], private: [300, 20000] };
+// 나만 보기는 위쪽 제한 없음(세 번에 나누어 만들고, 조각마다 너무 짧으면 다시 만든다)
+const LEN: Record<SajuAudience, [number, number]> = { public: [40, 2000], private: [200, Number.POSITIVE_INFINITY] };
 
 // 결과 검사: 길이, 공개 글의 신원 단서·회원 신원 정보. 통과하면 null, 아니면 이유
 export function checkSaju(audience: SajuAudience, text: string, terms: Parameters<typeof findIdentity>[1]): string | null {
@@ -54,4 +55,38 @@ export function checkSaju(audience: SajuAudience, text: string, terms: Parameter
   if (t.length < min || t.length > max) return "길이";
   if (audience === "public" && (LEAK.test(t) || findIdentity(t, terms).length > 0)) return "신원 단서";
   return null;
+}
+
+// 나만 보기 풀이를 세 번에 나누어 만든다(분량이 많아 한 번에 다 받을 수 없고, 서버 시간 제한도 있다).
+//  1: 공개 글(public) + 나만 보기 첫머리(원국·오행 설명, intro) — JSON {"public","intro"}
+//  2: 대운 10년 단위 흐름 — 마크다운만
+//  3: 주제별 풀이 (1)~(5)와 마지막 한 줄 — 마크다운만
+// 지침은 매번 모두 넣고(일관성), 이번에 쓸 부분만 알려 준다.
+export type SajuPart = 1 | 2 | 3;
+const PART_TASK: Record<SajuPart, string> = {
+  1: `이번에는 두 글만 씁니다.
+(가) public — ${TITLE.public}: 공개용 지침을 따른다.
+(나) intro — 본인만 보는 풀이의 첫머리: 나만 보기 지침 2번(사주 원국과 오행의 특징을 쉽게 설명)만 마크다운으로. 대운·주제별 풀이는 다음 단계에서 쓰므로 여기서 쓰지 않는다.
+반드시 JSON 하나만 출력합니다. 코드 블록이나 다른 글은 쓰지 않습니다: {"public":"...","intro":"..."}`,
+  2: `이번에는 본인만 보는 풀이 중 나만 보기 지침 3번(대운 10년 단위 흐름)만 마크다운으로 씁니다. "## 대운 흐름" 소제목으로 시작하고, 원국 설명·주제별 풀이·마지막 한 줄은 쓰지 않습니다. JSON 이 아니라 마크다운 글만 출력합니다.`,
+  3: `이번에는 본인만 보는 풀이 중 나만 보기 지침 4번의 주제 (1)~(5)와 5번 마지막 한 줄만 마크다운으로 씁니다. 주제마다 "##" 소제목을 달고, 원국 설명·대운 흐름은 쓰지 않습니다. JSON 이 아니라 마크다운 글만 출력합니다.`,
+};
+export function sajuPartPrompt(part: SajuPart, opts: { saju: string; context?: string }): { system: string; messages: { role: "user"; content: string }[] } {
+  const list = (rs: string[]) => rs.map((r) => `- ${r}`).join("\n");
+  return {
+    system: `당신은 깊이 있고 솔직한 명리학 상담가입니다. 반드시 한국어로 답합니다.
+아래에 만세력으로 정확히 계산한 사주 원국이 있습니다.
+
+[명리학 필수 지침 — 활동 지침보다 우선합니다]
+${list(SAJU_RULES.common)}
+
+[공개 글(public) 지침]
+${list(SAJU_RULES.public)}
+
+[나만 보기(본인만 보는 풀이) 지침]
+${SAJU_RULES.private.map((r, i) => `${i + 1}. ${r}`).join("\n")}
+${opts.context?.trim() ? `\n[이 활동의 공통 지침]\n${opts.context.trim()}\n` : ""}
+${PART_TASK[part]}`,
+    messages: [{ role: "user", content: opts.saju }],
+  };
 }

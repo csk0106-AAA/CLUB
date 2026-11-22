@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { fs } from "@/lib/fs";
@@ -43,7 +44,7 @@ function Export() {
     <>
       <p className="small" style={{ margin: 0 }}>백업용으로 전체 데이터를 내려받아요. “모든권한” 관리자만 할 수 있어요.</p>
       <div className="msg info">인터뷰 원문, 타임캡슐 본문, 아직 공개되지 않은 고민과 소개 초안은 본인 외에는 볼 수 없게 정한 내용이라 내려받는 파일에 포함되지 않아요. 초대코드도 빠져요.</div>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>전체 백업 (JSON)</b>
         <button className="btn" type="button" disabled={busy} style={{ width: "auto", alignSelf: "flex-start", minHeight: 46 }} onClick={() => download("format=json", "backup.json")}>전체 데이터 내려받기</button>

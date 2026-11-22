@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote, type ActionMsg } from "./ActionNote";
 import Link from "next/link";
 import { RowDelete } from "./RowDelete";
 import { useCallback, useEffect, useState, useRef } from "react";
@@ -54,7 +55,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
   // 진행자 여러 명: 줄마다 [회원 고르기] [접속번호] [자동 생성] [빼기]
   const [rows, setRows] = useState(a.hosts.map((h) => ({ ...h })));
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [msg, setMsg] = useState<ActionMsg>(null);
   const dirty = JSON.stringify(rows) !== JSON.stringify(a.hosts);
   const nameOf = (id: string) => members.find((m) => m.id === id)?.name ?? "";
   const newCode = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -89,7 +90,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
         진행자는 여러 명 둘 수 있고, 사람마다 <b>진행자 접속번호</b>를 따로 정해요. 진행자가 로그인 화면에서 자기 이름을 고르고 자기 접속번호를 넣으면 이 활동의 진행 화면만 보여요.
         평소 초대코드(연락처 뒷자리)로 들어오면 일반 회원으로 활동에 참여해요.
       </span>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {canEdit && (
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <button className="btn" type="button" disabled={busy || rows.length >= 20} style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }}
@@ -256,7 +257,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [part, setPart] = useState<Set<string>>(new Set()); // 그중 선택참여
   const [dirty, setDirty] = useState(false);
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [msg, setMsg] = useState<ActionMsg>(null);
   const [busy, setBusy] = useState(false);
   const partialOk = canSelect(a.config);
   const actions = activityActions(a.config);
@@ -304,7 +305,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
       const r = await api(base, { method: "PUT", body: { selected: [...sel], partial: [...part].filter((id) => sel.has(id)) } });
       if (!r.ok) {
         setBusy(false);
-        return setMsg({ tone: "bad", text: r.error });
+        return setMsg({ tone: "bad", text: r.error, at: "bottom" });
       }
     }
     const done = sel.size > 0;
@@ -312,11 +313,11 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
       const r = await api(base, { body: { confirmed: done } });
       if (!r.ok) {
         setBusy(false);
-        return setMsg({ tone: "bad", text: r.error });
+        return setMsg({ tone: "bad", text: r.error, at: "bottom" });
       }
     }
     const np = [...part].filter((id) => sel.has(id)).length;
-    setMsg({ tone: "info", text: done ? `${sel.size}명을 저장했어요(전체참여 ${sel.size - np}명 · 선택참여 ${np}명). 활동을 시작할 수 있어요.` : "아무도 고르지 않아 완료되지 않았어요. 참여할 사람을 골라 저장해 주세요." });
+    setMsg({ tone: "info", text: done ? `${sel.size}명을 저장했어요(전체참여 ${sel.size - np}명 · 선택참여 ${np}명). 활동을 시작할 수 있어요.` : "아무도 고르지 않아 완료되지 않았어요. 참여할 사람을 골라 저장해 주세요.", at: "bottom" });
     setBusy(false);
     await load();
     onChange();
@@ -351,7 +352,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
           </>
         ) : <span className="small">이 활동은 템플릿에서 “전체 참여만”이라 고른 회원 모두 전체참여예요.</span>}
       </div>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {canEdit && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="mini" type="button" disabled={busy} onClick={preset}>참석자로 채우기</button>
@@ -389,6 +390,7 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
           {dirty && <span className="small">저장하지 않은 변경이 있어요.</span>}
         </div>
       )}
+      <ActionNote msg={msg} at="bottom" />
       {att.confirmed && <span className="small">{fmtDateTime(att.confirmedAt)} ·{att.by} 님이 저장했어요. 늦게 온 분은 고르고 “선택 저장”을 누르면 바로 참여할 수 있어요.</span>}
     </div>
   );
@@ -448,7 +450,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   const [addOpen, setAddOpen] = useState(false);
   const [addErr, setAddErr] = useState("");
   const [guideFor, setGuideFor] = useState<Act | null>(null); // AI 지침을 고치는 활동
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [msg, setMsg] = useState<ActionMsg>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -562,7 +564,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       <p className="small" style={{ margin: 0 }}>
         활동 템플릿에서 활동을 골라 이 일정에 넣어요. 넣은 뒤 이 일정에 맞게 고칠 수 있어요.
       </p>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {!acts && !msg && <p className="small">불러오는 중이에요…</p>}
       {acts && acts.length === 0 && <div className="msg info">아직 넣은 활동이 없어요. “+ 템플릿에서 활동 추가”로 넣어 보세요.</div>}
 

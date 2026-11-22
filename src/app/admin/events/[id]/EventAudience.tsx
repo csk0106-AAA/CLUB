@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { useState } from "react";
 import { AudiencePicker } from "@/components/AudiencePicker";
 import type { Audience } from "@/lib/audience";
@@ -44,7 +45,7 @@ export function EventAudience({ eventId, audience, onSaved, club }: { eventId: s
       <b style={{ font: `700 ${fs(17)} var(--display)` }}>공개 대상</b>
       <span className="small">{club ? `고른 회원에게만 이 일정이 보여요. 전체 회원이 기본이에요. 참석 신청은 보이는 회원 중 ${club} 클럽 회원과 참관자만 할 수 있어요.` : "이 일정은 고른 회원에게만 목록·참석 신청·알림이 보여요. 전체 회원이 기본이에요."}</span>
       <AudiencePicker value={value} onChange={setValue} legend="누구에게 보일까요?" membersOnly club={club || undefined} />
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       <button className="btn" type="button" disabled={busy || !dirty} style={{ width: "auto", minWidth: 160, alignSelf: "flex-start", minHeight: 46, fontSize: fs(15) }} onClick={save}>
         {busy ? "저장 중…" : "공개 대상 저장"}
       </button>

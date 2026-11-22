@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -67,7 +68,7 @@ export default function HostHome() {
           <div className="small">진행할 활동만 보여요. 회원으로 참여하려면 로그아웃하고 평소 초대코드로 다시 들어오세요.</div>
         </div>
       </div>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {d.items.length === 0 && <div className="msg info">지금 진행할 활동이 없어요. 관리자에게 진행자 지정을 확인해 주세요.</div>}
 
       {d.items.map((it) => (

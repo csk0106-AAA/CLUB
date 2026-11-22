@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdminGate, PERM_LABELS } from "@/components/AdminGate";
@@ -562,7 +563,7 @@ function Members() {
 
   return (
     <>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {list && list.some((m) => m.app?.status === "pending") && (
         <div className="msg info" role="status">
           승인 전 회원 신청이 {list.filter((m) => m.app?.status === "pending").length}건 있어요. <Link href="/admin/member-apps">회원신청관리</Link>에서 확인해 주세요.

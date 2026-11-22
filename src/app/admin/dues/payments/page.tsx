@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { use, useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { api, fmtDate, fmtDateTime, won } from "@/lib/client";
@@ -236,7 +237,7 @@ function Payments({ initial, onType, thisYear, pastBtn, onAccount }: { initial: 
       <p className="small" style={{ margin: 0, fontSize: fs(12) }}>
         회원마다 낼 모임 회비(회비설정 기준)와 입금 여부를 관리해요. 회원이 게시판의 모임회비 공지에서 “입금했어요”를 누르면 <b>입금 알림</b>이 오고, 여기서 <b>입금 확인</b>을 누르면 끝나요.
       </p>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <label className="small" htmlFor="dp-period" style={{ fontSize: fs(12) }}>기간</label>
         <select id="dp-period" className="field" style={{ width: "auto", minHeight: 36, fontSize: fs(13) }} value={d.period} onChange={(e) => setPeriod(e.target.value)}>

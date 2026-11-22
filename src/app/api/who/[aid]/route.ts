@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sajuCanRedo } from "@/lib/saju-run";
 import { hasBlock, sajuOpen, sajuWhenOf } from "@/lib/blocks";
 import { revealTime } from "@/lib/activities";
 import { guard, parseJson } from "@/lib/api";
@@ -71,6 +72,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ aid: string }>
       traitsMd: profile?.traitsMd ?? "",
       traitsShown: profile?.traitsShown === "true",
       sajuInfo: parseJson<unknown>(profile?.sajuInfo, null),
+      sajuRedo: await sajuCanRedo(g.s.mid, profile ?? undefined), // 명리 풀이를 다시 받을 수 있는지(모임설정 "한 번만")
     },
     interview: interviewView(iv.messages, iv.row?.status ?? "", qs.length, skips, fuSkip),
     truthLies: {

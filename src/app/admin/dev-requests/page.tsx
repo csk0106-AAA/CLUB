@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { api, fmtDateTime } from "@/lib/client";
@@ -53,7 +54,7 @@ function DevRequests() {
         활동 템플릿 편집기의 “AI에게 요청”에서 지금 기능으로는 할 수 없어 남긴 개발 요청이에요. 새 기능은 개발자가 확인하고 만들어요.
         {canEdit ? " 상태(접수 · 진행 중 · 완료 · 보류)를 바꿔 진행 상황을 알려 주세요." : " 상태는 전체 관리자가 바꿔요."}
       </p>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {!list && !msg && <p className="small">불러오는 중이에요…</p>}
 
       {list && list.length > 0 && (

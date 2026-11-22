@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote, type ActionMsg } from "./ActionNote";
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtDateTime } from "@/lib/client";
 import { DateField } from "./DateField";
@@ -13,7 +14,7 @@ type Cfg = { openAt: string; selfView: boolean; log: { at: string; by: string; f
 export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: string; canEdit: boolean }) {
   const base = `/api/admin/events/${eventId}/activities/${aid}`;
   const [cfg, setCfg] = useState<Cfg | null>(null);
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [msg, setMsg] = useState<ActionMsg>(null);
   const [openAt, setOpenAt] = useState("");
   const [selfView, setSelfView] = useState(false);
 
@@ -42,7 +43,7 @@ export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: 
       <TeamBoard base={base} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${aid}`} copyFromEvent={eventId} />
 
       <b style={{ font: `700 ${fs(16)} var(--display)` }}>봉인과 열림</b>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      
       <div className="row" style={{ flexWrap: "wrap" }}>
         <span className={`pill ${cfg.opened ? "ok" : "gray"}`}>{cfg.opened ? "열렸어요" : cfg.openAt ? "봉인 중" : "열림 일시 미등록"}</span>
         <span className="pill blue">개인 목표 {cfg.counts.goals}명 작성</span>
@@ -58,6 +59,7 @@ export function CapsuleAdmin({ eventId, aid, canEdit }: { eventId: string; aid: 
         </div>
       )}
       {canEdit && <button className="btn" type="button" style={{ width: "auto", alignSelf: "flex-start", minHeight: 48, fontSize: fs(15) }} disabled={cfg.opened} onClick={saveOpen}>열림 설정 저장</button>}
+      <ActionNote msg={msg} />
       {cfg.log.length > 0 && (
         <details className="card"><summary style={{ fontWeight: 700, cursor: "pointer" }}>열림 일시 변경 기록 ({cfg.log.length})</summary>
           {cfg.log.map((l, i) => <div key={i} className="small">{fmtDateTime(l.at)} · {l.by} · {l.from ? fmtDateTime(l.from) : "(없음)"} → {l.to ? fmtDateTime(l.to) : "(취소)"}</div>)}

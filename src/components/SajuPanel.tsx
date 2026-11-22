@@ -11,7 +11,8 @@ export type SajuInfo = {
   pillars: { label: string; ganZhi: string; ko: string; wuxing: string; tenGod: string }[];
   dayMaster: string; elements: Record<string, number>; daeun: { age: number; ganZhi: string; ko: string }[];
 };
-export type Reading = { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean; sajuInfo?: SajuInfo | null };
+// readingStatus: "" 고르기 전 / skipped / part1·part2 만드는 중(세 번에 나누어 만든다) / done. canRedo: 다시 받을 수 있는지(모임설정 "한 번만")
+export type Reading = { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean; sajuInfo?: SajuInfo | null; canRedo?: boolean };
 
 const ymd = (iso: string) => fmtDate(iso);
 const WX_COLOR: Record<string, string> = { 목: "var(--wx-wood)", 화: "var(--wx-fire)", 토: "var(--wx-earth)", 금: "var(--wx-metal)", 수: "var(--wx-water)" };
@@ -125,6 +126,9 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
   const [time, setTime] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [step, setStep] = useState(0); // 만드는 중인 단계(1~3), 0 이면 아님
+  const url = base ?? `/api/who/${aid}/reading`;
+  const canRedo = r.canRedo !== false;
   // 회원정보의 성별(있으면 확인만, 없으면 양식에서 고른다)
   const [memberGender, setMemberGender] = useState("");
   useEffect(() => {
@@ -134,7 +138,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
   async function call(method: string, body?: unknown) {
     setBusy(true);
     setErr("");
-    const res = await api(base ?? `/api/who/${aid}/reading`, { method, body });
+    const res = await api(url, { method, body });
     setBusy(false);
     if (!res.ok) {
       setErr(res.error);
@@ -144,9 +148,29 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
     return true;
   }
 
+  // 풀이는 세 번에 나누어 만든다: ① 원국 설명·공개 글 ② 대운 10년 흐름 ③ 주제별 풀이. from: 시작 단계(이어서 만들 때 2·3)
+  async function run(from: 1 | 2 | 3, first?: unknown) {
+    setBusy(true);
+    setErr("");
+    for (let p = from; p <= 3; p++) {
+      setStep(p);
+      const res = await api<{ readingStatus: string }>(url, { method: "POST", body: p === 1 ? first : { part: p } });
+      if (!res.ok) {
+        setErr(res.error);
+        setBusy(false);
+        setStep(0);
+        await onChanged();
+        return false;
+      }
+    }
+    setBusy(false);
+    setStep(0);
+    await onChanged();
+    return true;
+  }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await call("POST", {
+    const ok = await run(1, {
       ...(memberGender ? {} : { gender }), // 회원정보에 성별이 있으면 서버가 그 값을 쓴다
       calendar, leap: calendar === "lunar" && leap, date, time: timeKnown ? time : null,
     });
@@ -156,6 +180,10 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
       setTime("");
     }
   }
+  const STEP_TEXT = ["", "원국과 오행, 성격·성향을 풀이하고 있어요", "대운 10년 흐름을 풀이하고 있어요", "성격·관계·건강·일·재물을 풀이하고 있어요"];
+  const progress = step > 0 && (
+    <div className="msg info" role="status">명리 풀이를 만들고 있어요 ({step}/3) · {STEP_TEXT[step]}. 단계마다 1~3분쯤 걸려요. 이 화면을 닫지 말아 주세요.</div>
+  );
 
   const ready = (memberGender || gender) && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!timeKnown || /^\d{2}:\d{2}$/.test(time));
 
@@ -222,7 +250,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
         )}
       </fieldset>
       {err && <div className="msg bad" role="alert">{err}</div>}
-      {busy && <div className="msg info" role="status">명리 풀이를 만들고 있어요. 1분쯤 걸려요…</div>}
+      {progress}
       <div className="row" style={{ flexWrap: "wrap" }}>
         <button className="btn" type="submit" disabled={busy || !ready} style={{ width: "auto", minWidth: 180 }}>{busy ? "만드는 중…" : "풀이 만들기"}</button>
         <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minWidth: 120 }} onClick={() => setForm(false)}>취소</button>
@@ -241,11 +269,24 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
         </span>
         {form ? formView : (
           <div className="row" style={{ flexWrap: "wrap" }}>
-            <button className="btn" type="button" disabled={!canWrite || busy} style={{ width: "auto", minWidth: 180 }} onClick={() => setForm(true)}>명리학으로 사주 보기</button>
+            <button className="btn" type="button" disabled={!canWrite || busy || !canRedo} style={{ width: "auto", minWidth: 180 }} onClick={() => setForm(true)}>명리학으로 사주 보기</button>
             <button className="btn white" type="button" disabled={!canWrite || busy} style={{ width: "auto", minWidth: 140 }} onClick={() => call("POST", { skip: true })}>사주 안 보기</button>
           </div>
         )}
         {err && !form && <div className="msg bad" role="alert">{err}</div>}
+      </section>
+    );
+  }
+
+  // 만드는 중이거나 중간에 멈춤(part1·part2): 이어서 만들기
+  if (r.readingStatus === "part1" || r.readingStatus === "part2") {
+    const next = r.readingStatus === "part1" ? 2 : 3;
+    return (
+      <section className="card" aria-label="명리학 풀이" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <b style={{ font: `700 ${fs(17)} var(--display)` }}>명리 풀이를 만드는 중이에요 ({next - 1}/3 완료)</b>
+        {progress || <span className="small">풀이가 길어서 세 번에 나누어 만들어요. 중간에 멈췄다면 “이어서 만들기”를 눌러 주세요.</span>}
+        {err && <div className="msg bad" role="alert">{err}</div>}
+        {!busy && <button className="btn" type="button" style={{ width: "auto", alignSelf: "flex-start", minWidth: 180 }} onClick={() => run(next as 2 | 3)}>이어서 만들기</button>}
       </section>
     );
   }
@@ -257,7 +298,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
         {form ? formView : (
           <div className="row" style={{ flexWrap: "wrap" }}>
             <span className="small grow">명리학 사주는 보지 않기로 했어요.</span>
-            {canWrite && <button className="mini" type="button" onClick={() => setForm(true)}>사주 보기</button>}
+            {canWrite && canRedo && <button className="mini" type="button" onClick={() => setForm(true)}>사주 보기</button>}
           </div>
         )}
       </section>
@@ -304,9 +345,9 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
       </details>
       {form ? formView : (
         <div className="row" style={{ flexWrap: "wrap" }}>
-          {canWrite && <button className="mini" type="button" disabled={busy} onClick={() => setForm(true)}>정보 다시 넣고 새로 풀이</button>}
+          {canWrite && canRedo && <button className="mini" type="button" disabled={busy} onClick={() => setForm(true)}>정보 다시 넣고 새로 풀이</button>}
           <button className="mini danger" type="button" disabled={busy}
-            onClick={() => { if (window.confirm("명리 풀이를 지울까요? 소개 페이지의 성격·성향 글도 함께 사라져요.")) call("DELETE"); }}>
+            onClick={() => { if (window.confirm(`명리 풀이를 지울까요? 소개 페이지의 성격·성향 글도 함께 사라져요.${canRedo ? "" : "\n명리학 풀이는 한 번만 받을 수 있어서, 지우면 다시 받을 수 없어요."}`)) call("DELETE"); }}>
             풀이 지우기
           </button>
         </div>

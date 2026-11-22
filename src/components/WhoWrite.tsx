@@ -28,6 +28,7 @@ export type WhoState = {
     alias: string; draftMd: string; introMd: string; introStatus: string;
     readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean;
     sajuInfo: SajuInfo | null;
+    sajuRedo?: boolean; // 명리 풀이를 다시 받을 수 있는지(모임설정 "한 번만")
   };
   interview: { messages: Msg[]; status: string; answered: number; required: number; canSkip?: boolean }; // canSkip: 지금 질문은 답변안함 가능
   truthLies: { statements: string[]; lieIndex: number; status: string };
@@ -348,6 +349,7 @@ export function WhoWrite(props: {
   const interviewDone = iv.status === "done";
   const hasDraft = st.profile.introStatus === "draft" || approved || intro.trim().length > 0;
   const reading = {
+    canRedo: st.profile.sajuRedo,
     readingStatus: st.profile.readingStatus, readingMd: st.profile.readingMd,
     traitsMd: st.profile.traitsMd, traitsShown: st.profile.traitsShown, sajuInfo: st.profile.sajuInfo,
   };

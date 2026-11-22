@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapButton } from "./MapButton";
 import { api, fmtDateTime } from "@/lib/client";
@@ -216,7 +217,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
 
   return (
     <div id="cars" style={{ display: "flex", flexDirection: "column", gap: 12, scrollMarginTop: 16 }}>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
 
       {/* 1) 차량신청: 단계에 따라 펼침·안내가 바뀐다 */}
       <Fold key={d.phase} title="차량배정" badge={d.phase === "open" && d.open ? <span className="pill ok">신청 중</span> : d.phase === "confirmed" ? <span className="pill ok">확정</span> : undefined}

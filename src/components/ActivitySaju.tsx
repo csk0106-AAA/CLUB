@@ -8,7 +8,7 @@ type Data = {
   enabled: boolean;
   open?: boolean;
   published?: boolean;
-  reading?: { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean; sajuInfo: SajuInfo | null };
+  reading?: { readingStatus: string; readingMd: string; traitsMd: string; traitsShown: boolean; sajuInfo: SajuInfo | null; canRedo?: boolean };
 };
 
 // 기능 블록 "명리학 사주풀이"를 넣은 활동의 회원 화면에 붙인다(나의 고민은?, 타임캡슐 등).

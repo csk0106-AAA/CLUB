@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote, type ActionMsg } from "./ActionNote";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
@@ -36,7 +37,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
     });
   }, [copyFromEvent]);
   const [td, setTd] = useState<TeamsData | null>(null);
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [msg, setMsg] = useState<ActionMsg>(null);
   const [mode, setMode] = useState<Mode>("random");
   const [by, setBy] = useState<"size" | "count">("size");
   const [size, setSize] = useState("4");
@@ -114,12 +115,12 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
   }
   async function saveDraft(): Promise<boolean> {
     const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c, i) => ({ name: c.name.trim() || `${i + 1}${unit}`, memberIds: c.ids })) } });
-    if (!r.ok) setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) setMsg({ tone: "bad", text: r.error, at: "bottom" });
     return r.ok;
   }
   async function onSaveDraft() {
     setBusy(true);
-    if (await saveDraft()) setMsg({ tone: "info", text: "초안을 저장했어요. 아직 회원에게는 보이지 않아요." });
+    if (await saveDraft()) setMsg({ tone: "info", text: "초안을 저장했어요. 아직 회원에게는 보이지 않아요.", at: "bottom" });
     setBusy(false);
     load();
   }
@@ -130,14 +131,14 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
     if (dirty && !(await saveDraft())) return setBusy(false);
     const r = await api(`${base}/teams/publish`, { body: { action: "publish" } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: `${unit} 구성을 회원에게 배포했어요. 이제 회원 화면에 보여요.` } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: `${unit} 구성을 회원에게 배포했어요. 이제 회원 화면에 보여요.`, at: "bottom" } : { tone: "bad", text: r.error, at: "bottom" });
     load();
   }
   async function onUnpublish() {
     setBusy(true);
     const r = await api(`${base}/teams/publish`, { body: { action: "unpublish" } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: "배포를 취소했어요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: "배포를 취소했어요.", at: "bottom" } : { tone: "bad", text: r.error, at: "bottom" });
     load();
   }
 
@@ -179,7 +180,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       <div className="row" style={{ flexWrap: "wrap" }}>
         <b style={{ font: `700 ${fs(16)} var(--display)` }}>{unit} 구성 ({td.participantCount}명 · {POOL_TEXT[td.poolKind]})</b>
         <span className={`pill ${td.published ? "ok" : "warn"}`}>{td.published ? "회원에게 배포됨" : "배포 전 (회원에게 안 보여요)"}</span>
@@ -235,11 +236,12 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
           {editable && (
             <div className="row" style={{ flexWrap: "wrap" }}>
               <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={addTeam}>+ {unit} 추가</button>
-              <button className="btn white" type="button" disabled={busy || !dirty} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onSaveDraft}>초안 저장</button>
-              <button className="btn" type="button" disabled={busy || (td.published && !dirty)} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 140 }} onClick={onConfirm}>{td.published ? "변경 내용 다시 배포" : "확인 (회원에게 배포)"}</button>
+              <button className="btn white" type="button" disabled={busy || !dirty} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onSaveDraft}>{busy ? "저장 중…" : "초안 저장"}</button>
+              <button className="btn" type="button" disabled={busy || (td.published && !dirty)} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 140 }} onClick={onConfirm}>{busy ? "배포 중…" : td.published ? "변경 내용 다시 배포" : "확인 (회원에게 배포)"}</button>
               {td.published && !dirty && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onUnpublish}>배포 취소</button>}
             </div>
           )}
+          <ActionNote msg={msg} at="bottom" />
           {editable && <span className="small">“확인”을 눌러야 회원 화면에 보여요. {unit}이 없는 사람이 남아 있거나 빈 {unit}이 있으면 배포되지 않아요.</span>}
         </>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
 import { RowDelete } from "@/components/RowDelete";
 import { useCallback, useEffect, useState } from "react";
@@ -107,7 +108,7 @@ function Ledger() {
       <p className="small" style={{ margin: 0, fontSize: fs(12) }}>
         모임 회비의 수입과 지출을 적고 잔액을 확인해요. <b>회비 입금</b>은 <Link href="/admin/dues/payments">회비입금</Link>에서 확인한 금액이 자동으로 들어오고, 일정의 <b>모임회비 지원</b>은 지출로 자동으로 들어와요.
       </p>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {/* 올해 회비현황이 기본. 지난 연도는 "과거내역"에서(보기·엑셀) */}
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <b style={{ fontSize: fs(15) }}>{d.year}년</b>

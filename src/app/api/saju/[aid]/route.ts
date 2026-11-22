@@ -3,11 +3,13 @@ import { readConfig } from "@/lib/activities";
 import { bad, guard, parseJson } from "@/lib/api";
 import { hasBlock, sajuOpen, sajuWhenOf } from "@/lib/blocks";
 import { canAct, canJoin } from "@/lib/participants";
-import { sajuDelete, sajuPatch, sajuPost } from "@/lib/saju-run";
+import { sajuCanRedo, sajuDelete, sajuPatch, sajuPost } from "@/lib/saju-run";
 import { getStore } from "@/lib/store";
 import { myProfile } from "@/lib/who";
 
 export const dynamic = "force-dynamic";
+// 명리 풀이는 조각마다 AI가 긴 글을 써서 시간이 걸린다
+export const maxDuration = 300;
 type Ctx = { params: Promise<{ aid: string }> };
 
 // 기능 블록 "명리학 사주풀이"를 넣은 일정 활동(나의 고민은?, 타임캡슐 등 어느 활동이든)의 회원 화면용.
@@ -39,6 +41,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     reading: {
       readingStatus: p?.readingStatus ?? "", readingMd: p?.readingMd ?? "", traitsMd: p?.traitsMd ?? "",
       traitsShown: p?.traitsShown === "true", sajuInfo: parseJson<unknown>(p?.sajuInfo, null),
+      canRedo: await sajuCanRedo(g.s.mid, p),
     },
   });
 }

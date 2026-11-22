@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { MemberSearch } from "./MemberSearch";
@@ -50,7 +51,7 @@ export function ObserversCard({ eventId, admin, onChange }: { eventId: string; a
         {d.club} 회원이 아닌 분도 참관자로 넣으면 이 일정을 보고 참석 신청할 수 있어요.
         {admin ? "" : " 클럽 회장만 보이는 칸이에요."}
       </span>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {d.observers.length === 0 && <span className="small">아직 참관자가 없어요.</span>}
       {d.observers.map((o) => (
         <div key={o.id} className="row" style={{ gap: 6 }}>

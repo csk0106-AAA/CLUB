@@ -4,6 +4,8 @@ import { bad, guard } from "@/lib/api";
 import { sajuDelete, sajuPatch, sajuPost } from "@/lib/saju-run";
 import { loadWho, writeClosed, writeGate } from "@/lib/who";
 
+// 명리 풀이는 조각마다 AI가 긴 글을 써서 시간이 걸린다
+export const maxDuration = 300;
 type Ctx = { params: Promise<{ aid: string }> };
 
 // 소개 작성 활동(내가 누구일까요?·프로필 북)의 명리학 사주풀이. 처리는 lib/saju-run.ts(기능 블록 공용).

@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RowDelete } from "./RowDelete";
 import { api, fmtDate, won } from "@/lib/client";
@@ -81,7 +82,7 @@ function PrepFiles({ eventId, canEdit }: { eventId: string; canEdit: boolean }) 
         )}
       </div>
       <span className="small">사진·문서(pdf, 오피스, hwp, zip, txt)를 하나에 4MB까지, 일정 하나에 20개까지 올려요. 준비목록 “공개”를 켜면 회원도 내려받을 수 있어요.</span>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       {files && files.length === 0 && <span className="small">아직 올린 파일이 없어요.</span>}
       {files && files.length > 0 && (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>

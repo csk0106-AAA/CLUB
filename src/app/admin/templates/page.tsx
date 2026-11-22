@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote } from "@/components/ActionNote";
 import { BLOCKS, hasBlock } from "@/lib/blocks";
 import { SAJU_LABEL, SAJU_RULES } from "@/lib/ai-rules";
 import { useCallback, useEffect, useState } from "react";
@@ -56,7 +57,7 @@ function BlockList({ fams }: { fams: Family[] }) {
       <div className="row" style={{ flexWrap: "wrap" }}>
         <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", minWidth: 200 }} onClick={() => { setMsg(null); setReq({ title: "새 기능블록: ", detail: "", why: "" }); }}>+ 새 기능블록 요청</button>
       </div>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       <Popup id="block-request" width={560} title="기능블록 개발 요청" open={!!req} onClose={() => setReq(null)}
         footer={req && (
           <>
@@ -254,7 +255,7 @@ function Templates() {
         활동 템플릿은 일정에 넣을 활동의 설계도예요. 사전 작성이 있는지, 현장에서 어떤 단계로 진행하는지, 진행자가 버튼을 누를 때 회원 화면이 언제 켜지는지를 여기서 정해요.
         처음 만든 템플릿이 v1이에요. 고친 뒤 저장할 때 방법을 골라요: <b>수정</b>(지금 버전에 빠진 조건을 넣거나 잘못된 곳 고치기), <b>새 버전 저장</b>(v2, v3…), <b>새 활동으로 저장</b>(다른 이름의 새 템플릿). 일정에서 고칠 때도 같아요.
       </p>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
 
       {guideFor ? (
         <AiGuidesEditor

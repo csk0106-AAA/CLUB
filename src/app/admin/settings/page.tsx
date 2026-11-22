@@ -1,5 +1,7 @@
 "use client";
 
+import { SajuOnceSwitch } from "@/components/SajuOnceSwitch";
+import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
@@ -43,7 +45,7 @@ function Settings() {
 
   return (
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
 
       <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <b style={{ font: `700 ${fs(17)} var(--display)` }}>모임 이름</b>
@@ -93,6 +95,9 @@ function Settings() {
 
       {/* 대표사진은 저장 버튼과 상관없이 고르면 바로 저장된다 */}
       <CoverPicker scope="org" title="모임 대표사진" help="일정에 회원이 올린 사진이 한 장도 없을 때 홈의 다가오는 일정·타임라인 카드에 이 사진이 보여요. 클럽 일정은 클럽 대표사진이 먼저예요. 사진을 고르면 바로 저장돼요." />
+
+      {/* 명리학 풀이 다시 받기(테스트 중 허용 / 실제 운영은 한 번만) */}
+      <SajuOnceSwitch />
 
       {/* AI 필수·기본 지침(코드에 정해져 있어 읽기만) */}
       <details className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionNote, type ActionMsg } from "./ActionNote";
 import { useCallback, useEffect, useState } from "react";
 import { NumField } from "./NumField";
 import { api, fmtDate } from "@/lib/client";
@@ -43,7 +44,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
   const base = `/api/admin/events/${eventId}/rooms`;
   const [d, setD] = useState<Data | null>(null);
   const [day, setDay] = useState("");
-  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [msg, setMsg] = useState<ActionMsg>(null);
   const [cols, setCols] = useState<Col[]>([]);
   const [dirty, setDirty] = useState(false);
   const [over, setOver] = useState("");
@@ -141,12 +142,12 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
 
   async function saveDraft(): Promise<boolean> {
     const r = await api(base, { method: "PUT", body: { date: day, rooms: cols.map((c, i) => ({ name: c.name.trim() || `객실 ${i + 1}`, capacity: c.capacity, memo: c.memo, guests: c.ids })) } });
-    if (!r.ok) setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) setMsg({ tone: "bad", text: r.error, at: "bottom" });
     return r.ok;
   }
   async function onSaveDraft() {
     setBusy(true);
-    if (await saveDraft()) setMsg({ tone: "info", text: "초안을 저장했어요. 아직 회원에게는 보이지 않아요." });
+    if (await saveDraft()) setMsg({ tone: "info", text: "초안을 저장했어요. 아직 회원에게는 보이지 않아요.", at: "bottom" });
     setBusy(false);
     load();
   }
@@ -157,14 +158,14 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
     if (dirty && !(await saveDraft())) return setBusy(false);
     const r = await api(`${base}/publish`, { body: { action: "publish" } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: "숙소배정을 회원에게 배포했어요. 이제 회원 화면에 보여요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: "숙소배정을 회원에게 배포했어요. 이제 회원 화면에 보여요.", at: "bottom" } : { tone: "bad", text: r.error, at: "bottom" });
     load();
   }
   async function onUnpublish() {
     setBusy(true);
     const r = await api(`${base}/publish`, { body: { action: "unpublish" } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: "배포를 취소했어요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: "배포를 취소했어요.", at: "bottom" } : { tone: "bad", text: r.error, at: "bottom" });
     load();
   }
   async function copyDay() {
@@ -213,7 +214,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {msg && <div className={`msg ${msg.tone}`} role={msg.tone === "bad" ? "alert" : "status"}>{msg.text}</div>}
+      <ActionNote msg={msg} />
       <div className="row" style={{ flexWrap: "wrap" }}>
         <b style={{ font: `700 ${fs(16)} var(--display)` }}>방 구성 ({day ? `${dayLabel(day)} 밤 숙박 ${stay.length}명` : "날짜 없음"})</b>
         <span className={`pill ${d.published ? "ok" : "warn"}`}>{d.published ? "회원에게 배포됨" : "배포 전 (회원에게 안 보여요)"}</span>
@@ -320,11 +321,12 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
           {editable && (
             <div className="row" style={{ flexWrap: "wrap" }}>
               <button className="btn white" type="button" style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={addRoom}>+ 방 추가</button>
-              <button className="btn white" type="button" disabled={busy || !dirty} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onSaveDraft}>초안 저장</button>
-              <button className="btn" type="button" disabled={busy || cols.length === 0 || (d.published && !dirty)} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 140 }} onClick={onConfirm}>{d.published ? "변경 내용 다시 배포" : "확인 (회원에게 배포)"}</button>
+              <button className="btn white" type="button" disabled={busy || !dirty} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onSaveDraft}>{busy ? "저장 중…" : "초안 저장"}</button>
+              <button className="btn" type="button" disabled={busy || cols.length === 0 || (d.published && !dirty)} style={{ width: "auto", minHeight: 48, fontSize: fs(15), minWidth: 140 }} onClick={onConfirm}>{busy ? "배포 중…" : d.published ? "변경 내용 다시 배포" : "확인 (회원에게 배포)"}</button>
               {d.published && !dirty && <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={onUnpublish}>배포 취소</button>}
             </div>
           )}
+          <ActionNote msg={msg} at="bottom" />
           {editable && <span className="small">“확인”을 눌러야 회원 화면에 보여요. 날짜를 바꾸기 전에 초안 저장이나 확인을 눌러 주세요.</span>}
         </>
       )}
