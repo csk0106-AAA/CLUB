@@ -33,6 +33,8 @@ export default function ProfilesPage() {
   const [locked, setLocked] = useState(false);
   const [popup, setPopup] = useState(false);
   const [busy, setBusy] = useState(false);
+  // 위쪽 숫자 칸으로 거르기: 전체(기본) / 소개 글 있음 / NEW(처음 공개) / UP(다시 공개·수정)
+  const [filter, setFilter] = useState<"all" | "intro" | "new" | "updated">("all");
 
   const load = useCallback(async () => {
     const r = await api<Data>("/api/profiles");
@@ -98,9 +100,26 @@ export default function ProfilesPage() {
             이름을 누르면 소개를 볼 수 있어요.{d.maskedCount > 0 ? ` “내가 누구일까요?”에 참여 중인 ${d.maskedCount}명은 실명 공개 전까지 별칭으로 보여요.` : ""}
           </p>
           {d.items.length === 0 && <div className="msg info">아직 회원이 없어요.</div>}
+          {d.items.length > 0 && (
+            <div className="row" role="group" aria-label="프로필 거르기" style={{ gap: 6, flexWrap: "wrap" }}>
+              {([
+                ["all", "전체", d.items.length],
+                ["intro", "소개 글", d.items.filter((p) => p.hasIntro).length],
+                ["new", "NEW", d.items.filter((p) => p.fresh === "new").length],
+                ["updated", "UP", d.items.filter((p) => p.fresh === "updated").length],
+              ] as const).map(([k, label, n]) => (
+                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}
+                  className={`btn ${filter === k ? "" : "white"}`} style={{ width: "auto", minHeight: 38, padding: "0 12px", fontSize: fs(13) }}>
+                  {label} <b className="num">{n}</b>명
+                </button>
+              ))}
+            </div>
+          )}
           <div className="rows bleed">
             {/* 내 카드는 맨 위에, 테두리·배경으로 눈에 띄게(별칭일 때도 내 것임을 알 수 있게) */}
-            {[...d.items.filter((p) => p.mine), ...d.items.filter((p) => !p.mine)].map((p) => (
+            {[...d.items.filter((p) => p.mine), ...d.items.filter((p) => !p.mine)]
+              .filter((p) => filter === "all" || (filter === "intro" ? p.hasIntro : p.fresh === filter))
+              .map((p) => (
               <button key={p.key} type="button" className="opt" onClick={() => router.push(`/profiles/${p.key}`)}
                 style={{ flexDirection: "row", alignItems: "center", gap: 12, ...(p.mine ? { background: "var(--violet-bg)", boxShadow: "inset 4px 0 0 var(--accent-ink)" } : {}) }}>
                 {/* 별칭 회원은 사진·캐릭터를 내려받지 않는다(주인을 알아챌 수 있어서) */}
@@ -123,6 +142,9 @@ export default function ProfilesPage() {
               </button>
             ))}
           </div>
+          {filter !== "all" && !d.items.some((p) => (filter === "intro" ? p.hasIntro : p.fresh === filter)) && (
+            <div className="msg info">{filter === "intro" ? "소개 글이 있는 회원이 없어요." : `${filter === "new" ? "NEW" : "UP"} 표시가 붙은 회원이 없어요.`}</div>
+          )}
         </>
       )}
       <MemberTabs on="profiles" />
