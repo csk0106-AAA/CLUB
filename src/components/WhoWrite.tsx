@@ -99,6 +99,8 @@ export function WhoWrite(props: {
   const sajuAfterIv = sajuOn && (st.sajuWhen ?? "interview") === "interview"; // 인터뷰 뒤(소개 글 만들기 전에 고른다)
 
   const [alias, setAlias] = useState(st.profile.alias);
+  // 2진실 1거짓의 바탕이 된 소개 글(이 글과 지금 소개 글이 다르면 다시 만들라고 안내)
+  const [tlIntro, setTlIntro] = useState(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
   const [aliasIdeas, setAliasIdeas] = useState<string[]>([]); // AI 별칭 추천 후보
   const [aliasBusy, setAliasBusy] = useState(false);
   async function suggestAlias() {
@@ -265,6 +267,7 @@ export function WhoWrite(props: {
     const r = await api<{ mode: string; draftMd: string; statements: string[]; lieIndex: number; leaked: string[]; remaining: string[] }>(`/api/who/${aid}/draft`, { body: {} });
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
     setIntro(r.data.draftMd);
+    setTlIntro(r.data.draftMd);
     setStmts(r.data.statements);
     setLie(r.data.lieIndex);
     setNote(
@@ -331,6 +334,21 @@ export function WhoWrite(props: {
   });
 
   // 다시 만들기: 2진실 1거짓과 소개 글을 항상 함께 새로 만든다(둘이 겹치지 않게). 별칭은 그대로.
+  // 2진실 1거짓만 다시 만들기: 소개 글은 그대로 두고, 지금 소개 글에 나온 내용은 진실 문장에 쓰지 않는다
+  const regenTl = () => {
+    if (!window.confirm("소개 글은 그대로 두고, 2진실 1거짓만 지금 소개 글을 바탕으로 다시 만들까요? 직접 고친 문장은 새 문장으로 바뀌어요.")) return;
+    run(async () => {
+      const r = await api<{ statements: string[]; lieIndex: number; leaked: string[] }>(`/api/who/${aid}/truthlies`, { body: { introMd: intro } });
+      if (!r.ok) return setNote({ tone: "bad", text: r.error });
+      setStmts(r.data.statements);
+      setLie(r.data.lieIndex);
+      setTlIntro(intro);
+      setNote(r.data.leaked?.length
+        ? { tone: "bad", text: `진실 문장의 내용(${r.data.leaked.join(", ")})이 소개 글에도 있어요. 소개 글에서 지우거나 다시 만들어 주세요.` }
+        : { tone: "info", text: "2진실 1거짓을 다시 만들었어요. 읽어 보고 고칠 부분이 있으면 직접 고쳐 주세요." });
+    });
+  };
+
   const redo = () => {
     if (window.confirm(`인터뷰 답변으로 ${tlOn ? "2진실 1거짓과 소개 글을" : "소개 글을"} 함께 다시 만들까요? 지금 고친 내용은 새로 만든 내용으로 바뀌어요.${inAct ? " 별칭은 그대로예요." : ""}`)) makeDraft();
   };
@@ -354,6 +372,7 @@ export function WhoWrite(props: {
       setNote({ tone: "bad", text: `답변은 저장했어요. 소개 글을 다시 만들지 못했어요: ${d.error}` });
     } else {
       setIntro(d.data.draftMd);
+      setTlIntro(d.data.draftMd);
       setStmts(d.data.statements);
       setLie(d.data.lieIndex);
       setNote({ tone: "info", text: "고친 답변으로 소개 글을 다시 만들었어요. 확인하고 최종 배포를 눌러 주세요." });
@@ -367,6 +386,7 @@ export function WhoWrite(props: {
       const r = await api(`/api/who/${aid}/interview`, { method: "DELETE" });
       if (!r.ok) return setNote({ tone: "bad", text: r.error });
       setIntro("");
+      setTlIntro("");
       const s = await api(`/api/who/${aid}/interview`, { body: {} });
       if (!s.ok) setNote({ tone: "bad", text: s.error });
       else setNote({ tone: "info", text: "기존 내 소개를 지웠어요. 공통 질문부터 다시 시작해요." });
@@ -631,7 +651,7 @@ export function WhoWrite(props: {
             <h2 className="h3 grow">{inAct && hasAlias ? `별칭 “${st.profile.alias}”` : "내 소개"}</h2>
             <span className={`chip ${approved ? "violet" : "gray"}`}>{approved ? "배포됨 ✓" : "초안 · 나만 보여요"}</span>
             {!approved && interviewDone && (
-              <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "다시 만들기"}</button>
+              <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글 다시 만들기"}</button>
             )}
           </div>
 
@@ -700,16 +720,23 @@ export function WhoWrite(props: {
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <h3 className="h3 grow">2진실 1거짓</h3>
                 {!approved && st.aiEnabled && (
-                  <button className="mini" type="button" disabled={busy} onClick={redo}>{busy ? "만드는 중…" : "소개 글과 함께 다시 만들기"}</button>
+                  <button className="mini" type="button" disabled={busy} onClick={regenTl}>{busy ? "만드는 중…" : "다시 만들기"}</button>
                 )}
               </div>
               <span className="small" style={{ fontSize: fs(12), marginTop: -6 }}>
                 {st.aiEnabled
-                  ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들고, 소개 글은 이 내용을 빼고 써요(소개 글을 읽고 정답을 알 수 없게). 다시 만들면 소개 글도 함께 바뀌어요. 직접 고칠 때는 진실 내용이 소개 글에 들어가지 않게 해 주세요."
+                  ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들어요. 진실 내용은 소개 글에 들어가지 않게 해요(소개 글을 읽고 정답을 알 수 없게). “다시 만들기”는 소개 글은 그대로 두고 2진실 1거짓만 새로 만들어요. 소개 글을 고쳤다면 2진실 1거짓도 다시 만들어 주세요."
                   : "소개 글에 쓰지 않은 내용으로 문장 3개를 적고, 거짓인 문장 하나를 골라 주세요. 너무 뻔하거나 실례가 되는 거짓은 피해 주세요."}
                 {" "}활동이 끝나면 정답과 함께 프로필 북의 내 소개에 실려요.
               </span>
-              {!approved && st.aiEnabled && tlEmpty && <div className="msg info" role="status">2진실 1거짓이 비어 있어요. “소개 글과 함께 다시 만들기”를 눌러 주세요.</div>}
+              {!approved && st.aiEnabled && tlEmpty && <div className="msg info" role="status">2진실 1거짓이 비어 있어요. “다시 만들기”를 눌러 주세요.</div>}
+              {/* 소개 글을 고쳤으면: 2진실 1거짓도 다시 만들라고 안내 */}
+              {!approved && !tlEmpty && intro.trim() !== (tlIntro ?? "").trim() && (
+                <div className="msg info" role="status" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <span>소개 글이 바뀌었어요. 진실 문장이 새 소개 글과 겹치지 않도록 2진실 1거짓도 다시 만들어 주세요.</span>
+                  {st.aiEnabled && <button className="mini" type="button" disabled={busy} style={{ alignSelf: "flex-start" }} onClick={regenTl}>2진실 1거짓 다시 만들기</button>}
+                </div>
+              )}
               <ul className="rows">
                 {stmts.map((t, i) => (
                   <li key={i} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", background: lie === i ? "var(--red-bg)" : undefined }}>
