@@ -514,10 +514,11 @@ export function WhoWrite(props: {
 
         ];
         return (
-          <div className="row" role="list" aria-label="인터뷰 단계" style={{ gap: 6, flexWrap: "wrap" }}>
+          // 박스 없이 색 글자로: 진행 중(강조색) · 완료(보통 글자 ✓) · 대기·안 함(흐리게)
+          <div className="row" role="list" aria-label="인터뷰 단계" style={{ gap: 12, flexWrap: "wrap", fontSize: fs(13), fontWeight: 700 }}>
             {steps.map((x, i) => (
-              <span key={x.t} role="listitem" className={`pill ${x.s === "진행 중" ? "blue" : x.s === "완료" ? "ok" : "gray"}`} style={{ fontSize: fs(13) }}>
-                {"①②③"[i]} {x.t} · {x.s}
+              <span key={x.t} role="listitem" style={{ color: x.s === "진행 중" ? "var(--accent-ink)" : x.s === "완료" ? "inherit" : "var(--sub)" }}>
+                {"①②③"[i]} {x.t} · {x.s}{x.s === "완료" ? " ✓" : ""}
               </span>
             ))}
           </div>
@@ -704,7 +705,6 @@ export function WhoWrite(props: {
               </div>
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <h2 className="h3 grow">내 소개 <span className="chip gray" style={{ verticalAlign: "middle" }}>초안 · 나만 보여요</span></h2>
-                {!editIntro && <button className="mini" type="button" onClick={openIntroEdit}>소개 글 수정</button>}
               </div>
             </>
           )}
