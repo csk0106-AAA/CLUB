@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { BlockPicker } from "./BlockPicker";
 import { kstText, preWindowTimes, type PreWindow, type TemplateConfig, canSelect, describeTemplate, activityActions, screensFor, kindOfConfig } from "@/lib/template-schema";
 import { NumField } from "./NumField";
@@ -45,9 +46,43 @@ export const modeOf = (c: Pick<EditableConfig, "mode" | "preEvent" | "onsite">):
 // 사전 단계 하나의 기간: 시작 = 일정 N일 전 HH:mm, 마감 = 일정 N일 전 HH:mm. 일정 날짜를 알면 실제 날짜·시각도 보여 준다.
 export function WindowFields<W extends PreWindow>({ id, win, onChange, eventStartsAt, defaults }: { id: string; win: W; onChange: (w: W) => void; eventStartsAt?: string; defaults: { open: number; close: number } }) {
   const w = preWindowTimes(win, eventStartsAt ?? "");
+  // 직접 날짜 정하기: 켜면 시작·마감 일시를 달력에서 고른다(지난 기간을 다시 열 때 등). 끄면 며칠 전 설정으로 돌아간다.
+  const [manual, setManual] = useState(!!(win.opensAt && win.closesAt));
+  const isDirect = manual;
+  const toggle = (on: boolean) => {
+    setManual(on);
+    if (on) {
+      const toKst = (t: number) => new Date(t + 9 * 3600_000).toISOString().slice(0, 16);
+      const now = Date.now();
+      onChange({ ...win, opensAt: win.opensAt || toKst(w?.opens ?? now), closesAt: win.closesAt || toKst(Math.max(w?.closes ?? 0, now + 7 * 86_400_000)) });
+    } else onChange({ ...win, opensAt: "", closesAt: "" });
+  };
+  const dateToggle = (
+    <div className="checks"><label><input type="checkbox" checked={isDirect} onChange={(e) => toggle(e.target.checked)} />직접 날짜 정하기</label></div>
+  );
+  if (isDirect) {
+    const bad = !win.opensAt || !win.closesAt;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {dateToggle}
+        <div className="win-row">
+          <span className="l" style={{ margin: 0 }}>시작</span>
+          <div style={{ flex: "1 1 190px", minWidth: 0 }}><DateField id={`${id}-oa`} ariaLabel="시작 일시" mode="datetime" value={win.opensAt ?? ""} onChange={(v) => onChange({ ...win, opensAt: v })} /></div>
+        </div>
+        <div className="win-row">
+          <span className="l" style={{ margin: 0 }}>마감</span>
+          <div style={{ flex: "1 1 190px", minWidth: 0 }}><DateField id={`${id}-ca`} ariaLabel="마감 일시" mode="datetime" value={win.closesAt ?? ""} onChange={(v) => onChange({ ...win, closesAt: v })} /></div>
+        </div>
+        <span className="small">
+          {bad ? "시작과 마감 일시를 모두 골라 주세요." : w ? `실제 기간: ${kstText(w.opens)}부터 ${kstText(w.closes)}까지${w.closes <= w.opens ? " · 마감이 시작보다 빨라요" : ""}` : ""}
+        </span>
+      </div>
+    );
+  }
   // 며칠 전 칸: 지우고 다시 쓸 수 있다(비우고 나가면 0일 전 = 일정 당일)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {dateToggle}
       <div className="win-row">
         <span className="l" id={`${id}-o`} style={{ margin: 0 }}>시작</span>
         <span>일정</span>

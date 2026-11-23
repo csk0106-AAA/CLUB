@@ -206,8 +206,8 @@ function PreWindows({ eventId, a, canEdit, evStart, onChange }: { eventId: strin
     setSaved(JSON.stringify(v));
   }, [a.config.preEvent, a.config.guessPhase]);
   const dirty = JSON.stringify(w) !== saved;
-  const winOf = (x?: { opensBeforeDays?: number; closesBeforeDays?: number; opensTime?: string; closesTime?: string }) =>
-    x ? { opensBeforeDays: x.opensBeforeDays, closesBeforeDays: x.closesBeforeDays, opensTime: x.opensTime, closesTime: x.closesTime } : undefined;
+  const winOf = (x?: { opensBeforeDays?: number; closesBeforeDays?: number; opensTime?: string; closesTime?: string; opensAt?: string; closesAt?: string }) =>
+    x ? { opensBeforeDays: x.opensBeforeDays, closesBeforeDays: x.closesBeforeDays, opensTime: x.opensTime, closesTime: x.closesTime, opensAt: x.opensAt ?? "", closesAt: x.closesAt ?? "" } : undefined;
 
   async function save() {
     setBusy(true);

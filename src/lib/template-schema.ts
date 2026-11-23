@@ -30,12 +30,16 @@ export const stepSchema = z.object({
 // 사전 단계 기간(사전 작성, 사전 맞히기 등 활동 안의 사전 단계마다 하나): 일정 며칠 전 몇 시부터 며칠 전 몇 시까지.
 //  opensTime/closesTime("HH:mm", 한국 시간)을 정하면 그날 그 시각, 정하지 않으면 예전처럼 일정 시작 시각 기준으로 N일 전.
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+// 직접 정한 날짜(한국 시간 "YYYY-MM-DDTHH:mm", "" = 지움): 둘 다 있으면 며칠 전 설정 대신 이 기간을 쓴다(지난 기간 다시 열기 등)
+const DTM = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})?$/;
 // 기간만(일정 활동에서 정한다)
 export const preWindowSchema = z.object({
   opensBeforeDays: z.number().int().min(0).max(365).optional(),
   closesBeforeDays: z.number().int().min(0).max(365).optional(),
   opensTime: z.string().regex(HM).optional(),
   closesTime: z.string().regex(HM).optional(),
+  opensAt: z.string().regex(DTM).optional(),
+  closesAt: z.string().regex(DTM).optional(),
 });
 export const preEventSchema = z.object({
   enabled: z.boolean(), // false면 일정 전 사전 작성 단계가 없다(현장에서만 진행)
@@ -43,15 +47,22 @@ export const preEventSchema = z.object({
   closesBeforeDays: z.number().int().min(0).optional(),
   opensTime: z.string().regex(HM).optional(), // 시작 시각(예: "09:00")
   closesTime: z.string().regex(HM).optional(), // 마감 시각(예: "23:59")
+  opensAt: z.string().regex(DTM).optional(), // 직접 정한 시작 일시(일정 활동에서만)
+  closesAt: z.string().regex(DTM).optional(), // 직접 정한 마감 일시
   steps: z.array(z.string()).default([]),
 });
 
 // 사전 단계가 실제로 열리고 닫히는 시각(밀리초). 일정 날짜가 없으면 null. 화면(편집 미리 보기)과 서버(상태 계산)가 같이 쓴다.
-export type PreWindow = { enabled: boolean; opensBeforeDays?: number; closesBeforeDays?: number; opensTime?: string; closesTime?: string };
+export type PreWindow = { enabled: boolean; opensBeforeDays?: number; closesBeforeDays?: number; opensTime?: string; closesTime?: string; opensAt?: string; closesAt?: string };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const kstDate = (t: number) => new Date(t + 9 * 3600_000).toISOString().slice(0, 10);
 const minutes = (hm: string) => { const [h, m] = hm.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 export function preWindowTimes(win: PreWindow, startsAt: string): { opens: number; closes: number; timed: boolean } | null {
+  // 직접 정한 기간이 있으면 그것(활동 일시와 상관없이)
+  if (win.opensAt && win.closesAt) {
+    const o = Date.parse(`${win.opensAt}:00+09:00`), c = Date.parse(`${win.closesAt}:00+09:00`);
+    if (!Number.isNaN(o) && !Number.isNaN(c)) return { opens: o, closes: c + 59_999, timed: true };
+  }
   if (!startsAt) return null;
   const start = Date.parse(startsAt.length <= 16 ? `${startsAt.length === 10 ? `${startsAt}T00:00` : startsAt}:00+09:00` : startsAt);
   if (Number.isNaN(start)) return null;
@@ -228,7 +239,7 @@ export function describeTemplate(c: Pick<TemplateConfig, "preEvent" | "guessPhas
 
 // 사전 작성·사전 맞히기 기간(며칠 전·시각)은 일정 활동마다 정한다(템플릿은 있는지 여부만).
 // 템플릿을 고쳐 일정 활동에 반영할 때 그 활동이 정한 기간을 지킨다(own: 그 활동의 예전 설정).
-const WIN_KEYS = ["opensBeforeDays", "closesBeforeDays", "opensTime", "closesTime"] as const;
+const WIN_KEYS = ["opensBeforeDays", "closesBeforeDays", "opensTime", "closesTime", "opensAt", "closesAt"] as const;
 type WinLike = Partial<Record<(typeof WIN_KEYS)[number], number | string>>;
 const pickWin = (w?: WinLike) => Object.fromEntries(WIN_KEYS.filter((k) => w?.[k] !== undefined).map((k) => [k, w![k]]));
 const dropWin = <W extends object>(w: W): W => { const o = { ...w } as Record<string, unknown>; for (const k of WIN_KEYS) delete o[k]; return o as W; };
