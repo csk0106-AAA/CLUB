@@ -59,6 +59,57 @@ export function splitRules(text: string): { rows: Parsed[]; skipped: number } {
   return { rows, skipped };
 }
 
+// 회칙 내려받기: 저장된 조문(고치는 중인 내용은 빼고)을 장별로 묶어 워드(.doc) 또는 텍스트(.txt) 파일로 만든다.
+//  텍스트 파일은 "회칙 붙여넣기 · 파일"로 그대로 다시 넣을 수 있는 모양이다.
+function rulesFile(rules: Rule[], kind: "doc" | "txt") {
+  const groups: { chapter: string; rows: Rule[] }[] = [];
+  for (const r of rules) {
+    const last = groups[groups.length - 1];
+    if (last && last.chapter === r.chapter) last.rows.push(r);
+    else groups.push({ chapter: r.chapter, rows: [r] });
+  }
+  const day = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+  const name = `회칙_${day}.${kind}`;
+  let blob: Blob;
+  const BOM = String.fromCharCode(0xfeff); // 메모장·워드에서 한글이 깨지지 않게
+  if (kind === "txt") {
+    const text = groups.map((g) => [g.chapter, ...g.rows.map((r) => [r.article, r.body].filter(Boolean).join(" "))].join("\n\n")).join("\n\n\n");
+    blob = new Blob([BOM + text + "\n"], { type: "text/plain;charset=utf-8" });
+  } else {
+    const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const body = groups.map((g) => `<h2>${esc(g.chapter)}</h2>` + g.rows.map((r) => `<p><b>${esc(r.article)}</b> ${esc(r.body).replace(/\n/g, "<br>")}</p>`).join("")).join("");
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>회칙</title>
+<style>body{font-family:"맑은 고딕",sans-serif;font-size:11pt;line-height:1.6}h1{text-align:center;font-size:18pt}h2{font-size:13pt;margin-top:18pt}p{margin:6pt 0}.d{text-align:right;color:#666;font-size:9pt}</style></head>
+<body><h1>회칙</h1><p class="d">${day} 기준</p>${body}</body></html>`;
+    blob = new Blob([BOM + html], { type: "application/msword" });
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function RulesDownload({ saved }: { saved: Rule[] }) {
+  const [all, setAll] = useState(false);
+  const list = all ? saved : saved.filter((r) => r.public);
+  return (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>회칙 내려받기</b>
+      <span className="small">저장된 조문만 담아요. 고치는 중인 조문은 먼저 저장해 주세요.</span>
+      <div className="row" style={{ flexWrap: "wrap" }}>
+        <button className="mini primary" type="button" disabled={!list.length} onClick={() => rulesFile(list, "doc")}>워드 파일</button>
+        <button className="mini" type="button" disabled={!list.length} onClick={() => rulesFile(list, "txt")}>텍스트 파일</button>
+        <div className="checks"><label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />비공개 조문도 넣기</label></div>
+        <span className="small">조문 {list.length}개</span>
+      </div>
+    </div>
+  );
+}
+
 function RulesPaste({ onDone }: { onDone: () => void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -228,6 +279,7 @@ export function RulesEditor() {
         )}
       </div>
       {paste && <RulesPaste onDone={load} />}
+      {!!items?.length && <RulesDownload saved={items.map((x) => saved[x.id]).filter((x): x is Rule => !!x)} />}
       {!items && <p className="small">불러오는 중이에요…</p>}
       {items?.map((r) => (
         <div key={r.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
