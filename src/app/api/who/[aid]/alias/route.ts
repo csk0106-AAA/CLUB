@@ -20,7 +20,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   if (closed) return closed;
 
   const parsed = body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return bad("별칭은 2~20자로 적어 주세요.");
+  if (!parsed.success) return bad("별칭은 2자에서 20자로 적어 주세요.");
   const alias = parsed.data.alias;
 
   const s = await getStore();
@@ -34,7 +34,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   }
 
   const mine = await myProfile(g.s.mid);
-  if (mine?.introStatus === "approved") return bad("승인된 소개가 있어요. 승인을 취소한 뒤 바꿀 수 있어요.", 409);
+  if (mine?.introStatus === "approved") return bad("공개한 소개가 있어요. 공개를 취소한 뒤 바꿀 수 있어요.", 409);
   const now = new Date().toISOString();
   // 소개 글 초안에 예전 별칭이 들어 있으면(예: 제목 "'글로우웜'입니다") 새 별칭으로 함께 바꾼다.
   const old = mine?.alias ?? "";

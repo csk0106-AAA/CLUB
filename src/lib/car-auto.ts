@@ -84,7 +84,7 @@ async function attendees(eventId: string): Promise<string[]> {
   return applies.filter((a) => a.eventId === eventId && a.answer === "참석").map((a) => a.memberId);
 }
 
-// 관리자 확정(알림): 배정된 사람 확정(종 알림은 확정 기록으로), 운전자·지원자에게 탑승자 명단.
+// 확정 안내(차량신청 마감 때 자동, 관리자배정이면 "배정 완료 (알림)"): 배정된 사람 확정(종 알림은 확정 기록으로), 운전자·지원자에게 탑승자 명단.
 // 차량신청 마감이 지났으면 남은 대기자도 마감 알림. 확정 알림 받은 회원 수를 돌려준다.
 export async function confirmByAdmin(eventId: string, eventName: string, href: string, byId: string): Promise<number> {
   const s = await getStore();

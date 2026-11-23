@@ -45,7 +45,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const hitsTl = inAct && d.statements ? findIdentity(d.statements.join(" "), terms) : [];
   if (hitsIntro.length || hitsTl.length) {
     const list = [...new Set([...hitsIntro, ...hitsTl])].join(", ");
-    return NextResponse.json({ error: `신원이 드러나는 말이 있어 배포할 수 없어요: ${list}. 지우거나 일반적인 표현으로 바꿔 주세요.`, hits: [...hitsIntro, ...hitsTl] }, { status: 422 });
+    return NextResponse.json({ error: `신원이 드러나는 말이 있어 공개할 수 없어요: ${list}. 지우거나 일반적인 표현으로 바꿔 주세요.`, hits: [...hitsIntro, ...hitsTl] }, { status: 422 });
   }
 
   const now = new Date().toISOString();
@@ -79,7 +79,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if (closed) return closed;
   const s = await getStore();
   const profile = await myProfile(g.s.mid);
-  if (!profile || profile.introStatus !== "approved") return bad("승인된 소개가 없어요.");
+  if (!profile || profile.introStatus !== "approved") return bad("공개한 소개가 없어요.");
   await s.update("Profiles", profile.id, { introStatus: "draft", draftMd: profile.introMd, updatedAt: new Date().toISOString() });
   const tl = await myTruthLies(g.s.mid, aid);
   if (tl) await s.update("TruthLies", tl.id, { status: "draft" });

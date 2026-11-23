@@ -88,7 +88,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
       {a.config.host?.note && <span className="small"><b>진행자 안내:</b> {a.config.host.note}</span>}
       <span className="small" style={{ fontSize: fs(12) }}>
         진행자는 여러 명 둘 수 있고, 사람마다 <b>진행자 접속번호</b>를 따로 정해요. 진행자가 로그인 화면에서 자기 이름을 고르고 자기 접속번호를 넣으면 이 활동의 진행 화면만 보여요.
-        평소 초대코드(연락처 뒷자리)로 들어오면 일반 회원으로 활동에 참여해요.
+        평소 초대코드(휴대폰 번호 뒷자리)로 들어오면 일반 회원으로 활동에 참여해요.
       </span>
       <ActionNote msg={msg} />
       {canEdit && (
@@ -101,7 +101,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
       {rows.length > 0 && (
         <div className="tblw">
           <table className="tbl compact stack" style={{ minWidth: 460 }}>
-            <thead><tr><th>진행자 (회원)</th><th>접속번호 (숫자 4~8자리)</th><th><span className="sr-only">버튼</span></th></tr></thead>
+            <thead><tr><th>진행자 (회원)</th><th>접속번호 (숫자 4자리에서 8자리)</th><th><span className="sr-only">버튼</span></th></tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i}>
@@ -622,7 +622,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             </span>
           )}
           {openActs.has(a.id) && (<>
-          <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${fmtDateTime(a.pre.opensAt)} ~ ${fmtDateTime(a.pre.closesAt)}` : ""}</span>
+          <span className="small">{PRE_TEXT[a.pre.status]}{a.pre.opensAt ? ` · ${fmtDateTime(a.pre.opensAt)}부터 ${fmtDateTime(a.pre.closesAt)}까지` : ""}</span>
           {a.config.preEvent.steps.includes("ai_interview") && <Progress eventId={eventId} aid={a.id} />}
           <span className="small">참여 범위: {canSelect(a.config) ? "선택 참여 가능 (회원마다 전체참여 / 선택참여)" : "전체 참여만"}{a.attendanceConfirmed ? ` · 참여자 ${a.rosterCount}명` : " · 참여자 선택 필요"}</span>
           <Attendance eventId={eventId} a={a} canEdit={canEdit} onChange={load} />

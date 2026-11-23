@@ -43,7 +43,8 @@ const namesLine = (names: string[], max = 6) =>
 export default function HostPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
   const [st, setSt] = useState<Stage | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(""); // 버튼을 눌러 난 오류(다음 버튼을 누를 때까지 그대로)
+  const [loadErr, setLoadErr] = useState(""); // 2초마다 읽기에서 난 오류(다시 읽히면 지운다)
   const [notice, setNotice] = useState(""); // 진행자 없이 관리자가 진행할 때 같은 안내
   const [denied, setDenied] = useState(false);
   const [pickId, setPickId] = useState("");
@@ -55,9 +56,9 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
     const r = await api<Stage>(`/api/admin/events/${id}/activities/${aid}/stage`);
     if (r.ok) {
       setSt(r.data);
-      setError("");
+      setLoadErr("");
     } else if (r.status === 401 || r.status === 403) setDenied(true);
-    else setError(r.error);
+    else setLoadErr(r.error);
   }, [id, aid]);
 
   useEffect(() => {
@@ -85,6 +86,18 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
     await load();
   }
 
+  // 활동 마치기: 회원 화면 진행을 끈다(처음으로와 같은 동작). 회원 화면의 '지금 진행 중' 표시가 사라진다.
+  async function finish() {
+    if (!window.confirm("활동을 마칠까요? 회원 화면에서 진행 중 표시가 사라져요. 점수와 기록은 그대로예요. 다음 사람을 열면 다시 진행돼요.")) return;
+    setBusy(true);
+    setError("");
+    const r = await api(`/api/admin/events/${id}/activities/${aid}/live`, { body: { action: "reset" } });
+    setBusy(false);
+    if (!r.ok) setError(r.error);
+    else setNotice("");
+    await load();
+  }
+
   function fullscreen() {
     const el = wrap.current;
     if (!el) return;
@@ -93,7 +106,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
   }
 
   if (denied) return <HostDenied />;
-  if (!st) return <div className="host">{error ? <p role="alert">{error}</p> : <p className="sub">불러오는 중이에요…</p>}</div>;
+  if (!st) return <div className="host">{error || loadErr ? <p role="alert">{error || loadErr}</p> : <p className="sub">불러오는 중이에요…</p>}</div>;
 
   const r = st.round;
 
@@ -110,7 +123,9 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
       </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}
+      {loadErr && !error && <div className="msg bad" role="alert">{loadErr}</div>}
       {notice && <div className="msg info" role="status">{notice}</div>}
+      {r && !st.live.active && <div className="msg info" role="status">활동을 마쳤어요. 회원 화면에서 진행 중 표시가 사라졌어요.</div>}
       {st.missingSteps.length > 0 && (
         <div className="msg bad" role="alert">이 활동의 템플릿에 필요한 단계가 없어요: {st.missingSteps.join(", ")}. 활동 설정에서 단계를 추가해 주세요.</div>
       )}
@@ -249,6 +264,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
             {r?.state === "voting" && <button className="btn red" type="button" disabled={busy} onClick={() => act("close")}>투표 마감</button>}
             {r?.state === "closed" && <button className="btn" type="button" disabled={busy} onClick={() => act("answer")}>정답 공개</button>}
             {r?.state === "voting" && <button className="btn white" type="button" disabled={busy} onClick={() => act("answer")}>마감하고 정답 공개</button>}
+            {r?.state === "answer" && st.live.active && <button className="btn red" type="button" disabled={busy} onClick={finish}>활동 마치기</button>}
           </div>
         </>
       )}

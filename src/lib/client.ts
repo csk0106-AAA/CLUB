@@ -23,12 +23,12 @@ export async function api<T = unknown>(path: string, init?: { method?: string; b
   }
 }
 
-// 일정 목록·카드용: "2026/12/11 ~ 2026/12/12 · 장소" (시간은 빼고 날짜만, 같은 날이면 하루만)
+// 일정 목록·카드용: "2026/12/11부터 2026/12/12까지 · 장소" (시간은 빼고 날짜만, 같은 날이면 하루만)
 export function fmtWhen(startsAt: string, endsAt: string, place: string): string {
   if (!startsAt) return "날짜가 정해지면 알려 드려요";
   const a = fmtDate(toLocalIso(startsAt));
   const b = endsAt ? fmtDate(toLocalIso(endsAt)) : "";
-  const range = b && b !== a ? `${a} ~ ${b}` : a;
+  const range = b && b !== a ? `${a}부터 ${b}까지` : a;
   return place ? `${range} · ${place}` : range;
 }
 
@@ -71,17 +71,17 @@ export function fmtDays(days: string | string[]): string {
   return list.map(fmtDate).join(", ");
 }
 
-// 이어진 날짜면 "2026/12/11 ~ 2026/12/12", 떨어져 있으면 "2026/12/11, 2026/12/13"
+// 이어진 날짜면 "2026/12/11부터 2026/12/12까지", 떨어져 있으면 "2026/12/11, 2026/12/13"
 export function fmtDaySpan(days: string | string[]): string {
   const list = (Array.isArray(days) ? days : days.split(",")).map((x) => x.trim().slice(0, 10)).filter(Boolean).sort();
   if (list.length === 0) return "";
   if (list.length === 1) return fmtDate(list[0]);
   const ts = list.map((x) => Date.parse(`${x}T00:00:00Z`));
   const consecutive = ts.every((t, i) => i === 0 || t - ts[i - 1] === 86_400_000);
-  return consecutive ? `${fmtDate(list[0])} ~ ${fmtDate(list[list.length - 1])}` : list.map(fmtDate).join(", ");
+  return consecutive ? `${fmtDate(list[0])}부터 ${fmtDate(list[list.length - 1])}까지` : list.map(fmtDate).join(", ");
 }
 
-// 일시 범위: "2026/12/11 14:30 ~ 2026/12/12 14:00" (같은 날이면 "2026/12/11 14:30 ~ 16:00", 끝이 없으면 시작만)
+// 일시 범위: "2026/12/11 14:30부터 2026/12/12 14:00까지" (같은 날이면 "2026/12/11 14:30부터 16:00까지", 끝이 없으면 시작만)
 export function fmtRange(startsAt: string, endsAt: string): string {
   if (!startsAt) return "날짜가 정해지면 알려 드려요";
   const part = (raw: string) => {
@@ -92,8 +92,8 @@ export function fmtRange(startsAt: string, endsAt: string): string {
   const start = a.hm ? `${a.md} ${a.hm}` : a.md;
   if (!endsAt) return start;
   const b = part(endsAt);
-  if (b.md === a.md) return b.hm ? `${start} ~ ${b.hm}` : start;
-  return `${start} ~ ${b.hm ? `${b.md} ${b.hm}` : b.md}`;
+  if (b.md === a.md) return b.hm ? `${start}부터 ${b.hm}까지` : start;
+  return `${start}부터 ${b.hm ? `${b.md} ${b.hm}` : b.md}까지`;
 }
 
 // 일정 유형별 pill 색

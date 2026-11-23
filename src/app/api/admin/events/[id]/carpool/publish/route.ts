@@ -80,7 +80,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     await confirmIfClosed(id, g.s.mid);
     return NextResponse.json({ ok: true });
   }
-  // 확정 취소: 확정된 배정을 "확정 전"으로 되돌린다(자리는 그대로). 다시 "확정(알림)"을 누르면 다시 안내된다.
+  // 확정 취소: 확정된 배정을 "확정 전"으로 되돌린다(자리는 그대로). 다시 "배정 완료 (알림)"을 누르면 다시 안내된다.
   if (d.action === "unpublish") {
     await saveCarpoolState(id, { published: false, publishedAt: "" });
     const rows = (await s.list("CarRequests")).filter((r) => r.eventId === id && r.status === "confirmed");

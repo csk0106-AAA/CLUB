@@ -116,9 +116,10 @@ export function WhoWrite(props: {
   const [aliasBusy, setAliasBusy] = useState(false);
   async function suggestAlias() {
     setAliasBusy(true);
+    setSpot({ at: "", n: null });
     const r = await api<{ aliases: string[] }>(`/api/who/${aid}/alias`, { method: "PUT", body: {} });
     setAliasBusy(false);
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("alias", { tone: "bad", text: r.error });
     setAliasIdeas(r.data.aliases);
   }
   const [intro, setIntro] = useState(st.profile.introStatus === "approved" ? st.profile.introMd : st.profile.draftMd);
@@ -192,9 +193,21 @@ export function WhoWrite(props: {
   }, [aid, lastQ, st.aiEnabled]);
   const reviewing = !!polished && answer === checked;
 
+  // 결과 안내는 누른 버튼 바로 옆에 보여 준다(at: 보여 줄 자리). 맨 위 안내(setNote)는 지운다.
+  const [spot, setSpot] = useState<{ at: string; n: Note }>({ at: "", n: null });
+  const say = (at: string, n: Note) => setSpot({ at, n });
+  const sayAt = (at: string) => {
+    const n = spot.at === at ? spot.n : null;
+    if (!n) return null;
+    return n.tone === "bad"
+      ? <div className="msg bad" role="alert">{n.text}</div>
+      : <p className="small" role="status" style={{ margin: 0, color: "var(--accent-ink)", fontWeight: 700 }}>✓ {n.text}</p>;
+  };
+
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setNote(null);
+    setSpot({ at: "", n: null });
     try {
       await fn();
     } finally {
@@ -205,30 +218,30 @@ export function WhoWrite(props: {
   // 별칭 바꾸기: 소개 글 초안에 들어 있는 예전 별칭도 서버가 함께 바꿔 준다.
   const saveAlias = () => run(async () => {
     const r = await api<{ alias: string; draftMd: string }>(`/api/who/${aid}/alias`, { body: { alias } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("alias", { tone: "bad", text: r.error });
     if (r.data.draftMd) setIntro(r.data.draftMd);
     setEditAlias(false);
-    setNote({ tone: "info", text: `별칭을 “${r.data.alias}”(으)로 정했어요. 소개 글 속 별칭도 함께 바꿨어요.` });
+    say("alias", { tone: "info", text: `별칭을 “${r.data.alias}”(으)로 정했어요. 소개 글 속 별칭도 함께 바꿨어요.` });
     await reload();
   });
 
   const startInterview = () => run(async () => {
     const r = await api(`/api/who/${aid}/interview`, { body: {} });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("iv", { tone: "bad", text: r.error });
     await reload();
   });
 
   // 공통 질문 뒤 채팅으로 묻는 것에 답하기(AI 추가 질문 진행·이전 답 유지 등)
   const choose = (choice: "go" | "none" | "no" | "keep" | "drop") => run(async () => {
     const r = await api(`/api/who/${aid}/interview`, { body: { choice } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("iv", { tone: "bad", text: r.error });
     await reload();
   });
 
   // 답변안함: 이 질문을 넘긴다(템플릿에서 허용한 질문만)
   const skipQuestion = () => run(async () => {
     const r = await api(`/api/who/${aid}/interview`, { body: { skip: true } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("iv", { tone: "bad", text: r.error });
     setAnswer("");
     await reload();
   });
@@ -237,7 +250,7 @@ export function WhoWrite(props: {
     // 아직 다듬기를 거치지 않은 글이면 먼저 다듬어 보여 준다(고칠 것이 없으면 바로 보낸다)
     if (st.aiEnabled && answer.trim() !== checked.trim() && answer !== checked && (await polish(answer))) return;
     const r = await api(`/api/who/${aid}/interview`, { body: { answer } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("iv", { tone: "bad", text: r.error });
     setAnswer("");
     setPolished(null);
     setPolishMsg("");
@@ -248,7 +261,7 @@ export function WhoWrite(props: {
   // 보기·예/아니요 버튼으로 바로 답하기(짧은 답이라 AI 다듬기 없이 보낸다)
   const quickSend = (text: string) => run(async () => {
     const r = await api(`/api/who/${aid}/interview`, { body: { answer: text } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("iv", { tone: "bad", text: r.error });
     setAnswer("");
     setPolished(null);
     setPolishMsg("");
@@ -269,22 +282,24 @@ export function WhoWrite(props: {
     }
     const mine = st.interview.messages.filter((m) => m.role === "me");
     const answers = mine.map((m, i) => (i === reAns.k ? reAns.text.trim() : m.skipped ? "" : m.text));
-    if (!answers[reAns.k] && !mine[reAns.k]?.skipped) return setNote({ tone: "bad", text: "답을 적어 주세요." });
+    if (!answers[reAns.k] && !mine[reAns.k]?.skipped) return say("iv", { tone: "bad", text: "답을 적어 주세요." });
     const r = await api(`/api/who/${aid}/interview`, { method: "PUT", body: { answers } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("iv", { tone: "bad", text: r.error });
     setReAns(null);
-    setNote({ tone: "info", text: "답을 고쳤어요. 이어서 다음 질문에 답해 주세요." });
+    say("iv", { tone: "info", text: "답을 고쳤어요. 이어서 다음 질문에 답해 주세요." });
     await reload();
   });
 
   const makeDraft = () => run(async () => {
+    // 초안이 없으면 '만들기' 버튼 옆, 있으면(다시 만들기) 소개 글 옆에 안내
+    const mkAt = approved || st.profile.introStatus === "draft" || intro.trim() ? "intro" : "draft";
     const r = await api<{ mode: string; draftMd: string; statements: string[]; lieIndex: number; leaked: string[]; remaining: string[] }>(`/api/who/${aid}/draft`, { body: {} });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say(mkAt, { tone: "bad", text: r.error });
     setIntro(r.data.draftMd);
     setTlIntro(r.data.draftMd);
     setStmts(r.data.statements);
     setLie(r.data.lieIndex);
-    setNote(
+    say("intro",
       r.data.mode === "manual"
         ? { tone: "info", text: tlOn ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬은 뒤, 2진실 1거짓 문장 3개를 적어 주세요." : inAct ? "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 별칭을 정하고 글을 다듬어 주세요." : "AI가 아직 연결되지 않아 내 답변을 모아 초안을 만들었어요. 글을 다듬어 주세요." }
         : r.data.leaked?.length
@@ -297,16 +312,16 @@ export function WhoWrite(props: {
   // 소개 글 그 자리에서 저장(초안). 2진실 1거짓은 지금 화면 값 그대로 함께 저장한다.
   const saveIntro = () => run(async () => {
     const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, ...(tlOn ? { statements: stmts, lieIndex: lie } : {}) } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("intro", { tone: "bad", text: r.error });
     setEditIntro(false);
-    setNote({ tone: "info", text: tlOn && intro.trim() !== (tlIntro ?? "").trim() ? "소개 글을 저장했어요. 2진실 1거짓도 다시 만들어 주세요." : "소개 글을 저장했어요." });
+    say("intro", { tone: "info", text: tlOn && intro.trim() !== (tlIntro ?? "").trim() ? "소개 글을 저장했어요. 2진실 1거짓도 다시 만들어 주세요." : "소개 글을 저장했어요." });
     await reload();
   });
 
   const saveDraft = (silent = false) => run(async () => {
     const r = await api(`/api/who/${aid}/draft`, { method: "PUT", body: { introMd: intro, ...(tlOn ? { statements: stmts, lieIndex: lie } : {}) } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    if (!silent) setNote({ tone: "info", text: "저장했어요. 승인하기 전에는 다른 회원에게 보이지 않아요." });
+    if (!r.ok) return say("foot", { tone: "bad", text: r.error });
+    if (!silent) say("foot", { tone: "info", text: "저장했어요. 공개하기 전에는 다른 회원에게 보이지 않아요." });
     await reload();
   });
 
@@ -320,46 +335,47 @@ export function WhoWrite(props: {
     if (r.ok) {
       setIntro(r.data.introMd);
       if (request === reviseText) setReviseText("");
-      return setNote({ tone: "info", text: "요청대로 고쳤어요. 마음에 들면 최종 배포를 눌러 주세요." });
+      return say("rev", { tone: "info", text: "요청대로 고쳤어요. 마음에 들면 최종 공개를 눌러 주세요." });
     }
     if (r.status === 422) {
       // 서버 문구: "관리자 지침에 맞지 않아 반영할 수 없습니다. 이유: …" → 이유만 보여 준다.
       const reason = r.error.includes("이유:") ? r.error.split("이유:").slice(1).join("이유:").trim() : r.error;
       return setRefusal(/[.?!요다]$/.test(reason) ? reason : `${reason}.`);
     }
-    setNote({ tone: "bad", text: r.error });
+    say("rev", { tone: "bad", text: r.error });
   });
 
   const approve = () => run(async () => {
     setApproveErr("");
     setHits([]);
     const r = await api(`/api/who/${aid}/approve`, { body: { introMd: intro, ...(tlOn ? { statements: stmts, lieIndex: lie } : {}) } });
-    // 배포가 막히면 이유를 버튼 바로 위에도 보여 준다(맨 위 안내는 화면 밖이라 안 보일 수 있다)
+    // 배포가 막히면 이유를 버튼 바로 위에 보여 준다
     if (!r.ok) {
       setApproveErr(r.error);
       setHits(r.hits ?? []);
-      return setNote({ tone: "bad", text: r.error });
+      return;
     }
-    setNote({ tone: "info", text: "배포했어요." });
+    say("foot", { tone: "info", text: "공개했어요." });
     await reload();
   });
 
   // 배포된 뒤 별칭 바꾸기: 공개 중인 별칭이 갑자기 바뀌지 않게, 배포를 잠시 취소하고 별칭 칸을 연다
   const changeAliasAfterApprove = () => {
-    if (!window.confirm("별칭을 바꾸려면 배포를 잠시 취소해야 해요(다른 회원에게 잠시 안 보여요). 바꾼 뒤 “최종 배포”를 다시 눌러 주세요. 진행할까요?")) return;
+    if (!window.confirm("별칭을 바꾸려면 공개를 잠시 취소해야 해요(다른 회원에게 잠시 안 보여요). 바꾼 뒤 “최종 공개”를 다시 눌러 주세요. 진행할까요?")) return;
     run(async () => {
       const r = await api(`/api/who/${aid}/approve`, { method: "DELETE" });
-      if (!r.ok) return setNote({ tone: "bad", text: r.error });
+      if (!r.ok) return say("top", { tone: "bad", text: r.error });
       await reload();
       setAlias(st.profile.alias);
       setEditAlias(true);
-      setNote({ tone: "info", text: "배포를 잠시 취소했어요. 새 별칭을 정한 뒤 “최종 배포”를 다시 눌러 주세요." });
+      say("alias", { tone: "info", text: "공개를 잠시 취소했어요. 새 별칭을 정한 뒤 “최종 공개”를 다시 눌러 주세요." });
     });
   };
-  const unapprove = () => run(async () => {
+  const unapprove = (at: string) => run(async () => {
     const r = await api(`/api/who/${aid}/approve`, { method: "DELETE" });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setNote({ tone: "info", text: "승인을 취소했어요. 다시 고치고 배포할 수 있어요." });
+    if (!r.ok) return say(at, { tone: "bad", text: r.error });
+    // 위 카드는 취소하면 사라지므로 그 자리(인터뷰 다시 하기 줄)에 보여 준다
+    say(at === "top" ? "redo" : at, { tone: "info", text: "공개를 취소했어요. 다시 고치고 공개할 수 있어요." });
     await reload();
   });
 
@@ -369,11 +385,11 @@ export function WhoWrite(props: {
     if (!window.confirm("소개 글은 그대로 두고, 2진실 1거짓만 지금 소개 글을 바탕으로 다시 만들까요? 직접 고친 문장은 새 문장으로 바뀌어요.")) return;
     run(async () => {
       const r = await api<{ statements: string[]; lieIndex: number; leaked: string[] }>(`/api/who/${aid}/truthlies`, { body: { introMd: intro } });
-      if (!r.ok) return setNote({ tone: "bad", text: r.error });
+      if (!r.ok) return say("tl", { tone: "bad", text: r.error });
       setStmts(r.data.statements);
       setLie(r.data.lieIndex);
       setTlIntro(intro);
-      setNote(r.data.leaked?.length
+      say("tl", r.data.leaked?.length
         ? { tone: "bad", text: `진실 문장의 내용(${r.data.leaked.join(", ")})이 소개 글에도 있어요. 소개 글에서 지우거나 다시 만들어 주세요.` }
         : { tone: "info", text: "2진실 1거짓을 다시 만들었어요. 읽어 보고 고칠 부분이 있으면 직접 고쳐 주세요." });
     });
@@ -389,23 +405,24 @@ export function WhoWrite(props: {
     const pairs = ms.flatMap((m, i) => (m.role === "me" ? [{ q: ms[i - 1]?.role === "ai" ? ms[i - 1].text : "", a: m.skipped ? "" : m.text, skipped: !!m.skipped }] : []));
     setEditing(pairs);
     setNote(null);
+    setSpot({ at: "", n: null });
   };
   // 고친 답변 저장 → 소개 글(과 2진실 1거짓) 다시 만들기
   const saveEdit = () => run(async () => {
     if (!editing) return;
-    if (editing.some((p) => !p.a.trim() && !p.skipped)) return setNote({ tone: "bad", text: "빈 답변이 있어요. 답변을 적어 주세요." });
+    if (editing.some((p) => !p.a.trim() && !p.skipped)) return say("edit", { tone: "bad", text: "빈 답변이 있어요. 답변을 적어 주세요." });
     const r = await api(`/api/who/${aid}/interview`, { method: "PUT", body: { answers: editing.map((p) => p.a.trim()) } });
-    if (!r.ok) return setNote({ tone: "bad", text: r.error });
+    if (!r.ok) return say("edit", { tone: "bad", text: r.error });
     setEditing(null);
     const d = await api<{ draftMd: string; statements: string[]; lieIndex: number }>(`/api/who/${aid}/draft`, { body: {} });
     if (!d.ok) {
-      setNote({ tone: "bad", text: `답변은 저장했어요. 소개 글을 다시 만들지 못했어요: ${d.error}` });
+      say("intro", { tone: "bad", text: `답변은 저장했어요. 소개 글을 다시 만들지 못했어요: ${d.error}` });
     } else {
       setIntro(d.data.draftMd);
       setTlIntro(d.data.draftMd);
       setStmts(d.data.statements);
       setLie(d.data.lieIndex);
-      setNote({ tone: "info", text: "고친 답변으로 소개 글을 다시 만들었어요. 확인하고 최종 배포를 눌러 주세요." });
+      say("intro", { tone: "info", text: "고친 답변으로 소개 글을 다시 만들었어요. 확인하고 최종 공개를 눌러 주세요." });
     }
     await reload();
   });
@@ -414,12 +431,12 @@ export function WhoWrite(props: {
     if (!window.confirm(RESET_ASK)) return;
     run(async () => {
       const r = await api(`/api/who/${aid}/interview`, { method: "DELETE" });
-      if (!r.ok) return setNote({ tone: "bad", text: r.error });
+      if (!r.ok) return say("redo", { tone: "bad", text: r.error });
       setIntro("");
       setTlIntro("");
       const s = await api(`/api/who/${aid}/interview`, { body: {} });
-      if (!s.ok) setNote({ tone: "bad", text: s.error });
-      else setNote({ tone: "info", text: "기존 내 소개를 지웠어요. 공통 질문부터 다시 시작해요." });
+      if (!s.ok) say("iv", { tone: "bad", text: s.error });
+      else say("iv", { tone: "info", text: "기존 내 소개를 지웠어요. 공통 질문부터 다시 시작해요." });
       await reload();
     });
   };
@@ -428,8 +445,8 @@ export function WhoWrite(props: {
   if (!open) {
     return (
       <div className="msg info">
-        {WHEN[st.pre.status] ?? ""}{st.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(st.pre.opensAt)} ~ ${fmtDateTime(st.pre.closesAt)} 예요.` : ""}
-        {approved && " 승인된 소개는 그대로 공개돼 있어요."}
+        {WHEN[st.pre.status] ?? ""}{st.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(st.pre.opensAt)}부터 ${fmtDateTime(st.pre.closesAt)}까지예요.` : ""}
+        {approved && " 공개한 소개는 그대로 보여요."}
       </div>
     );
   }
@@ -446,6 +463,13 @@ export function WhoWrite(props: {
   const readingChosen = st.profile.readingStatus === "done" || st.profile.readingStatus === "skipped";
   // 인터뷰 없이 이미 공개된 소개가 있는 경우(예전 방식): 다시 하기만 할 수 있다
   const introOnly = approved && iv.messages.length === 0;
+  // 최종 배포를 막는 이유(2진실 1거짓은 그 단계가 있는 활동만)
+  const blockWhy =
+    inAct && !hasAlias ? "별칭을 먼저 정해 주세요."
+    : intro.trim().length < 20 ? "소개 글을 20자 이상 써 주세요."
+    : tlOn && (stmts.length < 3 || stmts.some((x) => x.trim().length < 2)) ? "2진실 1거짓 문장 3개를 모두 채워 주세요."
+    : tlOn && (lie < 0 || lie > 2) ? "거짓인 문장을 하나 골라 주세요."
+    : "";
 
   // 내 소개(명리학) 탭: 인터뷰와 상관없이 따로 받는다(여는 시점: 인터뷰 뒤·사전 작성 기간이면 작성 기간 안, 일정 당일이면 그날)
   if (part === "saju") {
@@ -464,12 +488,13 @@ export function WhoWrite(props: {
   if (editing) {
     return (
       <section aria-label="기존 인터뷰 수정하기" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div className="msg info">질문별 내 답변을 고쳐 주세요. 키보드로 고치거나 마이크로 말해서 덧붙일 수 있어요. 저장하면 고친 답변으로 소개 글{tlOn ? "과 2진실 1거짓" : ""}을 다시 만들어요{approved ? "(다시 배포할 때까지 지금 공개된 소개는 숨겨져요)" : ""}.</div>
+        <div className="msg info">질문별 내 답변을 고쳐 주세요. 키보드로 고치거나 마이크로 말해서 덧붙일 수 있어요. 저장하면 고친 답변으로 소개 글{tlOn ? "과 2진실 1거짓" : ""}을 다시 만들어요{approved ? "(다시 공개할 때까지 지금 공개된 소개는 숨겨져요)" : ""}.</div>
         <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
           {editing.map((p, i) => (
             <AnswerEdit key={i} idx={i} q={p.q} value={p.a} skipped={p.skipped} onChange={(v) => setEditing((cur) => cur?.map((x, j) => (j === i ? { ...x, a: v } : x)) ?? cur)} />
           ))}
         </ol>
+        {sayAt("edit")}
         <div className="footer-actions">
           <button className="btn" type="button" disabled={busy} onClick={saveEdit}>{busy ? "저장하고 다시 만드는 중…" : "저장하고 소개 글 다시 만들기"}</button>
           <button className="btn white" type="button" disabled={busy} onClick={() => setEditing(null)}>취소</button>
@@ -657,6 +682,7 @@ export function WhoWrite(props: {
               </div>}
             </>
           )}
+          {sayAt("iv")}
         </section>
       )}
 
@@ -667,20 +693,22 @@ export function WhoWrite(props: {
           {iv.notice && <div className="say"><Mascot size={32} /><div className="bubble">{iv.notice}</div></div>}
           <div className="msg info">인터뷰를 마쳤어요. 이제 AI가 {tlOn ? "별칭과 소개 글, 2진실 1거짓을" : inAct ? "별칭과 소개 글을" : "소개 글을"} 만들어요. 만든 뒤에 확인하고 고칠 수 있어요.</div>
           <button className="btn" type="button" disabled={busy} onClick={makeDraft}>{busy ? "만드는 중…" : tlOn ? "소개 글과 2진실 1거짓 만들기" : "소개 글 만들기"}</button>
+          {sayAt("draft")}
           {sajuOn && !readingChosen && <span className="small">명리학 사주풀이는 위의 “내 소개(명리학)” 탭에서 따로 받을 수 있어요.</span>}
         </section>
       )}
 
       {/* 3. 미리보기 · 수정 · 승인 */}
       {(interviewDone || introOnly) && hasDraft && (
-        <section aria-label="미리보기와 승인" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <section aria-label="미리보기와 공개" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {approved ? (
             // 배포 완료: 지금 상태와 할 수 있는 일을 한눈에
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, borderColor: "var(--green)" }}>
               <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>내 소개를 배포했어요 ✓</b>
-                <button className="mini" type="button" disabled={busy} onClick={unapprove}>소개 고치기</button>
+                <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>내 소개를 공개했어요 ✓</b>
+                <button className="mini" type="button" disabled={busy} onClick={() => unapprove("top")}>소개 고치기</button>
               </div>
+              {sayAt("top")}
               {inAct ? (
                 <>
                   <div className="row" style={{ gap: 8, alignItems: "center" }}>
@@ -702,6 +730,7 @@ export function WhoWrite(props: {
                 {interviewDone && <button className="mini" type="button" disabled={busy} onClick={startEdit}>인터뷰 답 고치기</button>}
                 <button className="mini" type="button" disabled={busy} onClick={restart}>인터뷰 처음부터 다시 하기</button>
               </div>
+              {sayAt("redo")}
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <h2 className="h3 grow">내 소개 <span className="chip gray" style={{ verticalAlign: "middle" }}>초안 · 나만 보여요</span></h2>
               </div>
@@ -725,6 +754,7 @@ export function WhoWrite(props: {
                   <button key={a} type="button" className={`chip ${alias === a ? "violet" : "line"}`} style={{ cursor: "pointer" }} onClick={() => setAlias(a)}>{a}</button>
                 ))}
               </div>
+              {sayAt("alias")}
               {aliasIdeas.length > 0 && <span className="small">마음에 드는 별칭을 누르면 칸에 들어가요. “{hasAlias ? "바꾸기" : "정하기"}”를 눌러야 저장돼요.</span>}
             </div>
           ) : (
@@ -733,6 +763,7 @@ export function WhoWrite(props: {
               <b style={{ font: `700 ${fs(15)} var(--display)` }}>{st.profile.alias}</b>
               <span className="grow" />
               <button className="mini" type="button" onClick={() => { setAlias(st.profile.alias); setEditAlias(true); }}>바꾸기</button>
+              {spot.at === "alias" && spot.n && <div style={{ flexBasis: "100%" }}>{sayAt("alias")}</div>}
             </div>
           ))}
           {approved || !editIntro ? (
@@ -754,6 +785,7 @@ export function WhoWrite(props: {
               </div>
             </div>
           )}
+          {sayAt("intro")}
           {!approved && !editIntro && hits.length > 0 && hasHit(intro, hits) && (
             <div className="msg bad" role="alert" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span>소개 글에 신원이 드러나는 말이 있어요. “소개 글 수정”을 눌러 고쳐 주세요.</span>
@@ -793,6 +825,7 @@ export function WhoWrite(props: {
               <label className="l" htmlFor="rev">고치고 싶은 점 (예: 취미 이야기를 더 넣어 주세요)</label>
               <input id="rev" className="field" value={reviseText} onChange={(e) => setReviseText(e.target.value)} />
               <button className="btn blue" type="button" disabled={busy || !reviseText.trim()} onClick={() => revise()}>{busy ? "고치는 중…" : "이렇게 고쳐 주세요"}</button>
+              {sayAt("rev")}
             </div>
             </details>
           )}
@@ -805,6 +838,7 @@ export function WhoWrite(props: {
                   <button className="mini" type="button" disabled={busy} style={{ fontSize: fs(15), minHeight: 42, padding: "0 14px" }} onClick={regenTl}>{busy ? "만드는 중…" : "다시 만들기"}</button>
                 )}
               </div>
+              {sayAt("tl")}
               <span className="small" style={{ fontSize: fs(12), marginTop: -6 }}>
                 {st.aiEnabled
                   ? "AI가 인터뷰 답변으로 진실 2개와 거짓 1개를 만들어요. 진실 내용은 소개 글에 들어가지 않게 해요(소개 글을 읽고 정답을 알 수 없게). “다시 만들기”는 소개 글은 그대로 두고 2진실 1거짓만 새로 만들어요. 소개 글을 고쳤다면 2진실 1거짓도 다시 만들어 주세요."
@@ -839,31 +873,34 @@ export function WhoWrite(props: {
           )}
 
           {/* 명리학(성격·성향)은 “내 소개(명리학)” 탭에서 받고, 싣기를 켜면 배포할 때 소개 끝에 함께 실려요 */}
-          {sajuOn && st.profile.readingStatus === "done" && <span className="small">명리학으로 본 성격·성향{reading.traitsShown ? "은 배포할 때 소개 끝에 함께 실려요" : "은 지금 소개에 싣지 않게 해 두었어요"}. “내 소개(명리학)” 탭에서 바꿀 수 있어요.</span>}
+          {sajuOn && st.profile.readingStatus === "done" && <span className="small">명리학으로 본 성격·성향{reading.traitsShown ? "은 공개할 때 소개 끝에 함께 실려요" : "은 지금 소개에 싣지 않게 해 두었어요"}. “내 소개(명리학)” 탭에서 바꿀 수 있어요.</span>}
 
           {approveErr && !approved && (
             <div className="msg bad" role="alert">
-              {hits.length > 0 ? <>신원이 드러나는 말이 있어 배포할 수 없어요: {hits.map((h, i) => <span key={h}>{i ? ", " : ""}<mark className="id-hit">{h}</mark></span>)}. 위 글에 빨갛게 표시했어요.</> : approveErr}
+              {hits.length > 0 ? <>신원이 드러나는 말이 있어 공개할 수 없어요: {hits.map((h, i) => <span key={h}>{i ? ", " : ""}<mark className="id-hit">{h}</mark></span>)}. 위 글에 빨갛게 표시했어요.</> : approveErr}
             </div>
           )}
           <div className="footer-actions">
+            {sayAt("foot")}
             {approved ? (
               <>
                 {/* 배포한 뒤에도 같은 자리에: 소개 고치기 · 배포 완료(누를 수 없음) */}
                 <div className="row" style={{ gap: 8 }}>
-                  <button className="btn white" type="button" disabled={busy} style={{ flex: "1 1 0", minWidth: 0 }} onClick={unapprove}>소개 고치기</button>
-                  <button className="btn" type="button" disabled style={{ flex: "1 1 0", minWidth: 0, opacity: 1 }}>배포 완료 ✓</button>
+                  <button className="btn white" type="button" disabled={busy} style={{ flex: "1 1 0", minWidth: 0 }} onClick={() => unapprove("foot")}>소개 고치기</button>
+                  <button className="btn" type="button" disabled style={{ flex: "1 1 0", minWidth: 0, opacity: 1 }}>공개 완료 ✓</button>
                 </div>
                 <p className="hint center">다른 회원에게 보이고 있어요. 고치려면 “소개 고치기”를 눌러 주세요.</p>
               </>
             ) : (
               <>
+                {/* 최종 배포를 누를 수 없을 때: 이유 한 줄 */}
+                {blockWhy && <p className="small" role="status" style={{ margin: 0, color: "var(--accent-ink)", fontWeight: 700 }}>{blockWhy}</p>}
                 {/* 임시 저장 · 최종 배포를 한 줄로 같은 크기(1:1) */}
                 <div className="row" style={{ gap: 8 }}>
                   <button className="btn white" type="button" disabled={busy} style={{ flex: "1 1 0", minWidth: 0 }} onClick={() => saveDraft()}>임시 저장</button>
-                  <button className="btn" type="button" disabled={busy || (inAct && !hasAlias) || intro.trim().length < 20 || (inAct && stmts.some((s) => s.trim().length < 2))} style={{ flex: "1 1 0", minWidth: 0 }} onClick={approve}>최종 배포</button>
+                  <button className="btn" type="button" disabled={busy || !!blockWhy} style={{ flex: "1 1 0", minWidth: 0 }} onClick={approve}>최종 공개</button>
                 </div>
-                <p className="hint center">승인하기 전에는 다른 회원과 관리자에게 보이지 않아요. 승인 뒤에도 취소하고 다시 고칠 수 있어요.</p>
+                <p className="hint center">공개하기 전에는 다른 회원과 관리자에게 보이지 않아요. 공개한 뒤에도 취소하고 다시 고칠 수 있어요.</p>
               </>
             )}
           </div>

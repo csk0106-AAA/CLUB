@@ -146,7 +146,7 @@ export function AdminGate(props: {
             <>
               <div><label className="l" htmlFor="apn">새 관리자용 PIN (숫자 6자리)</label><PasswordField id="apn" inputMode="numeric" autoComplete="new-password" value={newPin} onChange={setNewPin} /></div>
               <div><label className="l" htmlFor="apn2">한 번 더</label><PasswordField id="apn2" inputMode="numeric" autoComplete="new-password" value={newPin2} onChange={setNewPin2} /></div>
-              <span className="small">로그인 PIN 과 다른 번호로 정해 주세요. 같은 숫자 반복·연속 숫자·연락처 뒷자리가 들어간 번호는 쓸 수 없어요.</span>
+              <span className="small">로그인 PIN 과 다른 번호로 정해 주세요. 같은 숫자 반복·연속 숫자·휴대폰 번호 뒷자리가 들어간 번호는 쓸 수 없어요.</span>
             </>
           ) : (
             <div>

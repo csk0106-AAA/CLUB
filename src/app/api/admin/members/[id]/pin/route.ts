@@ -21,7 +21,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!m) return bad("회원을 찾을 수 없어요.", 404);
   await clearPin(id, p.data.kind);
   await tellMember(id, p.data.kind === "member"
-    ? "관리자가 로그인 PIN 을 초기화했어요. 다음 로그인 때 연락처 뒷자리 4자리로 들어와 새 PIN 을 만들어 주세요."
+    ? "관리자가 로그인 PIN 을 초기화했어요. 다음 로그인 때 휴대폰 번호 뒷자리 4자리로 들어와 새 PIN 을 만들어 주세요."
     : "관리자가 관리자용 PIN 을 초기화했어요. 관리자 화면에 들어갈 때 공용 관리자 비밀번호를 거쳐 새 PIN 을 만들어 주세요.").catch(() => undefined);
   return NextResponse.json({ ok: true });
 }

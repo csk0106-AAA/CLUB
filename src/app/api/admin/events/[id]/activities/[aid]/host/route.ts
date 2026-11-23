@@ -32,9 +32,9 @@ export async function PUT(req: Request, ctx: Ctx) {
     if (!m || isGuest(m.kind)) return bad("진행자로 고를 수 없는 회원이 있어요.");
     if (seen.has(h.memberId)) return bad(`${m.name} 님이 두 번 들어 있어요. 한 줄을 지워 주세요.`);
     seen.add(h.memberId);
-    if (!/^\d{4,8}$/.test(h.code)) return bad(`${m.name} 님의 진행자 접속번호를 숫자 4~8자리로 정해 주세요.`);
+    if (!/^\d{4,8}$/.test(h.code)) return bad(`${m.name} 님의 진행자 접속번호를 숫자 4자리에서 8자리로 정해 주세요.`);
     // 평소 로그인 번호와 같으면 어느 쪽으로 들어온 건지 구분할 수 없다.
-    if (h.code === (await loginCode(m))) return bad(`${m.name} 님의 진행자 접속번호가 평소 초대코드(연락처 뒷자리)와 같아요. 다른 번호로 정해 주세요.`);
+    if (h.code === (await loginCode(m))) return bad(`${m.name} 님의 진행자 접속번호가 평소 초대코드(휴대폰 번호 뒷자리)와 같아요. 다른 번호로 정해 주세요.`);
   }
   // 예전 칸(hostId/hostCode)에는 첫 진행자를 함께 적어 둔다
   await s.update("EventActivities", aid, { hosts: JSON.stringify(hosts), hostId: hosts[0]?.memberId ?? "", hostCode: hosts[0]?.code ?? "" });

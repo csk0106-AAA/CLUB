@@ -41,7 +41,7 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
   async function send(type: Type) {
     setError("");
     if (!name.trim()) return setError("이름(실명)을 적어 주세요.");
-    if (phone.replace(/\D/g, "").length < 10) return setError("전화번호를 숫자 10~11자리로 적어 주세요.");
+    if (phone.replace(/\D/g, "").length < 10) return setError("휴대폰 번호를 숫자 10자리나 11자리로 적어 주세요.");
     if (!edu && !recs.trim()) return setError("추천인을 1명 이상 적어 주세요.");
     setBusy(true);
     try {
@@ -97,9 +97,9 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
             <input id="su-name" className="field" autoComplete="name" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <label className="l" htmlFor="su-phone">전화번호</label>
+            <label className="l" htmlFor="su-phone">휴대폰 번호</label>
             <input id="su-phone" className="field" inputMode="tel" autoComplete="tel" placeholder="010-0000-0000" maxLength={20} value={phone} onChange={(e) => setPhone(typePhone(e.target.value))} />
-            <span className="hint" style={{ fontSize: fs(12) }}>전화번호 뒷자리 4자리가 초대코드(로그인 번호)가 돼요.</span>
+            <span className="hint" style={{ fontSize: fs(12) }}>휴대폰 번호 뒷자리 4자리가 초대코드(로그인 번호)가 돼요.</span>
           </div>
           {!edu && (
             <div>
@@ -123,7 +123,7 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
       {step === "done" && result?.rejoin && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }} role="status">
           <p style={{ margin: 0, font: `700 ${fs(18)}/1.45 var(--display)` }}>재가입 신청을 보냈어요 ✓</p>
-          <span>예전에 탈퇴한 기록이 있어요. 관리자가 확인하고 탈퇴를 해지하면 “{result.name}” 이름으로 다시 로그인할 수 있어요(초대코드: 전화번호 뒷자리 4자리).</span>
+          <span>예전에 탈퇴한 기록이 있어요. 관리자가 확인하고 탈퇴를 해지하면 “{result.name}” 이름으로 다시 로그인할 수 있어요(초대코드: 휴대폰 번호 뒷자리 4자리).</span>
         </div>
       )}
       {step === "done" && result && !result.rejoin && (
@@ -132,7 +132,7 @@ export function SignupSheet({ open, onClose, requirement, onDone }: {
           <span>관리자가 확인하면 알려 드려요. 지금도 로그인할 수 있어요.</span>
           <div className="card" style={{ background: "var(--soft)", display: "flex", flexDirection: "column", gap: 4 }}>
             <span>로그인 이름: <b>{result.name}</b></span>
-            <span>초대코드: <b>전화번호 뒷자리 4자리</b></span>
+            <span>초대코드: <b>휴대폰 번호 뒷자리 4자리</b></span>
           </div>
           {result.renamed && <span className="small">같은 이름의 회원이 있어서 이름 뒤에 알파벳을 붙였어요. 로그인할 때 “{result.name}”을(를) 골라 주세요.</span>}
         </div>

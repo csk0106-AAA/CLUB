@@ -86,7 +86,7 @@ const ymd = (d?: string) => (d ? d.replace(/-/g, "/") : "");
 // 입금 기한 한 줄(lib/dues.ts duesDueLabel 과 같은 규칙)
 function dueLabel(d: FeeSnap): string {
   if (d.period === "monthly") return d.monthDay ? `매월 ${d.monthDay}일까지` : "";
-  if (d.periodStart && d.periodEnd) return `${ymd(d.periodStart)} ~ ${ymd(d.periodEnd)}`;
+  if (d.periodStart && d.periodEnd) return `${ymd(d.periodStart)}부터 ${ymd(d.periodEnd)}까지`;
   if (d.periodEnd) return `${ymd(d.periodEnd)}까지`;
   if (d.periodStart) return `${ymd(d.periodStart)}부터`;
   return d.deadline ? `${fmtDate(d.deadline)}까지` : "";
@@ -139,7 +139,7 @@ function DuesPayNotice() {
               <br /><span className="small">입금했다면 아래 “입금했어요”를 다시 눌러 주세요.</span>
             </div>
           )}
-          <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 42, fontSize: fs(14) }} onClick={() => send(true)}>입금했어요 (입금 확인 요청)</button>
+          <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 42, fontSize: fs(14) }} onClick={() => send(true)}>입금했어요</button>
           <span className="small">입금한 뒤 누르면 관리자에게 입금 확인을 요청해요.</span>
         </>
       )}

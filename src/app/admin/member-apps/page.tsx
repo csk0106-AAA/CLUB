@@ -80,7 +80,7 @@ function MemberApps() {
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>회원 신청 절차 보기</summary>
         <ol style={{ margin: "8px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, lineHeight: 1.5 }}>
           <li><b>관리자가 미리 등록한 교육 이수자</b>: 회원 명단에 “대기회원” + 교육 이수 YES로 등록 → 로그인하면 “정회원 신청 또는 참관을 원하는 일정을 선택하세요” 안내 → 설정에서 <b>정회원 신청</b>하면 여기에 올라와요(승인 → 정회원). 일정 참관은 일정에서 신청하고 일정 관리자가 승인해요.</li>
-          <li><b>명단에 없는 분</b>: 로그인 화면 <b>회원 또는 참관 신청</b> → 정회원 필수 조건(<Link href="/admin/settings">모임개요</Link>) 질문 → 이름·전화번호(비이수자는 추천인)를 적으면 바로 회원 명단에 “승인 전”으로 등록돼요(초대코드 = 전화번호 뒷자리 4자리).
+          <li><b>명단에 없는 분</b>: 로그인 화면 <b>회원 또는 참관 신청</b> → 정회원 필수 조건(<Link href="/admin/settings">모임개요</Link>) 질문 → 이름·휴대폰 번호(비이수자는 추천인)를 적으면 바로 회원 명단에 “승인 전”으로 등록돼요(초대코드 = 휴대폰 번호 뒷자리 4자리).
             <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
               <li>수료 “네” + 회원요청 → 대기회원 → 승인: <b>정회원</b></li>
               <li>수료 “네” + 참관요청 → 대기회원 → 승인: 대기회원 유지</li>
@@ -90,7 +90,7 @@ function MemberApps() {
           </li>
           <li><b>반려</b>: 사유를 적으면 회원 명단에 “반려” 표시가 붙고(누르면 사유), 신청한 분은 로그인 뒤 안내에서 사유를 봐요. 로그인까지 막으려면 <Link href="/admin/members">회원 명단</Link>에서 지워 주세요.</li>
           <li><b>회원 권한 수정</b>(설정): 정회원·준회원 → <b>대기회원으로 변경</b>, 대기회원 → <b>정회원 신청</b>, 참관회원 → <b>준회원 신청</b>. 승인하면 바로 바뀌고 프로필 북 공개도 맞춰져요(대기회원은 해제, 정회원·준회원은 공개).</li>
-          <li><b>회원 탈퇴</b>(설정): 회원구분이 “탈퇴회원”이 되고 로그인할 수 없어요. 명단과 활동 기록은 남아요. 로그인 화면에서 <b>재가입</b>을 신청하면 이름·전화번호를 탈퇴회원과 대조해 여기에 알려 줘요(승인 = 탈퇴 해지). 회원 수정의 “탈퇴 해지”로도 되돌릴 수 있어요.</li>
+          <li><b>회원 탈퇴</b>(설정): 회원구분이 “탈퇴회원”이 되고 로그인할 수 없어요. 명단과 활동 기록은 남아요. 로그인 화면에서 <b>재가입</b>을 신청하면 이름·휴대폰 번호를 탈퇴회원과 대조해 여기에 알려 줘요(승인 = 탈퇴 해지). 회원 수정의 “탈퇴 해지”로도 되돌릴 수 있어요.</li>
           <li><b>명예회원</b>은 신청 없이 관리자가 회원 명단에서 등록하고, 메모에 등록 사유를 적어요.</li>
         </ol>
       </details>
@@ -115,7 +115,7 @@ function MemberApps() {
                 <span className={`pill ${STATUS[a.status]?.tone ?? "gray"}`}>{STATUS[a.status]?.text ?? a.status}</span>
               </div>
               <dl className="small" style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 10px" }}>
-                <dt>전화번호</dt><dd style={{ margin: 0 }}>{a.phone || "-"}</dd>
+                <dt>휴대폰 번호</dt><dd style={{ margin: 0 }}>{a.phone || "-"}</dd>
                 <dt>교육 이수</dt><dd style={{ margin: 0 }}>{a.edu === "yes" ? "네 (수료)" : "아니요"}</dd>
                 {a.recommenders && (<><dt>추천인</dt><dd style={{ margin: 0, overflowWrap: "anywhere" }}>{a.recommenders}</dd></>)}
                 <dt>지금 구분</dt><dd style={{ margin: 0 }}>{a.kind || "-"}</dd>

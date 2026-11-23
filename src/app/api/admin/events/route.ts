@@ -72,7 +72,7 @@ export async function POST(req: Request) {
   // 유형 템플릿: 날짜만 골랐으면 템플릿 시작 시각, 끝을 비웠으면 템플릿 진행 시간만큼
   const tpl = parsed.data.useTemplate ? (await readTemplates())[type] : undefined;
   if (parsed.data.useTemplate && !tpl) return bad(`${type} 템플릿이 없어요. 템플릿 없이 만들어 주세요.`);
-  if (tpl && !startsAt) return bad("템플릿으로 만들려면 시작 날짜를 골라 주세요(세부일정 날짜를 맞춰요).");
+  if (tpl && !startsAt) return bad("템플릿으로 만들려면 시작 날짜를 골라 주세요(세부 일정 날짜를 맞춰요).");
   const tt = tpl ? templateTimes(tpl, startsAt, endsAt) : null;
   if (tt) ({ startsAt, endsAt } = tt);
   const allowed = creatableTypes(g.s.perms);
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
   if (allowed && !allowed.includes(type) && !(forClub && allowed.includes("클럽"))) return bad(`${type} 일정을 만들 권한이 없어요. 만들 수 있는 일정: ${allowed.join(", ")}`, 403);
   if (startsAt && endsAt && endsAt < startsAt) return bad("끝나는 일시가 시작 일시보다 빨라요.");
   const photoLimit = parsed.data.photoLimit ? String(Number(parsed.data.photoLimit)) : "";
-  if (photoLimit && (Number(photoLimit) < 1 || Number(photoLimit) > MAX_PHOTO_LIMIT)) return bad(`사진 최대 장수는 1~${MAX_PHOTO_LIMIT}장으로 정해 주세요.`);
+  if (photoLimit && (Number(photoLimit) < 1 || Number(photoLimit) > MAX_PHOTO_LIMIT)) return bad(`사진 최대 장수는 1장에서 ${MAX_PHOTO_LIMIT}장 사이로 정해 주세요.`);
   const club = type === "클럽" || forClub ? (parsed.data.club ?? "").trim() : "";
   // 클럽 일정은 클럽이 꼭 있어야 한다(없으면 그 클럽의 일정관리에 안 보이고, 누구나 참석 신청할 수 있게 된다)
   if (type === "클럽" && !club) return bad("어느 클럽 일정인지 골라 주세요.");

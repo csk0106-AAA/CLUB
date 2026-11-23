@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
 import { applyInput, autoName, carInput, carpoolState, cars, conflict, freeFor, inputPeople, newCar, seatOwner, selfOf, timeIssue, toRow } from "@/lib/carpool";
-import { carRequests, REQ_LABEL } from "@/lib/car-requests";
+import { carRequests, ownerMoved, REQ_LABEL } from "@/lib/car-requests";
 import { askOwnerInfo, notifyNewCar, runCarpoolDue } from "@/lib/car-auto";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -60,13 +60,14 @@ export async function POST(req: Request, ctx: Ctx) {
   // 그룹명을 비우면 차량번호 → 운전자 이름 → "카풀 N조"
   if (car.kind === "member" && !car.ownerId) return bad("회원 차량은 차량모집 지원 회원을 골라 주세요.");
   if (car.ownerId && !members.some((m) => m.id === car.ownerId)) return bad("지원 회원이 명단에 없어요.");
-  await seatOwner(existing, car); // 지원 회원이 운전하지 않으면 탑승자로 먼저
+  const freed = await seatOwner(existing, car); // 지원 회원이 운전하지 않으면 탑승자로 먼저
   if (!car.name) car.name = autoName(car, existing, (mid) => names.get(mid) ?? "");
   const order = timeIssue(car);
   if (order) return bad(order);
   const why = conflict(existing, car, names);
   if (why) return bad(why, 409);
   const row = await s.insert("Carpools", { eventId: id, ...toRow(car) });
+  await ownerMoved(id, car.ownerId, freed); // 지원 회원이 타던 다른 차의 자리는 그 차 대기자에게
   await notifyNewCar(id, car.name); // 차량신청 중이면 차 없는 참석자에게 "새 차량"
   await askOwnerInfo(id, car); // 지원 회원이 있고 빈 칸이 있으면 채워 달라고
   return NextResponse.json({ id: row.id });

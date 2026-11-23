@@ -64,7 +64,7 @@ export class NeonStore implements Store {
     const key = `${tab}|${omit.join(",")}|${w ? w.field + "=" + w.in.join(",") : ""}`;
     const now = Date.now();
     let hit = this.cache.get(key);
-    if (!hit || now - hit.at > 2000) {
+    if (!hit || now - hit.at > 2000 || opts?.fresh) {
       const cols = omit.length ? `data - $2::text[] AS data` : "data";
       const params: unknown[] = [tab];
       if (omit.length) params.push(omit);

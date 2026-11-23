@@ -47,7 +47,7 @@ export function EventDuplicate({ ev, variant = "list" }: { ev: { id: string; nam
           <div><label className="l" htmlFor="dup-name">새 일정 이름</label><input id="dup-name" className="field" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div><label className="l" htmlFor="dup-start">시작 일시</label><DateField id="dup-start" mode="datetime" value={startsAt} onChange={setStartsAt} /></div>
           <span className="small">
-            일정 정보·회비 설정·세부일정·준비목록·비용 항목·활동을 복사해 <b>공개전</b> 일정으로 만들어요. 시작 날짜를 바꾸면 세부일정·활동 시간·회비 마감일도 그만큼 옮겨요.
+            일정 정보·회비 설정·세부 일정·준비목록·비용 항목·활동을 복사해 <b>공개전</b> 일정으로 만들어요. 시작 날짜를 바꾸면 세부 일정·활동 시간·회비 마감일도 그만큼 옮겨요.
             참석 신청·입금·사진·조편성·차량배정·숙소배정·회의록은 복사하지 않아요.
           </span>
           <button className="btn" type="button" disabled={busy || !name.trim()} style={{ width: "auto", minWidth: 160, alignSelf: "flex-start" }} onClick={run}>{busy ? "복제하는 중…" : "복제하기"}</button>

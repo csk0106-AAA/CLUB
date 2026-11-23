@@ -58,12 +58,12 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 const body = z.object({
-  action: z.enum(["draw", "pause", "resume", "extend", "skip", "reveal", "tips"]),
+  action: z.enum(["draw", "pause", "resume", "extend", "skip", "reveal", "tips", "end"]),
   category: z.enum(CATEGORIES).optional(),
   minutes: z.number().int().min(1).max(120).optional(),
 });
 
-// 진행자 버튼: 고민 뽑기(카테고리 지정 가능), 일시정지, 재개, 연장, 건너뛰기, 이름 오픈, AI 관점
+// 진행자 버튼: 고민 뽑기(카테고리 지정 가능), 일시정지, 재개, 연장, 건너뛰기, 이름 오픈, AI 관점, 활동 마치기
 export async function POST(req: Request, ctx: Ctx) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;

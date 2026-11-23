@@ -26,7 +26,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const m = await mineOpen(ctx, g.s.mid);
   if ("err" in m) return m.err;
   const parsed = worryBody.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return bad("고민은 2~500자로 적고, 카테고리와 익명 여부를 골라 주세요.");
+  if (!parsed.success) return bad("고민은 2자에서 500자로 적고, 카테고리와 익명 여부를 골라 주세요.");
   await (await getStore()).update("Worries", m.row!.id, {
     body: parsed.data.body, category: parsed.data.category, anonymous: String(parsed.data.anonymous), updatedAt: new Date().toISOString(),
   });

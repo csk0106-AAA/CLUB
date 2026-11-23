@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ aid: string }> };
 
 const tripText = (days: string): string => {
-  // 화면 표시용: "2026/12/11" 또는 "2026/12/11 ~ 2026/12/12"
+  // 화면 표시용: "2026/12/11" 또는 "2026/12/11부터 2026/12/12까지"
   const ds = days.split(",").map((d) => d.trim().slice(0, 10)).filter(Boolean).sort().map((d) => d.replace(/-/g, "/"));
   if (ds.length === 0) return "";
-  return ds.length === 1 ? ds[0] : `${ds[0]} ~ ${ds[ds.length - 1]}`;
+  return ds.length === 1 ? ds[0] : `${ds[0]}부터 ${ds[ds.length - 1]}까지`;
 };
 
 // 사전 추측 목록: 승인된 소개만, 별칭으로만 보여 준다. 본인 글은 제외한다.
@@ -52,13 +52,13 @@ export async function GET(_req: Request, ctx: Ctx) {
     }))
     .sort((a, b) => a.alias.localeCompare(b.alias, "ko"));
 
-  // 후보: 회원 명단. 졸업여행(워크숍) 참석자에게는 라벨과 날짜를 붙인다.
+  // 후보: 회원 명단. 워크숍(여러 날 일정) 참석자에게는 라벨과 날짜를 붙인다.
   const isTrip = w.ev.type === "워크숍";
   const candidates = members
     .filter((m) => !isGuest(m.kind) && m.id !== g.s.mid && (!join || join.has(m.id)))
     .map((m) => {
       const a = applies.find((x) => x.eventId === w.ev.id && x.memberId === m.id && x.answer === "참석");
-      return { id: m.id, name: m.name, trip: isTrip && a ? `졸업여행 참석자 · ${tripText(a.days)}`.replace(/ · $/, "") : "" };
+      return { id: m.id, name: m.name, trip: isTrip && a ? `일정 참석자 · ${tripText(a.days)}`.replace(/ · $/, "") : "" };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
   return NextResponse.json({ guess: gs, targets, candidates });

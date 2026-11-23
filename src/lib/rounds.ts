@@ -205,6 +205,8 @@ export async function memberRound(act: Row, ev: Row, memberId: string, cfg: Temp
     s.list("Profiles"), s.list("TruthLies"), s.list("Votes"), s.list("Members"), liveRow(aid),
   ]);
   const view = liveView(cfg, live);
+  // 활동을 마쳤으면(회원 화면 진행이 꺼짐) 마지막 소개를 진행 중으로 보이지 않는다
+  if (!view.active) return null;
   const target = cur.targetMemberId;
   const state = cur.state as RoundState;
   const tl = tls.find((t) => t.memberId === target && t.eventActivityId === aid);

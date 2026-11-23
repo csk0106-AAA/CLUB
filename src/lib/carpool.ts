@@ -96,6 +96,8 @@ export const carInput = z.object({
   ownerId: z.string().max(80).optional(), // 관리자가 등록할 때: 차량을 지원한 회원(그 회원이 직접 고칠 수 있다)
   go: legInput.optional(), back: legInput.optional(),
   leg: z.enum(LEGS).optional(), from: text(60), departAt: text(40), to: text(60), arriveAt: text(40), riders: z.array(z.string()).max(45).optional(),
+  // 관리자 화면이 보고 있던 탑승자(구간별). 그사이 회원이 잡은 자리는 이 명단에 없으니 빼지 않고 그대로 둔다(lib 아님, carpool/[cid] PATCH)
+  seen: z.object({ go: z.array(z.string()).max(45).optional(), back: z.array(z.string()).max(45).optional() }).optional(),
 });
 export type CarInput = z.infer<typeof carInput>;
 
@@ -228,7 +230,7 @@ export function conflict(all: Car[], next: Car, names: Map<string, string>): str
 const key = (eventId: string) => `carpool:${eventId}`;
 // published: 확정(회원에게 보임) · open: 차량신청 받기
 // recruitOn/recruitUntil: 차량모집(회원이 자기 차를 등록) — 마감 시각이 지나면 차량신청이 자동으로 열린다
-// waitUntil: 차량신청 마감 — 지나면 신청을 받지 않는다(확정은 관리자가 "확정(알림)", 그때 남은 대기는 마감)
+// waitUntil: 차량신청 마감 — 지나면 신청을 받지 않고 그때의 배정으로 자동 마감(남은 대기도 마감). 관리자배정은 "배정 완료 (알림)"
 // recruitDone/confirmDone: 그 시각의 자동 처리를 마쳤는지(lib/car-auto.ts)
 // recruitFrom/openFrom: 차량모집·차량신청 시작 시각(비우면 켜는 순간부터). recruitStarted/openStarted: 시작 알림을 보냈는지
 export type CarpoolState = {
@@ -297,9 +299,11 @@ export function missingInfo(c: Car): string[] {
 
 // 지원 회원이 운전하지 않으면(다른 회원·외부 사람이 운전) 지원 회원을 그 차 탑승자로 먼저 넣는다(운행하는 구간마다).
 // 같은 구간의 다른 차에 타고 있었으면 거기서 뺀다(그 차는 저장). 지원 회원이 직접 운전하면 탑승자에서 뺀다.
-export async function seatOwner(others: Car[], car: Car): Promise<void> {
+// 뺀 차·구간을 돌려준다(부르는 쪽에서 lib/car-requests.ts ownerMoved 로 그 자리에 대기자를 올린다).
+export async function seatOwner(others: Car[], car: Car): Promise<{ id: string; dir: Dir }[]> {
   const mid = car.ownerId;
-  if (!mid) return;
+  const freed: { id: string; dir: Dir }[] = [];
+  if (!mid) return freed;
   const s = await getStore();
   for (const d of DIRS) {
     if (car.driverId === mid || !car[d].on) {
@@ -310,6 +314,8 @@ export async function seatOwner(others: Car[], car: Car): Promise<void> {
     for (const o of others.filter((x) => x.id !== car.id && x[d].riders.includes(mid))) {
       o[d].riders = o[d].riders.filter((x) => x !== mid);
       await s.update("Carpools", o.id, toRow(o));
+      freed.push({ id: o.id, dir: d });
     }
   }
+  return freed;
 }

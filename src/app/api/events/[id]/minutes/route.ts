@@ -4,6 +4,8 @@ import { eventVisible } from "@/lib/audience";
 import { minutesData, zodMessage, type MinutesData } from "@/lib/board";
 import { AGENDA_LABELS_KEY, type AgendaLabels } from "@/lib/club";
 import { normType } from "@/lib/event-types";
+import { lockedFor } from "@/lib/event-visibility";
+import { canPreviewEvent } from "@/lib/event-preview";
 import { effectivePerms, getPermGroups } from "@/lib/perms";
 import { getSetting, getStore } from "@/lib/store";
 import type { Row } from "@/lib/store/types";
@@ -26,7 +28,13 @@ async function load(id: string) {
   const canEdit = ["all", "events"].some((p) => perms.includes(p));
   const e = events.find((x) => x.id === id && (canEdit || eventVisible(x, me)));
   if (!e) return { err: bad("일정을 찾을 수 없어요.", 404) };
-  return { e, canEdit };
+  // 회의록이 미응답·불참에게 닫혀 있으면(lib/event-visibility.ts) 참석한 회원·관리하는 사람만 본다
+  let locked = false;
+  if (!canEdit && lockedFor(e, false).includes("minutes")) {
+    const going = (await s.list("EventApplies", { where: { field: "eventId", in: [id] } })).some((x) => x.memberId === g.s.mid && x.answer === "참석");
+    locked = !going && !(await canPreviewEvent(e, me, g.s.mid));
+  }
+  return { e, canEdit, locked };
 }
 
 // 저장된 회의록(없으면 빈 회의록). 일시·장소가 비어 있으면 일정의 시간·장소를 쓴다.
@@ -42,6 +50,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const r = await load(id);
   if ("err" in r) return r.err;
   if (normType(r.e.type) !== "회의") return bad("회의 일정에만 회의록이 있어요.");
+  if (r.locked) return NextResponse.json({ error: "회의록은 참석 신청하면 볼 수 있어요.", locked: true }, { status: 403 });
   return NextResponse.json({ minutes: view(r.e), canEdit: r.canEdit, labels: await getSetting<AgendaLabels>(AGENDA_LABELS_KEY, {}) });
 }
 

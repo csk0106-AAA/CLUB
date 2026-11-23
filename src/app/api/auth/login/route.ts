@@ -13,7 +13,7 @@ const body = z.object({ memberId: z.string().min(1), code: z.string().min(1).max
 
 export async function POST(req: Request) {
   const parsed = body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "이름과 PIN(처음이면 연락처 뒷자리 4자리)을 입력해 주세요." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "이름과 PIN(처음이면 휴대폰 번호 뒷자리 4자리)을 입력해 주세요." }, { status: 400 });
   const { memberId, code } = parsed.data;
 
   const wait = await failWait(memberId);
@@ -62,14 +62,14 @@ async function login(memberId: string, code: string) {
   if (!pinActive()) {
     // PIN 적용 전(2026-12-12 전): 예전 방식 — 개인 초대코드(연락처 뒷자리 4자리)로 바로 로그인
     const expected = await loginCode(member);
-    if (!expected || c !== expected) return (await hostLogin()) ?? failed(member, memberId, "초대코드가 맞지 않아요. 연락처 뒷자리 4자리를 확인해 주세요.");
+    if (!expected || c !== expected) return (await hostLogin()) ?? failed(member, memberId, "초대코드가 맞지 않아요. 휴대폰 번호 뒷자리 4자리를 확인해 주세요.");
   } else if (pins.member) {
     // PIN 을 만든 회원: PIN 으로만 로그인(연락처 4자리는 더 쓰지 않는다)
     if (!verifyPin(c, pins.member)) return (await hostLogin()) ?? failed(member, memberId, "PIN 이 맞지 않아요. PIN 을 잊었다면 아래 “PIN을 잊었어요”를 눌러 주세요.");
   } else {
     // 아직 PIN 이 없는 회원: 개인 초대코드(연락처 뒷자리 4자리, 없으면 공통 초대코드)를 확인하고 PIN 을 만들게 한다(세션은 PIN 을 만든 뒤)
     const expected = await loginCode(member);
-    if (!expected || c !== expected) return (await hostLogin()) ?? failed(member, memberId, "초대코드가 맞지 않아요. 처음 로그인이면 연락처 뒷자리 4자리를 넣어 주세요.");
+    if (!expected || c !== expected) return (await hostLogin()) ?? failed(member, memberId, "초대코드가 맞지 않아요. 처음 로그인이면 휴대폰 번호 뒷자리 4자리를 넣어 주세요.");
     if (isWithdrawn(member.kind)) return withdrawnRes();
     await failClear(memberId);
     return NextResponse.json({ needPin: true, name: member.name });

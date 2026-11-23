@@ -37,7 +37,7 @@ export function PinChange() {
             <div><label className="l" htmlFor="pin-cur">지금 PIN</label><PasswordField id="pin-cur" inputMode="numeric" autoComplete="current-password" value={cur} onChange={setCur} /></div>
             <div><label className="l" htmlFor="pin-new">새 PIN (숫자 6자리)</label><PasswordField id="pin-new" inputMode="numeric" autoComplete="new-password" value={pin} onChange={setPin} /></div>
             <div><label className="l" htmlFor="pin-new2">새 PIN 한 번 더</label><PasswordField id="pin-new2" inputMode="numeric" autoComplete="new-password" value={pin2} onChange={setPin2} /></div>
-            <span className="small" style={{ fontSize: fs(12) }}>같은 숫자 반복, 123456 같은 연속 숫자, 연락처 뒷자리 4자리가 들어간 번호, 관리자용 PIN 과 같은 번호는 쓸 수 없어요.</span>
+            <span className="small" style={{ fontSize: fs(12) }}>같은 숫자 반복, 123456 같은 연속 숫자, 휴대폰 번호 뒷자리 4자리가 들어간 번호, 관리자용 PIN 과 같은 번호는 쓸 수 없어요.</span>
             <div className="row" style={{ gap: 8 }}>
               <button className="btn" type="submit" disabled={busy || !cur || pin.length !== 6 || pin2.length !== 6} style={{ flex: "1 1 0" }}>{busy ? "바꾸는 중…" : "바꾸기"}</button>
               <button className="btn white" type="button" disabled={busy} style={{ flex: "1 1 0" }} onClick={() => { setOpen(false); setMsg(null); }}>취소</button>

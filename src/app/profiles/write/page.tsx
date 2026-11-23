@@ -49,7 +49,7 @@ export default function ProfileWritePage() {
         </div>
       ) : (
         <>
-          <p className="small" style={{ margin: 0, fontSize: fs(13) }}>AI와의 인터뷰를 통해 나를 소개하세요. 다 쓰고 배포하면 프로필 북에 내 이름과 함께 보여요.</p>
+          <p className="small" style={{ margin: 0, fontSize: fs(13) }}>AI와의 인터뷰를 통해 나를 소개하세요. 다 쓰고 공개하면 프로필 북에 내 이름과 함께 보여요.</p>
           {sajuTabOn(st) && (
             <div className="seg" role="tablist" aria-label="내 소개 메뉴">
               <button type="button" role="tab" aria-selected={tab === "write"} onClick={() => setTab("write")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(인터뷰)</button>

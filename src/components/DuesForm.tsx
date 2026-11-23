@@ -26,7 +26,7 @@ const ymd = (d: string) => d.replace(/-/g, "/");
 // 입금 기한 한 줄(lib/dues.ts duesDueLabel 과 같은 규칙)
 export function dueLabel(d: DuesValue): string {
   if (d.period === "monthly") return d.monthDay ? `매월 ${d.monthDay}일까지` : "";
-  if (d.periodStart && d.periodEnd) return `${ymd(d.periodStart)} ~ ${ymd(d.periodEnd)}`;
+  if (d.periodStart && d.periodEnd) return `${ymd(d.periodStart)}부터 ${ymd(d.periodEnd)}까지`;
   if (d.periodEnd) return `${ymd(d.periodEnd)}까지`;
   if (d.periodStart) return `${ymd(d.periodStart)}부터`;
   return "";

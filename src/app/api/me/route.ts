@@ -117,7 +117,7 @@ export async function PATCH(req: Request) {
   }
   if (d.phone !== undefined) {
     const p = formatPhone(d.phone);
-    if (!p) return bad("휴대폰 번호는 숫자 10~11자리로 적어 주세요.");
+    if (!p) return bad("휴대폰 번호는 숫자 10자리나 11자리로 적어 주세요.");
     if (p !== (me.phone ?? "")) {
       upd.phone = p;
       edits.push({ field: "phone", fromNow: me.phone ?? "", to: p });

@@ -98,7 +98,7 @@ export default function LoginPage() {
   async function forgot() {
     if (!memberId) return setForgotMsg("먼저 이름을 골라 주세요.");
     const r = await fetch("/api/auth/pin-forgot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberId }) });
-    setForgotMsg(r.ok ? "관리자에게 PIN 초기화를 요청했어요. 초기화되면 연락처 뒷자리 4자리로 들어와 새 PIN 을 만들어 주세요." : "요청하지 못했어요. 잠시 후 다시 눌러 주세요.");
+    setForgotMsg(r.ok ? "관리자에게 PIN 초기화를 요청했어요. 초기화되면 휴대폰 번호 뒷자리 4자리로 들어와 새 PIN 을 만들어 주세요." : "요청하지 못했어요. 잠시 후 다시 눌러 주세요.");
   }
 
   // 로그인 마친 뒤 이동
@@ -145,11 +145,11 @@ export default function LoginPage() {
         <form onSubmit={savePin} style={{ display: "contents" }}>
           <div className="msg info" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <b>{setupName} 님, 로그인 PIN 을 만들어 주세요</b>
-            <span>앞으로는 연락처 뒷자리 대신 이 PIN 으로 로그인해요. 숫자 6자리로 정해 주세요.</span>
+            <span>앞으로는 휴대폰 번호 뒷자리 대신 이 PIN 으로 로그인해요. 숫자 6자리로 정해 주세요.</span>
           </div>
           <div><label className="l" htmlFor="pn">새 PIN (숫자 6자리)</label><PasswordField id="pn" inputMode="numeric" autoComplete="new-password" value={pin} onChange={setPin} /></div>
           <div><label className="l" htmlFor="pn2">새 PIN 한 번 더</label><PasswordField id="pn2" inputMode="numeric" autoComplete="new-password" value={pin2} onChange={setPin2} /></div>
-          <p className="hint">같은 숫자 반복(000000), 연속 숫자(123456), 연락처 뒷자리 4자리가 들어간 번호는 쓸 수 없어요. PIN 은 관리자도 볼 수 없어요.</p>
+          <p className="hint">같은 숫자 반복(000000), 연속 숫자(123456), 휴대폰 번호 뒷자리 4자리가 들어간 번호는 쓸 수 없어요. PIN 은 관리자도 볼 수 없어요.</p>
           {error && <div className="msg bad" role="alert">{error}</div>}
           <div className="footer-actions" style={{ marginTop: 4 }}>
             <button className="btn" type="submit" disabled={busy || pin.length !== 6 || pin2.length !== 6}>{busy ? "저장 중…" : "PIN 만들고 들어가기"}</button>
@@ -164,11 +164,16 @@ export default function LoginPage() {
             <NameSearch id="nm" members={club.members} value={memberId} onChange={setMemberId} />
           </div>
           <div>
-            <label className="l" htmlFor="cd">{club.pinOn ? "PIN (처음 로그인이면 연락처 뒷자리 4자리)" : "초대코드 (내 연락처 뒷자리 4자리)"}</label>
+            <label className="l" htmlFor="cd">{club.pinOn ? "PIN (처음 로그인이면 휴대폰 번호 뒷자리 4자리)" : "휴대폰 번호 뒷자리 4자리"}</label>
             <PasswordField id="cd" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} />
           </div>
-          {club.pinOn ? <p className="hint">처음 로그인하면 연락처 뒷자리 4자리로 들어와 나만의 6자리 PIN 을 만들어요. 그다음부터는 PIN 으로 로그인해요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 진행자라면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 5번 틀리면 15분 동안 잠겨요.</p>
-            : <p className="hint">진행자로 지정되었다면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5번 틀리면 15분 동안 잠겨요.</p>}
+          {club.pinOn ? <p className="hint">처음 로그인하면 휴대폰 번호 뒷자리 4자리로 들어와 나만의 6자리 PIN 을 만들어요. 그다음부터는 PIN 으로 로그인해요. 휴대폰 번호가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 진행자라면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 5번 틀리면 15분 동안 잠겨요.</p>
+            : <>
+                <p className="hint">처음이면 휴대폰 번호 뒷자리 4자리를 넣어 주세요. 5번 틀리면 15분 잠겨요.</p>
+                <details className="small"><summary style={{ cursor: "pointer" }}>번호가 없거나 진행자라면</summary>
+                  <p className="hint" style={{ marginTop: 6 }}>휴대폰 번호가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 진행자는 받은 진행자 접속번호를 넣으면 진행 화면으로 들어가요.</p>
+                </details>
+              </>}
           {club.pinOn && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={forgot}>PIN을 잊었어요</button>}
           {forgotMsg && <p className="small" role="status" style={{ margin: 0 }}>{forgotMsg}</p>}
           {error && <div className="msg bad" role="alert">{error}</div>}

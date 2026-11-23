@@ -43,7 +43,7 @@ export function EventTemplateSave({ eventId, type }: { eventId: string; type: st
       <div className="row" style={{ flexWrap: "wrap" }}>
         <span className="small grow" style={{ minWidth: 200 }}>
           {tpl ? <>지금 {type} 템플릿: <b>{tpl.fromName}</b>{isThis ? " (이 일정)" : ""} · {tpl.savedAt.slice(0, 10)} 저장</> : `${type} 템플릿이 아직 없어요.`}
-          {" "}템플릿으로 저장하면 일정 만들기에서 {type}을 고를 때 세부일정·활동·준비목록·비용·회비·안내가 채워져요.
+          {" "}템플릿으로 저장하면 일정 만들기에서 {type}을 고를 때 세부 일정·활동·준비목록·비용·회비·안내가 채워져요.
         </span>
         <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }} onClick={save}>
           {isThis ? "템플릿 다시 저장" : `${type} 템플릿으로 저장`}

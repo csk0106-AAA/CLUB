@@ -111,7 +111,7 @@ function CarForm({ idp, v, set, members }: { idp: string; v: Form; set: (p: Part
 
 // 차량 배정 보드: 갈 때/올 때 탭 → 차량 카드(요약 + 탑승자) + 맨 끝 "배정 대기"(차 없는 참석자).
 // 이름을 끌어서 차에 놓거나 이름 옆 선택 상자로 옮기면 바로 저장된다. 회원 신청(승인 대기·대기)은 차 카드 안에서 승인·반려.
-// 다 정했으면 "확정"을 눌러야 회원에게 알림이 가고 일정 화면에 보인다.
+// 차량신청 마감 시각이 되면 그때의 배정으로 자동 마감돼 회원에게 안내된다. 관리자배정이면 "배정 완료 (알림)"을 눌러야 알림이 간다.
 export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: boolean }) {
   const base = `/api/admin/events/${eventId}/carpool`;
   const [d, setD] = useState<Data | null>(null);
@@ -171,12 +171,13 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     setPick(null);
     const src = d.cars.find((c) => c.id === from);
     if (src) {
-      const r = await api(`${base}/${src.id}`, { method: "PATCH", body: { [dir]: { riders: src[dir].riders.filter((x) => x !== mid) } } });
+      const r = await api(`${base}/${src.id}`, { method: "PATCH", body: { [dir]: { riders: src[dir].riders.filter((x) => x !== mid) }, seen: { [dir]: src[dir].riders } } });
       if (!r.ok) { setBusy(false); setNote({ tone: "bad", text: r.error }); return load(); }
     }
     if (target) {
-      const r = await api(`${base}/${target.id}`, { method: "PATCH", body: { [dir]: { riders: [...target[dir].riders, mid] } } });
+      const r = await api<{ kept?: string[] }>(`${base}/${target.id}`, { method: "PATCH", body: { [dir]: { riders: [...target[dir].riders, mid] }, seen: { [dir]: target[dir].riders } } });
       if (!r.ok) setNote({ tone: "bad", text: r.error });
+      else if (r.data.kept?.length) setNote({ tone: "info", text: keptText(r.data.kept).trim() });
     }
     setBusy(false);
     load();
@@ -187,7 +188,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     if (!r.ok) return load();
     const target = r.data.cars.find((c) => c.id === to);
     if (target) {
-      const p = await api(`${base}/${target.id}`, { method: "PATCH", body: { [dir]: { riders: [...target[dir].riders, mid] } } });
+      const p = await api(`${base}/${target.id}`, { method: "PATCH", body: { [dir]: { riders: [...target[dir].riders, mid] }, seen: { [dir]: target[dir].riders } } });
       if (!p.ok) setNote({ tone: "bad", text: p.error });
     }
     load();
@@ -199,21 +200,25 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     setBusy(true);
     setNote(null);
     for (const src of d.cars.filter((c) => c.id !== carId && c[dir].riders.some((m) => mids.includes(m)))) {
-      const r = await api(`${base}/${src.id}`, { method: "PATCH", body: { [dir]: { riders: src[dir].riders.filter((m) => !mids.includes(m)) } } });
+      const r = await api(`${base}/${src.id}`, { method: "PATCH", body: { [dir]: { riders: src[dir].riders.filter((m) => !mids.includes(m)) }, seen: { [dir]: src[dir].riders } } });
       if (!r.ok) { setBusy(false); setNote({ tone: "bad", text: r.error }); return load(); }
     }
-    const r = await api(`${base}/${carId}`, { method: "PATCH", body: { [dir]: { riders: [...target[dir].riders, ...mids.filter((m) => !target[dir].riders.includes(m))] } } });
+    const r = await api<{ kept?: string[] }>(`${base}/${carId}`, { method: "PATCH", body: { [dir]: { riders: [...target[dir].riders, ...mids.filter((m) => !target[dir].riders.includes(m))] }, seen: { [dir]: target[dir].riders } } });
     setBusy(false);
-    setNote(r.ok ? { tone: "info", text: `${target.name}에 ${mids.length}명을 넣었어요. 다 정했으면 “확정”을 눌러 주세요.` } : { tone: "bad", text: r.error });
+    setNote(r.ok ? { tone: "info", text: `${target.name}에 ${mids.length}명을 넣었어요.${keptText(r.data.kept)}${doneHint()}` } : { tone: "bad", text: r.error });
     setAdding(null);
     load();
   }
+  // 관리자배정이면 다 정한 뒤 "배정 완료 (알림)"을 눌러야 안내된다(차량신청은 마감 때 자동)
+  // 그사이 회원이 잡은 자리를 그대로 뒀다는 안내
+  const keptText = (kept?: string[]) => (kept?.length ? ` 그사이 ${kept.join(", ")} 님이 이 차를 신청해서 그대로 뒀어요.` : "");
+  const doneHint = () => (d?.adminOnly ? " 다 정했으면 아래 “배정 완료 (알림)”을 눌러 주세요." : "");
   async function decide(reqId: string, action: "approve" | "reject") {
     if (action === "reject" && !window.confirm("이 신청을 반려할까요? 회원에게 알림이 가요.")) return;
     setBusy(true);
     const r = await api(`${base}/publish`, { body: { action, reqId } });
     setBusy(false);
-    setNote(r.ok ? { tone: "info", text: action === "approve" ? "승인했어요. 탑승자에 넣었어요. 다 정했으면 아래 “확정”을 눌러 주세요." : "반려했어요." } : { tone: "bad", text: r.error });
+    setNote(r.ok ? { tone: "info", text: action === "approve" ? `승인했어요. 탑승자에 넣었어요.${doneHint()}` : "반려했어요." } : { tone: "bad", text: r.error });
     load();
   }
   async function act(action: "publish" | "unpublish" | "auto") {
@@ -221,7 +226,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     const r = await api<{ added?: number; told?: number }>(`${base}/publish`, { body: { action } });
     setBusy(false);
     if (!r.ok) setNote({ tone: "bad", text: r.error });
-    else setNote({ tone: "info", text: action === "auto" ? `빈 좌석에 ${r.data.added ?? 0}자리를 채웠어요. 확인하고 “확정”을 눌러 주세요.` : action === "publish" ? `확정했어요. ${r.data.told ?? 0}명에게 확정 알림을 보냈어요.` : "확정을 취소했어요. 확정됐던 분들은 \"확정 전\"으로 돌아갔어요. 다시 \"확정 (알림)\"을 누르면 다시 안내돼요." });
+    else setNote({ tone: "info", text: action === "auto" ? `빈 좌석에 ${r.data.added ?? 0}자리를 채웠어요. 확인해 주세요.${doneHint()}` : action === "publish" ? `확정했어요. ${r.data.told ?? 0}명에게 확정 알림을 보냈어요.` : "확정을 취소했어요. 확정됐던 분들은 \"확정 전\"으로 돌아갔어요. 다시 “배정 완료 (알림)”을 누르면 다시 안내돼요." });
     load();
   }
   async function saveForm(e: React.FormEvent) {
@@ -232,7 +237,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
     setFormErr("");
     const r = form.id === "new"
       ? await api(base, { body: carBody(form.v) })
-      : await api(`${base}/${form.id}`, { method: "PATCH", body: carBody(form.v) });
+      : await api(`${base}/${form.id}`, { method: "PATCH", body: { ...carBody(form.v), seen: ((c) => (c ? { go: c.go.riders, back: c.back.riders } : undefined))(d?.cars.find((x) => x.id === form.id)) } });
     if (!r.ok) return setFormErr(r.error);
     setNote({ tone: "info", text: form.id === "new" ? "차량을 등록했어요. 이름을 끌어서 탑승자를 넣어 주세요." : "차량 정보를 저장했어요." });
     setForm(null);
@@ -302,31 +307,33 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             <div className="checks"><label><input type="checkbox" checked={setting.recruitOn} disabled={setting.adminOnly} onChange={(e) => setSetting({ ...setting, recruitOn: e.target.checked })} />차량모집</label></div>
             <span className="grow" />
-            {/* 시작 ~ 마감(시작을 비우면 저장하는 순간부터) */}
+            {/* 시작부터 마감까지(시작을 비우면 저장하는 순간부터) */}
             <div className="cp-range">
               <div aria-label="차량모집 시작 일시"><DateField id="cp-rec-from" mode="datetime" ariaLabel="차량모집 시작" value={setting.recruitFrom} onChange={(v) => setSetting({ ...setting, recruitFrom: v })} /></div>
-              <span aria-hidden="true">~</span>
+              <span aria-hidden="true">부터</span>
               <div aria-label="차량모집 마감 일시"><DateField id="cp-rec" mode="datetime" ariaLabel="차량모집 마감" value={setting.recruitUntil} onChange={(v) => setSetting({ ...setting, recruitUntil: v })} /></div>
+              <span aria-hidden="true">까지</span>
             </div>
           </div>
-          <span className="small">켜면 참석자에게 알림이 가고, 차를 가져오실 분이 일정 화면 “내 차로 지원하기”로 직접 등록해요(운전자·좌석·출발지·메모). 시작을 비우면 저장하는 순간부터예요. 차량신청을 따로 켜지 않으면 차량모집 마감 때 차량신청이 열려요.</span>
-          {/* 차량신청 · 시작~마감 일시(오른쪽). 확정은 관리자가 "확정(알림)" */}
+          <span className="small">켜면 참석자에게 알림이 가고, 차를 가져오실 분이 “내 차로 지원하기”로 등록해요. 시작을 비우면 저장할 때부터이고, 마감되면 차량신청이 열려요.</span>
+          {/* 차량신청 · 시작부터 마감까지 일시(오른쪽). 마감 시각에 자동 마감·안내 */}
           <div className="row" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 10 }}>
             <div className="checks"><label><input type="checkbox" checked={setting.open} disabled={setting.adminOnly} onChange={(e) => setSetting({ ...setting, open: e.target.checked })} />차량신청</label></div>
             <span className="grow" />
             <div className="cp-range">
               <div aria-label="차량신청 시작 일시"><DateField id="cp-open-from" mode="datetime" ariaLabel="차량신청 시작" value={setting.openFrom} onChange={(v) => setSetting({ ...setting, openFrom: v })} /></div>
-              <span aria-hidden="true">~</span>
+              <span aria-hidden="true">부터</span>
               <div aria-label="차량신청 마감 일시"><DateField id="cp-wait" mode="datetime" ariaLabel="차량신청 마감" value={setting.waitUntil} onChange={(v) => setSetting({ ...setting, waitUntil: v })} /></div>
+              <span aria-hidden="true">까지</span>
             </div>
           </div>
-          <span className="small">승인 없이 자리가 있으면 바로 배정되고, 정원이 차면 대기로 받아요. 자리가 나면 대기 1번이 자동으로 들어가요. 마감 시각이 되면 신청이 닫히고 관리자에게 알림이 가요. <b>최종 확정은 아래 “확정 (알림)”</b>을 눌러야 탑승자·운전자에게 안내돼요(일정 3일 전까지 확정하지 않으면 다시 알려 드려요). 차량모집 마감 전에 시작하면 그때까지 등록된 차로 먼저 받고, 나중에 등록되는 차는 바로 더해지고 차 없는 참석자에게 알림이 가요.</span>
+          <span className="small">자리가 있으면 바로 배정되고, 정원이 차면 대기 순서대로 들어가요. <b>마감 시각에 그때의 배정으로 자동 마감</b>되고 탑승자·운전자에게 안내돼요. 차량모집 마감 전에 시작하면 그때까지 등록된 차로 먼저 받고, 나중에 등록되는 차는 바로 더해져 차 없는 참석자에게 알림이 가요.</span>
           {/* 관리자배정: 차량모집·차량신청 없이 관리자가 모두 등록·배정(켜면 둘은 꺼지고 누를 수 없어요) */}
           <div className="row" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 10 }}>
             <div className="checks"><label><input type="checkbox" checked={setting.adminOnly}
               onChange={(e) => setSetting({ ...setting, adminOnly: e.target.checked, ...(e.target.checked ? { recruitOn: false, open: false } : {}) })} />관리자배정</label></div>
           </div>
-          <span className="small">차량모집·차량신청 없이 관리자가 차량을 모두 등록하고 배정해요. 회원에게는 “관리자가 차량을 배정 중입니다”가 보이고, “확정 (알림)”을 누르면 배정 정보가 보여요.</span>
+          <span className="small">관리자가 차량을 모두 등록하고 배정해요. “배정 완료 (알림)”을 누르면 회원에게 배정이 보여요. 일정 3일 전까지 누르지 않으면 다시 알려 드려요.</span>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <button type="button" className="btn" style={{ width: "auto", minHeight: 42, fontSize: fs(14) }}
               disabled={setting.open === d.open && setting.waitUntil === d.waitUntil && setting.recruitOn === d.recruitOn && setting.recruitUntil === d.recruitUntil && setting.recruitFrom === (d.recruitFrom ?? "") && setting.openFrom === (d.openFrom ?? "") && setting.adminOnly === !!d.adminOnly} onClick={saveSetting}>저장</button>
@@ -337,7 +344,7 @@ export function CarpoolPanel({ eventId, canEdit }: { eventId: string; canEdit: b
       {/* 배정 방법 안내 */}
       {canEdit && d.cars.length > 0 && (
         <div className="msg info" style={{ fontSize: fs(13) }}>
-          <b>관리자가 직접 배정할 때</b> · 위 “배정 대기”의 이름을 <b>눌러서 고른 뒤 차 카드의 “넣기”</b>를 누르거나, 이름을 <b>끌어서 차 카드에 놓으면</b> 바로 저장돼요(명단은 스크롤해도 위에 붙어 있어요). 회원이 신청하면 자리가 있을 때 바로 배정돼요. 다 정했으면 맨 아래 <b>“확정 (알림)”</b>을 눌러야 탑승자·운전자에게 확정 안내가 가요.
+          <b>관리자가 직접 배정할 때</b> · 위 “배정 대기”의 이름을 <b>눌러서 고른 뒤 차 카드의 “넣기”</b>를 누르거나, 이름을 <b>끌어서 차 카드에 놓으면</b> 바로 저장돼요(명단은 스크롤해도 위에 붙어 있어요). {d.adminOnly ? <>다 정했으면 맨 아래 <b>“배정 완료 (알림)”</b>을 눌러야 탑승자·운전자에게 안내가 가요.</> : <>회원이 신청하면 자리가 있을 때 바로 배정돼요. 차량신청 마감 시각이 되면 그때의 배정으로 자동 안내돼요.</>}
         </div>
       )}
 

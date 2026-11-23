@@ -22,7 +22,7 @@ function Posts() {
   if (!list) return <p className="small">불러오는 중이에요…</p>;
   const count = (k: "all" | P["status"]) => (k === "all" ? list.length : list.filter((p) => p.status === k).length);
   const shown = list.filter((p) => filter === "all" || p.status === filter);
-  const period = (p: P) => (!p.postFrom && !p.postUntil ? "계속 게시" : `${p.postFrom ? fmtDateTime(p.postFrom) : "올린 때"} ~ ${p.postUntil ? fmtDateTime(p.postUntil) : "계속"}`);
+  const period = (p: P) => (!p.postFrom && !p.postUntil ? "계속 게시" : `${p.postFrom ? fmtDateTime(p.postFrom) : "올린 때"}부터 ${p.postUntil ? fmtDateTime(p.postUntil) : "계속"}`);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <span className="small">게시 기간이 지난 글도 모두 보여요. 회원 게시판에는 “게시 중”인 글만 보여요. 글을 누르면 열어 봐요. 게시 종료·게시 전 글은 “다시 게시”에서 게시 기간·내용을 고치고, 투표·좋아요·댓글을 초기화할지 골라 다시 올릴 수 있어요.</span>

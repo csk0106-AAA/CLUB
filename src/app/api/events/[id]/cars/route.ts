@@ -3,7 +3,7 @@ import { lockedFor } from "@/lib/event-visibility";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { eventVisible } from "@/lib/audience";
-import { cancelRequest, carRequests, dropCar, leaveCar, markSeen, REQ_LABEL, requestSeat, setSelf, visibleRiders, waitClosed } from "@/lib/car-requests";
+import { cancelRequest, carRequests, dropCar, leaveCar, markSeen, ownerMoved, promoteCar, REQ_LABEL, requestSeat, setSelf, visibleRiders, waitClosed } from "@/lib/car-requests";
 import { applyInput, autoName, carInput, carpoolState, cars, conflict, crewLabel, selfOf, missingInfo, seatOwner, DIR_LABEL, DIRS, driverLabel, driverSeat, legSeats, newCar, recruiting, requestsOpen, timeIssue, toRow, type Car } from "@/lib/carpool";
 import { askOwnerInfo, notifyNewCar, runCarpoolDue } from "@/lib/car-auto";
 import { addAlerts } from "@/lib/member-alerts";
@@ -156,7 +156,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!d.carId || !d.dir) return bad("차량과 구간을 골라 주세요.");
   const r = await requestSeat(id, g.s.mid, d.carId, d.dir);
   if ("error" in r) return bad(r.error, 409);
-  return NextResponse.json({ ok: true, status: r.status });
+  return NextResponse.json({ ok: true, status: r.status, message: "message" in r ? r.message ?? "" : "" });
 }
 
 // 차량모집 지원(회원이 자기 차를 등록): 모집 기간에만 등록, 차량신청 마감 전까지 수정·지원 취소.
@@ -194,11 +194,12 @@ async function offer(eventId: string, mid: string, attending: boolean, d: z.infe
     if (mineCar) return bad("이미 지원한 차량이 있어요. 수정해 주세요.", 409);
     const car = applyInput({ ...newCar(), ownerId: mid }, { ...input, go: { ...input.go, riders: [] }, back: { ...input.back, riders: [] } });
     if (!car.driverId && !car.driverName.trim()) return bad("운전자를 정해 주세요.");
-    await seatOwner(all, car);
+    const freed = await seatOwner(all, car);
     if (!car.name) car.name = autoName(car, all, (x) => names.get(x) ?? "");
     const why = timeIssue(car) ?? conflict(all, car, names);
     if (why) return bad(why, 409);
     await s.insert("Carpools", { eventId, ...toRow(car) });
+    await ownerMoved(eventId, mid, freed); // 지원 회원이 타던 다른 차의 자리는 그 차 대기자에게
     await notifyNewCar(eventId, car.name, mid); // 차량신청이 먼저 열렸으면 차 없는 참석자에게 "새 차량"
     await askOwnerInfo(eventId, car); // 빈 칸이 있으면 채워 달라고
     await addAlerts(managers, { eventId, text: `${nm(mid)} 님이 ${ev?.name ?? "일정"} 차량을 지원했어요(${car.name}, ${(["go", "back"] as const).filter((x) => car[x].on).map((x) => `${DIR_LABEL[x]} ${legSeats(car, x)}석`).join(" · ")}).`, href: `/admin/events/${eventId}?tab=car` });
@@ -208,11 +209,13 @@ async function offer(eventId: string, mid: string, attending: boolean, d: z.infe
   if (!mineCar) return bad("지원한 차량이 없어요.", 404);
   const next = applyInput(mineCar, { ...input, go: input.go ? { ...input.go, riders: undefined } : undefined, back: input.back ? { ...input.back, riders: undefined } : undefined });
   if (!next.driverId && !next.driverName.trim()) return bad("운전자를 정해 주세요.");
-  await seatOwner(all.filter((c) => c.id !== mineCar.id), next);
+  const freed = await seatOwner(all.filter((c) => c.id !== mineCar.id), next);
   if (!next.name) next.name = autoName(next, all, (x) => names.get(x) ?? "");
   const why = timeIssue(next) ?? conflict(all, next, names);
   if (why) return bad(why, 409);
   await s.update("Carpools", mineCar.id, toRow(next));
+  await ownerMoved(eventId, mid, freed);
+  await promoteCar(eventId, next); // 좌석을 늘렸으면 대기자를 올린다
   return NextResponse.json({ ok: true });
 }
 

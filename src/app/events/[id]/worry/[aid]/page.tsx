@@ -139,11 +139,11 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       <ActivitySaju aid={aid} />
       <div className="say">
         <Mascot size={32} />
-        <p className="lead">고민이나 조언을 구하고 싶은 질문을 <b>1개 이상, 최대 {d.max}개</b>까지 적어 주세요. 꼭 {d.max}개를 다 쓰지 않아도 돼요. 고민마다 <b>실명</b>과 <b>익명</b>을 따로 고를 수 있어요. 일정에서 뽑힌 고민은 큰 화면에 내용만 먼저 나오고, 실명 고민은 진행자가 이름을 공개해요. 익명 고민은 “익명”으로 나오고, 원하면 그때 직접 밝힐 수 있어요.</p>
+        <p className="lead">조언을 구하고 싶은 고민을 <b>최대 {d.max}개</b>까지 적어 주세요. 고민마다 <b>실명</b>이나 <b>익명</b>을 고를 수 있어요.</p>
       </div>
       <ActionNote msg={note} />
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
-      {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(d.pre.opensAt)} ~ ${fmtDateTime(d.pre.closesAt)} 예요.` : ""}</div>}
+      {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(d.pre.opensAt)}부터 ${fmtDateTime(d.pre.closesAt)}까지예요.` : ""}</div>}
 
       {d.mine.length > 0 && (
         <section aria-labelledby="w-mine" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -196,7 +196,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
             <span className="hint num" style={{ fontSize: fs(12), display: "block", textAlign: "right" }}>{body.length}/500자</span>
             {(polishing || pmsg) && <p className="small" role="status" style={{ margin: "4px 0 0", color: before !== null ? "var(--accent-ink)" : undefined }}>{polishing ? "AI가 문맥을 보고 오타를 다듬는 중이에요…" : pmsg}</p>}
             {before !== null && <button className="mini" type="button" style={{ marginTop: 6 }} disabled={busy || polishing} onClick={() => { setBody(before); setBefore(null); setPmsg("다듬기 전 글로 되돌렸어요."); }}>다듬기 전으로</button>}
-            <span className="hint" style={{ fontSize: fs(12), display: "block", marginTop: 6 }}>고민 칸을 누르면 나오는 키보드의 🎤(마이크) 버튼을 누르고 말씀하시면 글자로 받아 적어요. 저장을 누르면 AI가 오타를 먼저 다듬어 보여 드려요. 고민은 큰 화면에 나오니 실명이나 회사 이름은 쓰지 않는 게 좋아요.</span>
+            <span className="hint" style={{ fontSize: fs(12), display: "block", marginTop: 6 }}>키보드의 🎤 버튼으로 말해서 적을 수도 있어요. 큰 화면에 나오니 실명이나 회사 이름은 쓰지 않는 게 좋아요.</span>
           </div>
           <div>
             <label className="l" htmlFor="w-cat">카테고리</label>

@@ -110,7 +110,7 @@ const ymd = (d: string) => d.replace(/-/g, "/");
 // 입금 기한 한 줄: 연회비 "2026/01/01 ~ 2026/12/30", 월회비 "매월 10일까지"
 export function duesDueLabel(d: Pick<Dues, "period" | "periodStart" | "periodEnd" | "monthDay">): string {
   if (d.period === "monthly") return d.monthDay ? `매월 ${d.monthDay}일까지` : "";
-  if (d.periodStart && d.periodEnd) return `${ymd(d.periodStart)} ~ ${ymd(d.periodEnd)}`;
+  if (d.periodStart && d.periodEnd) return `${ymd(d.periodStart)}부터 ${ymd(d.periodEnd)}까지`;
   if (d.periodEnd) return `${ymd(d.periodEnd)}까지`;
   if (d.periodStart) return `${ymd(d.periodStart)}부터`;
   return "";

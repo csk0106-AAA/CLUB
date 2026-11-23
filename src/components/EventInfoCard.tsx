@@ -49,8 +49,8 @@ export function feeLines(ev: InfoEvent, fee: FeeView): InfoLine[] {
   const account = accountText(ev);
   if (fee.kind === "rules") {
     const one = oneFee(fee.rules);
-    if (one) out.push({ icon: "💰", label: "참가비", value: won(one) });
-    else if (fee.rules.length) out.push({ icon: "💰", label: "참가비", value: "앱 접속 후 내 회비 확인" });
+    if (one) out.push({ icon: "💰", label: "회비", value: won(one) });
+    else if (fee.rules.length) out.push({ icon: "💰", label: "회비", value: "앱 접속 후 내 회비 확인" });
     if (fee.rules.length && ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: fmtDate(ev.feeDeadline) });
     if (one && account) out.push({ icon: "🏦", label: "계좌", value: account });
   } else if (fee.fee) {
@@ -176,7 +176,7 @@ export function EventPreview({ ev, rules, actNames, schedule, dayPlaces }: { ev:
         </Fold>
       )}
       {hasFee && (
-        <Fold title="내 참가비" defaultOpen>
+        <Fold title="내 회비" defaultOpen>
           <FeeDetail ev={ev} fee={fee} />
           {rules.length > 0 && !oneFee(rules) && <span className="small" style={{ color: "var(--sub)" }}>회원마다 회비가 달라요. 회원 화면에는 본인 금액만 보여요(참석자에게는 계좌도).</span>}
         </Fold>

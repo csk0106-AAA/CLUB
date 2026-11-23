@@ -182,7 +182,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
   }
   const STEP_TEXT = ["", "원국과 오행, 성격·성향을 풀이하고 있어요", "대운 10년 흐름을 풀이하고 있어요", "성격·관계·건강·일·재물을 풀이하고 있어요"];
   const progress = step > 0 && (
-    <div className="msg info" role="status">명리 풀이를 만들고 있어요 ({step}/3) · {STEP_TEXT[step]}. 단계마다 1~3분쯤 걸려요. 이 화면을 닫지 말아 주세요.</div>
+    <div className="msg info" role="status">명리 풀이를 만들고 있어요 ({step}/3) · {STEP_TEXT[step]}. 단계마다 1분에서 3분쯤 걸려요. 이 화면을 닫지 말아 주세요.</div>
   );
 
   const ready = (memberGender || gender) && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!timeKnown || /^\d{2}:\d{2}$/.test(time));
@@ -195,7 +195,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
           <b>이렇게 쓰여요</b>
           <span className="t">
             소개 페이지 맨 끝에는 <u>명리학으로 본 성격과 성향</u>만 실려요
-            {published ? "(소개가 이미 배포돼 있어서, 만든 뒤 읽어 보고 직접 “소개 페이지에 싣기”를 눌러야 공개돼요)" : "(원하지 않으면 소개 페이지에서 뺄 수 있어요)"}.
+            {published ? "(소개가 이미 공개돼 있어서, 만든 뒤 읽어 보고 직접 “소개 페이지에 싣기”를 눌러야 공개돼요)" : "(원하지 않으면 소개 페이지에서 뺄 수 있어요)"}.
             건강·재물·직업·연애·결혼·인간관계를 담은 생애주기 전체 풀이는 나만 볼 수 있어요.
             입력한 생년월일과 태어난 시간은 생애주기 풀이 첫머리에 나만 볼 수 있게 함께 보관하고, 다른 회원과 관리자에게는 보이지 않아요. 풀이를 지우면 함께 지워져요.
           </span>
@@ -311,7 +311,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
   // 풀이가 있음: 성격·성향(공개) + 생애주기 풀이(나만)
   // published: 소개가 이미 배포됐는지. 배포 뒤에는 "싣기"를 누르는 순간 다른 회원에게 보인다.
   const state = r.traitsShown
-    ? published ? { tone: "ok", text: "소개 페이지에 공개 중" } : { tone: "ok", text: "최종 배포하면 소개 페이지 맨 끝에 실려요" }
+    ? published ? { tone: "ok", text: "소개 페이지에 공개 중" } : { tone: "ok", text: "최종 공개하면 소개 페이지 맨 끝에 실려요" }
     : { tone: "warn", text: "아직 공개되지 않았어요" };
   return (
     <section aria-label="명리학 풀이" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -322,7 +322,7 @@ export function SajuPanel({ aid, r, canWrite, published = false, onChanged, base
         </div>
         <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.75 }}>{r.traitsMd}</p>
         {!r.traitsShown && published && (
-          <span className="small">소개가 이미 배포돼 있어서 바로 공개하지 않았어요. 읽어 보고 괜찮으면 “소개 페이지에 싣기”를 눌러 주세요. 누르면 바로 다른 회원에게 보여요.</span>
+          <span className="small">소개가 이미 공개돼 있어서 바로 공개하지 않았어요. 읽어 보고 괜찮으면 “소개 페이지에 싣기”를 눌러 주세요. 누르면 바로 다른 회원에게 보여요.</span>
         )}
         <div className="row" style={{ flexWrap: "wrap" }}>
           {r.traitsShown ? (

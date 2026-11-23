@@ -155,7 +155,7 @@ export default function SettingsPage() {
   async function saveInfo(e: React.FormEvent) {
     e.preventDefault();
     if (!me || !infoChanged) return;
-    if (phoneChanged && !phoneOk) return setNote({ tone: "bad", text: "휴대폰 번호는 숫자 10~11자리로 적어 주세요." });
+    if (phoneChanged && !phoneOk) return setNote({ tone: "bad", text: "휴대폰 번호는 숫자 10자리나 11자리로 적어 주세요." });
     if (phoneChanged && !window.confirm(`다음 로그인부터 초대코드가 ${phoneDigits.slice(-4)}로 바뀌어요.\n저장할까요?`)) return;
     const body: Record<string, string> = {};
     if (form.company.trim() !== me.company) body.company = form.company.trim();
@@ -231,7 +231,7 @@ export default function SettingsPage() {
             {note && <div className={`msg ${note.tone === "bad" ? "bad" : "ok"}`}>{note.text}</div>}
           </div>
 
-          {/* 회원 정보: 회원구분·신청 상태, 회원 권한 수정(승인 요청), 회원 탈퇴 */}
+          {/* 회원 정보: 회원구분·신청 상태, 회원 권한 수정(승인 요청). 회원 탈퇴는 맨 아래 */}
           <MemberStatusBox />
 
           {/* 1. 내 정보 */}
@@ -265,7 +265,7 @@ export default function SettingsPage() {
                 <input id="f-ti" className="field" maxLength={40} autoComplete="organization-title" placeholder="예: 대표" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               </div>
               <div>
-                <label className="l" htmlFor="f-ph">핸드폰번호</label>
+                <label className="l" htmlFor="f-ph">휴대폰 번호</label>
                 <input
                   id="f-ph" className="field" inputMode="tel" autoComplete="tel" placeholder="010-1234-5678" maxLength={20}
                   aria-describedby="f-ph-d" aria-invalid={phoneChanged && !phoneOk}
@@ -273,10 +273,10 @@ export default function SettingsPage() {
                 />
                 <span id="f-ph-d" className="small" style={{ display: "block", marginTop: 4 }}>
                   {phoneChanged && !phoneOk
-                    ? "숫자 10~11자리로 적어 주세요."
+                    ? "숫자 10자리나 11자리로 적어 주세요."
                     : phoneChanged
                       ? `저장하면 다음 로그인부터 초대코드가 ${phoneDigits.slice(-4)}로 바뀌어요.`
-                      : "초대코드(로그인 번호)는 핸드폰번호 뒷자리 4자리예요."}
+                      : "초대코드(로그인 번호)는 휴대폰 번호 뒷자리 4자리예요."}
                 </span>
               </div>
               {phoneChanged && phoneOk && (
@@ -377,7 +377,7 @@ export default function SettingsPage() {
                   <button key={k} type="button" role="radio" aria-checked={pr.mapApp === k} aria-pressed={pr.mapApp === k} onClick={() => { if (pr.mapApp !== k) { writeMapPref(k); savePrefs({ mapApp: k }); } }}>{label}</button>
                 ))}
               </div>
-              <span className="small" style={{ fontSize: fs(12) }}>{pr.mapApp === "ask" ? "일정 장소·세부일정 위치 등에서 “지도 보기”를 누르면 구글 지도와 네이버 지도 중 고를 수 있어요." : `“지도 보기”를 누르면 바로 ${pr.mapApp === "google" ? "구글 지도" : "네이버 지도"}로 열려요.`}</span>
+              <span className="small" style={{ fontSize: fs(12) }}>{pr.mapApp === "ask" ? "일정 장소·세부 일정 위치 등에서 “지도 보기”를 누르면 구글 지도와 네이버 지도 중 고를 수 있어요." : `“지도 보기”를 누르면 바로 ${pr.mapApp === "google" ? "구글 지도" : "네이버 지도"}로 열려요.`}</span>
             </div>
           </section>
 
@@ -401,10 +401,10 @@ export default function SettingsPage() {
               {SCALE_LEVELS.map((_, i) => <span key={i} aria-current={scale === i + 1}>{i + 1}</span>)}
             </div>
             <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-start" }}>
-              <span className="small grow" style={{ fontSize: fs(12) }}>1 작게 · 5 보통 · 10 크게. 글자와 아이콘만 커지거나 작아지고 화면 너비·창 크기는 그대로예요. 띠를 끌다가 손을 떼면 화면 전체에 적용되고, 이 기기에만 저장돼요.</span>
+              <span className="small grow" style={{ fontSize: fs(12) }}>1 작게 · 5 보통 · 10 크게. 글자와 아이콘만 바뀌고, 이 기기에만 저장돼요.</span>
               {applied !== SCALE_DEFAULT && <button className="mini" type="button" onClick={() => { setScale(SCALE_DEFAULT); commitScale(SCALE_DEFAULT); }}>보통으로</button>}
             </div>
-            <span className="small" style={{ fontSize: fs(12) }}>폭이 좁은 휴대폰(400px 미만)에서는 글자가 넘치지 않게 8단계(130%)보다 크게는 키우지 않아요. 하단 메뉴 글자는 칸에 맞게 조금만 커져요. PC 에서는 앱 화면 오른쪽 가장자리의 손잡이를 끌어 화면 너비도 바꿀 수 있어요(두 번 누르면 원래대로).</span>
+            <span className="small" style={{ fontSize: fs(12) }}>좁은 휴대폰에서는 8단계까지만 커져요. PC 에서는 화면 오른쪽 가장자리 손잡이를 끌어 너비도 바꿀 수 있어요.</span>
             </div>
           </section>
 
@@ -455,15 +455,15 @@ export default function SettingsPage() {
               <div className="sect-body" style={{ paddingTop: 0, paddingBottom: 12 }}>
                 {device === "off"
                   ? <button type="button" className="btn white" style={{ minHeight: 44, fontSize: fs(14) }} onClick={turnOnDevice}>이 기기에서 휴대폰 알림 받기</button>
-                  : <span className="small" style={{ fontSize: fs(12) }}>이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 아래 “홈 화면에 추가” 방법대로 설치한 앱에서 켜 주세요. 하단 아이콘 숫자는 그대로 보여요.</span>}
+                  : <span className="small" style={{ fontSize: fs(12) }}>이 브라우저에서는 휴대폰 알림을 받을 수 없어요. iPhone 은 “홈 화면에 추가”로 설치한 앱에서 켜 주세요.</span>}
               </div>
             )}
             <Switch id="sw-sound" label="소리" sub={pr.notifyOn ? undefined : "알림을 켜면 고를 수 있어요"} on={pr.sound} disabled={!pr.notifyOn} onChange={(v) => savePrefs({ sound: v })} />
-            <Switch id="sw-quiet" label="방해 금지 시간" sub={pr.notifyOn ? (pr.quiet.on ? `${pr.quiet.from} ~ ${pr.quiet.to}에는 알림을 보내지 않아요` : "이 시간에는 알림을 보내지 않아요") : "알림을 켜면 고를 수 있어요"} on={pr.quiet.on} disabled={!pr.notifyOn} onChange={(v) => savePrefs({ quiet: { on: v } })} />
+            <Switch id="sw-quiet" label="방해 금지 시간" sub={pr.notifyOn ? (pr.quiet.on ? `${pr.quiet.from}부터 ${pr.quiet.to}까지는 알림을 보내지 않아요` : "이 시간에는 알림을 보내지 않아요") : "알림을 켜면 고를 수 있어요"} on={pr.quiet.on} disabled={!pr.notifyOn} onChange={(v) => savePrefs({ quiet: { on: v } })} />
             {pr.quiet.on && (
               <div className="timerange sect-body" role="group" aria-label="방해 금지 시간" style={{ flexDirection: "row", paddingTop: 0, paddingBottom: 12 }}>
                 <input type="time" className="field" aria-label="시작 시각" value={pr.quiet.from} onChange={(e) => e.target.value && savePrefs({ quiet: { from: e.target.value } })} />
-                <span aria-hidden="true">~</span>
+                <span aria-hidden="true">부터</span>
                 <input type="time" className="field" aria-label="끝 시각" value={pr.quiet.to} onChange={(e) => e.target.value && savePrefs({ quiet: { to: e.target.value } })} />
               </div>
             )}
@@ -472,6 +472,9 @@ export default function SettingsPage() {
 
           {/* 5. 홈 화면에 추가(앱처럼 설치) */}
           <AddToHome />
+
+          {/* 맨 아래: 회원 탈퇴(작은 링크) */}
+          <MemberStatusBox leaveOnly />
         </>
       )}
       <MemberTabs on="settings" />

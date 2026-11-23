@@ -323,8 +323,9 @@ export function PostEditor({ initial, onDone, onCancel, onDirty, repost }: {
             {periodOn && (
               <div className="cp-range">
                 <div><DateField id={`${uid}-pf`} mode="datetime" ariaLabel="게시 시작" value={postFrom} onChange={touch(setPostFrom)} /></div>
-                <span aria-hidden="true">~</span>
+                <span aria-hidden="true">부터</span>
                 <div><DateField id={`${uid}-pu`} mode="datetime" ariaLabel="게시 종료" value={postUntil} onChange={touch(setPostUntil)} /></div>
+                <span aria-hidden="true">까지</span>
               </div>
             )}
             <span className="small">{periodOn ? "시작을 비우면 올리는 순간부터예요. 종료 일시가 지나면 회원 게시판에서 보이지 않고, 관리자 › 게시글관리에서 볼 수 있어요." : "기간 없이 계속 게시해요."}</span>

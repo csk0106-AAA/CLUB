@@ -47,7 +47,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (pre.status !== "open") return bad(`${WHY[pre.status]}${periodText(pre)}`, 403);
 
   const parsed = worryBody.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return bad("고민은 2~500자로 적고, 카테고리와 익명 여부를 골라 주세요.");
+  if (!parsed.success) return bad("고민은 2자에서 500자로 적고, 카테고리와 익명 여부를 골라 주세요.");
   const mine = (await worryRows(aid)).filter((x) => x.memberId === g.s.mid);
   if (mine.length >= MAX_WORRIES) return bad(`고민은 ${MAX_WORRIES}개까지 적을 수 있어요.`);
 

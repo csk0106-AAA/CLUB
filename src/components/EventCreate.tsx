@@ -128,7 +128,7 @@ export function EventCreate({ open, onClose, unlocked, fixedClub, clubs, allowed
               <input id="n-tpl" type="checkbox" checked={useTpl} onChange={(e) => setUseTpl(e.target.checked)} />
               {type} 템플릿으로 채우기
             </label>
-            <span className="small">“{tpl.fromName}”의 세부일정 {tpl.counts.schedule}개 · 활동 {tpl.counts.activities}개 · 준비목록 {tpl.counts.prep}개 · 비용 {tpl.counts.costs}개, 회비·안내·공개 범위를 복사해요. 날짜는 시작 날짜에 맞춰 옮겨요.</span>
+            <span className="small">“{tpl.fromName}”의 세부 일정 {tpl.counts.schedule}개 · 활동 {tpl.counts.activities}개 · 준비목록 {tpl.counts.prep}개 · 비용 {tpl.counts.costs}개, 회비·안내·공개 범위를 복사해요. 날짜는 시작 날짜에 맞춰 옮겨요.</span>
             {withTpl && <span className="small">시작 날짜를 꼭 골라 주세요. 날짜만 고르면 시각은 템플릿과 같게, 끝나는 일시를 비우면 템플릿과 같은 기간으로 정해져요.</span>}
           </div>
         )}

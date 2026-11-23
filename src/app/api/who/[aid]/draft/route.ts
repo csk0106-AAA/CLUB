@@ -25,7 +25,7 @@ export async function POST(_req: Request, ctx: Ctx) {
 
   const s = await getStore();
   const profile = await myProfile(g.s.mid);
-  if (profile?.introStatus === "approved") return bad("승인된 소개가 있어요. 승인을 취소한 뒤 다시 만들 수 있어요.", 409);
+  if (profile?.introStatus === "approved") return bad("공개한 소개가 있어요. 공개를 취소한 뒤 다시 만들 수 있어요.", 409);
   const iv = await myInterview(g.s.mid, aid);
   const row = iv.row;
   if (!row || row.status !== "done") return bad("인터뷰를 끝낸 뒤에 소개 글을 만들 수 있어요.");
@@ -114,13 +114,13 @@ export async function PUT(req: Request, ctx: Ctx) {
   const closed = writeClosed(w) ?? (await writeGate(w, g.s.mid));
   if (closed) return closed;
   const parsed = save.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return bad("입력값을 확인해 주세요. 거짓 번호는 1~3번 중 하나예요.");
+  if (!parsed.success) return bad("입력값을 확인해 주세요. 거짓 번호는 1번에서 3번 중 하나예요.");
   const d = parsed.data;
 
   const s = await getStore();
   const profile = await myProfile(g.s.mid);
   if (!profile) return bad("소개 글을 먼저 만들어 주세요.");
-  if (profile.introStatus === "approved") return bad("승인을 취소한 뒤 고칠 수 있어요.", 409);
+  if (profile.introStatus === "approved") return bad("공개를 취소한 뒤 고칠 수 있어요.", 409);
 
   const now = new Date().toISOString();
   await s.update("Profiles", profile.id, { draftMd: d.introMd, introStatus: d.introMd.trim() ? "draft" : "none", updatedAt: now });

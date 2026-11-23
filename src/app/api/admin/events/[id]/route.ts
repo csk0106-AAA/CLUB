@@ -5,7 +5,7 @@ import { z } from "zod";
 import { bad, canDeleteEvent, guardEv } from "@/lib/api";
 import { deleteEventCascade } from "@/lib/event-delete";
 import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
-import { audienceInput, inClubOrObserver, readObservers } from "@/lib/audience";
+import { audienceInput, inClubOrObserver, readAudience, readObservers } from "@/lib/audience";
 import { clubLeaders, readAllClubInfo } from "@/lib/clubs";
 import { clubPayAccount, duesAccount, readDues } from "@/lib/dues";
 import { getLists, memberClubs } from "@/lib/lists";
@@ -133,7 +133,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const parsed = patch.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요. 회비는 숫자만 넣어 주세요.");
   const { published, pinned, feeRules: rules, audience, showPrep, showCosts, supports, photoLimit, visibility, ...rest } = parsed.data;
-  if (photoLimit && (Number(photoLimit) < 1 || Number(photoLimit) > MAX_PHOTO_LIMIT)) return bad(`사진 최대 장수는 1~${MAX_PHOTO_LIMIT}장으로 정해 주세요.`);
+  if (photoLimit && (Number(photoLimit) < 1 || Number(photoLimit) > MAX_PHOTO_LIMIT)) return bad(`사진 최대 장수는 1장에서 ${MAX_PHOTO_LIMIT}장 사이로 정해 주세요.`);
   const s = await getStore();
   const before = (await s.list("Events")).find((e) => e.id === id);
   if (!before) return bad("일정을 찾을 수 없어요.", 404);
@@ -162,7 +162,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
   // 회원에게 공개된 일정이 새로 공개되거나 내용이 바뀌면 알림(배지·휴대폰)
   // (진행 상태·맨 위 고정만 바꾼 것은 알리지 않는다)
   // (회원에게 보이기 설정만 바꾼 것도 알리지 않는다)
-  const changed = Object.keys(parsed.data).some((k) => !["status", "pinned", "showPrep", "showCosts", "supports", "photoLimit", "visibility"].includes(k));
+  // (보낸 항목이라도 값이 그대로면 알리지 않는다: 임시 저장·회비 저장·기본 회비로 정하기 등에서 같은 값을 다시 보내도 조용히)
+  const norm = (k: string, v: string | undefined) =>
+    k === "feeRules" ? JSON.stringify(readRules(v)) : k === "audience" ? JSON.stringify(readAudience(v)) : String(v ?? "");
+  const changed = Object.keys(parsed.data).some((k) =>
+    !["status", "pinned", "showPrep", "showCosts", "supports", "photoLimit", "visibility", "approval"].includes(k) &&
+    norm(k, (row as Record<string, string | undefined>)[k]) !== norm(k, (before as Record<string, string | undefined>)[k]));
   if (row.published === "true" && changed) {
     await notifyEvent(id, before.published === "true" ? "update" : "new");
   }

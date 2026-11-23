@@ -19,7 +19,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
   const w = await loadWho(aid);
   if (w instanceof NextResponse) return w;
   const parsed = body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return bad("1~3번 중에서 골라 주세요.");
+  if (!parsed.success) return bad("1번에서 3번 중에서 골라 주세요.");
 
   if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) return bad(NOT_ATTENDEE, 403);
   if (!(await canAct(w.cfg, w.act, w.ev, g.s.mid, onsiteKeyOf(w.cfg, "vote")))) return bad(NOT_ACTION, 403);

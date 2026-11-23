@@ -61,7 +61,7 @@ export function MainHeader({ openAlerts = false, onAlertsClosed }: { openAlerts?
 
   // 로그아웃: 로그인 화면으로 돌아가 이름과 초대코드를 다시 넣고 들어올 수 있다.
   async function logout() {
-    if (!window.confirm("로그아웃할까요? 다시 들어오려면 이름과 초대코드(연락처 뒷자리 4자리)를 넣으면 돼요.")) return;
+    if (!window.confirm("로그아웃할까요? 다시 들어오려면 이름과 초대코드(휴대폰 번호 뒷자리 4자리)를 넣으면 돼요.")) return;
     // 로그아웃한 기기로 다른 사람 알림이 가지 않게 이 기기 구독을 푼다.
     await disablePush();
     await api("/api/auth/logout", { method: "POST", body: {} });

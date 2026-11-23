@@ -33,7 +33,7 @@ const BLANK: EditableConfig = {
 
 const hasAi = (c: TemplateConfig) => Object.values(c.aiGuides ?? {}).some((v) => v.trim()) || !!c.aiCommon?.trim() || !!c.interview?.questions?.length;
 const summary = (c: TemplateConfig) =>
-  `${modeOf(c) === "team" ? "팀별 · " : "모두 함께 · "}${canSelect(c) ? "선택 참여 가능 · " : "전체 참여만 · "}${c.preEvent.enabled ? `사전 작성 있음 (일정 ${c.preEvent.opensBeforeDays ?? 14}일 전 ~ ${c.preEvent.closesBeforeDays ?? 1}일 전)` : "현장에서만 진행"} · 현장 ${c.onsite.steps.length}단계`;
+  `${modeOf(c) === "team" ? "팀별 · " : "모두 함께 · "}${canSelect(c) ? "선택 참여 가능 · " : "전체 참여만 · "}${c.preEvent.enabled ? `사전 작성 있음 (일정 ${c.preEvent.opensBeforeDays ?? 14}일 전부터 ${c.preEvent.closesBeforeDays ?? 1}일 전까지)` : "현장에서만 진행"} · 현장 ${c.onsite.steps.length}단계`;
 
 // 기능블록 목록(읽기만): 코드로 만든 기능이라 버전이 없고, 바뀌면 쓰는 모든 활동에 함께 반영된다.
 // 넣고 빼기는 각 활동템플릿의 “기능 블록” 칸에서. 새 블록·고치기·없애기는 여기서 개발 요청으로 남긴다(개발자가 만든다).

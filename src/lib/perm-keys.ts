@@ -26,7 +26,7 @@ export const PERM_LABELS: Record<string, string> = {
 export const PERM_DESC: Record<string, string> = {
   group: "모임개요, 회비관리, 회칙",
   members: "회원구분, 회원명단, 회원신청, 조직도, 권한",
-  events: "모든 일정 만들기와 관리(신청현황·회비·세부일정·조편성·차량배정·숙박·회의록·활동)",
+  events: "모든 일정 만들기와 관리(신청현황·회비·세부 일정·조편성·차량배정·숙박·회의록·활동)",
   clubs: "클럽 목록, 클럽 개요·회원·회비·일정·신청내역",
   templates: "활동 템플릿 만들기·고치기",
   write: "게시글 쓰기, 게시글 양식",

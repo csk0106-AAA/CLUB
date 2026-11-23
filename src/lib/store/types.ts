@@ -3,7 +3,8 @@ import type { TabName } from "./schema";
 export type Row = Record<string, string>;
 
 // 표 읽기 줄이기(DB 전송량): omit 은 빼고 읽을 큰 열(글 본문 등), where 는 이 열 값이 목록 안에 있는 줄만
-export type ListOpts = { omit?: string[]; where?: { field: string; in: string[] } };
+// fresh: 2초 목록 캐시를 거치지 않고 지금 DB 값을 읽는다(자리 잡기처럼 바로 앞의 저장을 꼭 봐야 할 때)
+export type ListOpts = { omit?: string[]; where?: { field: string; in: string[] }; fresh?: boolean };
 
 export interface Store {
   list(tab: TabName, opts?: ListOpts): Promise<Row[]>;

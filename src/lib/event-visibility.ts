@@ -11,7 +11,7 @@ export type Visibility = Record<VisKey, boolean>;
 
 export const VIS_LABEL: Record<VisKey, string> = {
   notice: "안내",
-  schedule: "세부일정",
+  schedule: "세부 일정",
   fee: "회비",
   costs: "비용",
   prep: "준비목록",

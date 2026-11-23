@@ -21,7 +21,8 @@ type Apply = MyApply & { change?: { to: string; label: string } | null; approved
 // 설정 › 회원 정보: 지금 회원구분과 신청 상태, "회원 권한 수정"(관리자 승인 요청), "회원 탈퇴".
 //  회원 권한 수정: 정회원·준회원 → 대기회원으로 변경 / 대기회원 → 정회원 신청 / 참관회원 → 준회원 신청
 //  회원 탈퇴: 확인 창(탈퇴·취소) → 탈퇴하면 바로 로그인 화면으로
-export function MemberStatusBox() {
+// leaveOnly: 설정 맨 아래에 "회원 탈퇴" 작은 링크와 확인 창만 그린다(위쪽 회원 정보에는 탈퇴 버튼을 두지 않는다)
+export function MemberStatusBox({ leaveOnly = false }: { leaveOnly?: boolean } = {}) {
   const router = useRouter();
   const [d, setD] = useState<Apply | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,6 +64,27 @@ export function MemberStatusBox() {
     router.replace("/");
   }
 
+  const leavePopup = (
+      <Popup id="leave" width={420} title="회원 탈퇴" open={leaveOpen} onClose={() => !busy && setLeaveOpen(false)}
+        footer={(
+          <div className="row" style={{ gap: 8, width: "100%" }}>
+            <button className="btn red" type="button" disabled={busy} style={{ flex: 1 }} onClick={leave}>{busy ? "탈퇴하는 중…" : "탈퇴"}</button>
+            <button className="btn white" type="button" disabled={busy} style={{ flex: 1 }} onClick={() => setLeaveOpen(false)}>취소</button>
+          </div>
+        )}>
+        <p style={{ margin: 0, lineHeight: 1.6 }} role="alert">회원을 탈퇴하시면 모든 정보가 삭제되며 로그인 시 재가입을 신청해야 합니다.</p>
+        {note?.tone === "bad" && <div className="msg bad" role="alert" style={{ marginTop: 8 }}>{note.text}</div>}
+      </Popup>
+  );
+  if (leaveOnly) {
+    return (
+      <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+        <button type="button" className="small" disabled={busy} onClick={() => setLeaveOpen(true)}
+          style={{ background: "none", border: 0, color: "var(--red-t)", textDecoration: "underline", cursor: "pointer", padding: 6 }}>회원 탈퇴</button>
+        {leavePopup}
+      </div>
+    );
+  }
   return (
     <section className="sect" id="apply" aria-labelledby="s-member">
       <h2 id="s-member">회원 정보</h2>
@@ -89,7 +111,6 @@ export function MemberStatusBox() {
         {note && <div className={`msg ${note.tone}`} role={note.tone === "bad" ? "alert" : "status"}>{note.text}</div>}
         <div className="row" style={{ gap: 8 }}>
           <button className="btn white" type="button" style={{ flex: 1 }} disabled={busy} aria-expanded={editOpen} onClick={() => setEditOpen(!editOpen)}>회원 권한 수정</button>
-          <button className="btn white" type="button" style={{ flex: 1, color: "var(--red-t)" }} disabled={busy} onClick={() => setLeaveOpen(true)}>회원 탈퇴</button>
         </div>
         {editOpen && (
           <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
@@ -111,15 +132,6 @@ export function MemberStatusBox() {
         )}
       </div>
 
-      <Popup id="leave" width={420} title="회원 탈퇴" open={leaveOpen} onClose={() => !busy && setLeaveOpen(false)}
-        footer={(
-          <div className="row" style={{ gap: 8, width: "100%" }}>
-            <button className="btn red" type="button" disabled={busy} style={{ flex: 1 }} onClick={leave}>{busy ? "탈퇴하는 중…" : "탈퇴"}</button>
-            <button className="btn white" type="button" disabled={busy} style={{ flex: 1 }} onClick={() => setLeaveOpen(false)}>취소</button>
-          </div>
-        )}>
-        <p style={{ margin: 0, lineHeight: 1.6 }} role="alert">회원을 탈퇴하시면 모든 정보가 삭제되며 로그인 시 재가입을 신청해야 합니다.</p>
-      </Popup>
     </section>
   );
 }

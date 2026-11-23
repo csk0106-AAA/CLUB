@@ -10,6 +10,7 @@ type Stage = {
   activity: { id: string; name: string; participants: string };
   buttons?: { draw: string; reveal: string }; // 진행자 버튼 글자(템플릿)
   missingSteps: string[];
+  live?: { active: boolean };
   serverNow: number;
   categories: string[];
   counts: { total: number; drawn: number; remaining: number; byCategory: Record<string, number> };
@@ -18,7 +19,7 @@ type Stage = {
     minutes: number; extendMinutes?: number; nameRevealed: boolean; displayName: string; tips: string[];
   };
 };
-type Action = "draw" | "pause" | "resume" | "extend" | "skip" | "reveal" | "tips";
+type Action = "draw" | "pause" | "resume" | "extend" | "skip" | "reveal" | "tips" | "end";
 
 const fmt = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -31,7 +32,8 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
   const [st, setSt] = useState<Stage | null>(null);
   const [recv, setRecv] = useState(0);
   const [now, setNow] = useState(0);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(""); // 버튼을 눌러 난 오류(다음 버튼을 누를 때까지 그대로)
+  const [loadErr, setLoadErr] = useState(""); // 2초마다 읽기에서 난 오류(다시 읽히면 지운다)
   const [notice, setNotice] = useState(""); // 진행자 없이 관리자가 진행할 때 같은 안내
   const [denied, setDenied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,9 +46,9 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
     if (r.ok) {
       setSt(r.data);
       setRecv(Date.now());
-      setError("");
+      setLoadErr("");
     } else if (r.status === 401 || r.status === 403) setDenied(true);
-    else setError(r.error);
+    else setLoadErr(r.error);
   }, [id, aid]);
 
   useEffect(() => {
@@ -105,6 +107,12 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
     }
   }
 
+  // 활동 마치기: 회원 화면의 '지금 진행 중' 표시를 끈다(남은 고민은 그대로, 다시 뽑으면 이어서 진행)
+  function finish() {
+    if (!window.confirm("활동을 마칠까요? 회원 화면에서 진행 중 표시가 사라져요. 남은 고민은 그대로 있어서 다시 뽑으면 이어서 할 수 있어요.")) return;
+    act("end");
+  }
+
   function fullscreen() {
     const el = wrap.current;
     if (!el) return;
@@ -113,7 +121,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
   }
 
   if (denied) return <HostDenied />;
-  if (!st) return <div className="host">{error ? <p role="alert">{error}</p> : <p className="sub">불러오는 중이에요…</p>}</div>;
+  if (!st) return <div className="host">{error || loadErr ? <p role="alert">{error || loadErr}</p> : <p className="sub">불러오는 중이에요…</p>}</div>;
 
   const c = st.current;
   const drawLabel = st.buttons?.draw ?? "고민 뽑기";
@@ -122,6 +130,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
   const remaining = c ? Math.max(0, c.remainingMs - elapsed) : 0;
   const timeUp = c ? c.timeUp || (!c.paused && remaining <= 0) : false;
   const canDraw = !c || c.nameRevealed;
+  const ended = !c && st.live?.active === false && st.counts.drawn > 0; // 마친 뒤(한 번이라도 뽑은 적이 있고 지금은 꺼짐)
 
   return (
     <div className="host" ref={wrap}>
@@ -135,6 +144,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
       </header>
 
       {error && <div className="msg bad" role="alert">{error}</div>}
+      {loadErr && !error && <div className="msg bad" role="alert">{loadErr}</div>}
       {notice && <div className="msg info" role="status">{notice}</div>}
       {st.missingSteps.length > 0 && <div className="msg bad" role="alert">이 활동의 템플릿에 필요한 단계가 없어요: {st.missingSteps.join(", ")}.</div>}
 
@@ -146,6 +156,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
               <div className="roulette spin" aria-hidden="true">{spin}</div>
             </>
           )}
+          {!spin && !c && ended && <span className="sub" role="status">활동을 마쳤어요. 회원 화면에서 진행 중 표시가 사라졌어요.</span>}
           {!spin && !c && <><h2>“{drawLabel}”를 눌러 주세요</h2><p className="sub" style={{ margin: 0 }}>이미 나온 고민은 다시 나오지 않아요. 남은 고민 {st.counts.remaining}개.</p></>}
           {!spin && c && (
             <>
@@ -194,6 +205,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
         )}
         {c && !c.nameRevealed && <button className="btn blue" type="button" disabled={busy} onClick={() => act("reveal")}>{revealLabel}</button>}
         {c && <button className="btn white" type="button" disabled={busy} onClick={() => act("tips")}>AI 관점 3가지</button>}
+        {(c || st.live?.active) && <button className="btn red" type="button" disabled={busy || !!spin} onClick={finish}>활동 마치기</button>}
       </div>
     </div>
   );

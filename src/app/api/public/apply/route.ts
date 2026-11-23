@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   }
   const d = parsed.data;
   const phone = formatPhone(d.phone);
-  if (!phone) return bad("전화번호는 숫자 10~11자리로 적어 주세요.");
+  if (!phone) return bad("휴대폰 번호는 숫자 10자리나 11자리로 적어 주세요.");
   if (!d.edu && !d.recommenders.replace(/[\s,]/g, "")) return bad("추천인을 1명 이상 적어 주세요.");
 
   const s = await getStore();
@@ -60,8 +60,8 @@ export async function POST(req: Request) {
       message: d.message, source: "rejoin", status: "pending", reason: "", createdAt: now,
       handledBy: "", handledAt: "", fromKind: gone.kind ?? "", toKind: "", resultSeen: "",
       note: sameName
-        ? `탈퇴회원 “${gone.name}” 님과 이름·전화번호가 모두 같아요. 승인하면 탈퇴가 해지돼요.`
-        : `탈퇴회원 “${gone.name}” 님과 전화번호가 같아요(신청 이름: “${d.name}”). 같은 분인지 확인해 주세요.`,
+        ? `탈퇴회원 “${gone.name}” 님과 이름·휴대폰 번호가 모두 같아요. 승인하면 탈퇴가 해지돼요.`
+        : `탈퇴회원 “${gone.name}” 님과 휴대폰 번호가 같아요(신청 이름: “${d.name}”). 같은 분인지 확인해 주세요.`,
     });
     await s.update("Members", gone.id, { extra: withHistory(gone.extra, { at: now, what: "재가입 신청", note: sameName ? "" : `신청 이름: ${d.name}` }) });
     try {
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   // 이미 등록된 전화번호면 새로 만들지 않는다(같은 사람이 두 번 신청하거나 명단에 이미 있는 경우)
   // (누구의 번호인지는 알려 주지 않는다)
   if (members.some((m) => phoneDigits(m.phone) === digits)) {
-    return bad("이미 등록된 전화번호예요. 로그인 화면에서 내 이름을 고르고 전화번호 뒷자리 4자리로 들어가 주세요. 들어가지지 않으면 관리자에게 문의해 주세요.", 409);
+    return bad("이미 등록된 휴대폰 번호예요. 로그인 화면에서 내 이름을 고르고 휴대폰 번호 뒷자리 4자리로 들어가 주세요. 들어가지지 않으면 관리자에게 문의해 주세요.", 409);
   }
 
   const type = d.type as AppType;
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     memberId: member.id, name, phone, type, edu: d.edu ? "yes" : "no", recommenders: d.edu ? "" : d.recommenders,
     message: d.message, source: "signup", status: "pending", reason: "", createdAt: now,
     handledBy: "", handledAt: "", fromKind: "", toKind: "", resultSeen: "",
-    note: gName ? `탈퇴회원 “${gName.name}” 님과 이름이 같아요(전화번호는 달라요). 같은 분이면 이 신청은 반려하고 그 회원을 회원 수정에서 ‘탈퇴 해지’해 주세요.` : "",
+    note: gName ? `탈퇴회원 “${gName.name}” 님과 이름이 같아요(휴대폰 번호는 달라요). 같은 분이면 이 신청은 반려하고 그 회원을 회원 수정에서 ‘탈퇴 해지’해 주세요.` : "",
   });
   try {
     await pushTo(await appHandlers(members), "requests");

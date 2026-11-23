@@ -18,7 +18,7 @@ const HEADER: Record<string, Key> = {
   회사명: "company", 회사: "company", 소속: "company", 직장: "company", 기관: "company", company: "company",
   직위: "title", 직급: "title", title: "title",
   생년월일: "birth", 생일: "birth", 생년: "birth", 출생: "birth", birth: "birth",
-  연락처: "phone", 전화: "phone", 전화번호: "phone", 휴대폰: "phone", 휴대전화: "phone", 핸드폰: "phone", 휴대폰번호: "phone", hp: "phone", phone: "phone", mobile: "phone",
+  연락처: "phone", 전화: "phone", 전화번호: "phone", 휴대폰: "phone", 휴대전화: "phone", 핸드폰: "phone", 휴대폰번호: "phone", "휴대폰 번호": "phone", hp: "phone", phone: "phone", mobile: "phone",
   연령대: "ageGroup", 나이대: "ageGroup",
   교육이수: "edu", 이수: "edu", 교육: "edu",
   메모: "memo", 비고: "memo", memo: "memo",

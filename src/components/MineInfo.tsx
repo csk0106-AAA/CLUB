@@ -13,6 +13,9 @@ type Data = {
   groupsPending?: number;
   // 미응답·불참이라 닫힌 항목 중 이 일정에 실제로 있는 것(groups·rooms·cars) → 잠긴 칸으로 보여 준다
   lockedCards?: string[];
+  // 이 일정이 조편성·숙소 배정을 쓰는지(쓰지 않으면 "배정 전" 안내 칸을 그리지 않는다)
+  usesGroups?: boolean;
+  usesRooms?: boolean;
   rooms: { published: boolean; mine: { date: string; name: string; memo: string; mates: string[]; people?: string[] }[] };
   carpool: { published: boolean; mine: { dir: "go" | "back"; leg: string; name: string; plate: string; from: string; to: string; departAt: string; arriveAt: string; driver: string; iDrive: boolean; riders: string[]; seats: number; people?: string[] }[] };
 };
@@ -61,7 +64,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false, loc
   return (
     <>
       {lockedCard && [...lockedSet].map((k) => <span key={k} style={{ display: "contents" }}>{lockedCard(LOCK_TITLE[k] ?? k)}</span>)}
-      {!lockedSet.has("groups") && d.groups.length === 0 && waitCard("조편성", (d.groupsPending ?? 0) > 0 ? "조편성을 준비하고 있어요. 확정되면 여기에 보여요." : "조 편성 전이에요. 정해지면 여기에 보여요.")}
+      {!lockedSet.has("groups") && d.usesGroups && d.groups.length === 0 && waitCard("조편성", (d.groupsPending ?? 0) > 0 ? "조편성을 준비하고 있어요. 확정되면 여기에 보여요." : "조 편성 전이에요. 정해지면 여기에 보여요.")}
       {/* 조편성: 한 줄 요약(내 조 2팀 · 조원 5명), 조원 명단·전체 조는 펼쳐서 보기 */}
       {d.groups.map((g, i) => (
         <Fold key={i} title={`조편성 · ${g.title}`}
@@ -95,8 +98,8 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false, loc
           )}
         </Fold>
       ))}
-      {!lockedSet.has("rooms") && !d.rooms?.published && waitCard("숙소 배정", "숙소 배정 전이에요. 정해지면 여기에 보여요.")}
-      {!lockedSet.has("rooms") && d.rooms?.published && d.rooms.mine.length === 0 && waitCard("숙소 배정", "배정된 방이 없어요.")}
+      {!lockedSet.has("rooms") && d.usesRooms && !d.rooms?.published && waitCard("숙소 배정", "숙소 배정 전이에요. 정해지면 여기에 보여요.")}
+      {!lockedSet.has("rooms") && d.usesRooms && d.rooms?.published && d.rooms.mine.length === 0 && waitCard("숙소 배정", "배정된 방이 없어요.")}
       {!noSchedule && d.schedule.length > 0 && (
         <section className="card" aria-label="일정">
           <b style={{ font: `700 ${fs(17)} var(--display)` }}>일정</b>

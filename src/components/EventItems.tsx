@@ -10,10 +10,18 @@ import { Popup } from "./Popup";
 import { ScheduleBoard } from "./ScheduleBoard";
 import { DragHandle, useDragSort } from "./DragSort";
 import { fs } from "@/lib/fs";
+import { readVisibility } from "@/lib/event-visibility";
 
 type Kind = "schedule" | "prep" | "costs";
 type Item = Record<string, string | number | boolean> & { id: string };
 type Note = { tone: "bad" | "info"; text: string } | null;
+// 준비목록·비용을 보는 사람: 관리자만 / 참석자(showX) / 모든 회원(showX + 미응답·불참에게도 공개 visibility[k])
+type Who = "admin" | "attend" | "all";
+const WHO: { k: Who; l: string; d: string }[] = [
+  { k: "admin", l: "관리자만", d: "회원 화면에는 보이지 않아요." },
+  { k: "attend", l: "참석자", d: "참석한 회원의 일정 화면에 보여요(읽기만). 미응답·불참 회원에게는 잠겨 보여요." },
+  { k: "all", l: "모든 회원", d: "공개 대상 회원 모두에게 보여요(읽기만). 참석하지 않은 회원도 봐요." },
+];
 
 const BLANK: Record<Kind, Record<string, string | number | boolean>> = {
   schedule: { at: "", title: "" },
@@ -82,7 +90,7 @@ function PrepFiles({ eventId, canEdit }: { eventId: string; canEdit: boolean }) 
           </>
         )}
       </div>
-      <span className="small">사진·문서(pdf, 오피스, hwp, zip, txt)를 하나에 4MB까지, 일정 하나에 20개까지 올려요. 준비목록 “공개”를 켜면 회원도 내려받을 수 있어요.</span>
+      <span className="small">사진·문서(pdf, 오피스, hwp, zip, txt)를 하나에 4MB까지, 일정 하나에 20개까지 올려요. 위 “보는 사람”이 참석자나 모든 회원이면 그 회원도 내려받을 수 있어요.</span>
       <ActionNote msg={msg} />
       {files && files.length === 0 && <span className="small">아직 올린 파일이 없어요.</span>}
       {files && files.length > 0 && (
@@ -104,14 +112,15 @@ function PrepFiles({ eventId, canEdit }: { eventId: string; canEdit: boolean }) 
 }
 
 // 세부 일정 / 준비 목록 / 비용(예산과 집행). 같은 화면 틀로 세 가지를 다룬다.
-// 일정은 회원에게 보이고, 준비 목록과 비용은 관리자만 본다.
-export function EventItems(props: { eventId: string; kind: Kind; canEdit: boolean }) {
+// 일정은 회원에게 보이고, 준비 목록과 비용은 "보는 사람"으로 정한 회원만 본다.
+//  onSaved: 일정 값(기본 회비 등)을 바꿨을 때 부모 화면이 일정을 다시 불러오게 한다
+export function EventItems(props: { eventId: string; kind: Kind; canEdit: boolean; onSaved?: () => void }) {
   // 일정은 날짜별로 묶어 보여 주는 전용 화면을 쓴다.
   if (props.kind === "schedule") return <ScheduleBoard eventId={props.eventId} canEdit={props.canEdit} />;
   return <ItemsTable {...props} />;
 }
 
-function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; canEdit: boolean }) {
+function ItemsTable({ eventId, kind, canEdit, onSaved }: { eventId: string; kind: Kind; canEdit: boolean; onSaved?: () => void }) {
   const base = `/api/admin/events/${eventId}/items/${kind}`;
   const [items, setItems] = useState<Item[] | null>(null);
   const [draft, setDraft] = useState<Record<string, Item>>({});
@@ -133,9 +142,14 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const [fee, setFee] = useState("");
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState("");
-  // 준비목록·비용을 회원의 일정 화면에도 보일지(일정의 showPrep / showCosts)
+  // 준비목록·비용을 보는 사람(일정의 showPrep / showCosts + visibility의 prep / costs)
   const flag = kind === "prep" ? "showPrep" : "showCosts";
-  const [shown, setShown] = useState<boolean | null>(null);
+  const [who, setWho] = useState<Who | null>(null);
+  const [whoBusy, setWhoBusy] = useState(false);
+  const [whoSaved, setWhoSaved] = useState(false); // 저장한 뒤 잠깐 "저장됨 ✓"
+  const whoTimer = useRef<number | undefined>(undefined);
+  // 기본 회비로 정하기 결과는 그 버튼 옆에
+  const [feeNote, setFeeNote] = useState<Note>(null);
   // 준비목록의 "비용 항목" 고르기용: 이 일정의 비용 항목 이름
   const [costNames, setCostNames] = useState<string[]>([]);
   // 바로 저장용: 줄별 마지막 저장 값, 다시 불러올 때 새로 맞출 줄
@@ -155,7 +169,11 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
     setDraft((cur) => (only && Object.keys(cur).length ? { ...Object.fromEntries(Object.keys(fresh).map((k) => [k, k === only ? fresh[k] : cur[k] ?? fresh[k]])) } : fresh));
     if (kind !== "schedule") {
       const ev = await api<{ event: Record<string, unknown> }>(`/api/admin/events/${eventId}`);
-      if (ev.ok) setShown(ev.data.event[kind === "prep" ? "showPrep" : "showCosts"] === "true");
+      if (ev.ok) {
+        const shown = ev.data.event[kind === "prep" ? "showPrep" : "showCosts"] === "true";
+        const vis = readVisibility(ev.data.event as { type?: string; visibility?: string })[kind === "prep" ? "prep" : "costs"];
+        setWho(!shown ? "admin" : vis ? "all" : "attend");
+      }
     }
     if (kind === "prep") {
       const c = await api<{ items: { item: string }[] }>(`/api/admin/events/${eventId}/items/costs`);
@@ -222,15 +240,22 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
     if (r.ok) setMemoOf(null);
     load();
   }
-  async function setVisible(v: boolean) {
-    const prev = shown;
-    setShown(v);
-    const r = await api(`/api/admin/events/${eventId}`, { method: "PATCH", body: { [flag]: v } });
+  // 보는 사람 바꾸기: showX 와 visibility[k] 를 한 번에 저장(회원 알림은 가지 않는다)
+  async function setAudience(next: Who) {
+    if (who === null || next === who) return;
+    const prev = who;
+    setWho(next);
+    setWhoBusy(true);
+    setWhoSaved(false);
+    const r = await api(`/api/admin/events/${eventId}`, { method: "PATCH", body: { [flag]: next !== "admin", visibility: { [kind === "prep" ? "prep" : "costs"]: next === "all" } } });
+    setWhoBusy(false);
     if (!r.ok) {
-      setShown(prev);
-      return setNote({ tone: "bad", text: r.error });
+      setWho(prev);
+      return setNote({ tone: "bad", text: `${TITLE[kind]} 보는 사람을 저장하지 못했어요. ${r.error}` });
     }
-    setNote({ tone: "info", text: v ? `${TITLE[kind]}: 참석자에게 보여요(읽기만). 미응답·불참 회원에게도 보이려면 일정 편집의 “미응답·불참 회원에게 공개”에서 켜 주세요.` : `${TITLE[kind]}: 관리자만 봐요.` });
+    setWhoSaved(true);
+    window.clearTimeout(whoTimer.current);
+    whoTimer.current = window.setTimeout(() => setWhoSaved(false), 2500);
   }
   async function remove(id: string) {
     if (!window.confirm("지울까요?")) return;
@@ -241,16 +266,19 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
 
   // 제안 금액을 "모두 전체"인 회비 줄(모든 회원의 기본 회비)로 정한다. 다른 조건 줄은 그대로 둔다.
   async function applyFee(v: number) {
+    setFeeNote(null);
     const cur = await api<{ event: { fee: string; feeRules: { days: string; kind: string; position: string; amount: string }[] } }>(`/api/admin/events/${eventId}`);
-    if (!cur.ok) return setNote({ tone: "bad", text: cur.error });
+    if (!cur.ok) return setFeeNote({ tone: "bad", text: cur.error });
     const rules = cur.data.event.feeRules ?? [];
     const isAll = (x: { days: string; kind: string; position: string }) => !x.days && !x.kind && !x.position;
     const next = rules.some(isAll)
       ? rules.map((x) => (isAll(x) ? { ...x, amount: String(v) } : x))
       : [...rules, { days: "", kind: "", position: "", amount: String(v) }];
     const r = await api(`/api/admin/events/${eventId}`, { method: "PATCH", body: { feeRules: next, fee: "" } });
-    setNote(r.ok ? { tone: "info", text: `모든 회원의 기본 회비(“전체” 줄)를 ${won(v)}으로 정했어요. 조건별 줄이 있으면 그 금액이 먼저 적용돼요.` } : { tone: "bad", text: r.error });
+    setFeeNote(r.ok ? { tone: "info", text: `기본 회비(“전체” 줄)를 ${won(v)}으로 정했어요. 조건별 줄이 있으면 그 금액이 먼저예요.` } : { tone: "bad", text: r.error });
     load();
+    // 회비 탭의 "회비 저장"이 옛 회비 줄로 덮어쓰지 않게 부모 화면도 다시 불러온다
+    if (r.ok) onSaved?.();
   }
 
   if (!items) return note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>;
@@ -262,14 +290,20 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
   const suggest = attend > 0 ? Math.ceil(need / attend / 1000) * 1000 : 0;
   // 비용 목록 칸: 위 요약과 어울리게 작은 글씨
   const cs = { minHeight: 36, fontSize: fs(13), padding: "0 8px" } as const;
-  // 참석자 공개 스위치(준비목록·비용 공통): "참석자에게 보이기 [스위치]" 옆에 "미응답·불참에게 보이기 [스위치]"(components/VisSwitch.tsx)
-  const visSwitch = kind !== "schedule" && shown !== null ? (
-    <>
-      <span id={`vis-${kind}-l`} className="small" style={{ fontSize: fs(12), whiteSpace: "nowrap" }}>참석자에게 보이기</span>
-      <button type="button" role="switch" className="switch" aria-checked={shown} aria-labelledby={`vis-${kind}-l`} aria-label={`${TITLE[kind]} 참석자에게 보이기`}
-        title={shown ? "참석자의 일정 화면에 보여요(읽기만)" : "관리자만 봐요"}
-        disabled={!canEdit} onClick={() => setVisible(!shown)} style={{ transform: "scale(0.75)", flex: "none", margin: "0 -6px" }} />
-    </>
+  // 보는 사람(준비목록·비용 공통): 관리자만 / 참석자 / 모든 회원 세 칸. 누르면 바로 저장
+  const whoBox = kind !== "schedule" && who !== null ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+        <span id={`who-${kind}-l`} className="small" style={{ fontWeight: 700, whiteSpace: "nowrap" }}>보는 사람</span>
+        <div className="seg" role="group" aria-labelledby={`who-${kind}-l`}>
+          {WHO.map((x) => (
+            <button key={x.k} type="button" aria-pressed={who === x.k} disabled={!canEdit || whoBusy} onClick={() => setAudience(x.k)} style={{ minHeight: 36, padding: "0 12px" }}>{x.l}</button>
+          ))}
+        </div>
+        <span className="small" role="status" style={{ color: "var(--green-t)", fontWeight: 700 }}>{whoSaved ? "저장됨 ✓" : ""}</span>
+      </div>
+      <span className="small" style={{ fontSize: fs(12) }}>{WHO.find((x) => x.k === who)?.d} 누르면 바로 저장돼요.</span>
+    </div>
   ) : null;
 
   return (
@@ -287,6 +321,7 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           <span className="small" style={{ fontSize: fs(12) }}>1인 회비 제안</span>
           <b className="num" style={{ color: "var(--blue-t)", fontSize: fs(13) }}>{suggest ? won(suggest) : "-"}</b>
           {canEdit && suggest > 0 && <button className="mini" type="button" style={{ minHeight: 28, padding: "0 6px", fontSize: fs(11), whiteSpace: "nowrap" }} onClick={() => applyFee(suggest)}>기본 회비로 정하기</button>}
+          {feeNote && <span className="small" role={feeNote.tone === "bad" ? "alert" : "status"} style={{ whiteSpace: "normal", fontSize: fs(12), fontWeight: 600, color: feeNote.tone === "bad" ? "var(--red-t)" : "var(--green-t)" }}>{feeNote.tone === "info" ? "✓ " : ""}{feeNote.text}</span>}
         </span>
       )}
       {kind === "prep" && <span className="small" style={{ fontSize: fs(12) }}>끝낸 것은 체크해 주세요. “비용 항목”을 고르면 완료 체크된 준비물의 가격이 같은 이름의 비용 항목 집행 금액에 더해져요.</span>}
@@ -311,19 +346,18 @@ function ItemsTable({ eventId, kind, canEdit }: { eventId: string; kind: Kind; c
           </dl>
         </section>
       )}
-      {/* 비용 목록 바로 위 한 줄: 왼쪽 "공개 [스위치]" · 오른쪽 + 비용 추가(준비목록과 같은 배치) */}
+      {/* 비용 목록 바로 위 한 줄: 왼쪽 "보는 사람" · 오른쪽 + 비용 추가(준비목록과 같은 배치) */}
       {kind === "costs" && (
-        <div className="row" style={{ gap: 6, justifyContent: "space-between" }}>
-          <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>{visSwitch}<VisSwitch eventId={eventId} k="costs" canEdit={canEdit} inline /></span>
+        <div className="row" style={{ gap: 6, justifyContent: "space-between", flexWrap: "wrap", alignItems: "flex-start" }}>
+          {whoBox ?? <span />}
           {canEdit && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", flex: "none", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 비용 추가</button>}
         </div>
       )}
 
-      {/* 준비목록: 목록 바로 위 오른쪽에 작은 빨간 "+ 준비 목록 추가"(비용과 같은 모양) */}
-      {/* 준비목록: 한 줄에 왼쪽 "공개 [스위치]" · 오른쪽 "+ 준비 목록 추가" */}
-      {kind === "prep" && (visSwitch || canEdit) && (
-        <div className="row" style={{ gap: 6, justifyContent: "space-between" }}>
-          <span className="row" style={{ gap: 6, flexWrap: "wrap" }}>{visSwitch}<VisSwitch eventId={eventId} k="prep" canEdit={canEdit} inline /></span>
+      {/* 준비목록: 한 줄에 왼쪽 "보는 사람" · 오른쪽 "+ 준비 목록 추가"(비용과 같은 모양) */}
+      {kind === "prep" && (whoBox || canEdit) && (
+        <div className="row" style={{ gap: 6, justifyContent: "space-between", flexWrap: "wrap", alignItems: "flex-start" }}>
+          {whoBox ?? <span />}
           {canEdit && <button className="btn" type="button" aria-haspopup="dialog" style={{ width: "auto", minHeight: 36, padding: "0 12px", fontSize: fs(13) }} onClick={() => { setErr(""); setOpen(true); }}>+ 준비 목록 추가</button>}
         </div>
       )}

@@ -81,9 +81,9 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
       : `${car.name} ${leg.label}에 신청할까요?\n자리가 있어서 바로 배정돼요.`;
     if (!window.confirm(q)) return;
     setBusy(true);
-    const r = await api<{ status: string }>(base, { body: { action: "request", carId: car.id, dir: leg.dir } });
+    const r = await api<{ status: string; message?: string }>(base, { body: { action: "request", carId: car.id, dir: leg.dir } });
     setBusy(false);
-    setMsg(r.ok ? { tone: "info", text: r.data.status === "waiting" ? "신청 대기했어요. 자리가 나면 자동으로 배정되고 알려 드려요." : "배정됐어요. 마감 전까지 바꿀 수 있어요." } : { tone: "bad", text: r.error });
+    setMsg(r.ok ? { tone: "info", text: r.data.status === "waiting" ? r.data.message || "신청 대기했어요. 자리가 나면 자동으로 배정되고 알려 드려요." : "배정됐어요. 마감 전까지 바꿀 수 있어요." } : { tone: "bad", text: r.error });
     load();
   }
   async function cancel(m: Mine) {
@@ -297,7 +297,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
       <Fold key={d.phase} title="차량배정" badge={d.phase === "open" ? <span className="pill ok">신청 중</span> : d.phase === "confirmed" || d.phase === "closed" ? <span className="pill gray">마감</span> : undefined}
         summary={d.phase === "confirmed" || d.phase === "closed" ? rideLine : d.phase === "open" ? (d.waitUntil ? `차량신청 마감 ${fmtDateTime(d.waitUntil)}` : "차량신청을 받고 있어요") : d.phase === "admin" ? "관리자가 차량을 배정 중이에요" : "차량배정 정보가 아직 없어요"}>
         {d.phase === "admin" && <span className="small" style={{ fontWeight: 700 }}>관리자가 차량을 배정 중입니다. 배정이 완료되면 안내드리겠습니다.</span>}
-        {d.phase === "none" && <span className="small">차량배정 정보가 없습니다. 업데이트 되면 알려드릴께요.</span>}
+        {d.phase === "none" && <span className="small">차량배정 정보가 없습니다. 업데이트되면 알려 드릴게요.</span>}
         {d.phase === "open" && (
           <>
             {d.openFrom && Date.parse(d.openFrom) > Date.now() && <span className="small">차량신청 시작: {fmtDateTime(d.openFrom)}</span>}

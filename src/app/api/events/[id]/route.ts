@@ -84,6 +84,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     ? (await listEventFileMeta(id)).sort((p, q) => (p.createdAt ?? "").localeCompare(q.createdAt ?? ""))
       .map((r) => fileMeta(r, (mid) => members.find((m) => m.id === mid)?.name ?? ""))
     : null;
+  // 잠긴 항목 중 이 일정에 실제로 내용이 있는 것(회원 화면의 잠긴 칸 한 장에 이름만 보여 준다, 내용은 보내지 않는다)
+  //  조편성·숙소·차량은 /api/events/[id]/mine 의 lockedCards 가 알려 준다
+  const lockedHasOf = async (k: string): Promise<boolean> => {
+    if (k === "notice") return !!(e.booking ?? "").trim();
+    if (k === "schedule") return (await s.list("EventSchedule", { where: { field: "eventId", in: [id] } })).length > 0;
+    if (k === "fee" || k === "minutes") return true; // 회비는 위에서 걸렀고, 회의록은 회의 일정만 남겼다
+    if (k === "activities") return acts.some((x) => x.eventId === id);
+    if (k === "prep") return (await s.list("EventPrep", { where: { field: "eventId", in: [id] } })).length > 0 || (await listEventFileMeta(id)).length > 0;
+    if (k === "costs") return (await s.list("EventCosts", { where: { field: "eventId", in: [id] } })).length > 0;
+    if (k === "photos") return (await s.list("EventPhotos", { where: { field: "eventId", in: [id] } })).length > 0;
+    return false;
+  };
+  const lockedHas = (await Promise.all(locked.map(async (k) => ((await lockedHasOf(k)) ? k : "")))).filter(Boolean);
   const activities = locked.includes("activities") ? [] : acts
     .filter((x) => x.eventId === id)
     .sort((p, q) => Number(p.order) - Number(q.order))
@@ -101,7 +114,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       // 관리하는 사람이 공개 대상 밖·공개전 일정을 회원 화면으로 보는 중(참석 신청 안 됨). draft: 공개전 일정
       preview, draft: e.published !== "true",
       coverUrl, // 맨 위 큰 사진(원본 크기). 없으면 ""
-      going: applies.filter((x) => x.eventId === id && x.answer === "참석").length, // 참석 인원
+      going: new Set(applies.filter((x) => x.eventId === id && x.answer === "참석").map((x) => x.memberId)).size, // 참석 인원(같은 회원 줄이 겹쳐도 한 번)
       type: e.type,
       approval: e.approval === "admin" ? "admin" : "", // 참석 확정 방식(admin = 관리자 승인 후 참석)
       name: e.name,
@@ -110,6 +123,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       place: e.place,
       booking: locked.includes("notice") ? "" : e.booking,
       locked, // 미응답·불참이라 닫힌 항목(누르면 참석 신청 안내)
+      lockedHas, // 닫힌 항목 중 이 일정에 내용이 있는 것(잠긴 칸에 이름만 보여 준다)
       feeOptions, // 참석 전: 참석 일수별 예상 회비
       hasActivities: acts.some((x) => x.eventId === id), // 닫혀 있어도 "주요 활동"이 있는지(잠긴 칸을 보여 주려고)
       status: e.status,

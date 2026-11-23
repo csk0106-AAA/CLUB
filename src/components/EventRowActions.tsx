@@ -32,7 +32,7 @@ export function EventRowActions({ ev, href, onDeleted }: {
   const [busy, setBusy] = useState(false);
 
   async function del() {
-    if (!window.confirm(`“${ev.name}” 일정을 지울까요?\n참석 신청·회비·세부일정·활동 기록도 함께 지워지고 되돌릴 수 없어요.\n(회원에게만 감추려면 “공개 취소”를 누르세요)`)) return;
+    if (!window.confirm(`“${ev.name}” 일정을 지울까요?\n참석 신청·회비·세부 일정·활동 기록도 함께 지워지고 되돌릴 수 없어요.\n(회원에게만 감추려면 “공개 취소”를 누르세요)`)) return;
     setBusy(true);
     const r = await api(`/api/admin/events/${encodeURIComponent(ev.id)}`, { method: "DELETE" });
     setBusy(false);

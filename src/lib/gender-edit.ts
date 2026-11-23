@@ -28,7 +28,7 @@ export function memberGenderPatch(cur: { gender?: string; extra?: string }, to: 
 // 회원이 설정에서 회사명·직책·연락처·클럽을 바꾸면 extra.selfEdits[항목] = {from, to, at} 로 남긴다(성별과 같은 규칙:
 // 처음 값(from)은 유지하고, 원래 값으로 되돌리면 그 항목 기록을 지운다). 관리자 화면은 readSelfEdits 로 읽어 "회원 수정"을 보여 줄 수 있다.
 export type SelfEditField = "gender" | "company" | "title" | "phone" | "clubs";
-export const SELF_EDIT_LABELS: Record<SelfEditField, string> = { gender: "성별", company: "회사명", title: "직책", phone: "연락처", clubs: "클럽" };
+export const SELF_EDIT_LABELS: Record<SelfEditField, string> = { gender: "성별", company: "회사명", title: "직책", phone: "휴대폰 번호", clubs: "클럽" };
 export type SelfEdits = Partial<Record<SelfEditField, GenderEdit>>;
 
 // 성별 기록(genderEdit)까지 합쳐서 돌려준다. 없으면 빈 객체.

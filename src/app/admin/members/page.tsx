@@ -138,7 +138,7 @@ function Members() {
     cmp("회사명", "company", r.company, ex.company ?? "");
     cmp("직위", "title", r.title, ex.title ?? "");
     if (has("birth") && (normBirth(r.birth) || r.birth.trim()) !== (ex.birth ?? "")) out.push(`생년월일 ${ex.birth || "(빈칸)"} → ${normBirth(r.birth) || r.birth || "(빈칸)"}`);
-    if (has("phone") && phoneKey(r.phone) !== phoneKey(ex.phone)) out.push(`연락처 ${ex.phone || "(빈칸)"} → ${r.phone || "(빈칸)"}`);
+    if (has("phone") && phoneKey(r.phone) !== phoneKey(ex.phone)) out.push(`휴대폰 번호 ${ex.phone || "(빈칸)"} → ${r.phone || "(빈칸)"}`);
     cmp("메모", "memo", r.memo, ex.memo ?? "", (x) => (x ? (x.length > 20 ? `${x.slice(0, 20)}…` : x) : "(빈칸)"));
     const cf = importCustom.get(r.name) ?? {};
     for (const c of Object.keys(cf)) if ((cf[c] ?? "").trim() !== (ex.fields[c] ?? "").trim()) out.push(`${c} ${ex.fields[c] || "(빈칸)"} → ${cf[c] || "(빈칸)"}`);
@@ -214,9 +214,9 @@ function Members() {
     if (!r.ok) return setMsg({ tone: "bad", text: `${editNote}${r.error}` });
     const sk = r.data.skipped;
     const rn = r.data.renamed ?? [];
-    if (rn.length) window.alert(`같은 이름의 회원이 있어서(연락처가 달라 다른 사람으로 봤어요) 이름 뒤에 알파벳을 붙였어요.\n${rn.slice(0, 10).map((x) => `${x.from} → ${x.to}`).join("\n")}${rn.length > 10 ? `\n외 ${rn.length - 10}명` : ""}`);
+    if (rn.length) window.alert(`같은 이름의 회원이 있어서(휴대폰 번호가 달라 다른 사람으로 봤어요) 이름 뒤에 알파벳을 붙였어요.\n${rn.slice(0, 10).map((x) => `${x.from} → ${x.to}`).join("\n")}${rn.length > 10 ? `\n외 ${rn.length - 10}명` : ""}`);
     const up = r.data.updated ?? [];
-    setMsg({ tone: "info", text: `${editNote}${r.data.added}명을 추가했어요.${rn.length ? ` 동명이인 ${rn.length}명은 이름 뒤에 알파벳을 붙였어요.` : ""}${up.length ? ` ${up.length}명(${up.slice(0, 5).join(", ")}${up.length > 5 ? " 외" : ""})은 기존 회원의 연락처를 새 번호로 고쳤어요.` : ""}${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
+    setMsg({ tone: "info", text: `${editNote}${r.data.added}명을 추가했어요.${rn.length ? ` 동명이인 ${rn.length}명은 이름 뒤에 알파벳을 붙였어요.` : ""}${up.length ? ` ${up.length}명(${up.slice(0, 5).join(", ")}${up.length > 5 ? " 외" : ""})은 기존 회원의 휴대폰 번호를 새 번호로 고쳤어요.` : ""}${sk.length ? ` 이미 있는 ${sk.length}명(${sk.slice(0, 5).join(", ")}${sk.length > 5 ? " 외" : ""})은 건너뛰었어요.` : ""}` });
     setImportText("");
     setDupChoice({});
     setImportOpen(false);
@@ -418,7 +418,7 @@ function Members() {
       if (rows.length < 2) return setMsg({ tone: "bad", text: "엑셀에 회원이 없어요. 첫 줄은 머리글, 둘째 줄부터 회원을 적어 주세요." });
       const head = rows[0].map(norm);
       const birthCol = head.findIndex((h) => ["생년월일", "생일", "생년", "출생", "birth"].includes(h));
-      const phoneCol = head.findIndex((h) => ["연락처", "전화", "전화번호", "휴대폰", "휴대전화", "핸드폰", "휴대폰번호", "hp", "phone", "mobile"].includes(h));
+      const phoneCol = head.findIndex((h) => ["연락처", "전화", "전화번호", "휴대폰", "휴대전화", "핸드폰", "휴대폰번호", "휴대폰 번호", "hp", "phone", "mobile"].includes(h));
       const fixed = rows.map((r, i) => r.map((v, j) => {
         if (i === 0 || !numeric[i]?.[j] || !v) return v;
         // 엑셀이 숫자로 바꿔 저장한 날짜(일련번호)·연락처(앞의 0 빠짐)를 되돌린다
@@ -440,7 +440,7 @@ function Members() {
   // PIN 초기화: 회원 PIN(회원관리 권한) / 관리자용 PIN(모든 권한). 지운 뒤 회원에게 알림이 간다.
   async function resetPin(m: M, kind: "member" | "admin") {
     const what = kind === "member" ? "로그인 PIN" : "관리자용 PIN";
-    if (!window.confirm(`${m.name} 님의 ${what}을 초기화할까요?\n${kind === "member" ? "다음 로그인 때 연락처 뒷자리 4자리로 들어와 새 PIN 을 만들어요." : "관리자 화면에 들어갈 때 공용 관리자 비밀번호를 거쳐 새 PIN 을 만들어요."}`)) return;
+    if (!window.confirm(`${m.name} 님의 ${what}을 초기화할까요?\n${kind === "member" ? "다음 로그인 때 휴대폰 번호 뒷자리 4자리로 들어와 새 PIN 을 만들어요." : "관리자 화면에 들어갈 때 공용 관리자 비밀번호를 거쳐 새 PIN 을 만들어요."}`)) return;
     setBusy(true);
     const r = await api(`/api/admin/members/${m.id}/pin`, { body: { kind } });
     setBusy(false);
@@ -462,7 +462,7 @@ function Members() {
               <option value="">-</option><option>남</option><option>여</option>
             </select>
           </div>
-          <div><label className="l" htmlFor="f-phone">연락처</label><input id="f-phone" className="field" style={{ paddingLeft: 8, paddingRight: 8 }} inputMode="tel" placeholder="010-0000-0000" value={form.phone} onChange={(e) => set("phone", typePhone(e.target.value))} /></div>
+          <div><label className="l" htmlFor="f-phone">휴대폰 번호</label><input id="f-phone" className="field" style={{ paddingLeft: 8, paddingRight: 8 }} inputMode="tel" placeholder="010-0000-0000" value={form.phone} onChange={(e) => set("phone", typePhone(e.target.value))} /></div>
         </div>
         <div className="mf-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <div><label className="l" htmlFor="f-birth">생년월일</label><DateField id="f-birth" mode="date" value={form.birth} onChange={(v) => set("birth", v)} /></div>
@@ -545,7 +545,7 @@ function Members() {
               {/* 로그인 PIN·관리자용 PIN: 볼 수는 없고 초기화만 */}
               <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <span className="small">로그인 PIN</span>
-                <span className={`pill ${m.hasPin ? "ok" : "gray"}`}>{m.hasPin ? "만듦" : "아직 없음(연락처 4자리로 로그인)"}</span>
+                <span className={`pill ${m.hasPin ? "ok" : "gray"}`}>{m.hasPin ? "만듦" : "아직 없음(휴대폰 번호 4자리로 로그인)"}</span>
                 {m.hasPin && <button className="mini" type="button" disabled={busy} onClick={() => resetPin(m, "member")}>PIN 초기화</button>}
                 {m.effective.length > 0 && (
                   <>
@@ -660,10 +660,10 @@ function Members() {
               {importCustom.size > 0 && <span className="small">추가 항목({custom.filter((c) => [...importCustom.values()].some((v) => c in v)).join(", ")}) 값도 함께 넣어요.</span>}
               <span className="small">
                 {preview.rows.length}명을 읽었어요 · 새 회원 {classify.filter((c) => c.kind === "new").length}명
-                {classify.some((c) => c.kind === "same") ? ` · 이미 있는 같은 회원 ${classify.filter((c) => c.kind === "same").length}명(이름·연락처가 같아 건너뛰어요)` : ""}
+                {classify.some((c) => c.kind === "same") ? ` · 이미 있는 같은 회원 ${classify.filter((c) => c.kind === "same").length}명(이름·휴대폰 번호가 같아 건너뛰어요)` : ""}
                 {editRows.length ? ` · 정보를 고칠 회원 ${editRows.length}명` : ""}
                 {classify.some((c) => c.kind === "nochange") ? ` · 바뀐 것 없는 회원 ${classify.filter((c) => c.kind === "nochange").length}명` : ""}
-                {dupRows.length ? ` · 이름은 같고 연락처가 다른 회원 ${dupRows.length}명(아래에서 골라 주세요)` : ""}. 아래 표를 위아래로 넘겨 모두 확인해 보세요.
+                {dupRows.length ? ` · 이름은 같고 휴대폰 번호가 다른 회원 ${dupRows.length}명(아래에서 골라 주세요)` : ""}. 아래 표를 위아래로 넘겨 모두 확인해 보세요.
               </span>
               {/* 회원정보다운로드로 받은 파일을 고쳐 올렸을 때: 회원별로 바뀌는 내용 */}
               {editRows.length > 0 && (
@@ -679,15 +679,15 @@ function Members() {
               )}
               {dupRows.length > 0 && (
                 <section className="card" aria-label="이름이 같은 회원 처리" style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--soft)" }}>
-                  <b>이름은 같은데 연락처가 달라요 ({dupRows.length}명)</b>
-                  <span className="small">앱에 이미 있는 회원과 이름이 같지만 연락처가 달라요. 같은 사람인지 다른 사람인지 골라 주세요. 같은 사람을 새로 넣으면 회원이 둘이 돼요.</span>
+                  <b>이름은 같은데 휴대폰 번호가 달라요 ({dupRows.length}명)</b>
+                  <span className="small">앱에 이미 있는 회원과 이름이 같지만 휴대폰 번호가 달라요. 같은 사람인지 다른 사람인지 골라 주세요. 같은 사람을 새로 넣으면 회원이 둘이 돼요.</span>
                   {dupRows.map(({ r, c }) => {
                     const k = dupKey(r);
-                    const opts: [Dup, string][] = [["skip", "같은 사람 · 건너뛰기"], ["update", "같은 사람 · 연락처를 새 번호로 고치기"], ["new", `다른 사람 · “${r.name}B”처럼 새로 넣기`]];
+                    const opts: [Dup, string][] = [["skip", "같은 사람 · 건너뛰기"], ["update", "같은 사람 · 휴대폰 번호를 새 번호로 고치기"], ["new", `다른 사람 · “${r.name}B”처럼 새로 넣기`]];
                     return (
                       <div key={k} className="card" style={{ display: "flex", flexDirection: "column", gap: 6, padding: 10 }}>
                         <span><b>{r.name}</b> <span className="small">({r.line}번째 줄)</span></span>
-                        <span className="small">명단 연락처: {tail4(r.phone)} · 앱에 있는 연락처: {tail4(c.ex?.phone)}{c.ex?.company ? ` · 앱의 회사: ${c.ex.company}` : ""}{r.company ? ` · 명단의 회사: ${r.company}` : ""}</span>
+                        <span className="small">명단 휴대폰 번호: {tail4(r.phone)} · 앱에 있는 휴대폰 번호: {tail4(c.ex?.phone)}{c.ex?.company ? ` · 앱의 회사: ${c.ex.company}` : ""}{r.company ? ` · 명단의 회사: ${r.company}` : ""}</span>
                         <div className="checks" role="radiogroup" aria-label={`${r.name} 처리`}>
                           {opts.map(([v, l]) => (
                             <label key={v}><input type="radio" name={`dup-${k}`} checked={dupChoice[k] === v} onChange={() => setDupChoice({ ...dupChoice, [k]: v })} />{l}</label>
@@ -701,7 +701,7 @@ function Members() {
               {/* 읽은 명단 전체: 세로 스크롤(머리글 고정), 맨 앞은 순서와 붙여 넣은 글의 줄 번호 */}
               <div className="tblw" style={{ maxHeight: 360, overflowY: "auto" }}>
                 <table className="tbl" style={{ minWidth: 820 }}>
-                  <thead style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--card, #fff)" }}><tr><th>#</th><th>줄</th><th>처리</th><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th></tr></thead>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--card, #fff)" }}><tr><th>#</th><th>줄</th><th>처리</th><th>성명</th><th>구분</th><th>직책</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>휴대폰 번호</th></tr></thead>
                   <tbody>
                     {preview.rows.map((r, i) => (
                       <tr key={i}><td className="num">{i + 1}</td><td className="num small">{r.line}</td>
@@ -711,7 +711,7 @@ function Members() {
                           if (c === "same") return <span className="chip line">건너뜀</span>;
                           if (c === "edit") return <span className="chip warn">고침</span>;
                           if (c === "nochange") return <span className="chip line">그대로</span>;
-                          if (c === "dup") return <span className={`chip ${ch ? "violet" : "warn"}`}>{ch === "skip" ? "건너뜀" : ch === "update" ? "연락처 고침" : ch === "new" ? "새로(동명이인)" : "골라 주세요"}</span>;
+                          if (c === "dup") return <span className={`chip ${ch ? "violet" : "warn"}`}>{ch === "skip" ? "건너뜀" : ch === "update" ? "휴대폰 번호 고침" : ch === "new" ? "새로(동명이인)" : "골라 주세요"}</span>;
                           return <span className="chip violet">새로</span>;
                         })()}</td>
                         <td><b>{r.name}</b></td><td>{r.kind}</td><td>{r.position}</td><td>{r.gender}</td><td>{r.company}</td><td>{r.title}</td><td className="num">{fmtDate(r.birth)}</td><td className="num">{r.phone}</td></tr>
@@ -730,7 +730,7 @@ function Members() {
             {!preview.rows.length ? "추가하기" : [
               editRows.length ? `${editRows.length}명 고치기` : "",
               willAdd || !editRows.length ? `${willAdd}명 추가하기` : "",
-              dupRows.some((x) => dupChoice[dupKey(x.r)] === "update") ? "연락처 고치기" : "",
+              dupRows.some((x) => dupChoice[dupKey(x.r)] === "update") ? "휴대폰 번호 고치기" : "",
             ].filter(Boolean).join(" · ")}
           </button>
           {dupLeft > 0 && <span className="small" style={{ color: "var(--red-t)" }}>이름이 같은 회원 {dupLeft}명을 어떻게 할지 위에서 골라 주세요.</span>}
@@ -805,12 +805,12 @@ function Members() {
           ))}
         </ul>
       )}
-      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>⠿ 손잡이를 끌어서 순서를 바꾸고(바로 저장돼요), 휴지통 아이콘으로 삭제, 맨 오른쪽 연필 아이콘으로 수정해요. “북” 체크를 끄면 그 회원은 프로필 북에서 빠져요. 권한·연락처 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·연락처·생년월일)는 관리자에게만 보여요.</p>}
-      {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>NO 옆 ⠿ 손잡이를 끌어서 순서를 바꿔요(바로 저장돼요). “프로필북” 체크를 끄면 그 회원은 프로필 북에서 빠져요(회원도 설정에서 바꿀 수 있어요). 회원정보(회사·연락처·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
+      {list && <p className="small only-narrow" style={{ margin: 0, fontSize: fs(12) }}>⠿ 손잡이를 끌어서 순서를 바꾸고(바로 저장돼요), 휴지통 아이콘으로 삭제, 맨 오른쪽 연필 아이콘으로 수정해요. “북” 체크를 끄면 그 회원은 프로필 북에서 빠져요. 권한·휴대폰 번호 등 전체 항목은 넓은 화면(PC)의 표에서 볼 수 있어요. 회원정보(회사·휴대폰 번호·생년월일)는 관리자에게만 보여요.</p>}
+      {list && <p className="small only-wide" style={{ margin: 0, fontSize: fs(12) }}>NO 옆 ⠿ 손잡이를 끌어서 순서를 바꿔요(바로 저장돼요). “프로필북” 체크를 끄면 그 회원은 프로필 북에서 빠져요(회원도 설정에서 바꿀 수 있어요). 회원정보(회사·휴대폰 번호·생년월일)는 관리자에게만 보이고 일반 회원에게는 노출되지 않아요.</p>}
       {shown.length > 0 && (
         <div className="tblw only-wide">
           <table className="tbl" style={{ minWidth: 1200 + custom.length * 110 }}>
-            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>승인일</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>클럽</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>연락처</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
+            <thead><tr><th>NO</th><th>성명</th><th>구분</th><th>승인일</th><th>교육이수</th><th>프로필북</th><th>직책</th><th>클럽</th><th>성별</th><th>회사명</th><th>직위</th><th>생년월일</th><th>휴대폰 번호</th>{custom.map((c) => <th key={c}>{c}</th>)}<th>메모</th><th>권한</th><th></th></tr></thead>
             <tbody>
               {shown.map((m, i) => (
                 <Fragment key={m.id}>

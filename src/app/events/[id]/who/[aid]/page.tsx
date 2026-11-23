@@ -148,7 +148,7 @@ function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) =
         <span className="grow">{g.status === "open" ? `${fmtDateTime(g.closesAt)}까지 바꿀 수 있어요.` : "맞히기가 마감됐어요."}</span>
         <span className="chip violet num">{done}/{data.targets.length} 완료</span>
       </div>
-      {data.targets.length === 0 && <div className="msg info">아직 배포된 소개글이 없어요. 다른 회원이 작성하면 여기에 나타나요.</div>}
+      {data.targets.length === 0 && <div className="msg info">아직 공개된 소개글이 없어요. 다른 회원이 작성하면 여기에 나타나요.</div>}
       {/* 소개 목록(목업 C): 한 덩어리 안의 줄. 누르면 그 줄 아래로 소개 글과 후보가 펼쳐진다 */}
       {data.targets.length > 0 && (
         <ul className="rows">

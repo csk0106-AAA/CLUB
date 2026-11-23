@@ -22,7 +22,7 @@ export function pinProblem(pin: string, phone = ""): string | null {
   const up = "01234567890", down = "09876543210";
   if (up.includes(pin) || down.includes(pin)) return "연속된 숫자(예: 123456)는 쓸 수 없어요.";
   const tail = phone.replace(/\D/g, "").slice(-4);
-  if (tail.length === 4 && pin.includes(tail)) return "연락처 뒷자리 4자리가 들어간 PIN 은 쓸 수 없어요.";
+  if (tail.length === 4 && pin.includes(tail)) return "휴대폰 번호 뒷자리 4자리가 들어간 PIN 은 쓸 수 없어요.";
   return null;
 }
 

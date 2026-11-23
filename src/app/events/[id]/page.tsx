@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EventHero } from "@/components/EventHero";
 import { FeeDetail, feeSummary, Fold, NoticeText, noticeSummary, type FeeView } from "@/components/EventInfoCard";
@@ -17,6 +17,10 @@ import { ClubRequestCard, type AttendReq, type JoinReq } from "./ClubRequestCard
 import { ObserversCard } from "./ObserversCard";
 import { api, fmtDateDow, fmtDays, won } from "@/lib/client";
 import { fs } from "@/lib/fs";
+import { VIS_KEYS, VIS_LABEL, type VisKey } from "@/lib/event-visibility";
+
+// 잠긴 칸 한 장에 보여 줄 항목 이름(관리자 스위치 이름과 같고, 회원 화면 제목에 맞춘 것만 바꾼다)
+const LOCK_NAME: Record<VisKey, string> = { ...VIS_LABEL, schedule: "세부 일정", fee: "회비", activities: "주요 활동" };
 
 type Detail = {
   event: {
@@ -27,6 +31,7 @@ type Detail = {
     booking: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string;
     // 미응답·불참이라 닫힌 항목(lib/event-visibility.ts), 참석하면 낼 예상 회비(참석 일수별), 주요 활동이 있는지(닫혀 있어도)
     locked?: string[]; feeOptions?: { days: number; amount: string }[]; hasActivities?: boolean;
+    lockedHas?: string[]; // 닫힌 항목 중 이 일정에 내용이 있는 것(잠긴 칸 한 장에 이름만 보여 준다)
     club?: string; clubLeaders?: { name: string; role: string }[]; observer?: boolean; canObserve?: boolean;
     canApply?: boolean; // false: 내가 속하지 않은 클럽 일정(읽기만)
     attendReq?: AttendReq; // 클럽 관리자에게 보낸 내 참석 요청(참관/가입 + 참석)
@@ -97,6 +102,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
   const [sel, setSel] = useState<string[]>([]);
+  // 조편성·숙소·차량 중 미응답·불참이라 닫혔고 이 일정에 실제로 있는 것(/api/events/[id]/mine)
+  const [lockedCards, setLockedCards] = useState<string[]>([]);
+  // 참석 신청 요청이 가는 중이면 다시 눌러도 무시한다(빠르게 두 번 눌러 신청이 겹치지 않게)
+  const sending = useRef(false);
 
   const load = useCallback(async () => {
     const m = await api<{ consent: boolean; livePerms?: string[] }>("/api/me");
@@ -106,13 +115,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setManage(canManageOf(m.data.livePerms));
     const [r, mine] = await Promise.all([
       api<Detail>(`/api/events/${id}`),
-      api<{ schedule: SchedItem[]; dayPlaces?: Record<string, string> }>(`/api/events/${id}/mine`),
+      api<{ schedule: SchedItem[]; dayPlaces?: Record<string, string>; lockedCards?: string[] }>(`/api/events/${id}/mine`),
     ]);
     if (!r.ok) return setError(r.error);
     setD(r.data);
     if (mine.ok) {
       setSchedule(mine.data.schedule);
       setDayPlaces(mine.data.dayPlaces ?? {});
+      setLockedCards(mine.data.lockedCards ?? []);
     }
   }, [id, router]);
 
@@ -154,14 +164,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     // 송금대기 중 다시 참석: 회비를 돌려받지 않고 입금 확인 상태로 돌아간다
     if (answer === "참석" && d.apply?.refund === "wait"
       && !window.confirm("다시 참석하면 돌려받기로 한 회비는 송금하지 않고, 입금 확인 상태로 되돌려요.\n다시 참석할까요?")) return;
+    if (sending.current) return;
+    sending.current = true;
     setBusy(true);
     setError("");
     const r = await api<{ ok: boolean; pending?: boolean }>(`/api/events/${id}/apply`, { body: { answer } });
     if (!r.ok) {
+      sending.current = false;
       setBusy(false);
       return setError(r.error);
     }
     await load();
+    sending.current = false;
     setBusy(false);
     // 관리자 승인 후 참석: 승인 대기(워크숍은 날짜만 이어서 고른다, 회비 안내는 확정 뒤에)
     if (r.data.pending) {
@@ -177,8 +191,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   async function saveDays() {
+    if (sending.current) return;
+    sending.current = true;
     setBusy(true);
     const r = await api<{ ok: boolean; pending?: boolean }>(`/api/events/${id}/apply`, { body: { answer: "참석", days: sel } });
+    sending.current = false;
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setPicking(false);
@@ -213,16 +230,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
   // 미응답·불참이라 닫힌 항목(참석하면 모두 열림)
   const locked = new Set(e.locked ?? []);
-  // 잠긴 칸: 제목만 보이고, 누르면 참석 신청 안내
-  const LockedFold = ({ title }: { title: string }) => (
-    <button type="button" className="card" onClick={() => {
-      if (e.canApply === false || e.preview) return void window.alert("참석한 회원만 볼 수 있는 정보예요.");
-      if (window.confirm(`“${title}”은 참석 신청하면 볼 수 있어요. 지금 참석 신청하러 갈까요?`)) document.getElementById("apply")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }} style={{ display: "flex", alignItems: "center", gap: 8, textAlign: "left", width: "100%", cursor: "pointer" }}>
-      <b className="grow" style={{ font: `700 ${fs(17)} var(--display)` }}>{title}</b>
-      <span className="small">🔒 참석 신청하면 볼 수 있어요</span>
-    </button>
-  );
+  // 잠긴 칸 한 장: 닫힌 항목 중 이 일정에 내용이 있는 것의 이름만 한 줄로(참석 신청 버튼 바로 위)
+  const lockedNames = VIS_KEYS.filter((k) => (e.lockedHas ?? []).includes(k) || lockedCards.includes(k)).map((k) => LOCK_NAME[k]);
   const hasFee = !locked.has("fee") && (!!e.fee || !!e.feePending);
   const actNames = d.activities.map((a) => a.name);
   // 참석인데 여러 날 일정(워크숍) 날짜를 아직 안 골랐으면(예: 클럽 관리자가 참석 요청을 승인한 직후) 날짜를 고르게 한다.
@@ -266,10 +275,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       </EventHero>
 
       {/* 일정이 끝나면 사진첩을 맨 위로(함께 찍은 사진을 먼저 보도록) */}
-      {ended && (locked.has("photos") ? <LockedFold title="사진첩" /> : <EventPhotos eventId={id} carousel />)}
+      {ended && !locked.has("photos") && <EventPhotos eventId={id} carousel />}
 
-      {/* 주요 활동: 미응답·불참에게 닫혀 있으면 잠긴 칸 */}
-      {locked.has("activities") && e.hasActivities && <LockedFold title="주요 활동" />}
+      {/* 미응답·불참에게 닫힌 항목은 아래 참석 신청 바로 위의 잠긴 칸 한 장에 이름만 보여 준다 */}
       {/* 주요 활동: 펼치면 예전 일정 홈의 활동 길(함께할 활동)과 진행 중 카드. 일정 당일에는 처음부터 펼쳐 둔다. */}
       {actNames.length > 0 && (
         <Fold title="주요 활동" summary={actNames.join(" · ")} defaultOpen={dd === "오늘 진행"}>
@@ -286,14 +294,13 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </Fold>
       )}
-      {locked.has("fee") && <LockedFold title="내 참가비" />}
       {!hasFee && answer !== "참석" && (e.feeOptions?.length ?? 0) > 0 && (
-        <Fold title="내 참가비" summary={`참석하면 ${e.feeOptions!.map((o) => `${o.days}일 ${Number(o.amount).toLocaleString()}원`).join(" · ")}`}>
+        <Fold title="내 회비" summary={`참석하면 ${e.feeOptions!.map((o) => `${o.days}일 ${Number(o.amount).toLocaleString()}원`).join(" · ")}`}>
           <FeeOptions options={e.feeOptions!} />
         </Fold>
       )}
       {hasFee && (
-        <Fold title="내 참가비" summary={feeSummary(e, fee)}>
+        <Fold title="내 회비" summary={feeSummary(e, fee)}>
           <FeeDetail ev={e} fee={fee} />
           {answer !== "참석" && (e.feeOptions?.length ?? 0) > 0 && <FeeOptions options={e.feeOptions!} />}
           {d.apply?.paid && <div className="small" style={{ color: "var(--green-t)" }}>회비 입금 확인됨 ✓</div>}
@@ -305,27 +312,23 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
                 <button className="btn white" type="button" style={{ width: "auto", minWidth: 140 }} onClick={() => router.push(`/events/${id}/fee`)}>입금 안내 보기</button>
                 {d.apply?.payNotice
                   ? <button className="btn white" type="button" style={{ width: "auto", minWidth: 140 }} disabled={busy} onClick={() => payNotice(false)}>입금 알림 취소</button>
-                  : <button className="btn" type="button" style={{ width: "auto", minWidth: 140 }} disabled={busy} onClick={() => payNotice(true)}>입금 알리기</button>}
+                  : <button className="btn" type="button" style={{ width: "auto", minWidth: 140 }} disabled={busy} onClick={() => payNotice(true)}>입금했어요</button>}
               </div>
             </>
           )}
         </Fold>
       )}
-      {locked.has("notice") && <LockedFold title="안내" />}
       {e.booking?.trim() && (
         <Fold title="안내" summary={noticeSummary(e.booking)}>
           <NoticeText text={e.booking.trim()} />
         </Fold>
       )}
-      {locked.has("schedule") && <LockedFold title="세부일정" />}
       {schedule.length > 0 && (
         <Fold title="일정" summary={`세부 일정 ${schedule.length}개`}>
           <ScheduleView items={schedule} dayPlaces={dayPlaces} />
         </Fold>
       )}
       {/* 관리자가 "참석자에게 보이기"를 켠 준비목록·비용(읽기만). 미응답·불참에게 닫혀 있으면 잠긴 칸 */}
-      {locked.has("prep") && <LockedFold title="준비목록" />}
-      {locked.has("costs") && <LockedFold title="비용" />}
       {d.prep && (d.prep.length > 0 || (d.prepFiles?.length ?? 0) > 0) && (
         <Fold title="준비목록" summary={`${d.prep.filter((x) => x.done).length}/${d.prep.length} 준비됨${d.prepFiles?.length ? ` · 파일 ${d.prepFiles.length}개` : ""}`}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -372,11 +375,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </Fold>
       )}
 
-      {e.type === "회의" && (locked.has("minutes") ? <LockedFold title="회의록" /> : <EventMinutes eventId={id} />)}
+      {e.type === "회의" && !locked.has("minutes") && <EventMinutes eventId={id} />}
       {/* 사진첩: 참석한 회원이 올리고 함께 본다(참석 대상이 아니면 그리지 않는다) */}
-      {!ended && (locked.has("photos") ? <LockedFold title="사진첩" /> : <EventPhotos eventId={id} carousel />)}
-      {/* 조편성·숙소·차량: 닫힌 항목은 MineInfo 가 잠긴 칸으로 그린다(그 항목이 이 일정에 있을 때만) */}
-      <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule lockedCard={(t) => <LockedFold title={t} />} />
+      {!ended && !locked.has("photos") && <EventPhotos eventId={id} carousel />}
+      {/* 조편성·숙소·차량: 닫힌 항목은 아래 잠긴 칸 한 장에 이름만 보여 준다 */}
+      <MineInfo eventId={id} placeholder={answer !== "불참"} noSchedule />
       {/* 차량 신청: 관리자가 신청을 받거나 확정했을 때(참석 신청자만 신청할 수 있다) */}
       {!e.preview && !locked.has("cars") && <CarRequestBox eventId={id} />}
       {e.canObserve && <ObserversCard eventId={id} />}
@@ -408,10 +411,20 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {needDays && (
         <button className="fb bad" type="button" style={{ alignItems: "center" }} onClick={() => { setSel([]); setPicking(true); }}>
           <span className="ic" aria-hidden="true">!</span>
-          <span className="grow"><b>참석 날짜를 골라 주세요</b><span className="t">날짜를 골라야 참가비가 정해져요 · 고르기 ›</span></span>
+          <span className="grow"><b>참석 날짜를 골라 주세요</b><span className="t">날짜를 골라야 회비가 정해져요 · 고르기 ›</span></span>
         </button>
       )}
       {answer === "불참" && e.canApply !== false && <div className="msg info">참석 안함으로 알렸어요. 마음이 바뀌면 언제든 바꿀 수 있어요.</div>}
+
+      {/* 잠긴 칸 한 장: 미응답·불참에게 닫힌 항목 이름만(바로 아래 참석 신청 버튼) */}
+      {lockedNames.length > 0 && (
+        <section className="card" aria-label="잠긴 정보" style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 14px" }}>
+          <span aria-hidden="true">🔒</span>
+          <span className="small grow" style={{ overflowWrap: "anywhere" }}>
+            {e.canApply === false || e.preview ? "참석한 회원만 볼 수 있어요" : "참석 신청하면 볼 수 있어요"}: <b>{lockedNames.join(" · ")}</b>
+          </span>
+        </section>
+      )}
 
       {e.canApply === false && !e.preview && (e.club || e.guest) ? (
         <>
@@ -447,8 +460,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       )}
 
       {picking && (
-        <Sheet title="졸업여행 참석 날짜를 골라요" mascot>
-          <p className="small" style={{ margin: 0 }}>1박 2일 참석하시면 두 날짜를 모두 눌러 주세요.</p>
+        <Sheet title={`${e.name} 참석 날짜를 골라요`} mascot>
+          <p className="small" style={{ margin: 0 }}>여러 날 참석하시면 참석하는 날짜를 모두 눌러 주세요.</p>
           <div className="pick">
             {days.map((iso) => {
               const on = sel.includes(iso);
@@ -462,6 +475,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             })}
           </div>
           <button className="btn" type="button" disabled={busy || sel.length === 0} onClick={saveDays}>확인</button>
+          {/* 닫기: 참석은 그대로 두고 날짜는 나중에(아래 "참석 날짜를 골라 주세요"로 다시 고른다) */}
+          <button className="btn white" type="button" disabled={busy} onClick={() => setPicking(false)}>나중에 고르기</button>
         </Sheet>
       )}
 

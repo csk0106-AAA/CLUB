@@ -15,7 +15,7 @@ const body = z.object({
   days: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(7).optional(),
 });
 
-// 참석 신청 / 참석 안함 / 졸업여행 날짜 선택. 나중에 바꿀 수 있다.
+// 참석 신청 / 참석 안함 / 여러 날 일정의 참석 날짜 선택. 나중에 바꿀 수 있다.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const g = await guard();
   if ("err" in g) return g.err;
@@ -40,8 +40,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!from || days.some((d) => d < from || d > to)) return bad("일정 기간 안의 날짜를 골라 주세요.");
   }
 
-  const rows = await s.list("EventApplies");
-  const cur = rows.find((r) => r.eventId === id && r.memberId === g.s.mid);
+  // 한 회원은 한 일정에 한 줄만: 예전에 겹쳐 생긴 줄이 있으면 한 줄만 남긴다(입금 확인된 줄이 있으면 그 줄, 없으면 먼저 만든 줄)
+  const mine = (await s.list("EventApplies", { where: { field: "eventId", in: [id] } }))
+    .filter((r) => r.memberId === g.s.mid)
+    .sort((p, q) => Number(q.paid === "true") - Number(p.paid === "true"));
+  for (const extra of mine.slice(1)) await s.remove("EventApplies", extra.id);
+  const cur = mine[0];
+  // 새 줄 만들기: 버튼을 빠르게 두 번 눌러 같은 회원 줄이 둘 생겼으면 나중 줄을 지우고 먼저 줄에 이번 내용을 쓴다
+  //  돌려주는 값: 이번에 만든 줄이 남았는지(겹친 요청 중 하나만 알림을 보내려고)
+  const insertOnce = async (row: Record<string, string>): Promise<boolean> => {
+    const made = await s.insert("EventApplies", row);
+    const now = (await s.list("EventApplies", { where: { field: "eventId", in: [id] } })).filter((r) => r.memberId === g.s.mid);
+    if (now.length < 2) return true;
+    const keep = now[0];
+    for (const extra of now.slice(1)) await s.remove("EventApplies", extra.id);
+    if (keep.id === made.id) return true;
+    await s.update("EventApplies", keep.id, row);
+    return false;
+  };
 
   // 관리자 승인 후 참석인 일정: 아직 참석이 아니면 승인 대기로(이미 참석이면 날짜 바꾸기는 그대로)
   if (answer === "참석" && needsApproval(ev) && cur?.answer !== "참석") {
@@ -49,8 +65,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const fresh = cur?.req !== "참석";
     const fields = { req: "참석", reqDays, reqAt: fresh ? new Date().toISOString() : cur?.reqAt ?? "", reqResult: "", reqReason: "" };
     if (cur) await s.update("EventApplies", cur.id, { ...fields, answer: "", checkedBy: "", checkedAt: "" });
-    else await s.insert("EventApplies", { eventId: id, memberId: g.s.mid, answer: "", days: "", paid: "false", ...fields });
-    if (fresh) await notifyRequest(ev, me?.name ?? "회원");
+    const kept = cur ? true : await insertOnce({ eventId: id, memberId: g.s.mid, answer: "", days: "", paid: "false", ...fields });
+    if (fresh && kept) await notifyRequest(ev, me?.name ?? "회원");
     return NextResponse.json({ ok: true, pending: true });
   }
 
@@ -63,7 +79,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const refund = cur.answer !== answer ? await refundOnAnswer(ev, cur, answer, me) : {};
     await s.update("EventApplies", cur.id, { answer, days: nextDays, checkedBy: "", checkedAt: "", ...refund, ...(answer === "불참" ? clearReq : {}) });
   } else {
-    await s.insert("EventApplies", { eventId: id, memberId: g.s.mid, answer, days: nextDays, paid: "false" });
+    await insertOnce({ eventId: id, memberId: g.s.mid, answer, days: nextDays, paid: "false" });
   }
   return NextResponse.json({ ok: true });
 }

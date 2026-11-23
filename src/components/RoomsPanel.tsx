@@ -228,7 +228,7 @@ export function RoomsPanel({ eventId, canEdit }: { eventId: string; canEdit: boo
         </div>
       )}
       {d.same && d.nights.length > 1 ? (
-        <span className="small">모든 밤({dayLabel(d.nights[0])} ~ {dayLabel(d.nights[d.nights.length - 1])}) 같은 배정이에요. 아래에서 한 번만 짜면 {d.nights.length}일 밤 모두 같아요.</span>
+        <span className="small">모든 밤({dayLabel(d.nights[0])}부터 {dayLabel(d.nights[d.nights.length - 1])}까지) 같은 배정이에요. 아래에서 한 번만 짜면 {d.nights.length}일 밤 모두 같아요.</span>
       ) : d.dates.length > 1 && (
         <div className="subnav" role="tablist" aria-label="숙박 날짜">
           {d.dates.map((x) => <a key={x} href="#" role="tab" aria-selected={day === x} className={day === x ? "on" : ""} onClick={(e) => { e.preventDefault(); goDay(x); }}>{dayLabel(x)} 밤</a>)}

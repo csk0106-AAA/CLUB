@@ -79,12 +79,18 @@ export default function HostHome() {
           <span className={`pill ${it.live.active ? (it.live.unlocked ? "ok" : "warn") : "gray"}`} style={{ alignSelf: "flex-start" }}>
             {it.live.active ? `${it.live.stepLabel} · ${it.live.unlocked ? "회원 화면 열림" : "회원 화면 잠김"}` : "시작 전"}
           </span>
+          {/* 진행 화면이 있는 활동(내가 누구일까요?·나의 고민은?·팀)은 그 화면에서만 진행한다.
+              여기서 단계만 바꾸면 뽑기·순서 상태와 어긋나 회원 화면이 틀어지므로 단계 버튼을 두지 않는다. */}
           {it.screen && (
-            <Link href={it.screen} className="btn blue" style={{ textDecoration: "none", minHeight: 54, fontSize: 19 }}>
-              진행 화면 열기 ⛶
-            </Link>
+            <>
+              <Link href={it.screen} className="btn blue" style={{ textDecoration: "none", minHeight: 54, fontSize: 19 }}>
+                진행 화면 열기 ⛶
+              </Link>
+              <span className="small">진행은 진행 화면에서 해요.</span>
+            </>
           )}
-          {it.steps.length > 0 && (
+          {/* 진행 화면이 없는 활동(타임캡슐 등)은 단계 버튼이 곧 진행이라 그대로 둔다 */}
+          {!it.screen && it.steps.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="l" style={{ marginBottom: 0 }}>단계 진행</span>
               <div className="row" style={{ flexWrap: "wrap" }}>

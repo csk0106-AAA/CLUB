@@ -26,7 +26,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const me = members.find((m) => m.id === g.s.mid);
   const found = events.find((e) => e.id === id);
   // 관리하는 사람의 미리보기는 공개전 일정만(공개 대상 밖 일정은 열 수 없다)
-  const ev = found && (eventVisible(found, me ?? g.s.mid) || (found.published !== "true" && (await canPreviewEvent(found, me, g.s.mid)))) ? found : undefined;
+  const visible = !!found && eventVisible(found, me ?? g.s.mid);
+  const preview = !!found && !visible && found.published !== "true" && (await canPreviewEvent(found, me, g.s.mid));
+  const ev = visible || preview ? found : undefined;
   if (!ev) return bad("일정을 찾을 수 없어요.", 404);
   const nm = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
   // 같은 조·차·방 명단: 나도 넣고 "(나)"로 표시
@@ -92,7 +94,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // 미응답·불참 회원에게 닫힌 항목(세부일정·조편성·숙소·차량)은 보내지 않는다(lib/event-visibility.ts)
   //  lockedCards: 회원 화면에 잠긴 칸으로 보여 줄 항목(그 항목이 이 일정에 실제로 있을 때만)
   const myApply = (await s.list("EventApplies")).find((x) => x.eventId === id && x.memberId === g.s.mid);
-  const lk = lockedFor(ev, myApply?.answer === "참석");
+  //  관리하는 사람의 미리보기(preview)는 일정 개요(/api/events/[id])처럼 모두 열어 둔다
+  const lk = lockedFor(ev, myApply?.answer === "참석" || preview);
   const schedLocked = lk.includes("schedule");
   const lockedCards = [
     ...(lk.includes("groups") && (evGroups.length > 0 || myGroups.length > 0 || groupsPending > 0) ? ["groups"] : []),
@@ -101,6 +104,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   ];
   return NextResponse.json({
     lockedCards,
+    // 이 일정이 조편성(팀 활동 포함)·숙소 배정을 쓰는지: 쓰는 일정에만 "배정 전" 안내 칸을 보여 준다
+    usesGroups: evGroups.length > 0 || myGroups.length > 0 || groupsPending > 0,
+    usesRooms: allRooms.length > 0,
     rooms: lk.includes("rooms") ? { published: false, mine: [] } : { published: roomSt.published, mine: myRooms },
     schedule: schedLocked ? [] : sched.filter((r) => r.eventId === id).sort((a, b) => a.at.localeCompare(b.at)).map((r) => ({ at: r.at, title: r.title, place: r.place ?? "", memo: r.memo ?? "" })),
     dayPlaces: readDayPlaces(ev.dayPlaces), // 세부일정 날짜별 기본 위치

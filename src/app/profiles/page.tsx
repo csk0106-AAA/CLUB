@@ -84,7 +84,7 @@ export default function ProfilesPage() {
       {popup && (
         <Sheet title="프로필 북은 동의 후에 볼 수 있어요" mascot>
           <p style={{ margin: 0 }}>
-            프로필 북에는 회원들이 공개로 승인한 소개가 담겨 있어요. 서로의 소개를 함께 나누는 공간이라, 개인정보 안내에 동의한 회원만 볼 수 있어요.
+            프로필 북에는 회원들이 공개한 소개가 담겨 있어요. 서로의 소개를 함께 나누는 공간이라, 개인정보 안내에 동의한 회원만 볼 수 있어요.
           </p>
           <div className="card" style={{ background: "var(--soft)" }}>
             <b>개인정보 안내</b>

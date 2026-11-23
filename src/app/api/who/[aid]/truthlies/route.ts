@@ -27,7 +27,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
   const s = await getStore();
   const profile = await myProfile(g.s.mid);
-  if (profile?.introStatus === "approved") return bad("승인된 소개가 있어요. 승인을 취소한 뒤 다시 만들 수 있어요.", 409);
+  if (profile?.introStatus === "approved") return bad("공개한 소개가 있어요. 공개를 취소한 뒤 다시 만들 수 있어요.", 409);
   const intro = (parsed.data.introMd ?? profile?.draftMd ?? "").trim();
   const iv = await myInterview(g.s.mid, aid);
   const terms = termsFrom(await s.list("Members"));

@@ -66,7 +66,7 @@ const TABS = [
   { key: "apply", label: "신청현황" },
   { key: "fee", label: "회비" },
   { key: "act", label: "활동" },
-  { key: "sched", label: "세부일정" },
+  { key: "sched", label: "세부 일정" },
   { key: "prep", label: "준비목록" },
   { key: "cost", label: "비용" },
   { key: "group", label: "조편성" },
@@ -111,6 +111,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [tab, setTab] = useState(initialTab && TABS.some((t) => t.key === initialTab) ? initialTab : "over");
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  // 누른 버튼 옆에 보여 줄 결과 문구(회비 탭): at = "feeSave" 회비 저장 / "supports" 지원금 / "pay:회원" 입금 확인 / "refund:회원" 송금완료
+  const [near, setNear] = useState<{ at: string; tone: "bad" | "info"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [canEditActs, setCanEditActs] = useState(false);
   const tabOrder = useTabOrder("event", true); // 위쪽 메뉴: 끌어서 순서 바꾸기(모든 관리자 공통)
@@ -202,10 +204,12 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     return out;
   })();
 
-  async function save(published?: boolean) {
+  // at: 결과 문구를 누른 버튼 옆에 보여 줄 자리(회비 탭의 "회비 저장"). 없으면 위쪽에.
+  async function save(published?: boolean, at?: string) {
     if (!ev) return;
     setBusy(true);
     setMsg(null);
+    setNear(null);
     // 참관자는 신청현황 탭에서 따로 저장하고, 공개 대상(audience)은 이 화면에서 바꾸지 않는다.
     // 맨 위 고정(pinned)은 스위치를 누를 때 바로 저장한다.
     // 준비목록·비용 "참석자에게 보이기"는 각 탭에서 따로 저장한다(여기서는 보내지 않는다)
@@ -217,7 +221,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       body: { ...fields, fee: "", ...(published === undefined ? {} : { published }) },
     });
     setBusy(false);
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
+    if (!r.ok) return at ? setNear({ at, tone: "bad", text: r.error }) : setMsg({ tone: "bad", text: r.error });
+    if (at) {
+      setNear({ at, tone: "info", text: "저장했어요." });
+      return load();
+    }
     // 공개·공개 취소는 다시 불러오기를 기다리지 않고 라벨을 바로 바꾼다
     if (published !== undefined) setEv((cur) => (cur ? { ...cur, published: String(published), status: published ? "공개" : "초안" } : cur));
     setMsg({ tone: "info", text: published === true ? (ev?.published === "true" ? "저장했어요. 공개 상태 그대로 회원 화면에 반영돼요." : "공개하고 회원에게 전달했어요. 이제 회원 화면에 보여요.") : published === false ? "공개를 취소했어요. 다시 공개전이에요." : "저장했어요." });
@@ -227,7 +235,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   // 회원 일정 목록 맨 위 고정: 누르면 바로 저장(회원 알림은 보내지 않는다)
   async function removeEvent() {
     if (!ev) return;
-    if (!window.confirm(`“${ev.name}” 일정을 지울까요?\n참석 신청·회비·세부일정·활동 기록도 함께 지워지고 되돌릴 수 없어요.`)) return;
+    if (!window.confirm(`“${ev.name}” 일정을 지울까요?\n참석 신청·회비·세부 일정·활동 기록도 함께 지워지고 되돌릴 수 없어요.`)) return;
     setBusy(true);
     const r = await api(`/api/admin/events/${id}`, { method: "DELETE" });
     setBusy(false);
@@ -296,9 +304,10 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       if (v === null) return;
       reason = v.trim();
     }
+    setNear(null);
     const r = await api(`/api/admin/events/${id}/pay`, { body: reject ? { memberId, reject: true, reason } : { memberId, paid, ...(reason !== undefined ? { reason } : {}) } });
-    if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setMsg({ tone: "info", text: reject ? "입금 알림을 돌려보내고 회원에게 알렸어요." : paid ? "입금을 확인했어요. 회원에게 알림을 보냈어요." : "입금 확인을 취소하고 회원에게 알렸어요." });
+    if (!r.ok) return setNear({ at: `pay:${memberId}`, tone: "bad", text: r.error });
+    setNear({ at: `pay:${memberId}`, tone: "info", text: reject ? "입금 알림을 돌려보내고 회원에게 알렸어요." : paid ? "입금을 확인했어요. 회원에게 알림을 보냈어요." : "입금 확인을 취소하고 회원에게 알렸어요." });
     load();
   }
 
@@ -347,10 +356,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   async function refundDone(r: Row) {
     if (!window.confirm(`${r.name} 님에게 회비 ${won(r.refundAmount ?? "0")}을 송금했나요?\n“송금완료”로 바꾸고 ${r.name} 님에게 바로 알림을 보내요.`)) return;
     setBusy(true);
+    setNear(null);
     const res = await api(`/api/admin/events/${id}/refund`, { body: { memberId: r.memberId } });
     setBusy(false);
-    if (!res.ok) return setMsg({ tone: "bad", text: res.error });
-    setMsg({ tone: "info", text: `${r.name} 님 회비 송금완료로 바꾸고 알림을 보냈어요.` });
+    if (!res.ok) return setNear({ at: `refund:${r.memberId}`, tone: "bad", text: res.error });
+    setNear({ at: `refund:${r.memberId}`, tone: "info", text: `${r.name} 님 회비 송금완료로 바꾸고 알림을 보냈어요.` });
     load();
   }
 
@@ -367,7 +377,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       ...body,
       "",
       "모임 앱에서 참석 여부를 알려 주세요.",
-      "로그인: 내 이름 선택 + 연락처 뒷자리 4자리",
+      "로그인: 내 이름 선택 + 휴대폰 번호 뒷자리 4자리",
       "",
       // 맨 마지막: 이 일정 바로가기(로그인하면 바로 이 일정 화면이 열려요)
       `👉 일정 바로가기: ${window.location.origin}/events/${id}`,
@@ -412,8 +422,15 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   // 지원금은 고치거나 지우면 바로 저장한다(회비현황 장부와 같은 기록이라 저장 버튼을 기다리지 않는다). 금액이 빈 줄은 빼고 저장.
   async function saveSupports(next: Support[]) {
     const r = await api(`/api/admin/events/${id}`, { method: "PATCH", body: { supports: next.filter((x) => x.amount) } });
-    if (!r.ok) setMsg({ tone: "bad", text: `지원금을 저장하지 못했어요. ${r.error}` });
+    if (!r.ok) setNear({ at: "supports", tone: "bad", text: `지원금을 저장하지 못했어요. ${r.error}` });
   }
+  // 누른 버튼 옆 결과 문구(near.at 이 맞을 때만)
+  const nearNote = (at: string) =>
+    near?.at === at ? (
+      <span className="small" role={near.tone === "bad" ? "alert" : "status"} style={{ fontWeight: 600, color: near.tone === "bad" ? "var(--red-t)" : "var(--green-t)", whiteSpace: "normal" }}>
+        {near.tone === "info" ? "✓ " : ""}{near.text}
+      </span>
+    ) : null;
   const setAndSaveSupports = (next: Support[]) => { setSupports(next); saveSupports(next); };
   // 참석일 선택지: 일정 기간(최대 7일)
   const dayCount = (() => {
@@ -463,7 +480,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           const list = tabOrder.sort(tabsFor(ev.type));
           const keys = list.map((t) => t.key);
           return list.map((t) => (
-            <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={tab === t.key ? "on" : ""} onClick={() => setTab(t.key)} {...tabOrder.drag(t.key, keys)}>{t.label}</button>
+            <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={tab === t.key ? "on" : ""} onClick={() => { setTab(t.key); setNear(null); }} {...tabOrder.drag(t.key, keys)}>{t.label}</button>
           ));
         })()}
       </div>
@@ -471,7 +488,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       <ActionNote msg={msg} />
 
       {tab === "over" && (
-        <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        // 개요는 세 묶음: 기본 정보(저장 버튼으로 저장) · 공개·참석 설정(누르면 바로 저장) · 더 보기(복제·템플릿·삭제, 접어 둠)
+        <form onSubmit={(e) => { e.preventDefault(); save(); }} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          <section className="otsec" aria-labelledby="o-sec-basic" style={{ gap: 14 }}>
+          <h2 id="o-sec-basic">기본 정보</h2>
+          <span className="small" style={{ marginTop: -8 }}>이 묶음은 고친 뒤 맨 아래 <b>임시 저장</b> 또는 <b>{ev.published === "true" ? "저장 (공개 유지)" : "공개 및 회원전달"}</b>을 눌러야 반영돼요.</span>
           {/* 클럽 고르기: 클럽이 아직 없는 클럽 일정만(클럽관리 › 그 클럽에서 들어오면 이미 정해져 있어 숨긴다) */}
           {ev.type === "클럽" && !ev.club && (
             <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -489,27 +510,6 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               {ev.club && !curClub && <span className="small" style={{ color: "var(--red-t)" }}>“{ev.club}” 클럽이 목록에 없어요. 다른 클럽을 골라 주세요.</span>}
             </div>
           )}
-          <div className="card switchrow">
-            <span className="grow">
-              <b id="o-pin-l">회원 일정 목록 맨 위에 고정</b>
-              <span className="small" style={{ display: "block" }} id="o-pin-d">켜면 회원의 일정 목록에서 가장 먼저 보여요. 누르면 바로 저장돼요.</span>
-            </span>
-            <button type="button" role="switch" className="switch" aria-checked={ev.pinned === "true"} aria-labelledby="o-pin-l" aria-describedby="o-pin-d"
-              disabled={busy} onClick={() => togglePin(ev.pinned !== "true")} />
-          </div>
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <b>참석 확정 방식</b>
-            <div className="seg" role="group" aria-label="참석 확정 방식" style={{ alignSelf: "flex-start" }}>
-              <button type="button" aria-pressed={(ev.approval ?? "") === ""} disabled={busy} onClick={() => setApproval("")} style={{ minHeight: 38, padding: "0 14px" }}>바로 확정</button>
-              <button type="button" aria-pressed={ev.approval === "admin"} disabled={busy} onClick={() => setApproval("admin")} style={{ minHeight: 38, padding: "0 14px" }}>관리자 승인 후 확정</button>
-            </div>
-            <span className="small">
-              {ev.approval === "admin" ? "회원이 참석을 신청하면 “승인 대기”가 되고 관리자에게 알림이 가요. 신청현황에서 승인하면 참석이 확정되고, 반려하면 사유와 함께 회원에게 알려요." : "회원이 참석을 신청하면 바로 참석으로 확정돼요."}
-              {" "}대기회원·참관회원, 다른 클럽 회원은 어느 쪽이든 참관·가입 신청 승인을 거쳐요. 누르면 바로 저장돼요.
-            </span>
-          </div>
-          {!ev.club && <EventJoiners eventId={id} onChanged={load} />}
-          <EventAudience key={`${ev.id}-${ev.club ?? ""}`} eventId={id} audience={ev.audience} club={ev.club || undefined} onSaved={load} />
           {prefilled && <div className="msg info" role="status">{prefilled}</div>}
           {/* 일정 이름 · 장소 한 줄, 시작 일시 · 끝나는 일시 · 사진 최대 장수 한 줄(globals.css .grid2.pair) */}
           <div className="grid2 pair">
@@ -545,22 +545,13 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           </div>
 
           <div>
-            <div className="row" style={{ gap: 6, justifyContent: "space-between", flexWrap: "wrap" }}>
-              <label className="l" htmlFor="o-book">안내 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
-              <span className="row" style={{ gap: 6 }}><VisSwitch eventId={id} k="notice" inline /></span>
-            </div>
+            <label className="l" htmlFor="o-book">안내 (줄을 바꿔 여러 줄로 쓸 수 있어요)</label>
             <textarea id="o-book" className="field" rows={6} maxLength={2000} style={{ padding: 12, lineHeight: 1.6, resize: "vertical" }}
               placeholder={"예)\n숙소: 대명 홍천 소노펠리체, 객실 10실 (예약번호 0000)\n체크인 15:00 / 체크아웃 11:00\n저녁: 18:30 ○○식당 (20명)"}
               value={ev.booking} onChange={(e) => set("booking", e.target.value)} />
             <span className="hint">{ev.booking.length}/2000자 · 회원 화면에도 줄바꿈 그대로 보여요.</span>
           </div>
 
-          {/* 일정 대표사진: 모임·클럽 대표사진처럼 고르면 바로 저장 */}
-          <CoverPicker scope="event" club={id} title="일정 대표사진"
-            help={`홈의 다가오는 일정·타임라인 카드와 일정 화면 맨 위에 이 사진이 보여요. 회원이 올린 사진보다 먼저예요. 없으면 회원 사진 → ${ev.club ? "클럽" : "모임"} 대표사진 순서로 보여요. 사진을 고르면 바로 저장돼요.`} />
-
-          {/* 편집자: 만든 사람(또는 일정관리)이 이 일정 종류를 만들 권한이 있는 회원 중에서 추가 */}
-          <EditorsBox endpoint={`/api/admin/events/${id}/editors`} what="일정" need={`${ev.type} 일정을 만들 권한`} />
           <EventPreview ev={infoEv} rules={rules} actNames={actNames} schedule={schedule} dayPlaces={readDayPlaces(ev.dayPlaces)} />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button className="btn white" type="submit" disabled={busy} style={{ width: "auto", minWidth: 160 }}>임시 저장</button>
@@ -570,19 +561,59 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
           </div>
           <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회원마다 회비가 다르면 금액과 계좌 대신 “앱 접속 후 내 회비 확인”으로 나가요.</span>
+          </section>
+
+          {/* 공개·참석 설정: 모두 누르면 바로 저장(저장 버튼과 상관없음) */}
+          <section className="otsec" aria-labelledby="o-sec-open" style={{ gap: 14, borderTop: "1px solid var(--line)", paddingTop: 18 }}>
+          <h2 id="o-sec-open">공개·참석 설정</h2>
+          <span className="small" style={{ marginTop: -8 }}>이 묶음은 누르거나 고르면 <b>바로 저장</b>돼요. 저장 버튼은 필요 없어요.</span>
+          <EventAudience key={`${ev.id}-${ev.club ?? ""}`} eventId={id} audience={ev.audience} club={ev.club || undefined} onSaved={load} />
+          {!ev.club && <EventJoiners eventId={id} onChanged={load} />}
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <b>참석 확정 방식</b>
+            <div className="seg" role="group" aria-label="참석 확정 방식" style={{ alignSelf: "flex-start" }}>
+              <button type="button" aria-pressed={(ev.approval ?? "") === ""} disabled={busy} onClick={() => setApproval("")} style={{ minHeight: 38, padding: "0 14px" }}>바로 확정</button>
+              <button type="button" aria-pressed={ev.approval === "admin"} disabled={busy} onClick={() => setApproval("admin")} style={{ minHeight: 38, padding: "0 14px" }}>관리자 승인 후 확정</button>
+            </div>
+            <span className="small">
+              {ev.approval === "admin" ? "회원이 참석을 신청하면 “승인 대기”가 되고 관리자에게 알림이 가요. 신청현황에서 승인하면 참석이 확정되고, 반려하면 사유와 함께 회원에게 알려요." : "회원이 참석을 신청하면 바로 참석으로 확정돼요."}
+              {" "}대기회원·참관회원, 다른 클럽 회원은 어느 쪽이든 참관·가입 신청 승인을 거쳐요.
+            </span>
+          </div>
+          {/* 안내: 미응답·불참 회원에게도 보일지(components/VisSwitch.tsx) */}
+          <div className="card row" style={{ gap: 6, flexWrap: "wrap" }}><VisSwitch eventId={id} k="notice" inline /></div>
+          <div className="card switchrow">
+            <span className="grow">
+              <b id="o-pin-l">회원 일정 목록 맨 위에 고정</b>
+              <span className="small" style={{ display: "block" }} id="o-pin-d">켜면 회원의 일정 목록에서 가장 먼저 보여요.</span>
+            </span>
+            <button type="button" role="switch" className="switch" aria-checked={ev.pinned === "true"} aria-labelledby="o-pin-l" aria-describedby="o-pin-d"
+              disabled={busy} onClick={() => togglePin(ev.pinned !== "true")} />
+          </div>
+          {/* 일정 대표사진: 모임·클럽 대표사진처럼 고르면 바로 저장 */}
+          <CoverPicker scope="event" club={id} title="일정 대표사진"
+            help={`홈의 다가오는 일정·타임라인 카드와 일정 화면 맨 위에 이 사진이 보여요. 회원이 올린 사진보다 먼저예요. 없으면 회원 사진 → ${ev.club ? "클럽" : "모임"} 대표사진 순서로 보여요. 사진을 고르면 바로 저장돼요.`} />
+          {/* 편집자: 만든 사람(또는 일정관리)이 이 일정 종류를 만들 권한이 있는 회원 중에서 추가 */}
+          <EditorsBox endpoint={`/api/admin/events/${id}/editors`} what="일정" need={`${ev.type} 일정을 만들 권한`} />
+          </section>
+
+          {/* 더 보기: 복제 · 템플릿으로 저장 · 삭제(자주 쓰지 않아 접어 둔다) */}
+          <details className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 700 }}>더 보기 <span className="small" style={{ fontWeight: 500 }}>복제 · 템플릿 · 삭제</span></summary>
           {/* 일정 복제: 같은 설정·준비 내용으로 새 초안 일정 만들기 */}
-          <div className="row" style={{ flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 4 }}>
-            <span className="small grow" style={{ minWidth: 200 }}>같은 설정으로 다음 일정을 만들려면 복제하세요. 세부일정·준비목록·비용 항목·활동까지 새 초안으로 복사돼요.</span>
+          <div className="row" style={{ flexWrap: "wrap", paddingTop: 10 }}>
+            <span className="small grow" style={{ minWidth: 200 }}>같은 설정으로 다음 일정을 만들려면 복제하세요. 세부 일정·준비목록·비용 항목·활동까지 새 초안으로 복사돼요.</span>
             <EventDuplicate variant="page" ev={{ id: ev.id, name: ev.name, startsAt: ev.startsAt, club: ev.club }} />
           </div>
           {/* 유형 템플릿: 일정 만들기에서 같은 유형을 고르면 이 일정 내용으로 채우기 */}
           {canTpl && ev.type !== "클럽" && <EventTemplateSave eventId={id} type={ev.type} />}
           {canDelete && (
             <div className="row" style={{ flexWrap: "wrap", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 4 }}>
-              <span className="small grow" style={{ minWidth: 200 }}>일정을 지우면 참석 신청·회비·세부일정·활동 기록도 함께 지워지고 되돌릴 수 없어요. 회원에게만 감추려면 “공개 취소”를 쓰세요.</span>
+              <span className="small grow" style={{ minWidth: 200 }}>일정을 지우면 참석 신청·회비·세부 일정·활동 기록도 함께 지워지고 되돌릴 수 없어요. 회원에게만 감추려면 “공개 취소”를 쓰세요.</span>
               <button className="btn red" type="button" disabled={busy} style={{ width: "auto", minWidth: 160 }} onClick={removeEvent}>일정 삭제</button>
             </div>
           )}
+          </details>
         </form>
       )}
 
@@ -590,7 +621,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       {tab === "act" && <><VisSwitch eventId={id} k="activities" canEdit={canEditActs} /><EventActivities eventId={id} canEdit={canEditActs} /></>}
       {tab === "sched" && <EventItems eventId={id} kind="schedule" canEdit />}
       {tab === "prep" && <EventItems eventId={id} kind="prep" canEdit />}
-      {tab === "cost" && <EventItems eventId={id} kind="costs" canEdit />}
+      {/* 비용: "기본 회비로 정하기"로 회비 줄이 바뀌면 이 화면도 다시 불러온다(회비 탭이 옛 값으로 덮어쓰지 않게) */}
+      {tab === "cost" && <EventItems eventId={id} kind="costs" canEdit onSaved={load} />}
       {/* 조편성·차량·숙소·사진첩: 위쪽 오른쪽에 "미응답·불참에게 보이기" */}
       {tab === "group" && <><VisSwitch eventId={id} k="groups" /><GroupsPanel eventId={id} canEdit /></>}
       {tab === "car" && <><VisSwitch eventId={id} k="cars" note="끄면 미응답·불참 회원은 차량 목록·탑승 신청을 볼 수 없어요." /><CarpoolPanel eventId={id} canEdit /></>}
@@ -727,8 +759,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setRules([...rules, { days: "", kind: "", position: "", amount: "" }])}>+ 회비 줄 추가</button>
             </div>
             <span className="small" style={{ fontSize: fs(12) }}>
-              회원구분, 직책, 참석일에 따라 금액을 정해요. 모두 “전체”인 줄은 모든 회원의 기본 회비예요. 직책의 “일반회원”은 직책이 없는 회원이에요.
-              회원에게 맞는 줄 중 <b>조건이 가장 많이 맞는 줄</b>의 금액을 쓰고, 맞는 줄이 없으면 회비가 없어요. 0원도 회비 없음이에요. 회원에게는 <b>본인 회비만</b> 보여요.
+              회원마다 <b>조건이 가장 많이 맞는 줄</b>의 금액을 써요(모두 “전체”인 줄은 기본 회비, 맞는 줄이 없거나 0원이면 회비 없음). 직책의 “일반회원”은 직책이 없는 회원이에요. 회원에게는 <b>본인 회비만</b> 보여요.
             </span>
             {rules.length === 0 && <span className="small" style={{ fontSize: fs(12) }}>아직 회비가 없어요. 회비를 받는 일정이라면 “+ 회비 줄 추가”를 눌러 주세요.</span>}
             {rules.length > 0 && (
@@ -788,7 +819,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               <button className="btn" type="button" style={{ width: "auto", minHeight: 34, padding: "0 10px", fontSize: fs(12) }} onClick={() => setSupports([...supports, { kind: "member", name: "", amount: "", memo: "" }])}>+ 회원 지원</button>
             </div>
             <span className="small" style={{ fontSize: fs(12) }}>
-              <b>모임회비 지원</b>(회비현황 장부에 지출로 함께 기록): 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 연·월회비에서 이 일정에 쓰는 돈. <b>회원 지원</b>: 회원이 따로 내는 지원금(지원한 회원 이름을 적어요). 지원금은 총 예산에 더해져요.
+              <b>모임회비 지원</b>은 모임{ev.club ? `(${clubLabel(ev.club)})` : ""} 회비에서 쓰는 돈(장부에 지출로 기록), <b>회원 지원</b>은 회원이 따로 내는 돈이에요. 둘 다 총 예산에 더해져요.
             </span>
             {supports.length > 0 && (
               <div className="tblw">
@@ -822,6 +853,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               </div>
             )}
             {supports.some((x) => !x.amount) && <span className="small" style={{ color: "var(--red-t)" }}>금액이 빈 지원금이 있어요. 금액을 넣거나 삭제해 주세요.</span>}
+            {nearNote("supports")}
           </section>
           {/* 총 예산 */}
           <MiniStats items={[
@@ -831,8 +863,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           ]} />
           {!light && (
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <button className="btn" type="button" disabled={busy || supports.some((x) => !x.amount)} style={{ width: "auto", minWidth: 120, minHeight: 40, fontSize: fs(14) }} onClick={() => save()}>회비 저장</button>
-              <span className="small" style={{ fontSize: fs(12) }}>회비 설정과 지원금을 저장해요. 공개 상태는 그대로예요.</span>
+              <button className="btn" type="button" disabled={busy || supports.some((x) => !x.amount)} style={{ width: "auto", minWidth: 120, minHeight: 40, fontSize: fs(14) }} onClick={() => save(undefined, "feeSave")}>회비 저장</button>
+              {nearNote("feeSave") ?? <span className="small" style={{ fontSize: fs(12) }}>회비 설정과 지원금을 저장해요. 공개 상태는 그대로예요.</span>}
             </div>
           )}
           <MiniStats items={[
@@ -843,7 +875,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           {refunds.length > 0 && (
             <section className="card" aria-label="회비 돌려주기" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <b style={{ font: `700 ${fs(15)} var(--display)` }}>회비 돌려주기</b>
-              <span className="small" style={{ fontSize: fs(12) }}>입금이 확인된 뒤 참석에서 빠진 회원이에요(참석자 회비 합계에서는 빠졌어요). 송금했으면 “송금완료”를 눌러 주세요. 그 회원에게 바로 알림이 가요. 송금대기인 동안 참석 해제일부터 일주일마다 관리자에게 알림이 가요.</span>
+              <span className="small" style={{ fontSize: fs(12) }}>입금 확인 뒤 참석에서 빠진 회원이에요(회비 합계에서 빠져요). 돌려준 뒤 “송금완료”를 누르면 회원에게 알림이 가고, 그전까지는 일주일마다 관리자에게 알려 드려요.</span>
               <div className="tblw">
                 <table className="tbl compact stack" style={{ minWidth: 460 }}>
                   <thead><tr><th>이름</th><th>금액</th><th>상태</th><th>날짜</th><th></th></tr></thead>
@@ -854,7 +886,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                         <td className="num" data-label="금액">{won(r.refundAmount ?? "0")}</td>
                         <td data-label=""><span className={`pill ${r.refund === "wait" ? "warn" : "gray"}`}>{r.refund === "wait" ? "송금대기" : "송금완료"}</span></td>
                         <td className="num" data-label="날짜">{r.refund === "wait" ? `${fmtDate(r.refundSince ?? "")} 참석 해제` : `${fmtDate(r.refundDoneAt ?? "")} 송금`}</td>
-                        <td className="act" data-label="">{r.refund === "wait" && <button className="mini" type="button" disabled={busy} onClick={() => refundDone(r)}>송금완료</button>}</td>
+                        <td className="act" data-label="">{r.refund === "wait" && <button className="mini" type="button" disabled={busy} onClick={() => refundDone(r)}>송금완료</button>}{near?.at === `refund:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`refund:${r.memberId}`)}</div>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -878,7 +910,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                         {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {fmtDate(r.payNotice)}</span>}
                       </td>
                       <td className="num" data-label="확인일">{fmtDate(r.paidAt) || "-"}</td>
-                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{!r.paid && r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}</td>
+                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{!r.paid && r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}{near?.at === `pay:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`pay:${r.memberId}`)}</div>}</td>
                     </tr>
                   ))}
                 </tbody>

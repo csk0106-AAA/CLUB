@@ -67,11 +67,11 @@ function Settings() {
         </fieldset>
         <div className="grid2">
           <div>
-            <label className="l" htmlFor="s-code">공통 초대코드 (연락처가 없는 회원용, 4자 이상)</label>
+            <label className="l" htmlFor="s-code">공통 초대코드 (휴대폰 번호가 없는 회원용, 4자 이상)</label>
             <PasswordField id="s-code" autoComplete="off" value={s.inviteCode} onChange={(v) => setS({ ...s, inviteCode: v })} />
           </div>
         </div>
-        <span className="small">회원은 명단에 등록된 연락처 뒷자리 4자리로 로그인해요. 연락처가 없는 회원만 이 공통 초대코드를 써요.</span>
+        <span className="small">회원은 명단에 등록된 휴대폰 번호 뒷자리 4자리로 로그인해요. 휴대폰 번호가 없는 회원만 이 공통 초대코드를 써요.</span>
         <div className="card" style={{ background: "var(--soft)" }}>
           <span className="pill gray">회원 첫 화면 미리보기</span>
           <div className="say" style={{ alignItems: "center", marginTop: 8 }}>
@@ -109,7 +109,7 @@ function Settings() {
             <ol className="small" style={{ margin: "4px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 2 }}>{REQUIRED_RULES.map((r, i) => <li key={i}>{r}</li>)}</ol>
           </div>
           <div>
-            <b style={{ fontSize: fs(14) }}>기본 지침</b> <span className="small">활동의 공통 지침이 비어 있을 때 쓰고, 활동 AI 지침 화면에 처음 채워 보여 줘요. 게시글 AI 작성에는 말투 항목(1~4)만 들어가요(임원 소개처럼 이름·직함이 필요한 글이 있어서).</span>
+            <b style={{ fontSize: fs(14) }}>기본 지침</b> <span className="small">활동의 공통 지침이 비어 있을 때 쓰고, 활동 AI 지침 화면에 처음 채워 보여 줘요. 게시글 AI 작성에는 말투 항목(1번에서 4번)만 들어가요(임원 소개처럼 이름·직함이 필요한 글이 있어서).</span>
             <ol className="small" style={{ margin: "4px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 2 }}>{BASE_RULES.map((r, i) => <li key={i}>{r}</li>)}</ol>
           </div>
           <div>

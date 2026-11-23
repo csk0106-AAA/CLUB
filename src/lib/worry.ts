@@ -64,7 +64,7 @@ export async function displayName(w: Row): Promise<string> {
   return (await (await getStore()).list("Members")).find((m) => m.id === w.memberId)?.name ?? "";
 }
 
-export type WorryAction = "draw" | "pause" | "resume" | "extend" | "skip" | "reveal" | "tips";
+export type WorryAction = "draw" | "pause" | "resume" | "extend" | "skip" | "reveal" | "tips" | "end";
 type R = { ok: true } | { ok: false; error: string; status?: number };
 
 export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { category?: string; minutes?: number }): Promise<R> {
@@ -99,6 +99,14 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     await s.update("Worries", pick.id, { drawnAt: new Date(now).toISOString(), orderNo: String(order), nameRevealed: "false", authorShown: "false" });
     payload.worry = { currentId: pick.id, endsAt: new Date(now + minutes * 60_000).toISOString(), remainingMs: null, minutes, tips: [] };
     await setLive(aid, "talk", true, payload);
+    return { ok: true };
+  }
+
+  // 활동 마치기: 회원 화면 진행을 끄고(진행 중 표시가 사라진다) 지금 고민도 내린다. 이미 나온 고민은 다시 나오지 않는다.
+  if (action === "end") {
+    if (!liveView(ctx.cfg, live).active && !cur) return { ok: false, error: "이미 마친 활동이에요.", status: 409 };
+    delete payload.worry;
+    await setLive(aid, "", false, payload);
     return { ok: true };
   }
 
