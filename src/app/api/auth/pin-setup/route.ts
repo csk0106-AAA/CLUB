@@ -11,7 +11,7 @@ const body = z.object({ memberId: z.string().min(1), code: z.string().min(1).max
 
 // 처음 로그인: 개인 초대코드(연락처 뒷자리 4자리)를 다시 확인하고 6자리 PIN 을 만든다. 만든 뒤 바로 로그인된다.
 export async function POST(req: Request) {
-  if (!pinActive()) return NextResponse.json({ error: "로그인 PIN 은 2026년 12월 12일부터 쓸 수 있어요." }, { status: 409 });
+  if (!pinActive()) return NextResponse.json({ error: "로그인 PIN 은 아직 쓰지 않아요." }, { status: 409 });
   const p = body.safeParse(await req.json().catch(() => null));
   if (!p.success) return NextResponse.json({ error: "PIN 을 확인해 주세요." }, { status: 400 });
   const { memberId, code, pin } = p.data;

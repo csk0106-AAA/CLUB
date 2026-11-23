@@ -9,9 +9,10 @@ import { getSetting, getStore, setSetting } from "./store";
 
 export type PinKind = "member" | "admin";
 
-// PIN 적용 시작: 2026-12-12 00:00(한국 시간). 이 전에는 예전 방식(연락처 뒷자리 4자리 로그인, 공용 관리자 비밀번호)으로 동작한다.
-export const PIN_FROM = "2026-12-12T00:00:00+09:00";
-export const pinActive = (now = Date.now()): boolean => now >= Date.parse(PIN_FROM);
+// PIN 적용 시작(한국 시간, 예: "2026-12-12T00:00:00+09:00"). 비워 두면 꺼져 있다(보류 중, 2026-11-23).
+//  꺼져 있거나 그 전에는 예전 방식(연락처 뒷자리 4자리 로그인, 공용 관리자 비밀번호)으로 동작한다. 날짜가 정해지면 여기에 넣는다.
+export const PIN_FROM: string = "";
+export const pinActive = (now = Date.now()): boolean => !!PIN_FROM && now >= Date.parse(PIN_FROM);
 const COL: Record<PinKind, "pinHash" | "adminPinHash"> = { member: "pinHash", admin: "adminPinHash" };
 
 // PIN 규칙: 6자리 숫자, 같은 숫자 반복·연속 숫자(123456, 654321 등) 금지, 내 연락처 뒷자리 4자리를 포함하면 안 된다

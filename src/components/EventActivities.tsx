@@ -587,11 +587,13 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             </span>
             <span className={`pill ${a.pre.enabled ? "blue" : "warn"}`}>{a.pre.enabled ? "사전 작성 있음" : "현장에서만"}</span>
             <span className="pill gray">{modeOf(a.config) === "team" ? "팀별" : "모두 함께"}</span>
-            <span className="grow" />
+          </div>
+          {/* 버튼은 제목 아래 줄에 따로(접고 펼쳐도 제목 줄이 움직이지 않게) */}
+          <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
             <button className="mini" type="button" aria-expanded={openActs.has(a.id)} onClick={() => toggleAct(a.id)}>{openActs.has(a.id) ? "접기 ▴" : "설정 펼치기 ▾"}</button>
             {canEdit && (
               <>
-                <button className="mini" type="button" onClick={() => { const { id: _i, version: _v, ...rest } = a.config; void _i; void _v; setEditErr(""); setEdit({ id: a.id, value: rest, orig: JSON.stringify(rest) }); }}>수정</button>
+                <button className="mini" type="button" onClick={() => { const { id: _i, version: _v, ...rest } = a.config; void _i; void _v; setEditErr(""); setEdit({ id: a.id, value: rest, orig: JSON.stringify(rest) }); }}>템플릿 수정</button>
                 {aiPointKeys(a.config).length > 0 && (
                   <button className="mini" type="button" onClick={async () => {
                     setMsg(null);
@@ -743,7 +745,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       <Popup
         id="activity-editor"
         width={900}
-        title={edit ? `활동 설정 수정 · ${edit.value.name}` : "활동 설정 수정"}
+        title={edit ? `템플릿 수정 · ${edit.value.name}` : "템플릿 수정"}
         open={!!edit}
         onClose={() => setEdit(null)}
         dirty={!!edit && JSON.stringify(edit.value) !== edit.orig}

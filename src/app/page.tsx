@@ -168,7 +168,7 @@ export default function LoginPage() {
             <PasswordField id="cd" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} />
           </div>
           {club.pinOn ? <p className="hint">처음 로그인하면 연락처 뒷자리 4자리로 들어와 나만의 6자리 PIN 을 만들어요. 그다음부터는 PIN 으로 로그인해요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 진행자라면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 5번 틀리면 15분 동안 잠겨요.</p>
-            : <p className="hint">진행자로 지정되었다면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5번 틀리면 15분 동안 잠겨요. 12월 12일부터는 나만의 6자리 PIN 으로 로그인해요(처음 한 번 만들어요).</p>}
+            : <p className="hint">진행자로 지정되었다면 받은 진행자 접속번호를 넣으면 활동 진행 화면으로 들어가요. 연락처가 등록되지 않았다면 관리자에게 받은 공통 초대코드를 넣어 주세요. 5번 틀리면 15분 동안 잠겨요.</p>}
           {club.pinOn && <button className="mini" type="button" style={{ alignSelf: "flex-start" }} onClick={forgot}>PIN을 잊었어요</button>}
           {forgotMsg && <p className="small" role="status" style={{ margin: 0 }}>{forgotMsg}</p>}
           {error && <div className="msg bad" role="alert">{error}</div>}

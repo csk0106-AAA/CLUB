@@ -8,7 +8,7 @@ const body = z.object({ current: z.string().max(20), pin: z.string().max(20) });
 
 // 로그인 PIN 바꾸기: 지금 PIN 을 확인한 뒤 새 PIN 으로
 export async function POST(req: Request) {
-  if (!pinActive()) return NextResponse.json({ error: "로그인 PIN 은 2026년 12월 12일부터 쓸 수 있어요." }, { status: 409 });
+  if (!pinActive()) return NextResponse.json({ error: "로그인 PIN 은 아직 쓰지 않아요." }, { status: 409 });
   const g = await guard();
   if ("err" in g) return g.err;
   const p = body.safeParse(await req.json().catch(() => null));
