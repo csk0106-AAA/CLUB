@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readPausedClubs } from "@/lib/club-status";
 import { bad, guard } from "@/lib/api";
 import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
@@ -16,14 +17,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }
   if (kind === "org") {
     // 회원 구분과 연동: 모임 직책(목록 순서, 일반회원 제외)마다 그 직책인 회원,
     // 클럽(목록 순서)마다 클럽 직책자와 클럽관리의 모임 주기. 대기회원·참관회원은 넣지 않는다.
-    const [all, lists, info] = await Promise.all([s.list("Members"), getLists(), readAllClubInfo()]);
+    const [all, lists, info, paused] = await Promise.all([s.list("Members"), getLists(), readAllClubInfo(), readPausedClubs()]);
     const members = all.filter((m) => !isGuest(m.kind));
     return NextResponse.json({
       items: lists.positions.filter((p) => p !== "일반회원").map((p) => ({
         id: p, dept: p, role: "", names: members.filter((m) => m.position === p).map((m) => m.name),
         memberIds: members.filter((m) => m.position === p).map((m) => m.id),
       })),
-      clubs: lists.clubs.map((name) => ({
+      clubs: lists.clubs.filter((name) => !paused[name]).map((name) => ({
         name, cycle: info[name]?.cycle ?? "",
         // 클럽 직책 목록 순서대로
         leaders: clubLeaders(members, name)

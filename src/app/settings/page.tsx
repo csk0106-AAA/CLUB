@@ -21,7 +21,7 @@ import { typePhone } from "@/lib/phone";
 type Me = {
   name: string; perms: string[]; admin: boolean; consent: boolean; gender: string; pinOn?: boolean; // pinOn: 로그인 PIN 적용 중(2026-12-12부터)
   company: string; title: string; phone: string;
-  clubs: { name: string; role: string }[]; clubOptions: string[]; headClubs: string[];
+  clubs: { name: string; role: string; paused?: boolean }[]; clubOptions: string[]; headClubs: string[];
   prefs: Prefs;
   avatar: AvatarView;
   bookShown?: boolean; // 프로필 북에 내가 보이는지
@@ -294,6 +294,7 @@ export default function SettingsPage() {
                   {me.clubs.map((c) => (
                     <li key={c.name} className="row" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "6px 6px 6px 12px", background: "var(--card)" }}>
                       <b className="grow">{c.name}</b>
+                      {c.paused && <span className="pill gray">활동 중지</span>}
                       {c.role && <span className="pill ok">{c.role}</span>}
                       {me.headClubs.includes(c.name) && (
                         <Link href={`/clubs/${encodeURIComponent(c.name)}/dues`} className="mini" style={{ textDecoration: "none" }} aria-label={`${c.name} 회비 관리`}>회비 관리</Link>

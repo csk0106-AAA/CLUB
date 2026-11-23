@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isClubPaused, pausedEventVisible } from "@/lib/club-status";
 import { bad, guard, parseJson } from "@/lib/api";
 import { feeFor, memberFee, payable } from "@/lib/fee";
 import { lockedFor } from "@/lib/event-visibility";
@@ -39,6 +40,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const preview = !!found && !visible && (await canPreviewEvent(found, me, g.s.mid));
   const e = visible || preview ? found : undefined;
   if (!e) return bad("일정을 찾을 수 없어요.", 404);
+  // 활동 중지 클럽의 일정: 지난 일정에 참석했던 회원만(관리하는 사람은 미리보기로)
+  if (e.club && (await isClubPaused(e.club)) && !(await canPreviewEvent(e, me, g.s.mid))) {
+    const went = applies.some((x) => x.eventId === id && x.memberId === g.s.mid && x.answer === "참석");
+    if (!pausedEventVisible(e, went, new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10))) return NextResponse.json({ error: `${e.club} 클럽은 활동을 멈췄어요.` }, { status: 403 });
+  }
 
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);
   const attending = a?.answer === "참석";

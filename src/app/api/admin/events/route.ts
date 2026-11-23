@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isClubPaused, readPausedClubs } from "@/lib/club-status";
 import { MAX_PHOTO_LIMIT } from "@/lib/event-photos";
 import { z } from "zod";
 import { bad, canDeleteEvent, guard } from "@/lib/api";
@@ -42,7 +43,8 @@ export async function GET() {
     };
   });
   const lists = await getLists();
-  return NextResponse.json({ events: list, clubs: lists.clubs });
+  const paused = await readPausedClubs();
+  return NextResponse.json({ events: list, clubs: lists.clubs, pausedClubs: Object.keys(paused) });
 }
 
 const body = z.object({
@@ -84,6 +86,7 @@ export async function POST(req: Request) {
   // 클럽 일정은 클럽이 꼭 있어야 한다(없으면 그 클럽의 일정관리에 안 보이고, 누구나 참석 신청할 수 있게 된다)
   if (type === "클럽" && !club) return bad("어느 클럽 일정인지 골라 주세요.");
   if (club && !(await getLists()).clubs.includes(club)) return bad("클럽을 목록에서 골라 주세요.");
+  if (club && (await isClubPaused(club))) return bad(`${club} 클럽은 활동 중지 상태라 새 일정을 만들 수 없어요. 클럽관리에서 '다시 활동'으로 바꿔 주세요.`, 409);
   const s = await getStore();
   let audience = "";
   const a = parsed.data.audience;

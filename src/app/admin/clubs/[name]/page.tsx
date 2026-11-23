@@ -11,7 +11,8 @@ import { EventCreate } from "@/components/EventCreate";
 import { EventRowActions, UnpublishButton } from "@/components/EventRowActions";
 import { useRouter } from "next/navigation";
 import { api, fmtWhen } from "@/lib/client";
-import { removeClub, renameClub } from "@/lib/club-list-client";
+import { renameClub } from "@/lib/club-list-client";
+import { ClubStatus } from "@/components/ClubStatus";
 import { clubLabel } from "@/lib/club-label";
 import { fs } from "@/lib/fs";
 import { useTabOrder } from "@/components/useTabOrder";
@@ -140,8 +141,8 @@ function Overview({ data, onSaved, part }: { data: Data; onSaved: () => Promise<
   );
 }
 
-/* 클럽 이름 바꾸기 · 삭제(관리자만). 회원 명단·기본 정보·회비·일정·신청내역에 함께 반영된다. */
-function NameBox({ name, count }: { name: string; count: number }) {
+/* 클럽 이름 바꾸기 · 상태(활동 중지 / 다시 활동 / 삭제, 관리자만). 회원 명단·기본 정보·회비·일정·신청내역에 함께 반영된다. */
+function NameBox({ name }: { name: string; count: number }) {
   const router = useRouter();
   const [to, setTo] = useState(name);
   const [err, setErr] = useState("");
@@ -157,26 +158,18 @@ function NameBox({ name, count }: { name: string; count: number }) {
     if (!r.ok) return setErr(r.error);
     router.replace(`/admin/clubs/${encodeURIComponent(next)}`);
   }
-  async function remove() {
-    if (!window.confirm(`“${name}” 클럽을 삭제할까요?${count ? `\n회원 ${count}명에게서 이 클럽이 빠져요.` : ""}\n클럽 개요와 회비 설정도 지워져요. 이미 만든 클럽 일정은 남아요.`)) return;
-    setBusy(true);
-    setErr("");
-    const r = await removeClub(name);
-    setBusy(false);
-    if (!r.ok) return setErr(r.error);
-    router.replace("/admin/clubs");
-  }
 
   return (
     <section className="card" aria-labelledby="club-name-h" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <b id="club-name-h" style={head}>클럽 이름 · 삭제</b>
+      <b id="club-name-h" style={head}>클럽 이름 · 상태</b>
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <input aria-label="클럽 이름" className="field grow" style={{ minWidth: 160, width: "auto" }} maxLength={30} value={to} onChange={(e) => setTo(e.target.value)} />
         <button className="btn white" type="button" disabled={busy || !next || next === name} style={{ width: "auto", minWidth: 110, minHeight: 44, fontSize: fs(14) }} onClick={rename}>이름 바꾸기</button>
       </div>
       <span className="small">이름을 바꾸면 회원 명단·회비·일정·신청내역에도 새 이름으로 반영돼요.</span>
       {err && <div className="msg bad" role="alert">{err}</div>}
-      <button className="mini danger" type="button" disabled={busy} style={{ alignSelf: "flex-start" }} onClick={remove}>이 클럽 삭제</button>
+      <span className="small">활동 중지: 회원 화면에서 빠지고 새 일정을 만들 수 없어요(지난 일정은 참석했던 회원이 봐요, 관리자는 회비 입금 등을 그대로 고쳐요). 삭제: 활동 중지한 클럽의 모든 기록을 지워요(모든 권한 관리자만).</span>
+      <ClubStatus name={name} onDeleted={() => router.replace("/admin/clubs")} />
     </section>
   );
 }

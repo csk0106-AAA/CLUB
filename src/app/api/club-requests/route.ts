@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isClubPaused } from "@/lib/club-status";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
 import { eventVisible } from "@/lib/audience";
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
   }
   if ((kind === "observe" || attend) && !eventId) return bad("참석할 일정을 골라 주세요.");
   if (club ? !(await getLists()).clubs.includes(club) : !(guest && eventId)) return bad("클럽을 찾을 수 없어요.", 404);
+  if (club && (await isClubPaused(club))) return bad(`${club} 클럽은 활동을 멈춰서 신청을 받지 않아요.`, 409);
   if (attend ? alreadyIn("observe", me, club, ev) : alreadyIn(kind, me, club, ev)) {
     if (attend || guest) return bad("이미 이 일정에 참석 신청할 수 있어요. 화면을 새로 고쳐 주세요.", 409);
     return bad(kind === "join" ? `이미 ${clubLabel(club)} 회원이에요.` : "이미 이 일정의 참관자예요.", 409);

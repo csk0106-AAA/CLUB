@@ -8,8 +8,9 @@ import { Popup } from "@/components/Popup";
 import { api } from "@/lib/client";
 import { addClub } from "@/lib/club-list-client";
 import { fs } from "@/lib/fs";
+import { ClubStatus } from "@/components/ClubStatus";
 
-type Club = { name: string; count: number; leaders: { name: string; role: string }[]; account: string; cycle: string };
+type Club = { name: string; count: number; leaders: { name: string; role: string }[]; account: string; cycle: string; pausedAt: string };
 
 // 관리자 › 클럽관리 › 클럽 목록. 맨 위 줄 오른쪽 끝 "+ 클럽 추가"(관리자만).
 // 클럽 이름 바꾸기·삭제는 각 클럽 화면의 "클럽개요" 탭에서.
@@ -18,16 +19,18 @@ function Clubs() {
   const [list, setList] = useState<Club[] | null>(null);
   const [msg, setMsg] = useState("");
   const [admin, setAdmin] = useState(true); // false 면 클럽 직책자: 내 클럽만 보인다
+  const [all, setAll] = useState(false); // 모든 권한(클럽 삭제)
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await api<{ clubs: Club[]; admin: boolean }>("/api/admin/clubs");
+    const r = await api<{ clubs: Club[]; admin: boolean; all?: boolean }>("/api/admin/clubs");
     if (!r.ok) return setMsg(r.error);
     setList(r.data.clubs);
     setAdmin(r.data.admin);
+    setAll(!!r.data.all);
   }, []);
   useEffect(() => {
     load();
@@ -60,7 +63,7 @@ function Clubs() {
       </div>
       <p className="small" style={{ margin: 0 }}>
         {admin
-          ? "클럽을 누르면 개요·회원·회비·일정·신청내역을 관리해요. 클럽 이름 바꾸기와 삭제는 클럽 화면의 클럽개요 탭에서 해요."
+          ? "클럽을 누르면 개요·회원·회비·일정·신청내역을 관리해요. 활동 중지한 클럽은 회원 화면에서 빠지고, 활동 중지한 클럽만 삭제할 수 있어요."
           : "내가 직책을 맡은 클럽의 개요·회원·회비·일정·신청내역을 관리해요. 클럽 직책은 관리자가 정해요."}
       </p>
       {msg && <div className="msg bad" role="alert">{msg}</div>}
@@ -70,13 +73,18 @@ function Clubs() {
         : <div className="msg info">직책을 맡은 클럽이 없어요.</div>)}
       <div className="cards">
         {list?.map((c) => (
-          <Link key={c.name} href={`/admin/clubs/${encodeURIComponent(c.name)}`} className="card"
-            style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start", color: "inherit", textDecoration: "none" }}>
-            <b style={{ font: `700 ${fs(18)} var(--display)` }}>{c.name}</b>
-            <span className="small">회원 {c.count}명{c.cycle ? ` · ${c.cycle}` : ""}</span>
-            <span className="small">{c.leaders.length ? c.leaders.map((l) => `${l.role} ${l.name}`).join(", ") : "리더를 아직 정하지 않았어요"}</span>
-            <span className={`pill ${c.account ? "ok" : "gray"}`}>{c.account ? "입금계좌 있음" : "입금계좌 없음"}</span>
-          </Link>
+          <div key={c.name} className="card" style={{ display: "flex", flexDirection: "column", gap: 8, opacity: c.pausedAt ? 0.85 : 1 }}>
+            <Link href={`/admin/clubs/${encodeURIComponent(c.name)}`}
+              style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start", color: "inherit", textDecoration: "none" }}>
+              <b style={{ font: `700 ${fs(18)} var(--display)` }}>{c.name}</b>
+              <span className="small">회원 {c.count}명{c.cycle ? ` · ${c.cycle}` : ""}</span>
+              <span className="small">{c.leaders.length ? c.leaders.map((l) => `${l.role} ${l.name}`).join(", ") : "리더를 아직 정하지 않았어요"}</span>
+              <span className={`pill ${c.account ? "ok" : "gray"}`}>{c.account ? "입금계좌 있음" : "입금계좌 없음"}</span>
+            </Link>
+            {/* 활동 중지 / 다시 활동 / 삭제(관리자만) */}
+            {admin ? <ClubStatus name={c.name} pausedAt={c.pausedAt} canDelete={all} onChanged={load} onDeleted={load} />
+              : c.pausedAt ? <span className="pill warn" style={{ alignSelf: "flex-start" }}>활동 중지</span> : null}
+          </div>
         ))}
       </div>
 

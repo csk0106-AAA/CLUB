@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readPausedClubs } from "@/lib/club-status";
 import { adminOrOfficer } from "@/lib/api";
 import { clubLeaders, clubMembers, readAllClubInfo } from "@/lib/clubs";
 import { clubPayAccount } from "@/lib/dues";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const g = await adminOrOfficer("members");
   if ("err" in g) return g.err;
-  const [lists, info, members] = await Promise.all([getLists(), readAllClubInfo(), (await getStore()).list("Members")]);
+  const [lists, info, members, paused] = await Promise.all([getLists(), readAllClubInfo(), (await getStore()).list("Members"), readPausedClubs()]);
   const names = g.adminOk ? lists.clubs : lists.clubs.filter((n) => g.officerOf.includes(n));
   const clubs = await Promise.all(names.map(async (name) => {
     const i = info[name];
@@ -23,7 +24,8 @@ export async function GET() {
       // 입금계좌: 클럽 › 회비관리의 계좌(없으면 예전 기본 정보의 계좌)
       account: (await clubPayAccount(name, i)).account,
       cycle: i?.cycle ?? "",
+      pausedAt: paused[name]?.at ?? "", // 활동 중지한 시각(비면 활동 중)
     };
   }));
-  return NextResponse.json({ clubs, admin: g.adminOk });
+  return NextResponse.json({ clubs, admin: g.adminOk, all: g.s.perms.includes("all") });
 }

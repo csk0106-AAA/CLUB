@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readPausedClubs } from "@/lib/club-status";
 import { pinActive } from "@/lib/pin";
 import { z } from "zod";
 import { bad, guard, parseJson } from "@/lib/api";
@@ -18,7 +19,8 @@ type Sess = { name: string; perms: string[]; admin: boolean };
 
 async function view(s: Sess, me: Member) {
   const extra = parseJson<{ consentAt?: string; bookGuideAt?: string }>(me.extra, {});
-  const { clubs } = await getLists();
+  const paused = await readPausedClubs();
+  const clubs = (await getLists()).clubs.filter((n) => !paused[n]); // 활동 중지 클럽은 가입 신청 선택지에서 뺀다
   // 프로필 북 소개 안내(처음 한 번): 프로필 북에 보이는 회원이고, 아직 안내를 안 봤고, 공개된 소개가 없을 때
   let bookGuide = false;
   if (!isGuest(me.kind) && !extra.bookGuideAt && me.id) {
@@ -38,7 +40,7 @@ async function view(s: Sess, me: Member) {
     company: me.company ?? "",
     title: me.title ?? "",
     phone: me.phone ?? "",
-    clubs: memberClubs(me),
+    clubs: memberClubs(me).map((c) => ({ ...c, paused: !!paused[c.name] })),
     // 내가 직책(회장·총무 등)을 맡은 클럽: 관리자 화면의 클럽관리·활동 템플릿에 들어갈 수 있다(관리자 비밀번호 없이)
     clubOfficerOf: memberClubs(me).filter((c) => c.role).map((c) => c.name),
     // 내가 회장(대표)인 클럽: 설정 › 내 클럽에서 클럽 회비 화면으로 가는 버튼

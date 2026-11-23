@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { pausedEventVisible, readPausedClubs } from "@/lib/club-status";
 import { lockedFor as visLocked } from "@/lib/event-visibility";
 import { getSession } from "@/lib/auth";
 import { memberFee, payable } from "@/lib/fee";
@@ -62,11 +63,15 @@ export async function GET() {
   const ownEv = (e: { createdBy?: string; editors?: string }) => e.createdBy === session.mid || readEditors(e.editors).includes(session.mid);
   // NEW / UP 표시(하단 일정 탭 숫자와 같은 기준). 화면이 목록을 받은 뒤 "봤음"으로 표시한다.
   const freshness = await eventFreshness(session.mid);
+  // 활동 중지 클럽(lib/club-status.ts): 지난 일정 중 내가 참석했던 것만(일정 관리 권한자는 모두)
+  const paused = await readPausedClubs();
+  const pausedHide = (e: { id?: string; club?: string; startsAt?: string; endsAt?: string }) =>
+    !!e.club && !!paused[e.club] && !manager && !pausedEventVisible(e, mine.some((a) => a.eventId === e.id && a.answer === "참석"), today);
 
   const list = events
     // 공개된 일정은 공개 대상이 아니어도 모두 목록에 보인다(outside: true — 눌러도 열 수 없고 안내만, 회원은 "나에게 공개된 일정만"으로 거를 수 있다).
     // 공개전(초안)은 일정 관리 권한자·만든 사람·편집자에게만.
-    .filter((e) => e.published === "true" || manager || ownEv(e))
+    .filter((e) => (e.published === "true" || manager || ownEv(e)) && !pausedHide(e))
     .map((e) => {
       const draft = e.published !== "true";
       // 공개됐지만 나는 공개 대상이 아닌 일정: 목록에만 보이고 열 수 없다
