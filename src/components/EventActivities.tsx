@@ -636,11 +636,13 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           )}
           {!a.config.preEvent.steps.includes("ai_interview") && !a.config.preEvent.steps.includes("worry_write") && a.config.onsite.steps.some((s) => s.memberScreen === "write") ? (
             <CapsuleAdmin eventId={eventId} aid={a.id} canEdit={canEdit} />
-          ) : modeOf(a.config) === "team" && (
-            // 팀 활동: 팀 배정은 템플릿이 아니라 이 일정에서 한다
-            <section className="card" aria-label="팀 배정" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
-              <b style={{ font: `700 ${fs(17)} var(--display)` }}>팀 배정</b>
-              <span className="small">이 일정의 참여자로 팀을 나눠요. 팀은 이 일정의 이 활동에만 쓰여요.</span>
+          ) : (
+            // 모든 활동에 팀 구성: 팀 배정은 템플릿이 아니라 이 일정에서 한다. 모두 함께 하는 활동은 '전체참여자' 한 팀과 같다.
+            <section className="card" aria-label="팀 구성" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
+              <b style={{ font: `700 ${fs(17)} var(--display)` }}>팀 구성</b>
+              <span className="small">{modeOf(a.config) === "team"
+                ? "이 일정의 참여자로 팀을 나눠요. 팀은 이 일정의 이 활동에만 쓰여요."
+                : "모두 함께 하는 활동이에요. 팀을 나누지 않으면 참여자 전체가 한 팀이에요. “전체참여자”로 묶거나 조편성에서 가져올 수 있어요."}</span>
               <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} copyFromEvent={eventId} />
             </section>
           )}

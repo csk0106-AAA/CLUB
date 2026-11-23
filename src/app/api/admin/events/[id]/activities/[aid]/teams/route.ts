@@ -42,7 +42,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 const gen = z.object({
-  mode: z.enum(["random", "mix", "manual", "copy"]),
+  mode: z.enum(["random", "mix", "manual", "copy", "all"]), // all: 참여자 전체를 한 팀으로
   from: z.string().optional(), // copy: 가져올 일정 조편성 id
   count: z.number().int().min(1).max(30).optional(),
   size: z.number().int().min(2).max(20).optional(),
@@ -80,6 +80,13 @@ export async function POST(req: Request, ctx: Ctx) {
     if (list.length === 0) return bad("그 조편성에는 아직 짜인 조가 없어요.");
     await replaceTeams(aid, list);
     return NextResponse.json({ ok: true, teams: list.length, dropped });
+  }
+  // 전체참여자: 이 활동 참여자 모두를 한 팀으로(모두 함께 하는 활동과 같다). 초안이라 확인을 눌러야 배포된다.
+  if (parsed.success && parsed.data.mode === "all") {
+    const p = await pool(c.cfg, c.act, c.ev);
+    if (p.members.length === 0) return bad("팀에 넣을 참여자가 없어요. 활동에 참여할 회원을 먼저 선택해 주세요.");
+    await replaceTeams(aid, [{ name: "전체", memberIds: p.members.map((m) => m.id) }]);
+    return NextResponse.json({ ok: true, teams: 1, mode: "all", poolKind: p.kind });
   }
   if (!parsed.success || (!parsed.data.count && !parsed.data.size)) return bad("방식을 고르고 팀 수나 팀당 인원 중 하나를 입력해 주세요.");
 

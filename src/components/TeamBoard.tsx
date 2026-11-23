@@ -101,6 +101,15 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
     setMsg(r.ok ? { tone: "info", text: mode === "manual" ? `빈 ${unit}을 만들었어요. 회원을 끌어서 넣어 주세요.` : `${unit}을 만들었어요. 끌어서 바꿀 수 있고, 마지막에 확인을 눌러야 배포돼요.` } : { tone: "bad", text: r.error });
     load();
   }
+  // 전체참여자: 참여자 모두를 한 팀으로(모두 함께 하는 활동). 결과는 초안.
+  async function wholeTeam() {
+    if (cols.some((c) => c.ids.length) && !window.confirm(`지금 ${unit} 구성을 참여자 전체 한 ${unit}으로 바꿀까요?`)) return;
+    setBusy(true);
+    const r = await api(`${base}/teams`, { body: { mode: "all" } });
+    setBusy(false);
+    setMsg(r.ok ? { tone: "info", text: `참여자 전체를 한 ${unit}으로 묶었어요. 확인을 눌러야 회원에게 배포돼요.` } : { tone: "bad", text: r.error });
+    if (r.ok) { setDirty(false); load(); }
+  }
   // 일정 조편성 가져오기(서버가 이 활동에 참여하지 않는 사람은 뺀다). 결과는 초안.
   async function copyGroups() {
     const g = srcs.find((x) => x.id === src);
@@ -212,6 +221,13 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
               : <input className="field" aria-label={`${unit} 수`} type="number" min={1} max={30} style={{ width: 100 }} value={count} onChange={(e) => setCount(e.target.value)} />}
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={generate}>{cols.length > 0 ? "다시 만들기" : `${unit} 만들기`}</button>
           </div>
+          {/* 전체참여자 한 팀(활동 팀 보드에서만) */}
+          {copyFromEvent && (
+            <div className="row" style={{ flexWrap: "wrap", alignItems: "center" }}>
+              <span className="small">또는</span>
+              <button className="btn white" type="button" disabled={busy} style={{ width: "auto", minHeight: 48, fontSize: fs(15) }} onClick={wholeTeam}>전체참여자 (한 {unit})</button>
+            </div>
+          )}
           {/* 일정 › 조편성 가져오기(활동 팀 보드에서만) */}
           {copyFromEvent && srcs.length > 0 && (
             <div className="row" style={{ flexWrap: "wrap", borderTop: "1px dashed var(--line)", paddingTop: 10 }}>

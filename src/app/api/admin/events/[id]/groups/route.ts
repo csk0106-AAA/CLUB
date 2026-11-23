@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guardEv } from "@/lib/api";
-import { activityMode, readConfig } from "@/lib/activities";
+import { readConfig } from "@/lib/activities";
 import { teams } from "@/lib/capsule";
 import { gTeams } from "@/lib/groups";
 import { getStore } from "@/lib/store";
@@ -16,11 +16,11 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const s = await getStore();
   const rows = (await s.list("Groupings")).filter((x) => x.eventId === id);
-  // 조편성으로 복사해 올 수 있는 활동: 이 일정의 팀 활동 중 팀이 짜인 것
+  // 조편성으로 복사해 올 수 있는 활동: 이 일정의 활동 중 팀이 짜인 것
   const sources: { id: string; name: string; teamCount: number }[] = [];
   for (const a of (await s.list("EventActivities")).filter((x) => x.eventId === id).sort((p, q) => Number(p.order) - Number(q.order))) {
     const cfg = readConfig(a.config);
-    if (!cfg || activityMode(cfg) !== "team") continue;
+    if (!cfg) continue;
     const ts = await teams(a.id);
     if (ts.length) sources.push({ id: a.id, name: cfg.name, teamCount: ts.length });
   }
