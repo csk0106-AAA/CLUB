@@ -77,6 +77,10 @@ export const TABS = {
     "req", "reqDays", "reqAt", "reqResult", "reqReason",
     // payUndoAt/payUndoReason: 관리자가 입금 확인을 취소했거나 입금 알림을 "입금 안 됨"으로 돌려보낸 시각·사유(회원 화면에 보인다)
     "payUndoAt", "payUndoReason",
+    // paidAmount: 관리자가 입금을 확인할 때의 회비(원). 그 뒤 참석 날짜·회비 조건이 바뀌어 지금 회비와 다르면 차액(lib/fee.ts feeDiff):
+    //  더 내야 하면 회원 화면에 "추가 입금", 돌려줘야 하면 관리자 회비 탭 "회비 돌려주기"에 "환불". 예전 기록(값 없음)은 차액을 따지지 않는다.
+    //  송금대기(refund "wait")인 동안에는 남겨 두고(다시 참석하면 그대로 입금 확인), 송금완료되면 지운다.
+    "paidAmount",
   ],
   // memo: 비용 메모(목록에서는 메모 아이콘을 눌러 본다), order: 목록 순서(끌어서 바꾼다)
   // spentBase: 직접 적은 집행. spent = spentBase + 같은 이름으로 연동된 준비목록의 완료된 가격 합계(lib/items.ts syncPrepToCosts)

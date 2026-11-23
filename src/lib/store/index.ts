@@ -200,6 +200,32 @@ export async function getClubNames(): Promise<{ clubName: string; clubShortName:
   return { clubName, clubShortName, clubNameDisplay, displayName };
 }
 
+// 설정 값(JSON 객체) 안의 한 키만 바꾸기/지우기. 값 전체를 읽고 다시 쓰지 않으므로, 두 관리자가 거의 동시에
+//  서로 다른 키를 저장해도 한쪽이 사라지지 않는다. value 가 undefined 이면 그 키를 지운다.
+//  예: patchSetting("evTemplates", ["워크숍"], t) / patchSetting("clubPaused", [name], undefined)
+export async function patchSetting(id: string, path: string[], value: unknown): Promise<void> {
+  const s = await getStore();
+  await s.patchSetting(id, value === undefined ? { op: "del", path } : { op: "set", path, value });
+}
+
+// 설정 값(path 의 객체, [] 이면 최상위)에 바뀐 키들만 덮어쓴다({ ...old, ...patch } 저장과 같다, undefined 키는 지운다)
+export async function mergeSetting(id: string, patch: Record<string, unknown>, path: string[] = []): Promise<void> {
+  const s = await getStore();
+  await s.patchSetting(id, { op: "merge", path, value: patch });
+}
+
+// 설정 값 안의 배열(path)에 값 더하기(이미 있으면 그대로) / 빼기
+export async function addToSettingList(id: string, path: string[], values: unknown[]): Promise<void> {
+  if (!values.length) return;
+  const s = await getStore();
+  await s.patchSetting(id, { op: "add", path, values });
+}
+export async function removeFromSettingList(id: string, path: string[], values: unknown[]): Promise<void> {
+  if (!values.length) return;
+  const s = await getStore();
+  await s.patchSetting(id, { op: "remove", path, values });
+}
+
 export async function setSetting(id: string, value: unknown): Promise<void> {
   const s = await getStore();
   const row = await s.get("Settings", id);

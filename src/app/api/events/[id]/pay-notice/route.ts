@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, guard } from "@/lib/api";
-import { memberFee, payable } from "@/lib/fee";
+import { feeDiff, memberFee, payable } from "@/lib/fee";
 import { eventJoinable, eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 import { getPermGroups } from "@/lib/perms";
@@ -28,7 +28,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const a = applies.find((x) => x.eventId === id && x.memberId === g.s.mid);
   const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
   if (!a || a.answer !== "참석" || !mf.known || !payable(mf.amount)) return bad("참석을 신청한 일정의 회비만 알릴 수 있어요.");
-  if (a.paid === "true") return bad("이미 입금이 확인됐어요.");
+  // 입금 확인 뒤 참석 날짜·회비 조건이 바뀌어 더 낼 돈(추가 입금)이 있으면 그 차액을 알릴 수 있다
+  if (a.paid === "true" && feeDiff(a, mf) <= 0) return bad("이미 입금이 확인됐어요.");
 
   const at = parsed.data.sent ? new Date().toISOString() : "";
   await s.update("EventApplies", a.id, { payNotice: at, ...(at ? { payUndoAt: "", payUndoReason: "" } : {}) });

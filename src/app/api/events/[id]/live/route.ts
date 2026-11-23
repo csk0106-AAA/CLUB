@@ -3,7 +3,7 @@ import { lockedFor } from "@/lib/event-visibility";
 import { memberGuide } from "@/lib/template-schema";
 import { bad, guard } from "@/lib/api";
 import { activityKind, guessStatus, liveView, preStatus, readConfig, windowBase } from "@/lib/activities";
-import { canJoin, isLimited } from "@/lib/participants";
+import { canJoin, isLimited, stepAllowed } from "@/lib/participants";
 import { memberWorry } from "@/lib/worry";
 import { memberRound } from "@/lib/rounds";
 import { eventJoinable, eventVisible } from "@/lib/audience";
@@ -35,6 +35,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       const cfg = readConfig(a.config);
       return cfg ? [{ a, cfg }] : [];
     });
+  // 활동참여자 참여 방식(전체참여·선택참여)은 출석 체크 표에서 한 번만 읽는다
+  const attendance = (await s.list("Attendance")).filter((r) => r.memberId === g.s.mid && r.present === "true");
+  const levelOf = (aid: string) => {
+    const r = attendance.find((x) => x.eventActivityId === aid);
+    return r ? (r.level === "partial" ? "partial" as const : "full" as const) : undefined;
+  };
   const activities = await Promise.all(
     mine.map(async ({ a, cfg }) => ({
       id: a.id,
@@ -49,6 +55,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       startsAt: a.startsAt, // 활동 날짜와 진행 시간(안내용)
       endsAt: a.endsAt,
       live: liveView(cfg, lives.find((l) => l.eventActivityId === a.id)),
+      // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만). false 면 회원 화면에 기다림 안내를 보인다.
+      stepAllowed: stepAllowed(cfg, levelOf(a.id), liveView(cfg, lives.find((l) => l.eventActivityId === a.id)).stepKey),
       // 현장 진행 중인 사람(라운드): 내가 보는 화면만. 정답은 공개 단계 전에는 포함하지 않는다.
       round: activityKind(cfg) === "who" ? await memberRound(a, ev, g.s.mid, cfg) : null,
       worry: activityKind(cfg) === "worry" ? await memberWorry(a, ev, g.s.mid, cfg) : null,

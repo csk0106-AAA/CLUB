@@ -17,7 +17,7 @@ type Stage = {
     id: string; state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer"; orderNo: number;
     alias: string; introMd: string; nameRevealed: boolean; name: string;
     guessResults: { name: string; count: number }[]; guessTotal: number; guessJoined: number; guessEligible: number;
-    statements: string[]; votes: { counts: number[]; voted: number; eligible: number; notVoted: string[] };
+    statements: string[]; votes: { counts: number[]; voted: number; total?: number; eligible: number; notVoted: string[] };
     lieIndex: number; correctVoters: string[]; correctGuessers: string[];
   };
 };
@@ -36,8 +36,6 @@ const NO = [
   { bg: "#a6adb5", ink: "#111111" },
   { bg: "#5f666e", ink: "#ffffff" },
 ];
-const namesLine = (names: string[], max = 6) =>
-  names.length <= max ? names.join(", ") : `${names.slice(0, max).join(", ")} 외 ${names.length - max}명`;
 
 // 진행자 전체화면(프로젝터용). 2초마다 서버 상태를 읽고, 큰 버튼으로 진행한다.
 export default function HostPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
@@ -203,17 +201,23 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
               )}
               {r && (r.state === "voting" || r.state === "closed" || r.state === "answer") && (
                 <div className="panel">
-                  <h3>거짓 투표 현황 <span className="num">{r.votes.voted} / {r.votes.eligible}</span></h3>
+                  <h3>거짓 투표 현황 <span className="num">투표 {r.votes.voted} / {r.votes.eligible}명</span></h3>
                   {r.votes.counts.map((n, i) => (
                     <div key={i}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}><span>{i + 1}번</span><span className="num">{n}표</span></div>
-                      <div className="bar"><i style={{ width: `${r.votes.voted ? (n / r.votes.voted) * 100 : 0}%`, background: r.state === "answer" && i === r.lieIndex ? "#ff5a52" : NO[i % 3].bg }} /></div>
+                      <div className="bar"><i style={{ width: `${(r.votes.total ?? r.votes.voted) ? (n / (r.votes.total ?? r.votes.voted)) * 100 : 0}%`, background: r.state === "answer" && i === r.lieIndex ? "#ff5a52" : NO[i % 3].bg }} /></div>
                     </div>
                   ))}
                   {(r.state === "voting" || r.state === "closed") && (
-                    <span className="sub">
-                      {r.votes.notVoted.length === 0 ? "모두 투표했어요." : `아직 투표하지 않은 분 ${r.votes.notVoted.length}명: ${namesLine(r.votes.notVoted)}`}
-                    </span>
+                    r.votes.notVoted.length === 0 ? (
+                      <span className="sub">{r.votes.eligible === 0 ? "투표할 수 있는 분이 없어요." : "모두 투표했어요."}</span>
+                    ) : (
+                      // 아직 투표 안 한 사람(투표할 수 있는 사람만: 당사자와 투표 단계가 없는 선택참여 회원은 빠짐). 접어 두고 필요할 때 펼친다.
+                      <details>
+                        <summary className="sub" style={{ cursor: "pointer" }}>아직 투표 안 한 사람 ({r.votes.notVoted.length}명)</summary>
+                        <div className="sub" style={{ marginTop: 6, lineHeight: 1.7 }}>{r.votes.notVoted.join(", ")}</div>
+                      </details>
+                    )
                   )}
                   {r.state === "answer" && <span className="sub">거짓을 맞힌 분 {r.correctVoters.length}명{r.correctVoters.length ? `: ${r.correctVoters.join(", ")}` : ""}</span>}
                 </div>

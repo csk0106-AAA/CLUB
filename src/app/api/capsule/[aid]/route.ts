@@ -30,7 +30,9 @@ export async function GET(_req: Request, ctx: Ctx) {
     activity: { id: aid, name: c.cfg.name },
     event: { id: c.ev.id, name: c.ev.name },
     canJoin: await canJoin(c.cfg, c.act, c.ev, g.s.mid),
-    canWrite: (await canWriteNow(c.cfg, aid)) && (await canJoin(c.cfg, c.act, c.ev, g.s.mid)),
+    // 선택참여 회원은 선별 조건에 작성 단계가 있어야 쓴다(없으면 회원 화면에 기다림 안내)
+    actionOk: await canAct(c.cfg, c.act, c.ev, g.s.mid, onsiteKeyOf(c.cfg, "write")),
+    canWrite: (await canWriteNow(c.cfg, aid)) && (await canAct(c.cfg, c.act, c.ev, g.s.mid, onsiteKeyOf(c.cfg, "write"))),
     startsAt: c.act.startsAt, // 안내용 정보
     endsAt: c.act.endsAt,
     team: team ? { id: team.id, name: team.name, members: team.memberIds.map(nameOf) } : null,

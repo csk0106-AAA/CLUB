@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ActivityLiveBox } from "@/components/LiveActivities";
+import { ActivityLiveBox, PartialWait } from "@/components/LiveActivities";
 import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
@@ -109,7 +109,7 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
 
 /* ───────────── 누구일까요? (사전 추측) ───────────── */
 function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) => void; onProgress: (p: { done: number; total: number } | null) => void }) {
-  const [data, setData] = useState<{ guess: { status: string; opensAt: string; closesAt: string }; targets: Target[]; candidates: Cand[]; notJoin?: boolean } | null>(null);
+  const [data, setData] = useState<{ guess: { status: string; opensAt: string; closesAt: string }; targets: Target[]; candidates: Cand[]; notJoin?: boolean; notAllowed?: boolean } | null>(null);
   const [openId, setOpenId] = useState("");
 
   const load = useCallback(async () => {
@@ -136,6 +136,7 @@ function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) =
 
   if (!data) return <p className="small">불러오는 중이에요…</p>;
   const g = data.guess;
+  if (data.notAllowed) return <PartialWait />;
   if (data.notJoin) return <div className="msg info">이 활동의 참여 대상으로 선택되지 않아서 맞히기에는 참여하지 않아요. 프로필 북에서 다른 회원의 소개를 읽어 보세요.</div>;
   if (g.status !== "open" && g.status !== "closed") {
     return <div className="msg info">{g.status === "before" ? `맞히기는 ${fmtDateTime(g.opensAt)}부터 열려요.` : g.status === "unknown" ? "일정 날짜가 정해지면 맞히기가 열려요." : "이 활동에는 사전 맞히기가 없어요."}</div>;

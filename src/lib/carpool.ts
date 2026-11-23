@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parseJson } from "./api";
 import { kstTime } from "./kst-time";
-import { getSetting, getStore, setSetting } from "./store";
+import { addToSettingList, getSetting, getStore, mergeSetting, removeFromSettingList } from "./store";
 import type { Row } from "./store/types";
 
 // 예전 방식의 구간 이름. 지금은 차량마다 갈 때(go)·올 때(back) 운행 여부를 따로 저장하고,
@@ -249,11 +249,16 @@ export const recruiting = (s: CarpoolState) => !!s.recruitOn && begun(s.recruitF
 // 차량모집이 끝나기 전에 차량신청이 시작되면 그때까지 등록된 차로 먼저 받고, 나중에 등록된 차도 바로 목록에 더해진다.
 export const requestsOpen = (s: CarpoolState) =>
   ((!!s.open && begun(s.openFrom)) || (!s.open && !!s.recruitOn && passed(s.recruitUntil))) && !passed(s.waitUntil);
-export const carpoolState = (eventId: string): Promise<CarpoolState> =>
-  getSetting<CarpoolState>(key(eventId), { published: false, publishedAt: "" });
-// 바꾼 값만 덮어쓴다(신청 받기·대기 기한은 그대로 두고 확정 상태만 바꾸는 등)
-export const saveCarpoolState = async (eventId: string, s: Partial<CarpoolState>): Promise<void> =>
-  setSetting(key(eventId), { ...(await carpoolState(eventId)), ...s });
+// 기본값 위에 저장된 값을 얹는다(바꾼 칸만 저장된 줄도 published·publishedAt 이 늘 있게)
+export const carpoolState = async (eventId: string): Promise<CarpoolState> =>
+  ({ published: false, publishedAt: "", ...(await getSetting<Partial<CarpoolState>>(key(eventId), {})) });
+// 바꾼 값만 덮어쓴다(신청 받기·대기 기한은 그대로 두고 확정 상태만 바꾸는 등).
+//  DB 에서 한 번에 합치므로 두 관리자가 거의 동시에 다른 칸을 저장해도 서로 지우지 않는다.
+export const saveCarpoolState = (eventId: string, s: Partial<CarpoolState>): Promise<void> => mergeSetting(key(eventId), s);
+// 개별 이동 회원 더하기/빼기: 목록 전체를 다시 쓰지 않고 그 회원만 넣고 뺀다(동시에 여럿이 골라도 잃지 않게)
+const selfKey = (d: Dir) => (d === "go" ? "selfGo" : "selfBack");
+export const addSelf = (eventId: string, d: Dir, mids: string[]): Promise<void> => addToSettingList(key(eventId), [selfKey(d)], mids);
+export const removeSelf = (eventId: string, d: Dir, mids: string[]): Promise<void> => removeFromSettingList(key(eventId), [selfKey(d)], mids);
 
 // 구간별로 아직 차가 없는 참석자(운전자나 탑승자로 들어가지 않은 사람)
 // self: 개별 이동을 고른 회원(배정 대기에서 뺀다)

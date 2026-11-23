@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { feeFor, ruleLabel } from "./fee";
-import { getSetting, setSetting } from "./store";
+import { getSetting, patchSetting, setSetting } from "./store";
 
 // 모임회비(연회비/월회비). 모임 회비는 Settings "dues", 클럽 회비는 Settings "clubDues" = { [클럽]: Dues }.
 //  period: annual(연회비) / monthly(월회비)
@@ -78,8 +78,8 @@ export async function readClubDues(club: string): Promise<Dues | null> {
   return v ? parseDues(v) : null;
 }
 export async function writeClubDues(club: string, d: Dues): Promise<void> {
-  const all = await getSetting<Record<string, unknown>>("clubDues", {});
-  await setSetting("clubDues", { ...(all && typeof all === "object" ? all : {}), [club]: d });
+  // 그 클럽 키만 바꿔 쓴다(다른 클럽 회비를 동시에 저장해도 지우지 않게)
+  await patchSetting("clubDues", [club], d);
 }
 
 // 클럽 입금계좌: 클럽관리 › 회비관리의 계좌. 아직 회비를 저장하지 않았으면 예전 클럽 기본 정보의 계좌.

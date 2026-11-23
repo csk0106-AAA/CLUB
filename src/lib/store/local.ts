@@ -2,7 +2,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { TABS, type TabName } from "./schema";
-import type { Row, Store, ListOpts } from "./types";
+import type { Row, Store, ListOpts, SettingOp } from "./types";
+import { applySettingOp } from "./setting-op";
 
 // 개발용 저장소: .data/db.json 한 파일. DATABASE_URL 이 없을 때 사용한다.
 const FILE = path.join(process.cwd(), ".data", "db.json");
@@ -81,6 +82,21 @@ export class LocalStore implements Store {
       db[tab] = next;
       await write(db);
       return true;
+    });
+  }
+
+  // 설정 값 일부 고치기: 쓰기 줄(serial) 안에서 읽고-고치고-쓰기라 동시에 들어와도 잃지 않는다
+  patchSetting(id: string, op: SettingOp): Promise<void> {
+    return serial(async () => {
+      const db = await read();
+      const rows = db.Settings ?? [];
+      const i = rows.findIndex((r) => r.id === id);
+      if (i < 0 && (op.op === "del" || op.op === "remove")) return;
+      const value = JSON.stringify(applySettingOp(i < 0 ? undefined : rows[i].value, op));
+      if (i < 0) rows.push(normalize("Settings", { id, value }));
+      else rows[i] = normalize("Settings", { ...rows[i], value, id });
+      db.Settings = rows;
+      await write(db);
     });
   }
 }

@@ -27,6 +27,8 @@ export async function GET(_req: Request, ctx: Ctx) {
     activity: { id: aid, name: w.cfg.name },
     event: { id: w.ev.id, name: w.ev.name },
     canJoin: await canJoin(w.cfg, w.act, w.ev, g.s.mid),
+    // 선택참여 회원은 선별 조건에 "고민 미리 적기"가 있어야 쓴다(없으면 회원 화면에 기다림 안내)
+    actionOk: await canAct(w.cfg, w.act, w.ev, g.s.mid, "pre:worry_write"),
     pre: preStatus(w.cfg, windowBase(w.act, w.ev)),
     max: MAX_WORRIES,
     categories: CATEGORIES,

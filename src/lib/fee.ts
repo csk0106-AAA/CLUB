@@ -80,3 +80,11 @@ export function ruleLabel(r: FeeRule): string {
   const parts = [r.kind, r.position, r.days ? (r.days === "1" ? "1일 참석" : `${r.days}일 참석(${Number(r.days) - 1}박${r.days}일)`) : ""].filter(Boolean);
   return parts.length ? parts.join(" · ") : "전체";
 }
+
+// 입금 확인 뒤 회비가 바뀐 차액(원): + 더 낼 돈(추가 입금), - 돌려줄 돈(차액 환불), 0 같거나 알 수 없음.
+//  paidAmount(입금 확인 때의 금액)가 없는 예전 기록, 입금 확인 전, 날짜를 골라야 회비가 정해지는 경우는 0(표시하지 않음).
+//  참석 날짜를 바꾸거나 관리자가 회비 조건을 바꾸면 생긴다. 관리자가 추가 입금을 확인하거나 차액 송금완료를 누르면 paidAmount 를 지금 회비로 맞춘다.
+export function feeDiff(apply: { answer?: string; paid?: string; paidAmount?: string } | null | undefined, fee: { known: boolean; amount: string }): number {
+  if (!apply || apply.answer !== "참석" || apply.paid !== "true" || !apply.paidAmount || !fee.known) return 0;
+  return (Number(fee.amount) || 0) - (Number(apply.paidAmount) || 0);
+}

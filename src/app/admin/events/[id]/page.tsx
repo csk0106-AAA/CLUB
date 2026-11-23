@@ -53,6 +53,7 @@ type Row = {
   clubRole?: string; observer?: boolean; // 클럽 일정: 클럽 직책, 참관자
   checkedBy?: string; checkedAt?: string; // 관리자가 대신 체크한 경우 체크한 사람 이름·시각
   refund?: "" | "wait" | "done"; refundAmount?: string; refundSince?: string; refundDoneAt?: string; // 회비 돌려주기(송금대기·송금완료, lib/refund.ts)
+  paidAmount?: string; feeDiff?: number; // 입금 확인 때 금액, 지금 회비와의 차액(+ 추가 입금, - 환불, lib/fee.ts feeDiff)
   req?: string; reqDays?: string; reqAt?: string; reqResult?: string; // 관리자 승인 후 참석: req "참석" 승인 대기, reqResult "declined" 반려
 };
 // 필수 승인(대기회원·참관회원의 참관 + 참석, 다른 클럽 회원의 가입·참관 + 참석) 처리 대기 신청
@@ -353,11 +354,13 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     setRows(rows.map((x) => (x.memberId === r.memberId ? { ...x, memo: text } : x)));
     if (await sendApply({ memberId: r.memberId, answer: r.answer, memo: text })) load();
   }
-  async function refundDone(r: Row) {
-    if (!window.confirm(`${r.name} 님에게 회비 ${won(r.refundAmount ?? "0")}을 송금했나요?\n“송금완료”로 바꾸고 ${r.name} 님에게 바로 알림을 보내요.`)) return;
+  // diff: 참석은 그대로인데 회비가 줄어 생긴 차액 환불(송금완료하면 입금 금액을 지금 회비로 맞춘다)
+  async function refundDone(r: Row, diff = false) {
+    const amount = diff ? won(String(-(r.feeDiff ?? 0))) : won(r.refundAmount ?? "0");
+    if (!window.confirm(`${r.name} 님에게 회비${diff ? " 차액" : ""} ${amount}을 송금했나요?\n“송금완료”로 바꾸고 ${r.name} 님에게 바로 알림을 보내요.`)) return;
     setBusy(true);
     setNear(null);
-    const res = await api(`/api/admin/events/${id}/refund`, { body: { memberId: r.memberId } });
+    const res = await api(`/api/admin/events/${id}/refund`, { body: { memberId: r.memberId, ...(diff ? { diff: true } : {}) } });
     setBusy(false);
     if (!res.ok) return setNear({ at: `refund:${r.memberId}`, tone: "bad", text: res.error });
     setNear({ at: `refund:${r.memberId}`, tone: "info", text: `${r.name} 님 회비 송금완료로 바꾸고 알림을 보냈어요.` });
@@ -411,8 +414,14 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const pendOwn = rows.filter((r) => r.req === "참석"); // 관리자 승인 후 참석: 승인 대기
   const paid = attend.filter((r) => r.paid);
   // 회비 돌려주기: 입금 확인된 뒤 참석에서 빠진 회원(송금대기 먼저)
-  const refunds = rows.filter((r) => r.refund === "wait" || r.refund === "done").sort((a, b) => (a.refund === b.refund ? 0 : a.refund === "wait" ? -1 : 1));
-  const refundWait = refunds.filter((r) => r.refund === "wait");
+  //  + 참석 중인데 입금 확인 뒤 회비가 줄어 돌려줄 차액(diff, lib/fee.ts feeDiff). amount: 돌려줄 금액
+  type RefundItem = { r: Row; diff: boolean; amount: number };
+  const refundOf = (r: Row, diff: boolean): RefundItem => ({ r, diff, amount: diff ? -(r.feeDiff ?? 0) : Number(r.refundAmount) || 0 });
+  const refundWait = [
+    ...rows.filter((r) => r.refund === "wait").map((r) => refundOf(r, false)),
+    ...rows.filter((r) => r.answer === "참석" && r.paid && (r.feeDiff ?? 0) < 0).map((r) => refundOf(r, true)),
+  ];
+  const refunds = [...refundWait, ...rows.filter((r) => r.refund === "done").map((r) => refundOf(r, false))];
   const rules = ev.feeRules ?? [];
   // 회원 화면과 같은 정보 카드용(클럽 일정이면 회장 등 직책자도 함께)
   const infoEv = { ...ev, clubLeaders: curClub?.leaders };
@@ -440,7 +449,8 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   })();
   const owed = (r: Row) => Number(r.fee) || 0;
   const totalOwed = attend.reduce((n, r) => n + owed(r), 0);
-  const totalPaid = paid.reduce((n, r) => n + owed(r), 0);
+  // 입금 완료 합계: 실제로 확인한 금액(paidAmount, 예전 기록은 지금 회비)
+  const totalPaid = paid.reduce((n, r) => n + (r.paidAmount ? Number(r.paidAmount) || 0 : owed(r)), 0);
   // 총 예산 = 참석자 회비 합계 + 지원금(연·월회비 지원 + 회원 지원)
   const supDues = supportTotal(supports.filter((x) => x.kind === "dues"));
   const supMember = supportTotal(supports.filter((x) => x.kind === "member"));
@@ -870,25 +880,28 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
           <MiniStats items={[
             ["입금 완료", `${paid.length}명 · ${won(totalPaid)} / ${won(totalOwed)}`, undefined, "var(--green-t)"],
             ["미입금", `${attend.length - paid.length}명`, undefined, "var(--red-t)"],
-            ...(refundWait.length ? [["송금대기", `${refundWait.length}명 · ${won(refundWait.reduce((n, r) => n + (Number(r.refundAmount) || 0), 0))}`, "참석에서 빠진 회원에게 돌려줄 회비", "var(--orange-t)"] as [string, string, string, string]] : []),
+            ...(refundWait.length ? [["송금대기", `${refundWait.length}명 · ${won(refundWait.reduce((n, x) => n + x.amount, 0))}`, "참석에서 빠졌거나 회비가 줄어든 회원에게 돌려줄 회비", "var(--orange-t)"] as [string, string, string, string]] : []),
           ]} />
           {refunds.length > 0 && (
             <section className="card" aria-label="회비 돌려주기" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <b style={{ font: `700 ${fs(15)} var(--display)` }}>회비 돌려주기</b>
-              <span className="small" style={{ fontSize: fs(12) }}>입금 확인 뒤 참석에서 빠진 회원이에요(회비 합계에서 빠져요). 돌려준 뒤 “송금완료”를 누르면 회원에게 알림이 가고, 그전까지는 일주일마다 관리자에게 알려 드려요.</span>
+              <span className="small" style={{ fontSize: fs(12) }}>입금 확인 뒤 참석에서 빠졌거나(회비 합계에서 빠져요) 참석 날짜·회비가 바뀌어 차액이 생긴 회원이에요. 돌려준 뒤 “송금완료”를 누르면 회원에게 알림이 가고, 그전까지는 일주일마다 관리자에게 알려 드려요.</span>
               <div className="tblw">
                 <table className="tbl compact stack" style={{ minWidth: 460 }}>
                   <thead><tr><th>이름</th><th>금액</th><th>상태</th><th>날짜</th><th></th></tr></thead>
                   <tbody>
-                    {refunds.map((r) => (
-                      <tr key={r.memberId}>
-                        <td data-label=""><b>{r.name}</b></td>
-                        <td className="num" data-label="금액">{won(r.refundAmount ?? "0")}</td>
-                        <td data-label=""><span className={`pill ${r.refund === "wait" ? "warn" : "gray"}`}>{r.refund === "wait" ? "송금대기" : "송금완료"}</span></td>
-                        <td className="num" data-label="날짜">{r.refund === "wait" ? `${fmtDate(r.refundSince ?? "")} 참석 해제` : `${fmtDate(r.refundDoneAt ?? "")} 송금`}</td>
-                        <td className="act" data-label="">{r.refund === "wait" && <button className="mini" type="button" disabled={busy} onClick={() => refundDone(r)}>송금완료</button>}{near?.at === `refund:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`refund:${r.memberId}`)}</div>}</td>
-                      </tr>
-                    ))}
+                    {refunds.map(({ r, diff, amount }) => {
+                      const waiting = diff || r.refund === "wait";
+                      return (
+                        <tr key={`${r.memberId}:${diff ? "diff" : r.refund}`}>
+                          <td data-label=""><b>{r.name}</b></td>
+                          <td className="num" data-label="금액">{diff ? `환불 ${won(String(amount))}` : won(String(amount))}</td>
+                          <td data-label=""><span className={`pill ${waiting ? "warn" : "gray"}`}>{waiting ? "송금대기" : "송금완료"}</span></td>
+                          <td className="num" data-label="날짜">{diff ? "참석 중 · 회비 줄어듦" : r.refund === "wait" ? `${fmtDate(r.refundSince ?? "")} 참석 해제` : `${fmtDate(r.refundDoneAt ?? "")} 송금`}</td>
+                          <td className="act" data-label="">{waiting && <button className="mini" type="button" disabled={busy} onClick={() => refundDone(r, diff)}>송금완료</button>}{near?.at === `refund:${r.memberId}` && waiting && <div style={{ marginTop: 4 }}>{nearNote(`refund:${r.memberId}`)}</div>}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -907,10 +920,12 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                       <td className="num" data-label="금액">{r.feePending ? <span className="small">날짜 선택 전</span> : owed(r) ? owed(r).toLocaleString("ko-KR") : "-"}</td>
                       <td data-label="">
                         <span className={`pill ${r.paid ? "ok" : "warn"}`}>{r.paid ? "입금" : "미입금"}</span>
-                        {!r.paid && r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>입금 알림 받음 {fmtDate(r.payNotice)}</span>}
+                        {r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>{r.paid ? "추가 입금 알림" : "입금 알림 받음"} {fmtDate(r.payNotice)}</span>}
+                        {/* 입금 확인 때 금액과 지금 회비가 다름(참석 날짜·회비 조건 변경) */}
+                        {r.paid && (r.feeDiff ?? 0) !== 0 && <span className="pill red" style={{ marginLeft: 4 }} title={`입금 확인 ${won(r.paidAmount ?? "0")}`}>차액 있음 · {(r.feeDiff ?? 0) > 0 ? `추가 입금 ${won(String(r.feeDiff))}` : `환불 ${won(String(-(r.feeDiff ?? 0)))}`}</span>}
                       </td>
                       <td className="num" data-label="확인일">{fmtDate(r.paidAt) || "-"}</td>
-                      <td className="act" data-label=""><button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{!r.paid && r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}{near?.at === `pay:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`pay:${r.memberId}`)}</div>}</td>
+                      <td className="act" data-label="">{r.paid && (r.feeDiff ?? 0) > 0 && <button className="mini" type="button" style={{ marginRight: 4 }} onClick={() => pay(r.memberId, true)}>추가 입금 확인</button>}<button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}{near?.at === `pay:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`pay:${r.memberId}`)}</div>}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -221,7 +221,8 @@ export function payNoticesFor(me: Row | undefined, events: Row[], applies: Row[]
   const clubs = perms.includes("clubs");
   const mine = (ev: Row) => all || (clubs && !!(ev.club ?? "").trim()) || ev.createdBy === me.id || readEditors(ev.editors).includes(me.id);
   const ok = new Set(events.filter(mine).map((e) => e.id));
-  return applies.filter((a) => ok.has(a.eventId) && a.payNotice && a.paid !== "true" && a.answer === "참석");
+  // 입금 확인된 회원의 알림은 추가 입금(입금 확인 뒤 회비가 늘어난 차액, lib/fee.ts feeDiff) 알림이다
+  return applies.filter((a) => ok.has(a.eventId) && a.payNotice && a.answer === "참석");
 }
 
 // 이 사람이 관리하는 일정 id(입금 확인·차량 신청 승인 알림): 일정관리·모든 권한, 클럽 일정이면 클럽관리, 만든 사람·편집자

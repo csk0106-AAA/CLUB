@@ -8,7 +8,7 @@ import { fs } from "@/lib/fs";
 
 type Detail = {
   event: { name: string; fee: string; feePending?: boolean; feeDeadline: string; account: string; accountHolder: string };
-  apply: { answer: string; paid: boolean; payNotice: string; payUndoAt?: string; payUndoReason?: string } | null;
+  apply: { answer: string; paid: boolean; payNotice: string; payUndoAt?: string; payUndoReason?: string; feeExtra?: number } | null;
   feeDue: boolean;
 };
 
@@ -63,13 +63,15 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
 
   const e = d.event;
   const attending = d.apply?.answer === "참석";
-  const paid = d.apply?.paid === true;
+  // 입금 확인 뒤 참석 날짜·회비가 바뀌어 더 낼 돈(추가 입금)이 있으면 그 차액을 다시 알린다
+  const extra = d.apply?.paid ? d.apply.feeExtra ?? 0 : 0;
+  const paid = d.apply?.paid === true && extra <= 0;
   const noticed = !paid && Boolean(d.apply?.payNotice);
 
   return (
     <main className="app">
       <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title="회비 안내"
-        right={<span className={`chip ${paid ? "violet" : noticed ? "gray" : "red"}`}>{paid ? "입금 확인됨 ✓" : noticed ? "입금 확인 중" : "입금 확인 전"}</span>} />
+        right={<span className={`chip ${paid ? "violet" : noticed ? "gray" : "red"}`}>{paid ? "입금 확인됨 ✓" : noticed ? "입금 확인 중" : extra > 0 ? "추가 입금 전" : "입금 확인 전"}</span>} />
       <p className="lead" style={{ marginBottom: -4 }}>{e.name}</p>
 
       {!attending && <div className="msg info">참석을 신청하면 회비 안내가 열려요.</div>}
@@ -85,6 +87,12 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
               <span className="k">내 회비</span>
               <b className="num" style={{ font: `700 ${fs(20)} var(--display)`, color: "var(--ink)" }}>{won(e.fee)}</b>
             </div>
+            {extra > 0 && (
+              <div className="srow">
+                <span className="k">추가 입금</span>
+                <b className="num" style={{ color: "var(--red-t)", fontSize: fs(16) }}>{won(String(extra))}</b>
+              </div>
+            )}
             <div className="srow" style={{ alignItems: "flex-start" }}>
               <span className="k" style={{ flex: "none", paddingTop: 2 }}>입금 계좌</span>
               <span className="v" style={{ flex: 1 }}>
@@ -103,6 +111,8 @@ export default function FeePage({ params }: { params: Promise<{ id: string }> })
             <div className="fb good"><span className="ic" aria-hidden="true">✓</span><div><b>입금이 확인됐어요</b><span className="t">회비 알림이 사라졌어요. 고맙습니다!</span></div></div>
           ) : noticed ? (
             <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>입금 알림을 보냈어요</b><span className="t">{md(d.apply?.payNotice ?? "")}에 알렸어요. 관리자가 확인하면 회비 알림이 사라져요.</span></div></div>
+          ) : extra > 0 && !d.apply?.payUndoAt ? (
+            <div className="fb info"><span className="ic" aria-hidden="true">i</span><div><b>참석 날짜나 회비가 바뀌었어요</b><span className="t">추가 입금 {won(String(extra))}을 보낸 뒤 “입금했어요”를 눌러 주세요.</span></div></div>
           ) : d.apply?.payUndoAt ? (
             <div className="fb bad"><span className="ic" aria-hidden="true">!</span><div><b>입금이 확인되지 않았어요</b><span className="t">{md(d.apply.payUndoAt)}{d.apply.payUndoReason ? ` · 사유: ${d.apply.payUndoReason}` : ""}. 입금했다면 “입금했어요”를 다시 눌러 주세요.</span></div></div>
           ) : (

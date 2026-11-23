@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
-import { applyInput, autoName, carInput, carpoolState, cars, conflict, inputPeople, riderCap, saveCarpoolState, seatOwner, selfOf, timeIssue, toCar, toRow } from "@/lib/carpool";
+import { applyInput, autoName, carInput, carpoolState, cars, conflict, inputPeople, removeSelf, riderCap, saveCarpoolState, seatOwner, selfOf, timeIssue, toCar, toRow } from "@/lib/carpool";
 import { askOwnerInfo, confirmIfClosed } from "@/lib/car-auto";
 import { dropCar, ownerMoved, syncRemoved } from "@/lib/car-requests";
 import { addAlerts } from "@/lib/member-alerts";
@@ -56,7 +56,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   for (const d of ["go", "back"] as const) {
     const added = next[d].riders.filter((m) => !before[d].riders.includes(m));
     const self = selfOf(st, d);
-    if (added.some((m) => self.includes(m))) await saveCarpoolState(id, d === "go" ? { selfGo: self.filter((m) => !added.includes(m)) } : { selfBack: self.filter((m) => !added.includes(m)) });
+    await removeSelf(id, d, added.filter((m) => self.includes(m)));
   }
   // 정보 수정 창에서 저장했을 때만(탑승자 옮기기 말고) 빈 칸 알림
   if (parsed.data.name !== undefined || parsed.data.ownerId !== undefined) await askOwnerInfo(id, next);

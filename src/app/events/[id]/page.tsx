@@ -43,7 +43,7 @@ type Detail = {
   prep?: { id: string; item: string; owner: string; done: boolean }[] | null;
   prepFiles?: { id: string; name: string; size: number }[] | null;
   costs?: { id: string; item: string; budget: number; spent: number; status: string; owner: string }[] | null;
-  apply: { answer: string; days: string[]; paid: boolean; payNotice: string; payUndoAt?: string; payUndoReason?: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string; req?: string; reqDays?: string[]; reqResult?: string; reqReason?: string } | null;
+  apply: { answer: string; days: string[]; paid: boolean; payNotice: string; payUndoAt?: string; payUndoReason?: string; refund?: "" | "wait" | "done"; refundAmount?: string; refundDoneAt?: string; feeExtra?: number; req?: string; reqDays?: string[]; reqResult?: string; reqReason?: string } | null;
   feeDue: boolean;
 };
 
@@ -226,6 +226,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     return Date.now() > end.getTime();
   })();
   const answer = d.apply?.answer ?? "";
+  const extra = d.apply?.feeExtra ?? 0; // 입금 확인 뒤 회비가 바뀐 차액: + 추가 입금, - 돌려받을 차액
   const days = eventDays(e.startsAt, e.endsAt);
   const fee: FeeView = { kind: "member", fee: e.fee, feePending: e.feePending };
   // 미응답·불참이라 닫힌 항목(참석하면 모두 열림)
@@ -245,12 +246,12 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         d.apply?.payNotice ? (
           <button className="fb info" type="button" style={{ alignItems: "center" }} onClick={() => router.push(`/events/${id}/fee`)}>
             <span className="ic" style={{ fontSize: fs(15) }} aria-hidden="true">₩</span>
-            <span className="grow"><b>입금 확인을 기다리고 있어요</b><span className="t">{won(e.fee)} · 안내 보기 ›</span></span>
+            <span className="grow"><b>입금 확인을 기다리고 있어요</b><span className="t">{extra > 0 ? `추가 입금 ${won(String(extra))}` : won(e.fee)} · 안내 보기 ›</span></span>
           </button>
         ) : (
           <button className="fb bad" type="button" style={{ alignItems: "center" }} onClick={() => router.push(`/events/${id}/fee`)}>
             <span className="ic" style={{ fontSize: fs(15) }} aria-hidden="true">₩</span>
-            <span className="grow"><b>{d.apply?.payUndoAt ? "입금이 확인되지 않았어요" : "회비를 아직 안 내셨어요"}</b><span className="t">{d.apply?.payUndoAt && d.apply.payUndoReason ? `사유: ${d.apply.payUndoReason} · ` : ""}{won(e.fee)} · 안내 보기 ›</span></span>
+            <span className="grow"><b>{d.apply?.payUndoAt ? "입금이 확인되지 않았어요" : extra > 0 ? "회비가 바뀌어 추가 입금이 필요해요" : "회비를 아직 안 내셨어요"}</b><span className="t">{d.apply?.payUndoAt && d.apply.payUndoReason ? `사유: ${d.apply.payUndoReason} · ` : ""}{extra > 0 ? `추가 입금 ${won(String(extra))}` : won(e.fee)} · 안내 보기 ›</span></span>
           </button>
         )
       )}
@@ -304,6 +305,9 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <FeeDetail ev={e} fee={fee} />
           {answer !== "참석" && (e.feeOptions?.length ?? 0) > 0 && <FeeOptions options={e.feeOptions!} />}
           {d.apply?.paid && <div className="small" style={{ color: "var(--green-t)" }}>회비 입금 확인됨 ✓</div>}
+          {/* 입금 확인 뒤 참석 날짜·회비가 바뀐 차액 */}
+          {d.apply?.paid && extra > 0 && <div className="small" style={{ color: "var(--red-t)" }}>추가 입금 {won(String(extra))} · 참석 날짜나 회비가 바뀌었어요</div>}
+          {d.apply?.paid && extra < 0 && <div className="small" style={{ color: "var(--blue-t)" }}>차액 {won(String(-extra))}을 관리자가 돌려드릴 예정이에요</div>}
           {/* 입금 안내 보기(회비 안내 화면) · 입금 알리기(회비 안내의 "입금했어요"와 같은 동작) */}
           {d.feeDue && (
             <>
@@ -388,7 +392,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       {d.apply?.refund === "wait" && (
         <div className="msg info" role="status"><b>회비 송금 예정</b> · 일정에 참석하지 않아 회비 {Number(d.apply.refundAmount || 0).toLocaleString("ko-KR")}원을 관리자가 송금해 드릴 예정이에요.</div>
       )}
-      {d.apply?.refund === "done" && (
+      {d.apply?.refund === "done" && answer !== "참석" && d.apply.req !== "참석" && (
         <div className="msg info" role="status"><b>회비 송금완료 ✓</b> · 회비 {Number(d.apply.refundAmount || 0).toLocaleString("ko-KR")}원을 송금해 드렸어요.</div>
       )}
 

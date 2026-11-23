@@ -91,7 +91,27 @@ export async function canAct(cfg: TemplateConfig, act: Row, ev: Row, memberId: s
   if (!key) return true;
   return actionAllowed(cfg, (await rosterLevels(act)).get(memberId), key);
 }
-export const NOT_ACTION = "선택참여로 지정돼 이 활동에서는 할 수 없는 단계예요.";
+export const NOT_ACTION = "이번 단계는 전체참여 회원만 해요. 선택참여로 정해져 있어 이 단계는 하지 않아도 돼요.";
+// 선택참여 회원에게 허용되지 않은 단계가 열렸을 때 회원 화면에 보이는 안내
+export const PARTIAL_WAIT = "이번 단계는 전체참여 회원만 해요. 잠시 기다려 주세요.";
+
+// 이 액션을 할 수 있는 회원 번호들: 활동참여자(출석 체크, 일정 대상 안)이고, 선택참여면 선별 조건에 그 액션이 있는 회원.
+// 진행자 화면의 "투표 n / m명" 같은 분모와 아직 안 한 사람 목록에 쓴다(서버 판정 canAct 와 같은 규칙).
+export async function actionSet(cfg: TemplateConfig, act: Row, ev: Row | undefined, key: string): Promise<Set<string>> {
+  const base = await rosterIds(cfg, act, ev);
+  const ids = base ? [...base] : (await (await getStore()).list("Members")).filter((m) => !isGuest(m.kind)).map((m) => m.id);
+  if (!key) return new Set(ids);
+  const levels = await rosterLevels(act);
+  return new Set(ids.filter((id) => actionAllowed(cfg, levels.get(id), key)));
+}
+
+// 회원 한 명이 지금 열린 현장 단계(stepKey)를 할 수 있는지. 회원이 직접 하는 단계(작성·투표·저예요·고르기)가 아니면 늘 true.
+//  level: 이 회원의 참여 방식(rosterLevels), 참여자가 아니면 undefined(참여 대상 판정은 따로 한다)
+export function stepAllowed(cfg: TemplateConfig, level: Level | undefined, stepKey: string): boolean {
+  const st = cfg.onsite.steps.find((x) => x.key === stepKey);
+  if (!st || !["write", "vote", "iam_button", "pick_person"].includes(st.memberScreen)) return true;
+  return actionAllowed(cfg, level, `onsite:${st.key}`);
+}
 
 // 이 회원이 활동에 참여할 수 있는지.
 //  - 일정 대상(클럽 회원·참관자 또는 공개 대상)에 들어 있어야 한다.

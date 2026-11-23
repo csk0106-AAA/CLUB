@@ -1,4 +1,4 @@
-import { cars, carpoolState, requestsOpen, riderCap, saveCarpoolState, selfOf, toCar, toRow, type Car, type Dir } from "./carpool";
+import { addSelf, cars, carpoolState, removeSelf, requestsOpen, riderCap, selfOf, toCar, toRow, type Car, type Dir } from "./carpool";
 import { addAlerts } from "./member-alerts";
 import { pushTo } from "./push";
 import { kstTime } from "./kst-time";
@@ -102,7 +102,7 @@ export async function requestSeat(eventId: string, mid: string, carId: string, d
   if (from && from.kind === "member" && from.driverId === mid) return { error: "다른 차를 운전하고 있어요." };
   const s = await getStore();
   // 개별 이동을 골랐던 회원이 차를 신청하면 개별 이동에서 뺀다
-  if (selfOf(state, dir).includes(mid)) await saveCarpoolState(eventId, dir === "go" ? { selfGo: selfOf(state, dir).filter((x) => x !== mid) } : { selfBack: selfOf(state, dir).filter((x) => x !== mid) });
+  if (selfOf(state, dir).includes(mid)) await removeSelf(eventId, dir, [mid]);
   const looked = openSeats(car, dir, reqs) > 0; // 읽었을 때 자리가 있어 보였는지
   const row = await s.insert("CarRequests", {
     eventId, carId, memberId: mid, dir, status: "waiting", createdAt: now(), handledAt: "", fromCarId: from?.id ?? "", seen: "true", note: "",
@@ -350,10 +350,7 @@ export async function leaveCar(eventId: string, mid: string, dir: Dir, note = "�
 }
 
 export async function setSelf(eventId: string, mid: string, dir: Dir, on: boolean): Promise<void> {
-  const st = await carpoolState(eventId);
-  const cur = selfOf(st, dir).filter((x) => x !== mid);
-  const next = on ? [...cur, mid] : cur;
-  await saveCarpoolState(eventId, dir === "go" ? { selfGo: next } : { selfBack: next });
+  await (on ? addSelf : removeSelf)(eventId, dir, [mid]);
   if (!on) return;
   for (const r of (await freshReqs(eventId)).filter((x) => x.memberId === mid && x.dir === dir && (OPEN.includes(x.status) || SEATED.includes(x.status)))) {
     await setStatus(r.id, { status: "canceled", note: "개별 이동으로 바꿨어요" });

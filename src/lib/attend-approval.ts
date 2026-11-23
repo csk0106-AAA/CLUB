@@ -1,6 +1,7 @@
 import { managersOf } from "./event-managers";
 import { addAlerts } from "./member-alerts";
 import { pushTo } from "./push";
+import { refundOnAnswer } from "./refund";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
@@ -38,7 +39,9 @@ export async function decide(eventId: string, memberId: string, approve: boolean
   if (a.req !== "참석") return "승인 대기 중인 신청이 아니에요.";
   if (approve) {
     const days = a.reqDays || (eventDays(ev.startsAt, ev.endsAt).length === 1 ? eventDays(ev.startsAt, ev.endsAt).join(",") : "");
-    await s.update("EventApplies", a.id, { answer: "참석", days, checkedBy: "", checkedAt: "", ...clearReq });
+    // 예전에 생긴 "승인 대기 + 송금대기" 줄: 승인하면 환불 요청을 취소하고 입금 확인으로 되돌린다(lib/refund.ts)
+    const refund = a.refund === "wait" ? await refundOnAnswer(ev, a, "참석", await s.get("Members", memberId) ?? undefined) : {};
+    await s.update("EventApplies", a.id, { answer: "참석", days, checkedBy: "", checkedAt: "", ...refund, ...clearReq });
     await addAlerts([memberId], { eventId, text: `${ev.name} 참석이 확정됐어요.`, href: `/events/${eventId}` });
   } else {
     await s.update("EventApplies", a.id, { ...clearReq, reqResult: "declined", reqReason: reason });

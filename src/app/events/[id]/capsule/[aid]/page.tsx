@@ -14,6 +14,7 @@ type Data = {
   activity: { id: string; name: string };
   event: { id: string; name: string };
   canJoin: boolean;
+  actionOk?: boolean; // 선택참여 회원이 작성 단계를 하는지(false 면 작성 칸 대신 기다림 안내)
   canWrite: boolean;
   team: { id: string; name: string; members: string[] } | null;
   openAt: string;
@@ -124,12 +125,13 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
 
       {!d.opened && (
         <>
-          {!d.canWrite && d.canJoin && (
+          {/* 선택참여로 작성 단계가 없으면 작성 칸을 숨긴다(작성이 열리면 위 활동 박스에 기다림 안내가 보인다) */}
+          {!d.canWrite && d.canJoin && d.actionOk !== false && (
             <div className="msg info" role="status">진행자가 “타임캡슐 작성하기”를 열면 쓸 수 있어요. 이 화면을 켜 두세요.</div>
           )}
           {d.content?.goal && <div className="card" style={{ padding: "12px 14px" }}><b style={{ fontSize: fs(14) }}>내가 쓴 목표 <span className="chip gray">관리자가 확인을 허용했어요</span></b><p style={{ whiteSpace: "pre-wrap", margin: "6px 0 0", fontSize: fs(14) }}>{d.content.goal}</p></div>}
 
-          {d.canJoin && (
+          {d.canJoin && d.actionOk !== false && (
             <>
               <section className="lcard" aria-labelledby="c-h1" aria-disabled={!d.canWrite}>
                 <header className="lcard-h">

@@ -8,6 +8,10 @@ import { isGuest } from "@/lib/member-kind";
 import { getStore } from "@/lib/store";
 import { refundOnAnswer } from "@/lib/refund";
 import { clearReq, needsApproval, notifyRequest } from "@/lib/attend-approval";
+import { feeDiff, memberFee } from "@/lib/fee";
+import { managersOf } from "@/lib/event-managers";
+import { addAlerts } from "@/lib/member-alerts";
+import { pushTo } from "@/lib/push";
 
 const body = z.object({
   answer: z.enum(["참석", "불참"]),
@@ -60,7 +64,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   };
 
   // 관리자 승인 후 참석인 일정: 아직 참석이 아니면 승인 대기로(이미 참석이면 날짜 바꾸기는 그대로)
-  if (answer === "참석" && needsApproval(ev) && cur?.answer !== "참석") {
+  //  송금대기(입금 확인 뒤 참석 취소, 아직 돌려주기 전)인 회원은 이미 승인됐던 회원이라 승인 없이 바로 참석 + 입금 확인으로 되돌린다(아래 refundOnAnswer).
+  //  송금완료(돈을 돌려줌)된 회원은 새 신청과 같다(승인 대기, 미입금).
+  if (answer === "참석" && needsApproval(ev) && cur?.answer !== "참석" && cur?.refund !== "wait") {
     const reqDays = days ? [...days].sort().join(",") : cur?.reqDays ?? "";
     const fresh = cur?.req !== "참석";
     const fields = { req: "참석", reqDays, reqAt: fresh ? new Date().toISOString() : cur?.reqAt ?? "", reqResult: "", reqReason: "" };
@@ -71,13 +77,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   // 불참이면 날짜를 비운다. 참석이면 넘어온 날짜(없으면 기존 날짜)를 저장한다.
-  const nextDays = answer === "불참" ? "" : days ? [...days].sort().join(",") : cur?.days ?? "";
+  //  송금대기에서 다시 참석하는데 날짜가 없으면, 예전에 남은 승인 대기 날짜(reqDays)라도 쓴다
+  const nextDays = answer === "불참" ? "" : days ? [...days].sort().join(",") : cur?.days || (cur?.refund === "wait" ? cur.reqDays ?? "" : "");
 
   if (cur) {
     // 회원이 직접 답하면 관리자 체크 표시는 지운다
-    // 입금 확인된 뒤 불참으로 바꾸면 송금대기(관리자·회원 알림), 송금대기 중 다시 참석하면 입금 확인으로(lib/refund.ts)
-    const refund = cur.answer !== answer ? await refundOnAnswer(ev, cur, answer, me) : {};
+    // 입금 확인된 뒤 불참으로 바꾸면 송금대기(관리자·회원 알림), 송금대기 중 다시 참석하면 환불 요청 취소 + 입금 확인으로(lib/refund.ts)
+    const refund = cur.answer !== answer || (answer === "참석" && cur.refund === "wait") ? await refundOnAnswer(ev, cur, answer, me) : {};
     await s.update("EventApplies", cur.id, { answer, days: nextDays, checkedBy: "", checkedAt: "", ...refund, ...(answer === "불참" ? clearReq : {}) });
+    // 입금 확인된 회원이 참석 날짜를 바꿔 회비가 달라지면(추가 입금·차액 환불) 일정 관리자에게 알린다
+    if (answer === "참석" && cur.answer === "참석" && cur.paid === "true" && nextDays !== (cur.days ?? "")) {
+      const who = { kind: me?.kind, position: me?.position };
+      const before = feeDiff(cur, memberFee(ev, who, cur));
+      const after = feeDiff(cur, memberFee(ev, who, { days: nextDays }));
+      if (after !== 0 && after !== before) {
+        const won = (n: number) => `${Math.abs(n).toLocaleString("ko-KR")}원`;
+        const mgr = await managersOf(ev.id);
+        await addAlerts(mgr, { eventId: ev.id, text: `${me?.name ?? "회원"} 님이 ${ev.name} 참석 날짜를 바꿔서 회비가 달라졌어요(${after > 0 ? `추가 입금 ${won(after)}` : `환불 ${won(after)}`}). 회비 탭에서 확인해 주세요.`, href: `/admin/events/${ev.id}?tab=fee` });
+        await pushTo(mgr, "alerts").catch(() => undefined);
+      }
+    }
   } else {
     await insertOnce({ eventId: id, memberId: g.s.mid, answer, days: nextDays, paid: "false" });
   }

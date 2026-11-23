@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { bad, parseJson, hostGuard } from "@/lib/api";
 import { liveView } from "@/lib/activities";
 import { currentRound, eligibleTargets, liveRow, loadStage, missingSteps, rounds, type RoundState } from "@/lib/rounds";
-import { joinSet } from "@/lib/participants";
+import { actionSet, joinSet } from "@/lib/participants";
+import { onsiteKeyOf } from "@/lib/template-schema";
 import { getStore } from "@/lib/store";
-import { isGuest } from "@/lib/member-kind";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
   const tl = tls.find((t) => t.memberId === target && t.eventActivityId === aid);
   const lie = tl?.lieIndex ? Number(tl.lieIndex) : 0;
   const rv = votes.filter((v) => v.roundId === cur.id);
-  const eligible = members.filter((m) => !isGuest(m.kind) && m.id !== target && (!join || join.has(m.id)));
+  // 분모(투표 n / m명, 사전 추측 n / m명): 그 단계를 실제로 할 수 있는 사람만 센다.
+  //  활동참여자(출석 체크로 고른 회원, 일정 대상 안) 중 이번 차례 당사자는 빼고,
+  //  선택참여 회원은 선별 조건에 그 단계(거짓 투표·사전 맞히기)가 있는 사람만(서버 판정 canAct 와 같은 규칙).
+  const [voteSet, guessSet] = await Promise.all([
+    actionSet(st.cfg, st.act, st.ev, onsiteKeyOf(st.cfg, "vote")),
+    actionSet(st.cfg, st.act, st.ev, "guess"),
+  ]);
+  const eligible = members.filter((m) => m.id !== target && voteSet.has(m.id));
+  const guessEligible = members.filter((m) => m.id !== target && guessSet.has(m.id));
 
   // 사전 추측 결과: 누가 누구를 몇 표로 골랐는지(추측 결과 단계부터)
   let guessResults: { name: string; count: number }[] = [];
@@ -56,7 +64,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
   }
 
   // 사전 추측 참여 인원(소개 단계부터, 숫자만). 누가 누구를 골랐는지는 결과 단계 전에는 알려 주지 않는다.
-  const eligibleIds = new Set(eligible.map((m) => m.id));
+  const eligibleIds = new Set(guessEligible.map((m) => m.id));
   const guessers = new Set(
     guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && eligibleIds.has(x.guesserId)).map((x) => x.guesserId),
   );
@@ -65,6 +73,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
   const counts = [0, 1, 2].map((i) => rv.filter((v) => Number(v.chosenIndex) === i).length);
   // 아직 투표하지 않은 분(진행자 화면에만, 투표 중·마감 단계에서만)
   const votedIds = new Set(rv.map((v) => v.voterId));
+  const votedEligible = eligible.filter((m) => votedIds.has(m.id)).length;
   const notVoted = state === "voting" || state === "closed"
     ? eligible.filter((m) => !votedIds.has(m.id)).map((m) => m.name).sort((a, b) => a.localeCompare(b, "ko"))
     : [];
@@ -82,8 +91,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
       guessTotal: guessResults.reduce((n, x) => n + x.count, 0),
       statements: showStatements ? parseJson<string[]>(tl?.statements, []) : [],
       guessJoined: guessers.size,
-      guessEligible: eligible.length,
-      votes: { counts, voted: rv.length, eligible: eligible.length, notVoted },
+      guessEligible: guessEligible.length,
+      // voted: 분모에 든 사람 중 투표한 수(n / m의 n), total: 모든 표 수(막대 비율)
+      votes: { counts, voted: votedEligible, total: rv.length, eligible: eligible.length, notVoted },
       lieIndex: state === "answer" ? lie : -1,
       correctVoters: state === "answer" ? rv.filter((v) => Number(v.chosenIndex) === lie).map((v) => nameOf(v.voterId)) : [],
       correctGuessers: state === "answer" ? guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && x.chosenMemberId === target).map((x) => nameOf(x.guesserId)) : [],

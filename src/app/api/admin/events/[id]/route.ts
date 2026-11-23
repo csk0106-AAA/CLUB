@@ -4,7 +4,7 @@ import { MAX_PHOTO_LIMIT } from "@/lib/event-photos";
 import { z } from "zod";
 import { bad, canDeleteEvent, guardEv } from "@/lib/api";
 import { deleteEventCascade } from "@/lib/event-delete";
-import { feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
+import { feeDiff, feeRules, GENERAL_POSITION, memberFee, readRules } from "@/lib/fee";
 import { audienceInput, inClubOrObserver, readAudience, readObservers } from "@/lib/audience";
 import { clubLeaders, readAllClubInfo } from "@/lib/clubs";
 import { clubPayAccount, duesAccount, readDues } from "@/lib/dues";
@@ -55,6 +55,8 @@ export async function GET(_req: Request, ctx: Ctx) {
         days: a?.days ?? "",
         paid: a?.paid === "true",
         paidAt: a?.paidAt ?? "",
+        // 입금 확인 때의 금액·지금 회비와의 차액(+ 추가 입금, - 환불, lib/fee.ts feeDiff)
+        paidAmount: a?.paidAmount ?? "", feeDiff: feeDiff(a, mf),
         memo: a?.memo ?? "",
         payNotice: a?.payNotice ?? "",
         // 관리자가 대신 체크한 경우: 체크한 사람 이름·시각

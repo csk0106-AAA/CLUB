@@ -3,7 +3,7 @@
 import { ActionNote, type ActionMsg } from "@/components/ActionNote";
 import { ActivitySaju } from "@/components/ActivitySaju";
 import { use, useCallback, useEffect, useState, useRef } from "react";
-import { ActivityLiveBox } from "@/components/LiveActivities";
+import { ActivityLiveBox, PartialWait } from "@/components/LiveActivities";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
@@ -18,6 +18,7 @@ type Data = {
   max: number;
   categories: string[];
   canJoin: boolean;
+  actionOk?: boolean; // 선택참여 회원이 고민 쓰기를 하는지
   mine: Mine[];
 };
 const WHEN: Record<string, string> = {
@@ -127,7 +128,8 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
   }
 
   if (!d) return <main className="app">{note ? <div className="msg bad" role="alert">{note.text}</div> : <p className="small">불러오는 중이에요…</p>}</main>;
-  const open = d.pre.status === "open" && d.canJoin;
+  const partial = d.canJoin && d.actionOk === false; // 선택참여로 고민 쓰기가 선별 조건에 없음
+  const open = d.pre.status === "open" && d.canJoin && !partial;
 
   return (
     <main className="app">
@@ -143,7 +145,8 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       </div>
       <ActionNote msg={note} />
       {!d.canJoin && <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 고민을 쓸 수 있어요. 참여 대상이 아니라면 고민은 쓰지 않고, 프로필 북에 실릴 소개만 작성해 주세요.</div>}
-      {d.canJoin && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(d.pre.opensAt)}부터 ${fmtDateTime(d.pre.closesAt)}까지예요.` : ""}</div>}
+      {partial && <PartialWait />}
+      {d.canJoin && !partial && !open && <div className="msg info">{WHEN[d.pre.status]}{d.pre.opensAt ? ` 작성 기간은 ${fmtDateTime(d.pre.opensAt)}부터 ${fmtDateTime(d.pre.closesAt)}까지예요.` : ""}</div>}
 
       {d.mine.length > 0 && (
         <section aria-labelledby="w-mine" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

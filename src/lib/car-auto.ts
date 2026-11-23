@@ -5,7 +5,7 @@ import { addAlerts } from "./member-alerts";
 import { managersOf } from "./event-managers";
 import { remindRefunds } from "./refund";
 import { pushTo } from "./push";
-import { getSetting, getStore, setSetting } from "./store";
+import { getSetting, getStore, patchSetting } from "./store";
 import { effectivePerms, getPermGroups } from "./perms";
 import { readEditors } from "./editors";
 import { isGuest } from "./member-kind";
@@ -20,7 +20,7 @@ const passed = (iso?: string) => !!iso && Date.now() > kstTime(iso);
 
 export async function markDue(eventId: string): Promise<void> {
   const due = await getSetting<Record<string, boolean>>(DUE, {});
-  if (!due[eventId]) await setSetting(DUE, { ...due, [eventId]: true });
+  if (!due[eventId]) await patchSetting(DUE, [eventId], true);
 }
 
 let running: Promise<void> | null = null;
@@ -37,11 +37,12 @@ async function run(): Promise<void> {
   await remindUnassigned();
   await remindRefunds(); // 회비 송금대기: 일주일마다 관리자에게
   if (ids.length === 0) return;
-  let changed = false;
+  // 끝난 일정만 하나씩 지운다(목록 전체를 다시 쓰면 그사이 markDue 로 들어온 일정이 사라진다)
+  const drop = (eventId: string) => patchSetting(DUE, [eventId], undefined);
   for (const eventId of ids) {
     const st = await carpoolState(eventId);
     const ev = await s.get("Events", eventId);
-    if (!ev) { delete due[eventId]; changed = true; continue; }
+    if (!ev) { await drop(eventId); continue; }
     const href = `/events/${eventId}#cars`;
     const tell = async (text: string) => {
       const att = await attendees(eventId);
@@ -74,9 +75,8 @@ async function run(): Promise<void> {
     const after = await carpoolState(eventId);
     const pending = (after.recruitOn && !after.recruitDone && !!after.recruitUntil) || (!!after.waitUntil && !after.confirmDone)
       || (after.recruitOn && !after.recruitStarted) || (!!after.open && !after.openStarted);
-    if (!pending) { delete due[eventId]; changed = true; }
+    if (!pending) await drop(eventId);
   }
-  if (changed) await setSetting(DUE, due);
 }
 
 async function attendees(eventId: string): Promise<string[]> {
@@ -126,10 +126,8 @@ async function remindUnconfirmed(): Promise<void> {
     const mgr = await managersOf(id);
     await addAlerts(mgr, { eventId: id, text: `${ev.name} 시작이 3일 안으로 다가왔는데 차량배정이 아직 확정되지 않았어요. 배정을 확인하고 “배정 완료 (알림)”을 눌러 주세요.`, href: `/admin/events/${id}?tab=car` });
     await pushTo(mgr, "alerts").catch(() => undefined);
-    done[id] = true;
-    changed = true;
+    await patchSetting(REMIND, [id], true);
   }
-  if (changed) await setSetting(REMIND, done);
 }
 
 // 운전자(회원)·차량모집 지원자에게 내 차 탑승자 명단
@@ -197,10 +195,8 @@ async function remindUnassigned(): Promise<void> {
       await addAlerts(missing, { eventId: id, text: `${ev.name}이(가) 3일 앞으로 다가왔는데 아직 차량배정이 안 되셨어요. 차량을 신청하거나 개별 이동을 골라 주세요.${until}`, href: `/events/${id}#cars` });
       await pushTo(missing, "alerts").catch(() => undefined);
     }
-    done[id] = true;
-    changed = true;
+    await patchSetting(REMIND_MEMBERS, [id], true);
   }
-  if (changed) await setSetting(REMIND_MEMBERS, done);
 }
 
 // 마감(안내)된 뒤 관리자가 배정을 바꾸면: 바뀐 회원에게 바로 알린다(관리자가 따로 확정하지 않아도 되게)

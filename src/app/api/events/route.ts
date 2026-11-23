@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { pausedEventVisible, readPausedClubs } from "@/lib/club-status";
 import { lockedFor as visLocked } from "@/lib/event-visibility";
 import { getSession } from "@/lib/auth";
-import { memberFee, payable } from "@/lib/fee";
+import { feeDiff, memberFee, payable } from "@/lib/fee";
 import { eventJoinable, eventVisible, inClubOrObserver } from "@/lib/audience";
 import { parseJson } from "@/lib/api";
 import { fixLegacyTypes, migrateMinutesPosts } from "@/lib/event-migrate";
@@ -86,6 +86,8 @@ export async function GET() {
       // 이 회원의 참석일·회원구분·직책에 맞는 회비가 있는지(0원이면 회비 없음)
       const mf = memberFee(e, { kind: me?.kind, position: me?.position }, a);
       const hasFee = canApply && mf.known && payable(mf.amount);
+      // 입금 확인 뒤 날짜·회비 조건이 바뀌어 더 낼 돈(추가 입금)이 있으면 회비 알림을 다시 켠다(lib/fee.ts feeDiff)
+      const owe = a?.paid !== "true" || feeDiff(a, mf) > 0;
       return {
         id: e.id,
         type: e.type,
@@ -107,9 +109,9 @@ export async function GET() {
         outside, // 공개 대상 밖(관리자에게만 보임)
         fresh: draft ? null : freshness.get(e.id) ?? null, // "new" | "updated" | null
         // 참석 신청하고 회비를 내지 않았으면 회비 알림
-        feeDue: attending && hasFee && a?.paid !== "true",
-        feePaid: attending && hasFee && a?.paid === "true",
-        payNotice: attending && hasFee && a?.paid !== "true" && Boolean(a?.payNotice),
+        feeDue: attending && hasFee && owe,
+        feePaid: attending && hasFee && !owe,
+        payNotice: attending && hasFee && owe && Boolean(a?.payNotice),
         going: goingOf.get(e.id) ?? 0, // 참석 인원
         // 카드 사진 주소: 일정 대표사진 → 회원 사진(사진첩을 볼 수 있는 사람에게만) → 클럽·모임 대표사진 → 없음("")
         coverUrl: (() => {

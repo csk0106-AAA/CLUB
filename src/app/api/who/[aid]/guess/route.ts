@@ -33,7 +33,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   // 이 활동의 참석자만 맞히기에 참여하고, 참석자의 소개만 노출된다. 불참하는 분의 소개는 프로필 북에만 실린다.
   const join = await joinSet(w.cfg, w.act, w.ev);
   if (!(await canAct(w.cfg, w.act, w.ev, g.s.mid, "guess"))) {
-    return NextResponse.json({ guess: gs, targets: [], candidates: [], notJoin: true });
+    // 참여자이지만 선택참여라 맞히기가 선별 조건에 없으면 notAllowed(회원 화면에 기다림 안내), 참여자가 아니면 notJoin
+    const joined = await canJoin(w.cfg, w.act, w.ev, g.s.mid);
+    return NextResponse.json({ guess: gs, targets: [], candidates: [], notJoin: !joined, notAllowed: joined });
   }
 
   const s = await getStore();

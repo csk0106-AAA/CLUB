@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { memberClubs } from "./lists";
-import { getSetting, setSetting } from "./store";
+import { getSetting, patchSetting } from "./store";
 
 // 클럽 기본 정보. Settings "clubInfo" = { [클럽 이름]: ClubInfo }
 //  intro: 소개, cycle: 모임 주기, place: 장소, bank/account/holder: 입금계좌,
@@ -35,8 +35,8 @@ export async function readClubInfo(name: string): Promise<ClubInfo> {
 }
 
 export async function writeClubInfo(name: string, info: ClubInfo): Promise<void> {
-  const raw = await getSetting<Record<string, unknown>>("clubInfo", {});
-  await setSetting("clubInfo", { ...raw, [name]: info });
+  // 그 클럽 키만 바꿔 쓴다(다른 클럽 정보를 동시에 저장해도 지우지 않게)
+  await patchSetting("clubInfo", [name], info);
 }
 
 // 주소의 [name] 조각 → 클럽 이름(이미 풀린 값이어도 안전하게)

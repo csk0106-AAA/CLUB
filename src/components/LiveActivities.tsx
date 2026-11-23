@@ -39,6 +39,7 @@ type Live = {
   endsAt: string;
   canJoin: boolean;
   live: { active: boolean; stepLabel: string; unlocked: boolean; memberScreen: string };
+  stepAllowed?: boolean; // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만)
   round: Round | null;
   worry: Worry | null;
 };
@@ -264,8 +265,8 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
             )}
             {!inPage && a.kind === "capsule" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
-                <Link href={`/events/${eventId}/capsule/${a.id}`} className={`btn ${a.live.unlocked && a.live.memberScreen === "write" && a.canJoin ? "" : "white"}`} style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>
-                  {a.live.unlocked && a.live.memberScreen === "write" && a.canJoin ? "타임캡슐 작성하기" : "내 타임캡슐 보기"}
+                <Link href={`/events/${eventId}/capsule/${a.id}`} className={`btn ${a.live.unlocked && a.live.memberScreen === "write" && a.canJoin && a.stepAllowed !== false ? "" : "white"}`} style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>
+                  {a.live.unlocked && a.live.memberScreen === "write" && a.canJoin && a.stepAllowed !== false ? "타임캡슐 작성하기" : "내 타임캡슐 보기"}
                 </Link>
               </div>
             )}
@@ -283,7 +284,10 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
                 )}
               </div>
             )}
-            {a.round ? (
+            {a.live.active && a.canJoin && a.stepAllowed === false ? (
+              // 선택참여 회원: 지금 단계가 선별 조건에 없으면 기다림 안내. 할 수 있는 단계가 열리면(2초마다 확인) 바로 원래 화면으로 돌아간다.
+              <PartialWait stepLabel={a.live.stepLabel} />
+            ) : a.round ? (
               <RoundPanel aid={a.id} round={a.round} reload={load} />
             ) : a.worry ? (
               <WorryPanel aid={a.id} w={a.worry} reload={load} />
@@ -297,6 +301,17 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
             )}
           </div>
         );
+}
+
+// 선택참여 회원에게 허용되지 않은 단계가 열렸을 때의 차분한 기다림 카드(서버 lib/participants.ts PARTIAL_WAIT 와 같은 문구)
+export function PartialWait({ stepLabel }: { stepLabel?: string }) {
+  return (
+    <div className="card" role="status" aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", textAlign: "center", padding: "18px 14px" }}>
+      {stepLabel && <span className="pill gray">지금 단계 · {stepLabel}</span>}
+      <b style={{ font: `700 ${fs(16)} var(--display)` }}>이번 단계는 전체참여 회원만 해요.</b>
+      <span className="small">잠시 기다려 주세요. 참여할 수 있는 단계가 열리면 화면이 저절로 바뀌어요.</span>
+    </div>
+  );
 }
 
 /* ───── 나의 고민은?: 지금 뽑힌 고민 (회원 휴대폰) ───── */

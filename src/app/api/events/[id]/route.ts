@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isClubPaused, pausedEventVisible } from "@/lib/club-status";
 import { bad, guard, parseJson } from "@/lib/api";
-import { feeFor, memberFee, payable } from "@/lib/fee";
+import { feeDiff, feeFor, memberFee, payable } from "@/lib/fee";
 import { lockedFor } from "@/lib/event-visibility";
 import { eventJoinable, eventVisible, inClubOrObserver, readObservers } from "@/lib/audience";
 import { defaultCoverUrl, eventCoverUrl, readCovers } from "@/lib/covers";
@@ -66,6 +66,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     && !(k === "fee" && !payable(mf.amount) && !((e.feeRules ?? "").length > 2)));
   const feeOpen = !locked.includes("fee");
   const fee = feeOpen && mf.known && payable(mf.amount) ? mf.amount : "";
+  // 입금 확인 뒤 날짜·회비 조건이 바뀐 차액: + 추가 입금, - 돌려받을 차액(lib/fee.ts feeDiff)
+  const extra = feeOpen ? feeDiff(a, mf) : 0;
+  const owe = a?.paid !== "true" || extra > 0;
   // 참석 전: 참석 일수별 예상 회비(1일·2일 등 다르면 모두)
   const dayN = eventDays(e.startsAt, e.endsAt);
   const feeOptions = !attending && feeOpen && dayN > 1
@@ -153,13 +156,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     apply: a ? {
       answer: a.answer, days: a.days ? a.days.split(",") : [], paid: a.paid === "true", payNotice: a.payNotice ?? "",
       // 관리자가 입금 확인을 취소했거나 입금 알림을 돌려보냈으면(그 뒤 다시 알리지 않았을 때) 시각·사유
-      payUndoAt: a.paid !== "true" && !a.payNotice ? a.payUndoAt ?? "" : "", payUndoReason: a.paid !== "true" && !a.payNotice ? a.payUndoReason ?? "" : "",
+      payUndoAt: owe && !a.payNotice ? a.payUndoAt ?? "" : "", payUndoReason: owe && !a.payNotice ? a.payUndoReason ?? "" : "",
+      feeExtra: extra, // 차액(원): + 추가 입금, - 돌려받을 차액, 0 없음
       // 회비 돌려받기: "wait" 송금대기 / "done" 송금완료(lib/refund.ts)
       refund: a.refund ?? "", refundAmount: a.refundAmount ?? "", refundDoneAt: a.refundDoneAt ?? "",
       // 관리자 승인 후 참석: req "참석" 승인 대기, reqResult "declined" 반려(reqReason 사유)
       req: a.req ?? "", reqDays: a.reqDays ? a.reqDays.split(",") : [], reqResult: a.reqResult ?? "", reqReason: a.reqReason ?? "",
     } : null,
-    feeDue: attending && fee !== "" && a?.paid !== "true",
+    feeDue: attending && fee !== "" && owe,
   });
 }
 

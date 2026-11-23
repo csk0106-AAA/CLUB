@@ -1,5 +1,5 @@
 import { deleteEventCascade } from "./event-delete";
-import { getSetting, getStore, setSetting } from "./store";
+import { getSetting, getStore, patchSetting } from "./store";
 
 // 클럽 상태: 활동 중(기본) / 활동 중지. 삭제는 기록까지 모두 지운다(purgeClub).
 //  Settings "clubPaused" = { [클럽 이름]: { at: ISO 시각, by: 회원 id } } — 여기 있으면 활동 중지.
@@ -22,21 +22,22 @@ export async function isClubPaused(name: string | undefined): Promise<boolean> {
 export async function setClubPaused(name: string, paused: boolean, by: string): Promise<void> {
   const all = await readPausedClubs();
   if (paused === !!all[name]) return;
-  const next = { ...all };
-  if (paused) next[name] = { at: new Date().toISOString(), by };
-  else delete next[name];
-  await setSetting(KEY, next);
+  // 그 클럽 키만 넣고 뺀다(다른 클럽을 동시에 바꿔도 지우지 않게)
+  await patchSetting(KEY, [name], paused ? { at: new Date().toISOString(), by } : undefined);
 }
 
 // 이름 바꾸기·목록에서 지우기를 따라간다(lists PUT)
 export async function syncPausedClubs(renames: Map<string, string>, deleted: string[]): Promise<void> {
+  // 바뀐 키만 하나씩 고친다(전체를 다시 쓰면 그사이 다른 클럽의 활동 중지·다시 활동이 사라질 수 있다)
   const all = await readPausedClubs();
-  const next: PausedClubs = {};
   for (const [k, v] of Object.entries(all)) {
-    if (deleted.includes(k)) continue;
-    next[renames.get(k) ?? k] = v;
+    const to = renames.get(k);
+    if (deleted.includes(k)) await patchSetting(KEY, [k], undefined);
+    else if (to && to !== k) {
+      await patchSetting(KEY, [to], v);
+      await patchSetting(KEY, [k], undefined);
+    }
   }
-  if (JSON.stringify(next) !== JSON.stringify(all)) await setSetting(KEY, next);
 }
 
 // 활동 중지 클럽의 일정을 회원이 볼 수 있는지: 지난 일정이고 참석했던 회원만

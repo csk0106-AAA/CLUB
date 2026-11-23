@@ -1,5 +1,5 @@
 import { readDayPlaces } from "@/lib/day-places";
-import { getSetting, getStore, setSetting } from "@/lib/store";
+import { getSetting, getStore, patchSetting } from "@/lib/store";
 
 // 일정 유형별 템플릿: "일정 만들기"에서 그 유형을 고르면 저장해 둔 일정의 설정·준비 내용으로 새 일정을 채운다.
 //  관리자 › 일정 › 개요 아래 "이 일정을 ○○ 템플릿으로 저장"으로 저장(그때의 내용을 복사해 둔다, 원래 일정을 고쳐도 템플릿은 그대로).
@@ -57,17 +57,15 @@ export async function saveTemplate(eventId: string): Promise<EventTemplate | nul
       templateId: r.templateId ?? "", templateVersion: r.templateVersion ?? "", config: r.config ?? "", order: r.order ?? "", startsAt: r.startsAt ?? "", endsAt: r.endsAt ?? "",
     })),
   };
-  const all = await readTemplates();
-  await setSetting(KEY, { ...all, [ev.type]: t });
+  // 그 유형 하나만 바꿔 쓴다(다른 유형 템플릿을 동시에 저장해도 지우지 않게)
+  await patchSetting(KEY, [ev.type], t);
   return t;
 }
 
 export async function removeTemplate(type: string): Promise<void> {
   const all = await readTemplates();
   if (!all[type]) return;
-  const next = { ...all };
-  delete next[type];
-  await setSetting(KEY, next);
+  await patchSetting(KEY, [type], undefined);
 }
 
 const DAY = 86_400_000;
