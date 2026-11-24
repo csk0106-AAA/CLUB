@@ -310,6 +310,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
             </div>
           )}
           <ActionNote msg={msg} at="bottom" />
+          {editable && td.published && !dirty && <span className="small">지금 구성이 이미 회원에게 배포돼 있어요. 회원을 옮기거나 {unit} 이름을 바꾸면 “변경 내용 다시 배포”를 누를 수 있어요.</span>}
           {editable && <span className="small">“확인”을 눌러야 회원 화면에 보여요. {unit}이 없는 사람이 남아 있거나 빈 {unit}이 있으면 배포되지 않아요.</span>}
         </>
       )}
