@@ -48,7 +48,7 @@ export function HostLiveControls({ eventId, aid, onChange, team, withSteps }: { 
     <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }} role="group" aria-label="회원 화면 조작">
       {withSteps && steps.map((s) => (
         <button key={s.key} className="mini" type="button" disabled={busy} aria-pressed={live.stepKey === s.key && live.unlocked}
-          style={{ ...btn, ...(live.stepKey === s.key && live.unlocked ? { background: "var(--blue)", color: "#fff" } : {}) }}
+          style={{ ...btn, ...(live.stepKey === s.key && live.unlocked ? { background: "var(--brand)", borderColor: "var(--brand)", color: "var(--on-brand)" } : {}) }}
           onClick={() => send({ action: "activate", step: s.key })}>{s.label}</button>
       ))}
       <span className="sub" style={{ fontSize: 14 }}>

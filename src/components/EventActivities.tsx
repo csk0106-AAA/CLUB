@@ -699,8 +699,12 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                 </label>
               </div>
             )}
+            {/* 내가 누구일까요?·나의 고민은? 은 진행자 전체화면의 버튼으로만 진행한다(여기서 단계만 바꾸면 차례·뽑기 상태와 어긋난다) */}
+            {(a.config.preEvent.steps.includes("ai_interview") || a.config.preEvent.steps.includes("worry_write")) && (
+              <span className="small">이 활동은 위의 “진행자 전체화면 열기”에서 진행해요. 차례와 회원 화면이 함께 바뀌어요. 여기서는 회원 화면 잠그기·다시 열기·처음으로만 해요.</span>
+            )}
             <div className="row" style={{ flexWrap: "wrap" }}>
-              {a.config.onsite.steps.filter((s) => s.hostButton).map((s) => (
+              {!(a.config.preEvent.steps.includes("ai_interview") || a.config.preEvent.steps.includes("worry_write")) && a.config.onsite.steps.filter((s) => s.hostButton).map((s) => (
                 <button key={s.key} className={`btn ${ctlLive(a).stepKey === s.key && ctlLive(a).unlocked ? "blue" : ""}`} type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: s.key })}>
                   {s.hostButton}
                 </button>
@@ -717,7 +721,9 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
             <div className="msg info" role="status">
               {ctlLive(a).active
                 ? `현재 단계: ${ctlLive(a).stepLabel} · 회원 화면: ${ctlLive(a).unlocked ? `켜짐 (${screenLabel(a.config, ctlLive(a).memberScreen)})` : "잠김 (대기 화면)"}`
-                : "현장 진행 전이에요. 버튼을 누르면 회원 화면이 템플릿 설정대로 바뀌어요."}
+                : a.config.preEvent.steps.includes("ai_interview") || a.config.preEvent.steps.includes("worry_write")
+                  ? "현장 진행 전이에요. 진행자 전체화면에서 시작해요."
+                  : "현장 진행 전이에요. 버튼을 누르면 회원 화면이 템플릿 설정대로 바뀌어요."}
             </div>
             {canEdit && (
               <div className="row" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px dashed var(--line)", paddingTop: 8 }}>

@@ -53,9 +53,12 @@ export function WhoFlowStage({ flow, r, remaining, selectable, busy, act, id, ai
       <>
         <Stepper now={nowPhase} />
         <Awards id={id} aid={aid} q={q} setError={setError} />
-        <div className="controls" role="group" aria-label="진행자 버튼">
-          <button className="btn white" type="button" disabled={busy} onClick={() => act("vote")} hidden={leftNamed === 0}>‹ 진실과 거짓으로 돌아가기</button>
-        </div>
+        {/* 아직 진실과 거짓을 하지 않은 사람이 남아 있으면(시상을 먼저 연 경우) 이어서 할 수 있다 */}
+        {leftNamed > 0 && (
+          <div className="controls" role="group" aria-label="진행자 버튼">
+            <button className="btn white" type="button" disabled={busy} onClick={() => act("vote")}>‹ 남은 진실과 거짓 이어서 하기</button>
+          </div>
+        )}
       </>
     );
   }
