@@ -5,7 +5,7 @@ import { bad, guard } from "@/lib/api";
 import { activityKind, guessStatus, liveView, preStatus, readConfig, windowBase } from "@/lib/activities";
 import { canJoin, isLimited, stepAllowed } from "@/lib/participants";
 import { memberWorry } from "@/lib/worry";
-import { memberRound } from "@/lib/rounds";
+import { flowAwards, memberRound } from "@/lib/rounds";
 import { eventJoinable, eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
 import { hostTeamOf } from "@/lib/hosts";
@@ -70,6 +70,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         // 현장 진행 중인 사람(라운드): 내가 보는 화면만. 정답은 공개 단계 전에는 포함하지 않는다.
         round: kind === "who" ? await memberRound(a, ev, g.s.mid, cfg, team) : null,
         worry: kind === "worry" ? await memberWorry(a, ev, g.s.mid, cfg, team) : null,
+        // 현장 맞히기 흐름의 시상(진행자가 시상 발표를 열었을 때): 내 조의 추측왕·직감왕
+        awards: kind === "who" && live.stepKey === "awards" ? await flowAwards(a.id, run.on ? (() => { const t = run.teams.find((x) => x.id === team); return t ? { teamId: t.id, inScope: (m: string) => t.memberIds.includes(m) } : undefined; })() : undefined) : null,
         teamName: team ? run.teams.find((t) => t.id === team)?.name ?? "" : "",
         teamHost: hostTeam ? { name: hostTeam.name, href: `${hostScreen(kind, id, a.id)}?team=${encodeURIComponent(hostTeam.id)}` } : null,
       };

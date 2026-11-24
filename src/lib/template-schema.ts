@@ -274,6 +274,17 @@ export function actionAllowed(c: Pick<TemplateConfig, "selectable" | "participan
   if (level !== "partial") return true;
   return canSelect(c) && (c.partialActions ?? []).includes(key);
 }
+// 현장 맞히기 단계(내가 누구일까요?에서 회원 화면이 “사람 고르기”인 단계)의 키. 없으면 "" (예전처럼 사전 맞히기만)
+export function onsiteGuessKey(c: Pick<TemplateConfig, "preEvent" | "onsite">): string {
+  if (kindOfConfig(c) !== "who") return "";
+  return c.onsite.steps.find((x) => x.memberScreen === "pick_person")?.key ?? "";
+}
+// 맞히기 액션 키(선별 조건): 현장 맞히기면 onsite:<단계 키>, 아니면 사전 맞히기 guess
+export const guessActionKey = (c: Pick<TemplateConfig, "preEvent" | "onsite">): string => {
+  const k = onsiteGuessKey(c);
+  return k ? `onsite:${k}` : "guess";
+};
+
 // 회원 화면 종류로 현장 단계의 액션 키(예: 투표 → onsite:vote)
 export const onsiteKeyOf = (c: Pick<TemplateConfig, "onsite">, screen: string): string => {
   const st = c.onsite.steps.find((x) => x.memberScreen === screen);
@@ -291,10 +302,10 @@ export function kindOfConfig(c: Pick<TemplateConfig, "preEvent" | "onsite">): "w
 //  who(내가 누구일까요? 방식): 대기 · “저예요” 버튼 · 투표 · 결과 보기
 //  worry(나의 고민은? 방식)  : 대기 · 결과 보기(뽑힌 고민·타이머·이름)
 //  capsule(타임캡슐 방식)·그 밖: 대기 · 작성 화면 · 결과 보기 (작성 화면을 넣으면 타임캡슐 방식이 된다)
-//  pick_person(명단에서 사람 고르기)은 아직 만들어진 화면이 없어 고르지 않는다.
+//  who 의 pick_person: 현장 맞히기(“누구일까요?” — 조별 진행이면 같은 조원의 별칭 소개를 보고 누구인지 고른다)
 export function screensFor(c: Pick<TemplateConfig, "preEvent" | "onsite">): string[] {
   const k = kindOfConfig(c);
-  if (k === "who") return ["wait", "iam_button", "vote", "view"];
+  if (k === "who") return ["wait", "pick_person", "iam_button", "vote", "view"];
   if (k === "worry") return ["wait", "view"];
   return ["wait", "write", "view"];
 }
@@ -310,6 +321,7 @@ export function memberGuide(c: Pick<TemplateConfig, "preEvent" | "guessPhase" | 
   if (saju) out.push(`원하면 명리학 사주풀이를 받을 수 있어요(${when === "interview" ? "AI 인터뷰를 마친 뒤" : when === "pre" ? "사전 작성 기간" : "일정 당일"}).`);
   if (pre.includes("worry_write")) out.push("일정 전: 고민이나 조언을 구하고 싶은 질문을 미리 적어요.");
   if (c.preEvent.enabled && c.guessPhase?.enabled) out.push("일정 전: 다른 회원의 별칭 소개를 보고 누구인지 맞혀 봐요.");
+  if (onsiteGuessKey(c)) out.push(`일정 당일: ${c.mode === "team" ? "조원의" : "참여자의"} 별칭 소개를 한 명씩 열어 휴대폰으로 누구인지 맞혀요. 모두 맞힌 뒤 한 명씩 “저예요”로 이름이 공개되고, 그다음 한 명씩 2진실 1거짓의 거짓을 골라요(내 차례에는 투표하지 않아요). 마지막에 ${c.mode === "team" ? "조별로 " : ""}추측왕(누구인지 가장 많이 맞힌 사람)과 직감왕(거짓을 가장 많이 맞힌 사람)을 뽑아요.`);
   if (c.onsite.steps.length) out.push(`일정 당일: ${c.onsite.steps.map((x) => x.label).join(" → ")}`);
   if (pre.includes("ai_interview") && pre.includes("alias")) {
     const r = c.reveal;

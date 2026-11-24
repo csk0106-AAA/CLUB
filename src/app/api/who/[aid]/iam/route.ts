@@ -3,7 +3,7 @@ import { liveView } from "@/lib/activities";
 import { bad, guard } from "@/lib/api";
 import { NOT_ATTENDEE, NOT_ACTION, canAct, canJoin } from "@/lib/participants";
 import { onsiteKeyOf } from "@/lib/template-schema";
-import { currentRound, liveRow } from "@/lib/rounds";
+import { activeRound, currentRound, isFlow, liveRow, rounds } from "@/lib/rounds";
 import { getStore } from "@/lib/store";
 import { memberTeamId } from "@/lib/team-run";
 import { loadWho } from "@/lib/who";
@@ -21,12 +21,13 @@ export async function POST(_req: Request, ctx: { params: Promise<{ aid: string }
   if (!(await canAct(w.cfg, w.act, w.ev, g.s.mid, onsiteKeyOf(w.cfg, "iam_button")))) return bad(NOT_ACTION, 403);
   // 조별 진행이면 내가 속한 조의 차례·회원 화면을 따른다
   const team = await memberTeamId(w.act, g.s.mid);
-  const cur = await currentRound(aid, team);
+  const flow = isFlow(w.cfg);
+  const cur = flow ? activeRound(await rounds(aid, team)) : await currentRound(aid, team);
   if (!cur) return bad("지금 진행 중인 소개가 없어요.", 409);
   if (cur.targetMemberId !== g.s.mid) return bad("본인 차례에만 누를 수 있어요.", 403);
   const view = liveView(w.cfg, await liveRow(aid, team));
   if (view.memberScreen !== "iam_button" || cur.state !== "reveal") return bad("아직 이름을 밝힐 차례가 아니에요.", 409);
 
-  await (await getStore()).update("Rounds", cur.id, { nameRevealed: "true", updatedAt: new Date().toISOString() });
+  await (await getStore()).update("Rounds", cur.id, { nameRevealed: "true", ...(flow ? { state: "named" } : {}), updatedAt: new Date().toISOString() });
   return NextResponse.json({ ok: true });
 }

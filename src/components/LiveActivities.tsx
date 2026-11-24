@@ -14,7 +14,7 @@ type Worry = {
 type Round = {
   id: string;
   canJoin: boolean;
-  state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer";
+  state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer" | "guess" | "guessed" | "named";
   alias: string;
   isTarget: boolean;
   screen: string;
@@ -25,7 +25,17 @@ type Round = {
   myVote: number;
   lieIndex: number;
   correct: boolean | null;
+  // 현장 맞히기 흐름에서만
+  flow?: boolean;
+  profileId?: string;
+  introMd?: string;
+  candidates?: { id: string; name: string }[];
+  myGuess?: string;
+  myGuessId?: string;
+  guessRight?: boolean | null;
+  guessOpen?: boolean;
 };
+type Award = { score: number; winner: string; winnerId: string; tied: string[] };
 type Live = {
   id: string;
   name: string;
@@ -42,6 +52,7 @@ type Live = {
   stepAllowed?: boolean; // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만)
   round: Round | null;
   worry: Worry | null;
+  awards?: { A: Award; B: Award } | null; // 현장 맞히기 흐름의 시상(내 조)
   teamName?: string; // 조별 진행이면 내가 따르는 조
   teamHost?: { name: string; href: string } | null; // 내가 조 진행자면 그 조 진행 화면
 };
@@ -52,7 +63,7 @@ const SCREEN_NOTE: Record<string, string> = {
   write: "작성 화면이 열렸어요. 이 화면에서 작성해 주세요.",
   vote: "투표 화면이 열렸어요. 이 화면에서 골라 주세요.",
   iam_button: "소개의 주인공이라면 “저예요” 버튼을 눌러 주세요.",
-  pick_person: "사람을 고르는 화면이 열렸어요. 이 화면에서 골라 주세요.",
+  pick_person: "소개를 읽고 누구인지 골라 주세요.",
   view: "결과를 이 화면에서 볼 수 있어요.",
 };
 
@@ -201,17 +212,20 @@ export function LiveNowBanner({ eventId }: { eventId: string }) {
       {now.map((a) => {
         const href = nodeOf(eventId, a).href;
         const mine = !!a.round && a.round.isTarget && a.round.screen === "iam_button" && a.round.state === "reveal" && !a.round.nameRevealed;
+        // 현장 맞히기가 열렸으면 바로 맞히기 탭으로
+        const pick = a.kind === "who" && a.live.unlocked && a.live.memberScreen === "pick_person" && a.canJoin && a.stepAllowed !== false;
+        const to = href;
         const inner = (
           <>
             <span className="ic" aria-hidden="true">{mine ? "!" : "●"}</span>
             <span className="grow">
-              <b>{mine ? "내 소개 차례예요! 들어가서 “저예요”를 눌러 주세요" : `지금 현장 진행 중이에요 · ${a.name}`}</b>
+              <b>{mine ? "내 소개 차례예요! 들어가서 “저예요”를 눌러 주세요" : pick ? `누구일까요? 맞히기가 열렸어요 · ${a.name}` : `지금 현장 진행 중이에요 · ${a.name}`}</b>
               <span className="t">{href ? "들어가기 ›" : "진행자 안내를 기다려 주세요"}</span>
             </span>
           </>
         );
-        return href
-          ? <Link key={a.id} href={href} className={`fb ${mine ? "bad" : "info"}`} style={{ textDecoration: "none", alignItems: "center" }}>{inner}</Link>
+        return to
+          ? <Link key={a.id} href={to} className={`fb ${mine ? "bad" : "info"}`} style={{ textDecoration: "none", alignItems: "center" }}>{inner}</Link>
           : <div key={a.id} className="fb info" style={{ alignItems: "center" }}>{inner}</div>;
       })}
     </>
@@ -298,7 +312,9 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
             )}
             {!inPage && a.kind === "who" && (
               <div className="row" style={{ flexWrap: "wrap" }}>
-                {a.pre.status === "open" || a.guess.status === "open" || a.pre.status === "closed" ? (
+                {a.live.unlocked && a.live.memberScreen === "pick_person" && a.canJoin && a.stepAllowed !== false ? (
+                  <Link href={`/events/${eventId}/who/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>누구일까요? 맞히기</Link>
+                ) : a.pre.status === "open" || a.guess.status === "open" || a.pre.status === "closed" ? (
                   <Link href={`/events/${eventId}/who/${a.id}`} className="btn" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>
                     {a.pre.status === "open" ? "소개 작성하기" : a.guess.status === "open" ? "누구일까요? 맞히기" : "내 소개 보기"}
                   </Link>
@@ -313,6 +329,8 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
             {a.live.active && a.canJoin && a.stepAllowed === false ? (
               // 선택참여 회원: 지금 단계가 선별 조건에 없으면 기다림 안내. 할 수 있는 단계가 열리면(2초마다 확인) 바로 원래 화면으로 돌아간다.
               <PartialWait stepLabel={a.live.stepLabel} />
+            ) : a.awards ? (
+              <AwardsPanel awards={a.awards} teamName={a.teamName} />
             ) : a.round ? (
               <RoundPanel aid={a.id} round={a.round} reload={load} />
             ) : a.worry ? (
@@ -453,9 +471,56 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
     </div>
   );
 
+  // 현장 맞히기: 고르면 바로 저장(마감 전까지 바꿀 수 있다)
+  async function guess(chosenMemberId: string) {
+    await post(`/api/who/${aid}/guess`, { profileId: round.profileId, chosenMemberId });
+  }
+  const myGuessLine = round.myGuess ? <div className="msg info" role="status">내 선택: <b>{round.myGuess}</b></div> : null;
+
   let body: React.ReactNode;
   if (!round.canJoin) {
     body = <div className="msg info" role="status">이 활동은 관리자가 선택한 회원만 참여할 수 있어요. 진행 모습은 큰 화면에서 볼 수 있어요.</div>;
+  } else if (round.flow && round.state === "guess") {
+    body = round.isTarget ? (
+      <div className="msg info" role="status">내 소개예요! 다른 조원들이 누구인지 맞히고 있어요. 들키지 않게 조용히 기다려 주세요.</div>
+    ) : (
+      <>
+        <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7, fontSize: fs(15) }}>{round.introMd}</p>
+        <b style={{ font: `700 ${fs(18)} var(--display)` }}>이 분은 누구일까요?</b>
+        <span className="small">{round.guessOpen ? "골라 주세요. 진행자가 마감하기 전까지 바꿀 수 있어요." : "진행자가 열면 고를 수 있어요."}</span>
+        <div className="rows" role="radiogroup" aria-label={`${round.alias} 맞히기`}>
+          {(round.candidates ?? []).map((c) => {
+            const on = round.myGuessId === c.id;
+            return (
+              <button key={c.id} type="button" role="radio" aria-checked={on} className="opt rowopt" disabled={busy || !round.guessOpen} onClick={() => guess(c.id)}
+                style={{ minHeight: 52, padding: "8px 12px", ...(on ? { background: "var(--violet-bg)" } : {}) }}>
+                <span className="grow" style={{ fontSize: fs(15), fontWeight: on ? 700 : 500, color: on ? "var(--violet-t)" : undefined }}>{c.name}</span>
+                <span className="tick" aria-hidden="true" style={on ? { background: "var(--violet)", borderColor: "var(--violet)" } : undefined}>{on ? "✓" : ""}</span>
+              </button>
+            );
+          })}
+        </div>
+      </>
+    );
+  } else if (round.flow && round.state === "guessed") {
+    body = <>{!round.isTarget && myGuessLine}<div className="msg info" role="status">맞히기를 마감했어요. 다음 소개를 기다려 주세요. 정답은 모두 맞힌 뒤 “저예요”에서 공개돼요.</div></>;
+  } else if (round.flow && round.state === "reveal" && !round.isTarget) {
+    body = <>{myGuessLine}<div className="msg info" role="status">“{round.alias}”의 주인공은 누구일까요? 곧 “저예요”로 밝혀져요.</div></>;
+  } else if (round.flow && round.state === "named") {
+    body = round.isTarget ? (
+      <div className="msg info" role="status">이름이 공개됐어요. 다음 차례를 기다려 주세요.</div>
+    ) : (
+      <>
+        <div className="msg info" role="status">정답은 <b>{round.name}</b> 님이에요.</div>
+        {round.guessRight === true ? (
+          <div className="msg info" style={{ background: "var(--green-bg)", color: "var(--green-t)" }} role="status">맞혔어요! 🎉</div>
+        ) : round.guessRight === false ? (
+          <div className="msg info" role="status">아쉬워요. 내 선택은 {round.myGuess} 님이었어요.</div>
+        ) : (
+          <div className="msg info" role="status">이 소개는 고르지 않았어요.</div>
+        )}
+      </>
+    );
   } else if (round.screen === "iam_button" && round.isTarget && round.state === "reveal") {
     body = (
       <>
@@ -530,6 +595,34 @@ function RoundPanel({ aid, round, reload }: { aid: string; round: Round; reload:
       {head}
       {err && <div className="msg bad" role="alert">{err}</div>}
       {body}
+    </div>
+  );
+}
+
+/* ───── 현장 맞히기 흐름: 시상(내 조의 추측왕·직감왕) ───── */
+function AwardsPanel({ awards, teamName }: { awards: { A: Award; B: Award }; teamName?: string }) {
+  const one = (title: string, what: string, unit: string, a: Award) => (
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center", textAlign: "center", padding: "14px 12px" }}>
+      <span className="small">{what}</span>
+      <b style={{ font: `800 ${fs(20)} var(--display)` }}>{title}</b>
+      {a.score === 0 ? (
+        <span className="small">맞힌 분이 없어요.</span>
+      ) : a.winner ? (
+        <>
+          <span aria-hidden="true" style={{ fontSize: fs(32) }}>🏆</span>
+          <b style={{ font: `800 ${fs(22)} var(--display)` }}>{a.winner} 님</b>
+          <span className="small num">{a.score}{unit} 맞혔어요</span>
+        </>
+      ) : (
+        <span className="small">{a.score}{unit}로 동점이에요({a.tied.join(", ")}). 진행자가 룰렛을 돌리고 있어요.</span>
+      )}
+    </div>
+  );
+  return (
+    <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 }} aria-live="polite">
+      <b style={{ font: `700 ${fs(17)} var(--display)` }}>{teamName ? `${teamName} 시상` : "시상"}</b>
+      {one("추측왕", "누구인지 가장 많이 맞힌 사람", "명", awards.A)}
+      {one("직감왕", "거짓을 가장 많이 맞힌 사람", "개", awards.B)}
     </div>
   );
 }

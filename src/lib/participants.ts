@@ -109,7 +109,8 @@ export async function actionSet(cfg: TemplateConfig, act: Row, ev: Row | undefin
 //  level: 이 회원의 참여 방식(rosterLevels), 참여자가 아니면 undefined(참여 대상 판정은 따로 한다)
 export function stepAllowed(cfg: TemplateConfig, level: Level | undefined, stepKey: string): boolean {
   const st = cfg.onsite.steps.find((x) => x.key === stepKey);
-  if (!st || !["write", "vote", "iam_button", "pick_person"].includes(st.memberScreen)) return true;
+  // "저예요"(iam_button)는 당사자만 누르고 다른 사람은 보기만 하므로 막지 않는다(선택참여 회원도 이름 공개를 본다)
+  if (!st || !["write", "vote", "pick_person"].includes(st.memberScreen)) return true;
   return actionAllowed(cfg, level, `onsite:${st.key}`);
 }
 

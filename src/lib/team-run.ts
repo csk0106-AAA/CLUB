@@ -30,6 +30,15 @@ export async function memberTeamId(act: Row | undefined, memberId: string): Prom
   return teamIdIn(await teamRunInfo(act), memberId);
 }
 
+// 회원이 따르는 범위: 조별 진행이면 그 조(조에 없으면 조에 없는 사람끼리), 아니면 활동 전체
+export async function memberScope(act: Row, memberId: string): Promise<{ teamId: string; inScope: (m: string) => boolean }> {
+  const run = await teamRunInfo(act);
+  const team = run.on ? run.teams.find((t) => t.memberIds.includes(memberId)) : undefined;
+  if (team) return { teamId: team.id, inScope: (m) => team.memberIds.includes(m) };
+  const inTeams = new Set(run.teams.flatMap((t) => t.memberIds));
+  return { teamId: "", inScope: (m) => !run.on || !inTeams.has(m) };
+}
+
 // 진행자 API 가 다룰 범위.
 //  teamId: 다룰 조("" = 활동 전체), all: 모든 조에 같이 적용(단계 열기·잠그기·처음으로만),
 //  inScope: 이 범위에 드는 회원인지(차례 대상·투표 분모·고민 뽑기에 쓴다)

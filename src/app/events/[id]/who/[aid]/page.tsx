@@ -109,7 +109,8 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
 
 /* ───────────── 누구일까요? (사전 추측) ───────────── */
 function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) => void; onProgress: (p: { done: number; total: number } | null) => void }) {
-  const [data, setData] = useState<{ guess: { status: string; opensAt: string; closesAt: string }; targets: Target[]; candidates: Cand[]; notJoin?: boolean; notAllowed?: boolean } | null>(null);
+  // onsite: 현장 맞히기(진행자가 열면 고를 수 있고 첫 소개를 열면 닫힌다), team: 같은 조원만
+  const [data, setData] = useState<{ guess: { status: string; opensAt: string; closesAt: string }; onsite?: boolean; team?: boolean; targets: Target[]; candidates: Cand[]; notJoin?: boolean; notAllowed?: boolean } | null>(null);
   const [openId, setOpenId] = useState("");
 
   const load = useCallback(async () => {
@@ -138,6 +139,9 @@ function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) =
   const g = data.guess;
   if (data.notAllowed) return <PartialWait />;
   if (data.notJoin) return <div className="msg info">이 활동의 참여 대상으로 선택되지 않아서 맞히기에는 참여하지 않아요. 프로필 북에서 다른 회원의 소개를 읽어 보세요.</div>;
+  if (data.onsite) {
+    return <div className="msg info" role="status">누구일까요? 맞히기는 현장에서 해요. 진행자가 조원 소개를 한 명씩 열면 이 화면 위의 진행 칸에서 누구인지 골라요. 모두 맞힌 뒤 한 명씩 “저예요”로 이름이 공개되고, 그다음 진실과 거짓을 해요.</div>;
+  }
   if (g.status !== "open" && g.status !== "closed") {
     return <div className="msg info">{g.status === "before" ? `맞히기는 ${fmtDateTime(g.opensAt)}부터 열려요.` : g.status === "unknown" ? "일정 날짜가 정해지면 맞히기가 열려요." : "이 활동에는 사전 맞히기가 없어요."}</div>;
   }
@@ -146,7 +150,7 @@ function Guess({ aid, setNote, onProgress }: { aid: string; setNote: (n: Note) =
   return (
     <>
       <div className="row" style={{ gap: 8, fontSize: fs(13), color: "var(--sub)" }}>
-        <span className="grow">{g.status === "open" ? `${fmtDateTime(g.closesAt)}까지 바꿀 수 있어요.` : "맞히기가 마감됐어요."}</span>
+        <span className="grow">{g.status === "open" ? (data.onsite ? `${data.team ? "우리 조원" : "참여자"} 소개를 읽고 골라 주세요. 진행자가 소개를 열기 전까지 바꿀 수 있어요.` : `${fmtDateTime(g.closesAt)}까지 바꿀 수 있어요.`) : "맞히기가 마감됐어요."}</span>
         <span className="chip violet num">{done}/{data.targets.length} 완료</span>
       </div>
       {data.targets.length === 0 && <div className="msg info">아직 공개된 소개글이 없어요. 다른 회원이 작성하면 여기에 나타나요.</div>}

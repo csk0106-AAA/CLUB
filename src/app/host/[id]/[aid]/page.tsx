@@ -5,6 +5,7 @@ import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
 import { api } from "@/lib/client";
 import { TeamPicker, teamQ, useTeamParam } from "@/components/TeamScope";
+import { WhoFlowStage, type FlowAct, type FlowInfo, type FlowRound } from "@/components/WhoFlowStage";
 
 type Stage = {
   event: { id: string; name: string };
@@ -16,8 +17,10 @@ type Stage = {
   playedCount: number;
   remaining: number;
   selectable: { id: string; name: string }[];
+  // 현장 맞히기 흐름(템플릿에 “사람 고르기” 단계가 있는 활동만)
+  flow: FlowInfo | null;
   round: null | {
-    id: string; state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer"; orderNo: number;
+    id: string; state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer" | "guess" | "guessed" | "named"; orderNo: number;
     alias: string; introMd: string; nameRevealed: boolean; name: string;
     guessResults: { name: string; count: number }[]; guessTotal: number; guessJoined: number; guessEligible: number;
     statements: string[]; votes: { counts: number[]; voted: number; total?: number; eligible: number; notVoted: string[] };
@@ -26,10 +29,10 @@ type Stage = {
 };
 type Side = { top: { memberId: string; name: string; score: number }[]; topScore: number; tied: { id: string; name: string }[]; needsRoulette: boolean; lottery: null | { winnerId: string; winnerName: string; tiedIds: string[] } };
 type Scores = { played: number; A: Side; B: Side };
-type Action = "open" | "results" | "ready" | "name" | "vote" | "close" | "answer" | "back";
+type Action = "open" | "results" | "ready" | "name" | "vote" | "close" | "answer" | "back" | FlowAct;
 
 const STATE_LABEL: Record<string, string> = {
-  intro: "소개 읽기", results: "사전 추측 결과", reveal: "“저예요” 대기", voting: "거짓 투표 중", closed: "투표 마감", answer: "정답 공개",
+  intro: "소개 읽기", results: "사전 추측 결과", guess: "맞히는 중", guessed: "맞히기 마감", named: "이름 공개", reveal: "“저예요” 대기", voting: "거짓 투표 중", closed: "투표 마감", answer: "정답 공개",
 };
 // 막대 색(밝은 회색 단계로 돌아가며, 거짓 문장은 빨강)
 const BAR = ["#eceef0", "#a6adb5", "#6b737c", "#ced3d8"];
@@ -123,7 +126,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
         <TeamPicker teams={st.teams} value={st.team?.id ?? ""} onChange={(t) => { setTeam(t); setPickId(""); }} />
         <span className="sub">{st.event.name}{st.team ? ` · ${st.team.name}` : ""} · {r ? `${r.orderNo}번째 · ${STATE_LABEL[r.state]}` : "시작 전"} · 진행 완료 {st.playedCount}명</span>
         <span style={{ flex: 1 }} />
-        <button className="mini" type="button" onClick={() => setBoard(!board)}>{board ? "진행 화면" : "점수판"}</button>
+        {!st.flow && <button className="mini" type="button" onClick={() => setBoard(!board)}>{board ? "진행 화면" : "점수판"}</button>}
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
         <HostLiveControls eventId={id} aid={aid} team={st.team?.id ?? ""} />
         <HostBack eventId={id} activityId={aid} />
@@ -137,7 +140,9 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
         <div className="msg bad" role="alert">이 활동의 템플릿에 필요한 단계가 없어요: {st.missingSteps.join(", ")}. 활동 설정에서 단계를 추가해 주세요.</div>
       )}
 
-      {board ? (
+      {st.flow ? (
+        <WhoFlowStage flow={st.flow} r={st.round as FlowRound | null} remaining={st.remaining} selectable={st.selectable} busy={busy} act={act} id={id} aid={aid} q={q} setError={setError} />
+      ) : board ? (
         <Board id={id} aid={aid} q={q} setError={setError} />
       ) : (
         <>

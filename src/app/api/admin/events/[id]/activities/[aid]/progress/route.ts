@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bad, guardEv } from "@/lib/api";
 import { readConfig } from "@/lib/activities";
+import { guessActionKey } from "@/lib/template-schema";
 import { actionSet, joinSet } from "@/lib/participants";
 import { getStore } from "@/lib/store";
 import { isGuest } from "@/lib/member-kind";
@@ -29,7 +30,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
   const writing = ids.filter(
     (m) => !approved.includes(m) && (interviews.some((i) => i.memberId === m && i.eventActivityId === aid) || profiles.some((p) => p.memberId === m && p.alias)),
   );
-  const canGuess = cfg ? await actionSet(cfg, act, ev, "guess") : null;
+  const canGuess = cfg ? await actionSet(cfg, act, ev, guessActionKey(cfg)) : null;
   const guessers = new Set(guesses.filter((x) => x.eventActivityId === aid && (!canGuess || canGuess.has(x.guesserId))).map((x) => x.guesserId));
   return NextResponse.json({
     total: ids.length,

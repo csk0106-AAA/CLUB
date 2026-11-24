@@ -15,7 +15,7 @@ export const SCREEN_LABELS: Record<string, string> = {
   write: "작성 화면",
   vote: "투표 화면",
   iam_button: "“저예요” 버튼 (소개 주인)",
-  pick_person: "명단에서 사람 고르기 (아직 없음)",
+  pick_person: "누구일까요? 맞히기 (소개 보고 사람 고르기)",
   view: "결과 보기",
 };
 // 활동 종류에 따라 같은 화면이라도 실제로 보이는 내용이 달라 이름을 바꿔 보여 준다.

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { bad, parseJson, hostGuard } from "@/lib/api";
 import { liveView } from "@/lib/activities";
-import { currentRound, eligibleTargets, liveRow, loadStage, missingSteps, rounds, type RoundState } from "@/lib/rounds";
+import { activeRound, currentRound, eligibleTargets, flowPhase, isFlow, liveRow, loadStage, missingSteps, rounds, type RoundState } from "@/lib/rounds";
 import { actionSet, joinSet } from "@/lib/participants";
-import { onsiteKeyOf } from "@/lib/template-schema";
+import { guessActionKey, onsiteKeyOf } from "@/lib/template-schema";
 import { getStore } from "@/lib/store";
 import { scopeOf } from "@/lib/team-run";
 
@@ -21,14 +21,31 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; aid
   const sc = await scopeOf(req, st.act, g);
   if (sc instanceof NextResponse) return sc;
   const s = await getStore();
-  const cur = await currentRound(aid, sc.teamId);
+  // 현장 맞히기 흐름이면 지금 차례 = 진행 중인 차례(없으면 마지막으로 바뀐 차례)
+  const flowMode = isFlow(st.cfg);
+  const list = flowMode ? await rounds(aid, sc.teamId) : [];
+  const cur = flowMode ? activeRound(list) : await currentRound(aid, sc.teamId);
   const join = await joinSet(st.cfg, st.act, st.ev);
   const [members, profiles, tls, guesses, votes, live, all, pool] = await Promise.all([
     s.list("Members"), s.list("Profiles"), s.list("TruthLies"), s.list("Guesses"), s.list("Votes"),
     liveRow(aid, sc.teamId), rounds(aid, sc.on ? sc.teamId : undefined), eligibleTargets(aid, join, sc.inScope),
   ]);
   const nameOf = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
+  // 현장 맞히기 흐름: 이 조의 차례 목록(이름은 공개된 것만)과 지금 단계
+  const flow = !flowMode ? null : {
+    phase: flowPhase(list),
+    awards: live?.step === "awards",
+    hasAwards: st.cfg.onsite.steps.some((x) => x.key === "awards"),
+    rounds: list.map((r) => ({
+      orderNo: Number(r.orderNo),
+      targetId: r.nameRevealed === "true" ? r.targetMemberId : "",
+      alias: profiles.find((p) => p.memberId === r.targetMemberId)?.alias ?? "",
+      state: r.state,
+      name: r.nameRevealed === "true" ? nameOf(r.targetMemberId) : "",
+    })),
+  };
   const base = {
+    flow,
     event: { id: st.ev.id, name: st.ev.name },
     activity: { id: aid, name: st.cfg.name, participants: st.cfg.participants },
     // 조별 진행: 지금 보는 조와 고를 수 있는 조(조 진행자는 맡은 조만)
@@ -55,7 +72,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; aid
   //  선택참여 회원은 선별 조건에 그 단계(거짓 투표·사전 맞히기)가 있는 사람만(서버 판정 canAct 와 같은 규칙).
   const [voteSet, guessSet] = await Promise.all([
     actionSet(st.cfg, st.act, st.ev, onsiteKeyOf(st.cfg, "vote")),
-    actionSet(st.cfg, st.act, st.ev, "guess"),
+    actionSet(st.cfg, st.act, st.ev, guessActionKey(st.cfg)),
   ]);
   //  조별 진행이면 그 조 회원만 센다.
   const eligible = members.filter((m) => m.id !== target && voteSet.has(m.id) && sc.inScope(m.id));
@@ -63,7 +80,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; aid
 
   // 사전 추측 결과: 누가 누구를 몇 표로 골랐는지(추측 결과 단계부터)
   let guessResults: { name: string; count: number }[] = [];
-  if (state !== "intro") {
+  if (state !== "intro" && state !== "guess" && state !== "guessed") {
     const counts = new Map<string, number>();
     for (const x of guesses) {
       if (x.eventActivityId === aid && x.targetMemberId === target && sc.inScope(x.guesserId)) counts.set(x.chosenMemberId, (counts.get(x.chosenMemberId) ?? 0) + 1);
@@ -104,7 +121,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; aid
       votes: { counts, voted: votedEligible, total: rv.length, eligible: eligible.length, notVoted },
       lieIndex: state === "answer" ? lie : -1,
       correctVoters: state === "answer" ? rv.filter((v) => Number(v.chosenIndex) === lie).map((v) => nameOf(v.voterId)) : [],
-      correctGuessers: state === "answer" ? guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && x.chosenMemberId === target && sc.inScope(x.guesserId)).map((x) => nameOf(x.guesserId)) : [],
+      correctGuessers: state === "answer" || (flowMode && named) ? guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && x.chosenMemberId === target && sc.inScope(x.guesserId)).map((x) => nameOf(x.guesserId)) : [],
     },
   });
 }

@@ -20,7 +20,7 @@ const body = z.object({
 
 const CATALOGUE = `[이 앱이 이미 갖춘 기능 — 이것만 조합할 수 있습니다]
 1. 현장 단계 onsite.steps: { key(영문 소문자, 겹치지 않게), label, memberScreen, unlock, hostButton(진행자 화면 버튼 이름, 없으면 버튼 없음) }
-   memberScreen(회원 휴대폰 화면, 활동 종류마다 만들어진 것만): AI 인터뷰 소개 활동은 wait | iam_button("저예요", 소개 주인) | vote | view, 고민 활동은 wait | view, 그 밖(작성 활동)은 wait | write | view. pick_person 은 쓰지 않는다
+   memberScreen(회원 휴대폰 화면, 활동 종류마다 만들어진 것만): AI 인터뷰 소개 활동은 wait | pick_person(현장 맞히기, 맨 앞) | iam_button("저예요", 소개 주인) | vote | view, 고민 활동은 wait | view, 그 밖(작성 활동)은 wait | write | view. pick_person 은 소개 활동에서만 쓴다
    unlock(회원 화면이 켜지는 때): host_click(진행자가 버튼을 누르면 켜짐) | immediate(단계가 시작되면 바로 켜짐)
 2. 사전 작성 preEvent: { enabled, opensBeforeDays(일정 며칠 전부터), closesBeforeDays(며칠 전까지), steps }
    steps 에 쓸 수 있는 값: alias(별칭), ai_interview(AI 인터뷰로 소개 글), truth_lies(2진실 1거짓), reading_optional(명리학 풀이, 선택), approve(본인 승인), worry_write(고민 미리 적기)

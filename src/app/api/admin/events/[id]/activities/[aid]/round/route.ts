@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { bad, hostGuard } from "@/lib/api";
 import { hostGate } from "@/lib/host-gate";
-import { doAction, loadStage } from "@/lib/rounds";
+import { doAction, doFlow, isFlow, loadStage, type Action, type FlowAction } from "@/lib/rounds";
 import { scopeOf } from "@/lib/team-run";
 
 const body = z.object({
-  action: z.enum(["open", "results", "ready", "name", "vote", "close", "answer", "back"]),
+  // 현장 맞히기 흐름이면 open·gclose(맞히기 마감)·reveal(저예요 열기)·name·vote·answer·awards(시상)·back
+  action: z.enum(["open", "results", "ready", "name", "vote", "close", "answer", "back", "gclose", "reveal", "awards"]),
   targetMemberId: z.string().optional(), // open 일 때 순서를 지정하면 그 사람, 없으면 무작위
 });
 
@@ -25,7 +26,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; ai
   // 진행자가 꼭 있어야 하는 활동인데 진행자가 없으면: 관리자는 알려만 주고, 그 밖에는 막는다(소개 열기에서).
   const hg: ReturnType<typeof hostGate> = parsed.data.action === "open" ? hostGate(st.cfg, st.act, g.s) : {};
   if (hg.block) return bad(hg.block, 409);
-  const r = await doAction(st, parsed.data.action, parsed.data.targetMemberId, sc);
+  const a = parsed.data.action;
+  const flow = isFlow(st.cfg);
+  const FLOW: string[] = ["open", "gclose", "reveal", "name", "vote", "answer", "awards", "back"];
+  if (flow ? !FLOW.includes(a) : ["gclose", "reveal", "awards"].includes(a)) return bad("이 활동에서는 쓸 수 없는 버튼이에요.");
+  const r = flow
+    ? await doFlow(st, a as FlowAction, parsed.data.targetMemberId, sc)
+    : await doAction(st, a as Action, parsed.data.targetMemberId, sc);
   if (!r.ok) return bad(r.error, r.status ?? 400);
   return NextResponse.json({ ok: true, ...(hg.warn ? { warning: hg.warn } : {}) });
 }
