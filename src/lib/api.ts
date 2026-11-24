@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { can, getSession, type Session } from "./auth";
 import { readEditors } from "./editors";
-import { isHost } from "./hosts";
+import { hostTeamOf, isHost } from "./hosts";
 import { memberClubs } from "./lists";
 import { creatableTypes } from "./perm-keys";
 import { getStore } from "./store";
@@ -84,17 +84,23 @@ function hostOnly(): NextResponse {
 }
 
 // 활동 진행(진행자 화면) API 용: 관리자 권한이 있거나, 이 활동의 진행자 접속번호로 로그인한 경우 통과.
-export async function hostGuard(aid: string, perm: string | string[] = ["templates", "events"]): Promise<Guard> {
+//  조 진행자는 평소 로그인(회원)으로 들어와도 통과한다. team: 조 진행자면 맡은 조(Teams id) — 그 조만 다룰 수 있다(lib/team-run.ts scopeOf).
+export type HostGuard = { s: Session; team: string } | { err: NextResponse };
+export async function hostGuard(aid: string, perm: string | string[] = ["templates", "events"]): Promise<HostGuard> {
   const s = await getSession();
   if (!s) return { err: NextResponse.json({ error: "로그인이 필요해요." }, { status: 401 }) };
+  const actOf = async () => (await (await getStore()).list("EventActivities")).find((a) => a.id === aid);
   if (s.host) {
     // 관리자가 진행자를 바꾸거나 지정을 풀면 예전 세션은 바로 막힌다.
-    const act = s.host.includes(aid) ? (await (await getStore()).list("EventActivities")).find((a) => a.id === aid) : undefined;
-    return act && isHost(act, s.mid) ? { s } : { err: NextResponse.json({ error: "이 활동의 진행자가 아니에요.", hostOnly: true }, { status: 403 }) };
+    const act = s.host.includes(aid) ? await actOf() : undefined;
+    return act && isHost(act, s.mid) ? { s, team: hostTeamOf(act, s.mid) } : { err: NextResponse.json({ error: "이 활동의 진행자가 아니에요.", hostOnly: true }, { status: 403 }) };
   }
   const list = Array.isArray(perm) ? perm : [perm];
-  if (!list.some((p) => can(s, p))) return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
-  return { s };
+  if (list.some((p) => can(s, p))) return { s, team: "" };
+  // 조 진행자: 회원으로 로그인해서 "○조 진행하기"로 들어온 경우
+  const team = hostTeamOf(await actOf(), s.mid);
+  if (team) return { s, team };
+  return { err: NextResponse.json({ error: "이 작업을 할 권한이 없어요." }, { status: 403 }) };
 }
 
 export function bad(message: string, status = 400): NextResponse {

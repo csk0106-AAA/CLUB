@@ -11,6 +11,8 @@ type Item = {
   eventId: string; eventName: string; id: string; name: string; startsAt: string; endsAt: string;
   screen: string; steps: { key: string; label: string }[];
   live: { active: boolean; stepKey: string; stepLabel: string; unlocked: boolean };
+  teamHost: { name: string; teamOff: boolean } | null; // 조 진행자면 맡은 조
+  teamRun: boolean; // 조별 진행 중
 };
 type Data = { mode: "host" | "admin" | "member"; name: string; items: Item[] };
 
@@ -34,7 +36,9 @@ export default function HostHome() {
   async function step(it: Item, body: { action: "activate"; step: string } | { action: "lock" }) {
     setBusy(true);
     setMsg(null);
-    const r = await api(`/api/admin/events/${it.eventId}/activities/${it.id}/live`, { body });
+    // 활동 전체 진행자: 조별 진행 중이면 모든 조에 같이 적용(조 진행자는 서버가 맡은 조로 고정한다)
+    const q = it.teamRun && !it.teamHost ? "?team=all" : "";
+    const r = await api(`/api/admin/events/${it.eventId}/activities/${it.id}/live${q}`, { body });
     setBusy(false);
     if (!r.ok) setMsg({ tone: "bad", text: r.error });
     await load();
@@ -74,7 +78,11 @@ export default function HostHome() {
       {d.items.map((it) => (
         <section key={it.id} className="card" aria-label={it.name} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <span className="small">{it.eventName}</span>
-          <b style={{ font: "700 22px var(--display)" }}>{it.name}</b>
+          <b style={{ font: "700 22px var(--display)" }}>{it.name}{it.teamHost?.name ? ` · ${it.teamHost.name}` : ""}</b>
+          {it.teamHost && (it.teamHost.teamOff
+            ? <div className="msg info">조 진행자로 정해졌어요. 관리자가 “조별로 따로 진행”을 켜면 여기서 맡은 조를 진행할 수 있어요.</div>
+            : <span className="small">맡은 조({it.teamHost.name})만 진행해요.</span>)}
+          {!it.teamHost && it.teamRun && <span className="small">조별로 따로 진행 중이에요. 진행 화면에서 조를 골라 진행하고, 아래 단계 버튼은 모든 조에 같이 적용돼요.</span>}
           {it.startsAt && <span className="small">{fmtRange(it.startsAt, it.endsAt)}</span>}
           <span className={`pill ${it.live.active ? (it.live.unlocked ? "ok" : "warn") : "gray"}`} style={{ alignSelf: "flex-start" }}>
             {it.live.active ? `${it.live.stepLabel} · ${it.live.unlocked ? "회원 화면 열림" : "회원 화면 잠김"}` : "시작 전"}
@@ -90,7 +98,7 @@ export default function HostHome() {
             </>
           )}
           {/* 진행 화면이 없는 활동(타임캡슐 등)은 단계 버튼이 곧 진행이라 그대로 둔다 */}
-          {!it.screen && it.steps.length > 0 && (
+          {!it.screen && it.steps.length > 0 && !it.teamHost?.teamOff && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="l" style={{ marginBottom: 0 }}>단계 진행</span>
               <div className="row" style={{ flexWrap: "wrap" }}>

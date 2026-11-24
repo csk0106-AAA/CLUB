@@ -10,6 +10,8 @@ type M = { id: string; name: string; ageGroup: string };
 type TeamsData = {
   poolKind: "selected" | "attending" | "all"; published: boolean; publishedAt: string; locked: boolean;
   teams: { id: string; name: string; members: M[] }[]; unassigned: M[]; participantCount: number;
+  // 활동 팀 보드에서만: 조 진행자(팀 id → 회원·접속번호), 조별로 따로 진행 스위치
+  teamHosts?: Record<string, { memberId: string; code: string }>; teamRun?: boolean;
 };
 type Col = { key: string; name: string; ids: string[] };
 type Mode = "manual" | "mix" | "random";
@@ -24,7 +26,8 @@ const POOL_TEXT: Record<string, string> = { selected: "관리자 선택 회원",
 // 팀(조) 구성 보드: 관리자 배정 / 연령대 섞기 / 랜덤 배정 → 끌어서 옮기기 → 확인으로 회원에게 배포.
 // base 는 `.../teams`, `.../teams/publish` 를 가진 API 주소다(타임캡슐 팀 구성과 일정 조편성이 같이 쓴다).
 // copyFromEvent: 활동 팀 보드에서 쓰면, 그 일정의 "일정 › 조편성"을 골라 그대로 가져올 수 있다(가져온 뒤에는 서로 연결되지 않음).
-export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEvent }: { base: string; canEdit: boolean; unit?: string; screenHref?: string; copyFromEvent?: string }) {
+// members/onChange: 활동 팀 보드에서 조 진행자·조별 진행을 바꾼 뒤 활동 카드를 다시 읽는다
+export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEvent, onChange }: { base: string; canEdit: boolean; unit?: string; screenHref?: string; copyFromEvent?: string; members?: { id: string; name: string }[]; onChange?: () => void }) {
   const [srcs, setSrcs] = useState<{ id: string; title: string; teamCount: number }[]>([]);
   const [src, setSrc] = useState("");
   useEffect(() => {
@@ -123,7 +126,8 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
     setMsg({ tone: "info", text: `“${g.title}” 조편성을 가져왔어요(${r.data.teams}개 ${unit}).${r.data.dropped ? ` 이 활동에 참여하지 않는 ${r.data.dropped}명은 뺐어요.` : ""} 확인을 눌러야 회원에게 배포돼요.` });
   }
   async function saveDraft(): Promise<boolean> {
-    const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c, i) => ({ name: c.name.trim() || `${i + 1}${unit}`, memberIds: c.ids })) } });
+    // id: 이미 있는 팀은 그 id 로 저장해서 팀 id 가 그대로 남게 한다(조 진행자·조별 진행 기록이 팀 id 에 묶여 있다)
+    const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c, i) => ({ ...(c.key.startsWith("new-") ? {} : { id: c.key }), name: c.name.trim() || `${i + 1}${unit}`, memberIds: c.ids })) } });
     if (!r.ok) setMsg({ tone: "bad", text: r.error, at: "bottom" });
     return r.ok;
   }
@@ -143,12 +147,31 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
     setMsg(r.ok ? { tone: "info", text: `${unit} 구성을 회원에게 배포했어요. 이제 회원 화면에 보여요.`, at: "bottom" } : { tone: "bad", text: r.error, at: "bottom" });
     load();
   }
+  // 조 진행자 고르기(조마다 한 명, 그 조 회원 중에서). 접속번호는 서버가 자동으로 만든다.
+  async function setTeamHost(teamId: string, memberId: string) {
+    setBusy(true);
+    const r = await api(`${base}/host`, { method: "PATCH", body: { teamId, memberId } });
+    setBusy(false);
+    setMsg(r.ok ? { tone: "info", text: memberId ? "조 진행자를 정했어요. 접속번호를 알려 주세요." : "조 진행자 지정을 풀었어요." } : { tone: "bad", text: r.error });
+    await load();
+    onChange?.();
+  }
+  // 조별로 따로 진행 켜기·끄기
+  async function setTeamRun(on: boolean) {
+    setBusy(true);
+    const r = await api(`${base}/teams`, { method: "PATCH", body: { teamRun: on } });
+    setBusy(false);
+    setMsg(r.ok ? { tone: "info", text: on ? "조별로 따로 진행해요. 조마다 회원 화면과 진행이 따로예요." : "조별 진행을 껐어요. 활동 전체를 한 번에 진행해요." } : { tone: "bad", text: r.error });
+    await load();
+    onChange?.();
+  }
   async function onUnpublish() {
     setBusy(true);
     const r = await api(`${base}/teams/publish`, { body: { action: "unpublish" } });
     setBusy(false);
     setMsg(r.ok ? { tone: "info", text: "배포를 취소했어요.", at: "bottom" } : { tone: "bad", text: r.error, at: "bottom" });
-    load();
+    await load();
+    onChange?.();
   }
 
   if (!td) return msg ? <div className="msg bad" role="alert">{msg.text}</div> : <p className="small">불러오는 중이에요…</p>;
@@ -170,6 +193,23 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
       </div>
     );
   };
+  // 조 진행자 선택(활동 팀 보드에서만): 저장된 그 조 회원만 고를 수 있다. 바꾼 구성이 저장되기 전에는 고를 수 없다.
+  const hostPick = (k: string) => {
+    const saved = td.teams.find((t) => t.id === k);
+    const cur = td.teamHosts?.[k];
+    if (!saved) return <span className="hint">진행자: 초안을 저장한 뒤에 골라요</span>;
+    return (
+      <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+        <span className="small" style={{ flex: "none" }}>진행자</span>
+        <select className="field" aria-label={`${saved.name} 진행자`} style={{ width: "auto", minWidth: 110, minHeight: 36, fontSize: fs(14), padding: "0 6px" }}
+          value={cur?.memberId ?? ""} disabled={!canEdit || busy || dirty} onChange={(e) => setTeamHost(k, e.target.value)}>
+          <option value="">없음</option>
+          {saved.members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        {cur?.code && <span className="small">접속번호 {cur.code}</span>}
+      </div>
+    );
+  };
   const drop = (k: string, title: React.ReactNode, ids: string[], removable?: boolean) => (
     <div key={k} className="card"
       onDragOver={(e) => { if (editable) { e.preventDefault(); setOver(k); } }}
@@ -182,6 +222,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
             onChange={(e) => renameTeam(k, e.target.value)} onBlur={(e) => { if (!e.target.value.trim()) renameTeam(k, `${cols.findIndex((c) => c.key === k) + 1}${unit}`); }} />
         ) : <b>{title}</b>}
         <span className="small" style={{ flex: "none" }}>{ids.length}명</span><span className="grow" />{removable && editable && ids.length === 0 && <button className="mini danger" type="button" onClick={() => removeTeam(k)}>{unit} 지우기</button>}</div>
+      {removable && td.teamHosts && hostPick(k)}
       {ids.map((id) => person(id, k))}
       {ids.length === 0 && <span className="hint">{editable ? "여기로 끌어 놓으세요" : "비어 있어요"}</span>}
     </div>
@@ -241,6 +282,17 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
         </div>
       )}
 
+      {/* 조별로 따로 진행(활동 팀 보드에서만): 팀이 배포돼 있어야 켤 수 있다 */}
+      {td.teamRun !== undefined && cols.length > 0 && (
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--soft)" }}>
+          <label className="row" style={{ gap: 8, cursor: canEdit ? "pointer" : "default" }}>
+            <input type="checkbox" checked={td.teamRun} disabled={!canEdit || busy || (!td.teamRun && (!td.published || dirty))} onChange={(e) => setTeamRun(e.target.checked)} />
+            <b>조별로 따로 진행</b>
+            {td.teamRun && <span className={`pill ${td.published ? "ok" : "warn"}`}>{td.published ? "켜짐" : "배포 전이라 멈춤"}</span>}
+          </label>
+          <span className="small">켜면 {unit}마다 회원 화면·차례·고민 뽑기가 따로예요. {unit} 진행자는 자기 {unit}만 진행해요. {td.published ? "" : `${unit} 구성을 배포해야 켤 수 있어요.`}</span>
+        </div>
+      )}
       {cols.length === 0 && <div className="msg info">아직 {unit}이 없어요. 위에서 방식을 고르고 만들어 주세요.</div>}
       {cols.length > 0 && (
         <>

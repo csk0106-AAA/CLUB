@@ -44,34 +44,43 @@ export function missingSteps(cfg: TemplateConfig): string[] {
   return REQUIRED_STEPS.filter((k) => !cfg.onsite.steps.some((s) => s.key === k));
 }
 
-export async function liveRow(aid: string): Promise<Row | undefined> {
-  return (await (await getStore()).list("LiveState")).find((l) => l.eventActivityId === aid);
+// teamId: 조별 진행(lib/team-run.ts)이면 그 조의 줄, "" 이면 활동 전체(예전 행·조별 진행이 꺼진 활동)
+const tidOf = (r: Row) => r.teamId ?? "";
+
+export async function liveRow(aid: string, teamId = ""): Promise<Row | undefined> {
+  return (await (await getStore()).list("LiveState")).find((l) => l.eventActivityId === aid && tidOf(l) === teamId);
 }
 
-export async function setLive(aid: string, step: string | null, unlocked: boolean, payload?: Record<string, unknown>): Promise<void> {
+export async function setLive(aid: string, step: string | null, unlocked: boolean, payload?: Record<string, unknown>, teamId = ""): Promise<void> {
   const s = await getStore();
-  const cur = await liveRow(aid);
+  const cur = await liveRow(aid, teamId);
   const patch: Record<string, string> = { memberUnlocked: String(unlocked), updatedAt: new Date().toISOString() };
   if (step !== null) patch.step = step;
   if (payload) patch.payload = JSON.stringify(payload);
   if (cur) await s.update("LiveState", cur.id, patch);
-  else await s.insert("LiveState", { eventActivityId: aid, step: step ?? "", ...patch });
+  else await s.insert("LiveState", { eventActivityId: aid, step: step ?? "", ...patch, teamId });
 }
 
-export async function rounds(aid: string): Promise<Row[]> {
+// teamId 를 주면 그 조의 차례만, 주지 않으면 활동의 모든 차례
+export async function rounds(aid: string, teamId?: string): Promise<Row[]> {
   return (await (await getStore()).list("Rounds"))
-    .filter((r) => r.eventActivityId === aid)
+    .filter((r) => r.eventActivityId === aid && (teamId === undefined || tidOf(r) === teamId))
     .sort((a, b) => Number(a.orderNo) - Number(b.orderNo));
 }
 
-export async function currentRound(aid: string): Promise<Row | undefined> {
-  const r = await rounds(aid);
+export async function currentRound(aid: string, teamId = ""): Promise<Row | undefined> {
+  const r = await rounds(aid, teamId);
   return r[r.length - 1];
 }
 
+// 진행 범위: 조별 진행이면 그 조(teamId)와 그 조 회원(inScope). 기본은 활동 전체.
+export type RoundScope = { teamId: string; inScope: (memberId: string) => boolean };
+export const WHOLE: RoundScope = { teamId: "", inScope: () => true };
+
 // 진행할 수 있는 사람: 소개와 2진실 1거짓이 모두 승인된 회원 중 아직 진행하지 않은 사람.
-// join 이 있으면(현장 참석자만 참여하는 활동) 그 안에 있는 사람만 나온다.
-export async function eligibleTargets(aid: string, join: Set<string> | null = null): Promise<Row[]> {
+// join 이 있으면(현장 참석자만 참여하는 활동) 그 안에 있는 사람만 나온다. inScope 를 주면 그 범위(조) 회원만.
+// 이미 진행한 사람은 어느 조에서 했든 다시 나오지 않는다.
+export async function eligibleTargets(aid: string, join: Set<string> | null = null, inScope: (memberId: string) => boolean = () => true): Promise<Row[]> {
   const s = await getStore();
   const [members, profiles, tls, played] = await Promise.all([
     s.list("Members"), s.list("Profiles"), s.list("TruthLies"), rounds(aid),
@@ -80,16 +89,19 @@ export async function eligibleTargets(aid: string, join: Set<string> | null = nu
   return members.filter((m) => {
     const p = profiles.find((x) => x.memberId === m.id);
     const t = tls.find((x) => x.memberId === m.id && x.eventActivityId === aid);
-    return p?.introStatus === "approved" && t?.status === "approved" && !done.has(m.id) && (!join || join.has(m.id));
+    return p?.introStatus === "approved" && t?.status === "approved" && !done.has(m.id) && (!join || join.has(m.id)) && inScope(m.id);
   });
 }
 
 export type ActionResult = { ok: true } | { ok: false; error: string; status?: number };
 
 // 진행자 버튼. 규칙(순서)을 서버가 지키고, 회원 화면은 LiveState 로 켜고 끈다.
-export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: string): Promise<ActionResult> {
+export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: string, scope: RoundScope = WHOLE): Promise<ActionResult> {
   const s = await getStore();
   const aid = ctx.act.id;
+  const team = scope.teamId;
+  // 이 범위(조)의 회원 화면만 바꾼다
+  const live = (step: string | null, unlocked: boolean) => setLive(aid, step, unlocked, undefined, team);
   const miss = missingSteps(ctx.cfg);
   if (miss.length) return { ok: false, error: `이 활동의 템플릿에 필요한 단계가 없어요: ${miss.join(", ")}` };
   // 관리자 선택 회원 활동은 활동 전에 출석 체크를 완료해야 시작할 수 있다.
@@ -98,13 +110,14 @@ export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: s
     if (gate) return { ok: false, error: gate, status: 409 };
   }
 
-  const cur = await currentRound(aid);
+  const cur = await currentRound(aid, team);
   const now = new Date().toISOString();
 
   if (action === "open") {
     if (cur && cur.state !== "answer") return { ok: false, error: "진행 중인 사람이 있어요. 정답 공개까지 마친 뒤 다음 사람으로 넘어가요.", status: 409 };
-    const pool = await eligibleTargets(aid, await joinSet(ctx.cfg, ctx.act, ctx.ev));
+    const pool = await eligibleTargets(aid, await joinSet(ctx.cfg, ctx.act, ctx.ev), scope.inScope);
     if (pool.length === 0) {
+      if (team) return { ok: false, error: "이 조에서 진행할 사람이 더 없어요. 소개와 2진실 1거짓을 승인한 조원이 필요해요.", status: 409 };
       return { ok: false, error: ctx.cfg.participants === "selected" ? "진행할 사람이 더 없어요. 관리자가 선택한 회원 중 소개와 2진실 1거짓을 승인한 회원이 필요해요." : "진행할 사람이 더 없어요. 소개와 2진실 1거짓을 승인한 회원이 필요해요.", status: 409 };
     }
     let target = pool[randomInt(pool.length)];
@@ -114,8 +127,8 @@ export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: s
       target = pick;
     }
     const orderNo = String((cur ? Number(cur.orderNo) : 0) + 1);
-    await s.insert("Rounds", { eventActivityId: aid, targetMemberId: target.id, state: "intro", orderNo, nameRevealed: "false", updatedAt: now });
-    await setLive(aid, "intro", true);
+    await s.insert("Rounds", { eventActivityId: aid, targetMemberId: target.id, state: "intro", orderNo, nameRevealed: "false", updatedAt: now, teamId: team });
+    await live("intro", true);
     return { ok: true };
   }
 
@@ -138,21 +151,21 @@ export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: s
       const hasVotes = (await s.list("Votes")).some((v) => v.roundId === cur.id);
       if (hasVotes) return { ok: false, error: "이미 기록이 있어서 되돌릴 수 없어요.", status: 409 };
       await s.remove("Rounds", cur.id);
-      const prev = await currentRound(aid);
-      if (prev) await setLive(aid, "result", true);
-      else await setLive(aid, "", false);
+      const prev = await currentRound(aid, team);
+      if (prev) await live("result", true);
+      else await live("", false);
       return { ok: true };
     }
     if (state === "results" || state === "reveal") {
       await s.update("Rounds", cur.id, { state: "intro", updatedAt: now });
-      await setLive(aid, "intro", true);
+      await live("intro", true);
       return { ok: true };
     }
     if (state === "voting" || state === "closed") {
       const hasVotes = (await s.list("Votes")).some((v) => v.roundId === cur.id);
       if (hasVotes) return { ok: false, error: "이미 투표한 분이 있어서 되돌릴 수 없어요. 투표를 마감하고 정답을 공개해 주세요.", status: 409 };
       await s.update("Rounds", cur.id, { state: "reveal", updatedAt: now });
-      await setLive(aid, "reveal", true);
+      await live("reveal", true);
       return { ok: true };
     }
     return { ok: false, error: "정답을 공개한 뒤에는 되돌릴 수 없어요.", status: 409 };
@@ -164,16 +177,16 @@ export async function doAction(ctx: StageCtx, action: Action, targetMemberId?: s
     await s.update("Rounds", cur.id, { state: "results", updatedAt: now });
   } else if (action === "ready") {
     await s.update("Rounds", cur.id, { state: "reveal", updatedAt: now });
-    await setLive(aid, "reveal", true);
+    await live("reveal", true);
   } else if (action === "vote") {
     await s.update("Rounds", cur.id, { state: "voting", updatedAt: now });
-    await setLive(aid, "vote", true);
+    await live("vote", true);
   } else if (action === "close") {
     await s.update("Rounds", cur.id, { state: "closed", updatedAt: now });
-    await setLive(aid, null, false);
+    await live(null, false);
   } else if (action === "answer") {
     await s.update("Rounds", cur.id, { state: "answer", nameRevealed: "true", updatedAt: now });
-    await setLive(aid, "result", true);
+    await live("result", true);
   }
   return { ok: true };
 }
@@ -196,13 +209,14 @@ export type MemberRound = {
   correct: boolean | null;
 };
 
-export async function memberRound(act: Row, ev: Row, memberId: string, cfg: TemplateConfig): Promise<MemberRound | null> {
+// teamId: 이 회원이 따르는 조(조별 진행이 아니면 "")
+export async function memberRound(act: Row, ev: Row, memberId: string, cfg: TemplateConfig, teamId = ""): Promise<MemberRound | null> {
   const aid = act.id;
   const s = await getStore();
-  const cur = await currentRound(aid);
+  const cur = await currentRound(aid, teamId);
   if (!cur) return null;
   const [profiles, tls, votes, members, live] = await Promise.all([
-    s.list("Profiles"), s.list("TruthLies"), s.list("Votes"), s.list("Members"), liveRow(aid),
+    s.list("Profiles"), s.list("TruthLies"), s.list("Votes"), s.list("Members"), liveRow(aid, teamId),
   ]);
   const view = liveView(cfg, live);
   // 활동을 마쳤으면(회원 화면 진행이 꺼짐) 마지막 소개를 진행 중으로 보이지 않는다
@@ -237,11 +251,11 @@ export async function memberRound(act: Row, ev: Row, memberId: string, cfg: Temp
 export type Score = { memberId: string; name: string; score: number };
 
 // A) 누구인지 가장 많이 맞힌 사람(사전 추측), B) 거짓을 가장 많이 맞힌 사람(현장 투표).
-// 정답이 공개된 라운드만 센다.
-export async function computeScores(aid: string): Promise<{ A: Score[]; B: Score[]; played: number }> {
+// 정답이 공개된 라운드만 센다. scope 를 주면(조별 진행) 그 조의 차례와 그 조 회원만 센다.
+export async function computeScores(aid: string, scope?: RoundScope): Promise<{ A: Score[]; B: Score[]; played: number }> {
   const s = await getStore();
   const [rs, guesses, votes, tls, members] = await Promise.all([
-    rounds(aid), s.list("Guesses"), s.list("Votes"), s.list("TruthLies"), s.list("Members"),
+    rounds(aid, scope?.teamId), s.list("Guesses"), s.list("Votes"), s.list("TruthLies"), s.list("Members"),
   ]);
   const answered = rs.filter((r) => r.state === "answer");
   const a = new Map<string, number>();
@@ -260,7 +274,7 @@ export async function computeScores(aid: string): Promise<{ A: Score[]; B: Score
   }
   const list = (m: Map<string, number>): Score[] =>
     members
-      .filter((x) => !isGuest(x.kind))
+      .filter((x) => !isGuest(x.kind) && (!scope || scope.inScope(x.id)))
       .map((x) => ({ memberId: x.id, name: x.name, score: m.get(x.id) ?? 0 }))
       .sort((p, q) => q.score - p.score || p.name.localeCompare(q.name, "ko"));
   return { A: list(a), B: list(b), played: answered.length };

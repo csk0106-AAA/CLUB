@@ -4,10 +4,13 @@ import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { TeamPicker, teamQ, useTeamParam } from "@/components/TeamScope";
 
 type Stage = {
   event: { id: string; name: string };
   activity: { id: string; name: string; participants: string };
+  team: { id: string; name: string } | null; // 조별 진행: 지금 보는 조
+  teams: { id: string; name: string }[]; // 고를 수 있는 조(조 진행자는 맡은 조만)
   buttons?: { draw: string; reveal: string }; // 진행자 버튼 글자(템플릿)
   missingSteps: string[];
   live?: { active: boolean };
@@ -40,16 +43,21 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
   const [cat, setCat] = useState("");
   const [spin, setSpin] = useState("");
   const wrap = useRef<HTMLDivElement>(null);
+  // 조별 진행: ?team=조 id (고르지 않았으면 첫 조로)
+  const [team, setTeam] = useTeamParam();
+  const q = teamQ(team);
 
   const load = useCallback(async () => {
-    const r = await api<Stage>(`/api/admin/events/${id}/activities/${aid}/worry`);
+    if (team === null) return;
+    const r = await api<Stage>(`/api/admin/events/${id}/activities/${aid}/worry${q}`);
     if (r.ok) {
       setSt(r.data);
       setRecv(Date.now());
       setLoadErr("");
-    } else if (r.status === 401 || r.status === 403) setDenied(true);
+      if (r.data.teams.length > 0 && !r.data.team) setTeam(r.data.teams[0].id);
+    } else if (r.status === 401 || (r.status === 403 && !team)) setDenied(true);
     else setLoadErr(r.error);
-  }, [id, aid]);
+  }, [id, aid, team, q, setTeam]);
 
   useEffect(() => {
     let stop = false;
@@ -70,7 +78,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
   async function act(action: Action, extra: { category?: string; minutes?: number } = {}) {
     setBusy(true);
     setError("");
-    const r = await api(`/api/admin/events/${id}/activities/${aid}/worry`, { body: { action, ...extra } });
+    const r = await api(`/api/admin/events/${id}/activities/${aid}/worry${q}`, { body: { action, ...extra } });
     setBusy(false);
     if (!r.ok) setError(r.error);
     else setNotice((r.data as { warning?: string }).warning ?? "");
@@ -136,10 +144,11 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
     <div className="host" ref={wrap}>
       <header style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 28 }}>{st.activity.name}</h1>
-        <span className="sub">{st.event.name} · 진행 {st.counts.drawn}개 · 남은 고민 {st.counts.remaining}개{st.activity.participants === "selected" ? " · 선택된 회원의 고민만" : ""}</span>
+        <TeamPicker teams={st.teams} value={st.team?.id ?? ""} onChange={setTeam} />
+        <span className="sub">{st.event.name}{st.team ? ` · ${st.team.name}` : ""} · 진행 {st.counts.drawn}개 · 남은 고민 {st.counts.remaining}개{st.activity.participants === "selected" ? " · 선택된 회원의 고민만" : ""}</span>
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
-        <HostLiveControls eventId={id} aid={aid} />
+        <HostLiveControls eventId={id} aid={aid} team={st.team?.id ?? ""} />
         <HostBack eventId={id} activityId={aid} />
       </header>
 

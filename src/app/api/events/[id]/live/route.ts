@@ -8,6 +8,8 @@ import { memberWorry } from "@/lib/worry";
 import { memberRound } from "@/lib/rounds";
 import { eventJoinable, eventVisible } from "@/lib/audience";
 import { getStore } from "@/lib/store";
+import { hostTeamOf } from "@/lib/hosts";
+import { hostScreen, liveOf, teamIdIn, teamRunInfo } from "@/lib/team-run";
 
 export const dynamic = "force-dynamic";
 
@@ -42,25 +44,36 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return r ? (r.level === "partial" ? "partial" as const : "full" as const) : undefined;
   };
   const activities = await Promise.all(
-    mine.map(async ({ a, cfg }) => ({
-      id: a.id,
-      name: cfg.name,
-      description: cfg.description,
-      guide: memberGuide(cfg), // 회원에게 보이는 활동 안내(목록)
-      pre: preStatus(cfg, windowBase(a, ev)),
-      guess: guessStatus(cfg, windowBase(a, ev)),
-      kind: activityKind(cfg),
-      participants: isLimited(cfg) ? "selected" : "all",
-      canJoin: await canJoin(cfg, a, ev, g.s.mid),
-      startsAt: a.startsAt, // 활동 날짜와 진행 시간(안내용)
-      endsAt: a.endsAt,
-      live: liveView(cfg, lives.find((l) => l.eventActivityId === a.id)),
-      // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만). false 면 회원 화면에 기다림 안내를 보인다.
-      stepAllowed: stepAllowed(cfg, levelOf(a.id), liveView(cfg, lives.find((l) => l.eventActivityId === a.id)).stepKey),
-      // 현장 진행 중인 사람(라운드): 내가 보는 화면만. 정답은 공개 단계 전에는 포함하지 않는다.
-      round: activityKind(cfg) === "who" ? await memberRound(a, ev, g.s.mid, cfg) : null,
-      worry: activityKind(cfg) === "worry" ? await memberWorry(a, ev, g.s.mid, cfg) : null,
-    })),
+    mine.map(async ({ a, cfg }) => {
+      // 조별 진행이면 내가 속한 조의 회원 화면·차례를 따른다(조에 없으면 활동 전체)
+      const run = await teamRunInfo(a);
+      const team = teamIdIn(run, g.s.mid);
+      const live = liveView(cfg, liveOf(lives, a.id, team));
+      // 내가 이 활동의 조 진행자면 "○조 진행하기" 버튼(조별 진행이 켜져 있을 때만)
+      const hostTeam = run.on ? run.teams.find((t) => t.id === hostTeamOf(a, g.s.mid)) : undefined;
+      const kind = activityKind(cfg);
+      return {
+        id: a.id,
+        name: cfg.name,
+        description: cfg.description,
+        guide: memberGuide(cfg), // 회원에게 보이는 활동 안내(목록)
+        pre: preStatus(cfg, windowBase(a, ev)),
+        guess: guessStatus(cfg, windowBase(a, ev)),
+        kind,
+        participants: isLimited(cfg) ? "selected" : "all",
+        canJoin: await canJoin(cfg, a, ev, g.s.mid),
+        startsAt: a.startsAt, // 활동 날짜와 진행 시간(안내용)
+        endsAt: a.endsAt,
+        live,
+        // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만). false 면 회원 화면에 기다림 안내를 보인다.
+        stepAllowed: stepAllowed(cfg, levelOf(a.id), live.stepKey),
+        // 현장 진행 중인 사람(라운드): 내가 보는 화면만. 정답은 공개 단계 전에는 포함하지 않는다.
+        round: kind === "who" ? await memberRound(a, ev, g.s.mid, cfg, team) : null,
+        worry: kind === "worry" ? await memberWorry(a, ev, g.s.mid, cfg, team) : null,
+        teamName: team ? run.teams.find((t) => t.id === team)?.name ?? "" : "",
+        teamHost: hostTeam ? { name: hostTeam.name, href: `${hostScreen(kind, id, a.id)}?team=${encodeURIComponent(hostTeam.id)}` } : null,
+      };
+    }),
   );
   return NextResponse.json({ activities });
 }

@@ -19,7 +19,8 @@ export async function activityShortcut(ev: Row, acts: Row[], lives: Row[], membe
     const page = kind === "who" ? `/events/${ev.id}/who/${a.id}` : kind === "worry" ? `/events/${ev.id}/worry/${a.id}` : kind === "capsule" ? `/events/${ev.id}/capsule/${a.id}` : "";
     if (!page || !(await canJoin(cfg, a, ev, memberId))) continue;
     const now =
-      liveView(cfg, lives.find((l) => l.eventActivityId === a.id)).active
+      // 조별 진행이면 조마다 줄이 있다: 어느 줄이든 진행 중이면 진행 중으로 본다
+      lives.some((l) => l.eventActivityId === a.id && liveView(cfg, l).active)
       || preStatus(cfg, windowBase(a, ev)).status === "open"
       || (kind === "who" && guessStatus(cfg, windowBase(a, ev)).status === "open");
     if (now) return page;

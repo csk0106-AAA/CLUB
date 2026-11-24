@@ -49,8 +49,9 @@ export function isOpened(openAt: string, now = Date.now()): boolean {
 }
 
 // 작성은 진행자가 작성 단계를 열어서 회원 화면이 '작성'으로 켜져 있을 때만 가능하다(템플릿 설정을 따른다).
-export async function canWriteNow(cfg: TemplateConfig, aid: string): Promise<boolean> {
-  const v = liveView(cfg, await liveRow(aid));
+// teamId: 조별 진행이면 이 회원이 속한 조의 회원 화면을 따른다(lib/team-run.ts)
+export async function canWriteNow(cfg: TemplateConfig, aid: string, teamId = ""): Promise<boolean> {
+  const v = liveView(cfg, await liveRow(aid, teamId));
   return v.unlocked && v.memberScreen === "write";
 }
 

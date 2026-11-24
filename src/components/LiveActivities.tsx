@@ -42,6 +42,8 @@ type Live = {
   stepAllowed?: boolean; // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만)
   round: Round | null;
   worry: Worry | null;
+  teamName?: string; // 조별 진행이면 내가 따르는 조
+  teamHost?: { name: string; href: string } | null; // 내가 조 진행자면 그 조 진행 화면
 };
 
 // 현장 진행 중 회원 휴대폰에 열린 화면별로 "지금 무엇을 하면 되는지"
@@ -143,6 +145,7 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
             })}
           </div>
         </section>
+        <TeamHostLinks list={list} />
       </>
     );
   }
@@ -153,6 +156,21 @@ export function LiveActivities({ eventId, layout = "cards" }: { eventId: string;
       {offline && <div className="msg info" role="status">연결이 불안정해요. 다시 연결하는 중이에요…</div>}
       {list.map((a) => <ActivityCard key={a.id} eventId={eventId} a={a} reload={load} />)}
     </section>
+  );
+}
+
+// 조 진행자: 맡은 조를 진행하는 화면으로 가는 버튼(조별 진행이 켜진 활동만)
+function TeamHostLinks({ list }: { list: Live[] }) {
+  const mine = list.filter((a) => a.teamHost);
+  if (mine.length === 0) return null;
+  return (
+    <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+      {mine.map((a) => (
+        <Link key={a.id} href={a.teamHost!.href} className="btn blue" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>
+          {a.teamHost!.name} 진행하기 · {a.name}
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -247,6 +265,14 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
               <span className="small">
                 활동 시간: {fmtRange(a.startsAt, a.endsAt)}
               </span>
+            )}
+            {(a.teamName || a.teamHost) && (
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                {a.teamName && <span className="pill blue">조별 진행 · 내 조 {a.teamName}</span>}
+                {a.teamHost && (
+                  <Link href={a.teamHost.href} className="btn blue" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>{a.teamHost.name} 진행하기</Link>
+                )}
+              </div>
             )}
             {a.participants === "selected" && (
               <div className="row" style={{ flexWrap: "wrap" }}>

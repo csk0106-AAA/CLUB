@@ -5,6 +5,8 @@ import { liveView, preStatus, readConfig, windowBase } from "@/lib/activities";
 import { attendanceState, rosterSet } from "@/lib/participants";
 import { readHosts } from "@/lib/hosts";
 import { getStore } from "@/lib/store";
+import { liveOf, teamRunInfo } from "@/lib/team-run";
+import { teams } from "@/lib/capsule";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -22,10 +24,14 @@ export async function GET(_req: Request, ctx: Ctx) {
   const mine = acts.filter((a) => a.eventId === id).sort((a, b) => Number(a.order) - Number(b.order));
   const rosterCounts = await Promise.all(mine.map(async (a) => (await rosterSet(a)).size));
   const states = await Promise.all(mine.map((a) => attendanceState(a.id)));
+  const runs = await Promise.all(mine.map((a) => teamRunInfo(a)));
+  // 조 진행자 이름표(○조)에 쓸 팀 이름: 조 진행자가 있는 활동만 읽는다
+  const teamLists = await Promise.all(mine.map((a) => (readHosts(a).some((h) => h.teamId) ? teams(a.id) : Promise.resolve([]))));
   const activities = mine.flatMap((a, i) => {
     const config = readConfig(a.config);
     if (!config) return [];
-    const live = lives.find((l) => l.eventActivityId === a.id);
+    const live = liveOf(lives, a.id);
+    const hs = readHosts(a);
     return [{
       id: a.id,
       templateId: a.templateId,
@@ -38,7 +44,12 @@ export async function GET(_req: Request, ctx: Ctx) {
       endsAt: a.endsAt,
       rosterCount: rosterCounts[i],
       attendanceConfirmed: states[i].confirmed,
-      hosts: readHosts(a), // 진행자 여러 명 [{memberId, code}]
+      // 진행자 여러 명 [{memberId, code, teamId?, teamName?}] — teamId 가 있으면 조 진행자
+      hosts: hs.map((h) => (h.teamId ? { ...h, teamName: teamLists[i].find((t) => t.id === h.teamId)?.name ?? "" } : h)),
+      // 조별 진행: teamRun 스위치(저장된 값), teamRunOn 실제로 켜졌는지(팀 배포됨), teams 조마다 회원 화면 상태·조 진행자
+      teamRun: a.teamRun === "true",
+      teamRunOn: runs[i].on,
+      teams: runs[i].teams.map((t) => ({ id: t.id, name: t.name, live: liveView(config, liveOf(lives, a.id, t.id)), hostId: hs.find((h) => h.teamId === t.id)?.memberId ?? "" })),
     }];
   });
   return NextResponse.json({ activities });

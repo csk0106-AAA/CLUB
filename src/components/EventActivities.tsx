@@ -28,8 +28,17 @@ type Act = {
   endsAt: string;
   rosterCount: number;
   attendanceConfirmed: boolean;
-  hosts: { memberId: string; code: string }[]; // 진행자(사회자) 여러 명, 사람마다 접속번호
+  hosts: { memberId: string; code: string; teamId?: string; teamName?: string }[]; // 진행자(사회자) 여러 명, 사람마다 접속번호. teamId 가 있으면 조 진행자
+  teamRun: boolean; // 조별로 따로 진행 스위치
+  teamRunOn: boolean; // 실제로 조별 진행 중(팀이 배포됨)
+  teams: { id: string; name: string; live: Act["live"]; hostId: string }[]; // 조별 진행 중일 때 조마다 회원 화면 상태·조 진행자
 };
+
+// 조별 진행 상태 한 줄: "1조: 투표 중 · 진행자 김OO"
+const teamLine = (t: Act["teams"][number], nameOf: (id: string) => string) =>
+  `${t.name}: ${t.live.active ? `${t.live.stepLabel}${t.live.unlocked ? "" : " (잠김)"}` : "시작 전"} · 진행자 ${t.hostId ? nameOf(t.hostId) || "지정됨" : "없음"}`;
+// 활동 전체나 어느 조든 진행 중인지
+const anyActive = (a: Act) => a.live.active || a.teams.some((t) => t.live.active);
 type Tpl = TplRow;
 type Att = {
   confirmed: boolean; confirmedAt: string; by: string; selectedCount: number;
@@ -53,10 +62,13 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
   eventId: string; a: Act; canEdit: boolean; members: { id: string; name: string }[]; onChange: () => void;
 }) {
   // 진행자 여러 명: 줄마다 [회원 고르기] [접속번호] [자동 생성] [빼기]
-  const [rows, setRows] = useState(a.hosts.map((h) => ({ ...h })));
+  // 조 진행자(teamId 있음)는 팀 구성에서 정하므로 이 표에는 활동 전체 진행자만 둔다
+  const own = a.hosts.filter((h) => !h.teamId).map((h) => ({ memberId: h.memberId, code: h.code }));
+  const teamHosts = a.hosts.filter((h) => h.teamId);
+  const [rows, setRows] = useState(own);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<ActionMsg>(null);
-  const dirty = JSON.stringify(rows) !== JSON.stringify(a.hosts);
+  const dirty = JSON.stringify(rows) !== JSON.stringify(own);
   const nameOf = (id: string) => members.find((m) => m.id === id)?.name ?? "";
   const newCode = () => String(Math.floor(100000 + Math.random() * 900000));
   const upd = (i: number, patch: Partial<{ memberId: string; code: string }>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -65,10 +77,10 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
   async function save(next = rows) {
     setBusy(true);
     setMsg(null);
-    const r = await api<{ hosts: { memberId: string; code: string }[] }>(`/api/admin/events/${eventId}/activities/${a.id}/host`, { method: "PUT", body: { hosts: next } });
+    const r = await api<{ hosts: { memberId: string; code: string; teamId?: string }[] }>(`/api/admin/events/${eventId}/activities/${a.id}/host`, { method: "PUT", body: { hosts: next } });
     setBusy(false);
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
-    setRows(r.data.hosts);
+    setRows(r.data.hosts.filter((h) => !h.teamId).map((h) => ({ memberId: h.memberId, code: h.code })));
     setMsg({ tone: "info", text: next.length ? `진행자 ${next.length}명을 저장했어요. 각자에게 접속번호를 알려 주세요.` : "진행자 지정을 모두 풀었어요." });
     onChange();
   }
@@ -80,7 +92,7 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
       <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <b style={{ font: `700 ${fs(16)} var(--display)` }}>진행자</b>
         {required && !has && <span className="pill warn">진행자 필요</span>}
-        {has && <span className="pill ok">{a.hosts.map((h) => nameOf(h.memberId) || "지정됨").join(", ")}</span>}
+        {has && <span className="pill ok">{a.hosts.map((h) => `${nameOf(h.memberId) || "지정됨"}${h.teamId ? ` (${h.teamName || "조"})` : ""}`).join(", ")}</span>}
         {!required && !has && <span className="pill gray">선택</span>}
       </summary>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
@@ -135,7 +147,17 @@ function HostSetting({ eventId, a, canEdit, members, onChange }: {
             {busy ? "저장 중…" : "진행자 저장"}
           </button>
           {incomplete && <span className="small" style={{ color: "var(--red-t)", fontSize: fs(12) }}>진행자를 고르고 접속번호를 4자리 이상 넣어 주세요.</span>}
-          {!dirty && has && <span className="small" style={{ fontSize: fs(12) }}>저장됨 · {a.hosts.map((h) => `${nameOf(h.memberId)} ${h.code}`).join(" · ")}</span>}
+          {!dirty && own.length > 0 && <span className="small" style={{ fontSize: fs(12) }}>저장됨 · {own.map((h) => `${nameOf(h.memberId)} ${h.code}`).join(" · ")}</span>}
+        </div>
+      )}
+      {/* 조 진행자: 팀 구성의 조마다 고른다(접속번호 자동). 여기서는 보기만 */}
+      {teamHosts.length > 0 && (
+        <div className="small" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <b>조 진행자 (팀 구성에서 바꿔요)</b>
+          {teamHosts.map((h) => (
+            <span key={h.memberId}>{nameOf(h.memberId) || "지정됨"} ({h.teamName || "조"}) · 접속번호 {canEdit ? h.code : "숨김"}</span>
+          ))}
+          {!a.teamRunOn && <span style={{ color: "var(--red-t)" }}>조별로 따로 진행이 꺼져 있어서 조 진행자는 아직 진행할 수 없어요.</span>}
         </div>
       )}
       </div>
@@ -433,7 +455,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     if (!openInit) {
       setOpenInit(true);
       const h0 = window.location.hash.startsWith("#act-") ? window.location.hash.slice(5) : "";
-      setOpenActs(new Set(acts.filter((x) => x.id === h0 || x.live.active || acts.length === 1).map((x) => x.id)));
+      setOpenActs(new Set(acts.filter((x) => x.id === h0 || anyActive(x) || acts.length === 1).map((x) => x.id)));
     }
     if (scrolled.current) return;
     const h = window.location.hash;
@@ -525,8 +547,13 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
     load();
   }
 
+  // 조별 진행 중인 활동의 진행자 컨트롤이 다룰 조(활동 id → 조 id, "all" = 모든 조에 같이 적용)
+  const [ctlTeam, setCtlTeam] = useState<Record<string, string>>({});
+  const ctlLive = (a: Act): Act["live"] => a.teams.find((t) => t.id === ctlOf(a))?.live ?? a.live;
+  const ctlOf = (a: Act) => (a.teamRunOn ? (a.teams.some((t) => t.id === ctlTeam[a.id]) ? ctlTeam[a.id] : "all") : "");
   async function live(a: Act, body: { action: "activate"; step: string } | { action: "lock" } | { action: "reset" }) {
-    const r = await api<{ warning?: string }>(`/api/admin/events/${eventId}/activities/${a.id}/live`, { body });
+    const t = ctlOf(a);
+    const r = await api<{ warning?: string }>(`/api/admin/events/${eventId}/activities/${a.id}/live${t ? `?team=${encodeURIComponent(t)}` : ""}`, { body });
     if (!r.ok) return setMsg({ tone: "bad", text: r.error });
     setMsg(r.data.warning ? { tone: "info", text: r.data.warning } : null);
     load();
@@ -617,8 +644,10 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
                 a.startsAt ? `활동 ${fmtDateTime(a.startsAt)}` : "활동 일시 미정",
                 a.attendanceConfirmed ? `참여자 ${a.rosterCount}명` : "참여자 선택 필요",
                 a.pre.enabled ? PRE_TEXT[a.pre.status] : "",
-                a.live.active ? `현장 진행 중 · ${a.live.stepLabel}` : "",
+                !a.teamRunOn && a.live.active ? `현장 진행 중 · ${a.live.stepLabel}` : "",
+                a.teamRunOn ? "조별 진행" : "",
               ].filter(Boolean).join(" · ")}
+              {a.teamRunOn && a.teams.map((t) => <span key={t.id} style={{ display: "block" }}>{teamLine(t, (id) => members.find((m) => m.id === id)?.name ?? "")}</span>)}
             </span>
           )}
           {openActs.has(a.id) && (<>
@@ -643,7 +672,7 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
               <span className="small">{modeOf(a.config) === "team"
                 ? "이 일정의 참여자로 팀을 나눠요. 팀은 이 일정의 이 활동에만 쓰여요."
                 : "모두 함께 하는 활동이에요. 팀을 나누지 않으면 참여자 전체가 한 팀이에요. “전체참여자”로 묶거나 조편성에서 가져올 수 있어요."}</span>
-              <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} copyFromEvent={eventId} />
+              <TeamBoard base={`/api/admin/events/${eventId}/activities/${a.id}`} canEdit={canEdit} unit="팀" screenHref={`/host/teams/${eventId}/${a.id}`} copyFromEvent={eventId} members={members} onChange={load} />
             </section>
           )}
           {a.config.preEvent.steps.includes("ai_interview") && (
@@ -655,24 +684,39 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
           <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
             <b style={{ font: `700 ${fs(16)} var(--display)` }}>진행자 컨트롤</b>
             {a.config.host?.required && !a.hosts.length && <span className="small">진행자가 아직 없어요. 관리자는 여기서 직접 진행할 수 있어요.</span>}
+            {/* 조별 진행: 조마다 상태 줄과, 버튼이 적용될 조 고르기(모든 조에 같이 적용 또는 조 하나) */}
+            {a.teamRunOn && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div className="small" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {a.teams.map((t) => <span key={t.id}>{teamLine(t, (id) => members.find((m) => m.id === id)?.name ?? "")}</span>)}
+                </div>
+                <label className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <span className="small">버튼 적용</span>
+                  <select className="field" style={{ width: "auto", minWidth: 180 }} value={ctlOf(a)} onChange={(e) => setCtlTeam({ ...ctlTeam, [a.id]: e.target.value })}>
+                    <option value="all">모든 조에 같이 적용</option>
+                    {a.teams.map((t) => <option key={t.id} value={t.id}>{t.name}만</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
             <div className="row" style={{ flexWrap: "wrap" }}>
               {a.config.onsite.steps.filter((s) => s.hostButton).map((s) => (
-                <button key={s.key} className={`btn ${a.live.stepKey === s.key && a.live.unlocked ? "blue" : ""}`} type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: s.key })}>
+                <button key={s.key} className={`btn ${ctlLive(a).stepKey === s.key && ctlLive(a).unlocked ? "blue" : ""}`} type="button" style={{ width: "auto", minWidth: 140, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: s.key })}>
                   {s.hostButton}
                 </button>
               ))}
               {/* 잠그기 ↔ 다시 열기: 잠그면 회원 화면이 대기 화면, 다시 열면 지금 단계의 회원 화면이 다시 켜진다 */}
-              {a.live.active && a.live.unlocked ? (
+              {ctlLive(a).active && ctlLive(a).unlocked ? (
                 <button className="btn red" type="button" title="회원 휴대폰 화면을 대기 화면으로 잠가요(투표 마감 등). 단계는 그대로예요." style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "lock" })}>잠그기</button>
               ) : (
-                <button className="btn" type="button" disabled={!a.live.active} title="잠근 회원 화면을 지금 단계로 다시 켜요" style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: a.live.stepKey })}>다시 열기</button>
+                <button className="btn" type="button" disabled={!ctlLive(a).active} title="잠근 회원 화면을 지금 단계로 다시 켜요" style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }} onClick={() => live(a, { action: "activate", step: ctlLive(a).stepKey })}>다시 열기</button>
               )}
-              <button className="btn white" type="button" disabled={!a.live.active} title="현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로)" style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }}
+              <button className="btn white" type="button" disabled={!ctlLive(a).active} title="현장 진행을 시작 전으로 되돌려요(받은 투표·답은 그대로)" style={{ width: "auto", minWidth: 110, minHeight: 48, fontSize: fs(16) }}
                 onClick={() => window.confirm("현장 진행을 처음으로 되돌릴까요?\n진행 중인 단계가 비워지고 회원 화면이 잠겨요. 이미 받은 투표·답은 지우지 않아요.") && live(a, { action: "reset" })}>처음으로</button>
             </div>
             <div className="msg info" role="status">
-              {a.live.active
-                ? `현재 단계: ${a.live.stepLabel} · 회원 화면: ${a.live.unlocked ? `켜짐 (${screenLabel(a.config, a.live.memberScreen)})` : "잠김 (대기 화면)"}`
+              {ctlLive(a).active
+                ? `현재 단계: ${ctlLive(a).stepLabel} · 회원 화면: ${ctlLive(a).unlocked ? `켜짐 (${screenLabel(a.config, ctlLive(a).memberScreen)})` : "잠김 (대기 화면)"}`
                 : "현장 진행 전이에요. 버튼을 누르면 회원 화면이 템플릿 설정대로 바뀌어요."}
             </div>
             {canEdit && (

@@ -5,6 +5,8 @@ import { capsuleRows, loadTeamActivity, makeTeams, saveTeamsState, teams, teamsS
 import { isLimited, participantPool, rosterSet } from "@/lib/participants";
 import { memberAgeGroup } from "@/lib/age-group";
 import { getStore } from "@/lib/store";
+import { readHosts } from "@/lib/hosts";
+import { pruneTeamHosts } from "@/lib/team-run";
 import type { Row } from "@/lib/store/types";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +32,12 @@ export async function GET(_req: Request, ctx: Ctx) {
   const byId = new Map(p.members.map((m) => [m.id, m]));
   const all = await (await getStore()).list("Members");
   const assigned = new Set(ts.flatMap((t) => t.memberIds));
+  // 조 진행자: 팀 id → {memberId, code}(조마다 한 명), 조별 진행 스위치
+  const teamHosts = Object.fromEntries(readHosts(c.act).filter((h) => h.teamId).map((h) => [h.teamId as string, { memberId: h.memberId, code: g.team ? "" : h.code }]));
   return NextResponse.json({
     poolKind: p.kind,
+    teamHosts,
+    teamRun: c.act.teamRun === "true",
     published: state.published,
     publishedAt: state.publishedAt,
     locked: lock,
@@ -48,10 +54,22 @@ const gen = z.object({
   size: z.number().int().min(2).max(20).optional(),
 });
 
-async function replaceTeams(aid: string, list: { name: string; memberIds: string[] }[]) {
+// 팀 저장: 같은 팀(id, 없으면 같은 이름)은 그 행을 고쳐서 팀 id 를 그대로 둔다(조 진행자·조별 진행 기록이 팀 id 에 묶여 있다).
+async function replaceTeams(aid: string, list: { id?: string; name: string; memberIds: string[] }[]) {
   const s = await getStore();
-  for (const t of await teams(aid)) await s.remove("Teams", t.id);
-  for (const t of list) await s.insert("Teams", { eventActivityId: aid, name: t.name, memberIds: JSON.stringify(t.memberIds) });
+  const cur = await teams(aid);
+  const used = new Set<string>();
+  for (const t of list) {
+    const row = (t.id ? cur.find((x) => x.id === t.id && !used.has(x.id)) : undefined) ?? cur.find((x) => x.name === t.name && !used.has(x.id));
+    const memberIds = JSON.stringify(t.memberIds);
+    if (row) {
+      used.add(row.id);
+      if (row.name !== t.name || JSON.stringify(row.memberIds) !== memberIds) await s.update("Teams", row.id, { name: t.name, memberIds });
+    } else await s.insert("Teams", { eventActivityId: aid, name: t.name, memberIds });
+  }
+  for (const x of cur) if (!used.has(x.id)) await s.remove("Teams", x.id);
+  // 조에서 빠진 조 진행자는 지정을 푼다
+  await pruneTeamHosts(aid);
   // 구성을 바꾸면 다시 '확인'을 눌러야 회원에게 배포된다.
   await saveTeamsState(aid, { published: false, publishedAt: "", by: "" });
 }
@@ -99,7 +117,7 @@ export async function POST(req: Request, ctx: Ctx) {
 }
 
 const manual = z.object({
-  teams: z.array(z.object({ name: z.string().trim().min(1).max(20), memberIds: z.array(z.string()).max(30) })).max(30),
+  teams: z.array(z.object({ id: z.string().max(64).optional(), name: z.string().trim().min(1).max(20), memberIds: z.array(z.string()).max(30) })).max(30),
 });
 
 // 드래그로 옮긴 결과 저장(초안). 빈 팀도 그대로 둔다. 이름이 같은 팀은 만들 수 없다.
@@ -129,4 +147,24 @@ export async function PUT(req: Request, ctx: Ctx) {
   }
   await replaceTeams(aid, parsed.data.teams);
   return NextResponse.json({ ok: true });
+}
+
+const runBody = z.object({ teamRun: z.boolean() });
+
+// 조별로 따로 진행 켜기·끄기. 켜려면 팀이 있고 회원에게 배포돼 있어야 한다. 끄면 예전처럼 활동 전체를 한 번에 진행한다.
+export async function PATCH(req: Request, ctx: Ctx) {
+  const g = await guardEv(ctx, ["templates", "events"]);
+  if ("err" in g) return g.err;
+  const { id, aid } = await ctx.params;
+  const c = await loadTeamActivity(aid, id);
+  if (typeof c === "string") return bad(c, 404);
+  const parsed = runBody.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return bad("요청을 확인해 주세요.");
+  if (parsed.data.teamRun) {
+    const [ts, st] = await Promise.all([teams(aid), teamsState(aid)]);
+    if (ts.length === 0) return bad("먼저 팀을 만들어 주세요.", 409);
+    if (!st.published) return bad("팀 구성을 회원에게 배포한 뒤에 켤 수 있어요.", 409);
+  }
+  await (await getStore()).update("EventActivities", aid, { teamRun: parsed.data.teamRun ? "true" : "" });
+  return NextResponse.json({ ok: true, teamRun: parsed.data.teamRun });
 }

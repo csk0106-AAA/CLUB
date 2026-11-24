@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bad, hostGuard } from "@/lib/api";
 import { hostGate } from "@/lib/host-gate";
 import { doAction, loadStage } from "@/lib/rounds";
+import { scopeOf } from "@/lib/team-run";
 
 const body = z.object({
   action: z.enum(["open", "results", "ready", "name", "vote", "close", "answer", "back"]),
@@ -18,10 +19,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; ai
   if (!parsed.success) return bad("요청을 확인해 주세요.");
   const st = await loadStage(id, aid);
   if (typeof st === "string") return bad(st, 404);
+  // 조별 진행이면 ?team=조 id 의 차례만 다룬다(조 진행자는 맡은 조로 고정)
+  const sc = await scopeOf(req, st.act, g);
+  if (sc instanceof NextResponse) return sc;
   // 진행자가 꼭 있어야 하는 활동인데 진행자가 없으면: 관리자는 알려만 주고, 그 밖에는 막는다(소개 열기에서).
   const hg: ReturnType<typeof hostGate> = parsed.data.action === "open" ? hostGate(st.cfg, st.act, g.s) : {};
   if (hg.block) return bad(hg.block, 409);
-  const r = await doAction(st, parsed.data.action, parsed.data.targetMemberId);
+  const r = await doAction(st, parsed.data.action, parsed.data.targetMemberId, sc);
   if (!r.ok) return bad(r.error, r.status ?? 400);
   return NextResponse.json({ ok: true, ...(hg.warn ? { warning: hg.warn } : {}) });
 }

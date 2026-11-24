@@ -3,6 +3,7 @@ import { z } from "zod";
 import { randomInt } from "node:crypto";
 import { bad, parseJson, hostGuard } from "@/lib/api";
 import { computeScores, liveRow, loadStage, setLive, topOf } from "@/lib/rounds";
+import { scopeOf } from "@/lib/team-run";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; aid: string }> };
@@ -11,14 +12,17 @@ type Lottery = { tiedIds: string[]; winnerId: string; drawnAt: string };
 type Payload = { lottery?: { A?: Lottery; B?: Lottery } } & Record<string, unknown>;
 
 // 점수판: A) 누구인지 가장 많이 맞힌 사람, B) 거짓을 가장 많이 맞힌 사람. 동점자는 룰렛 대상.
-export async function GET(_req: Request, ctx: Ctx) {
+export async function GET(req: Request, ctx: Ctx) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const st = await loadStage(id, aid);
   if (typeof st === "string") return bad(st, 404);
-  const sc = await computeScores(aid);
-  const payload = parseJson<Payload>((await liveRow(aid))?.payload, {});
+  // 조별 진행이면 ?team=조 id 의 점수(그 조 차례·조원만)와 그 조의 룰렛 결과
+  const scope = await scopeOf(req, st.act, g);
+  if (scope instanceof NextResponse) return scope;
+  const sc = await computeScores(aid, scope.on ? scope : undefined);
+  const payload = parseJson<Payload>((await liveRow(aid, scope.teamId))?.payload, {});
   const out = (key: "A" | "B") => {
     const top = topOf(sc[key]);
     const lot = payload.lottery?.[key];
@@ -46,11 +50,13 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!parsed.success) return bad("요청을 확인해 주세요.");
   const { category, redo } = parsed.data;
 
-  const sc = await computeScores(aid);
+  const scope = await scopeOf(req, st.act, g);
+  if (scope instanceof NextResponse) return scope;
+  const sc = await computeScores(aid, scope.on ? scope : undefined);
   const top = topOf(sc[category]);
   if (top.tied.length < 2) return bad("동점자가 없어서 룰렛이 필요 없어요.");
 
-  const row = await liveRow(aid);
+  const row = await liveRow(aid, scope.teamId);
   const payload = parseJson<Payload>(row?.payload, {});
   const prev = payload.lottery?.[category];
   if (prev && !redo) return bad("이미 룰렛을 돌렸어요. 다시 돌리려면 다시 돌리기를 눌러 주세요.", 409);
@@ -58,6 +64,6 @@ export async function POST(req: Request, ctx: Ctx) {
   const winner = top.tied[randomInt(top.tied.length)];
   const lot: Lottery = { tiedIds: top.tied.map((x) => x.memberId), winnerId: winner.memberId, drawnAt: new Date().toISOString() };
   payload.lottery = { ...payload.lottery, [category]: lot };
-  await setLive(aid, null, row?.memberUnlocked === "true", payload);
+  await setLive(aid, null, row?.memberUnlocked === "true", payload, scope.teamId);
   return NextResponse.json({ tied: top.tied.map((x) => ({ id: x.memberId, name: x.name })), winnerId: winner.memberId, winnerName: winner.name });
 }

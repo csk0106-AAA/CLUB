@@ -70,8 +70,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   if (!tpl || !tplCfg) {
     // 원래 템플릿이 없어진 활동: 이 활동의 설정만 고친다
-    const live = lives.find((l) => l.eventActivityId === aid);
-    if (live?.step && !input.onsite.steps.some((x) => x.key === live.step)) {
+    // 조별 진행이면 조마다 줄이 있다: 어느 줄이든 진행 중인 단계는 지울 수 없다
+    const busy = lives.filter((l) => l.eventActivityId === aid).some((l) => l.step && !input.onsite.steps.some((x) => x.key === l.step));
+    if (busy) {
       return bad("지금 진행 중인 단계는 지울 수 없어요. 현장 진행을 먼저 되돌려 주세요.");
     }
     const config = withEventWindows({ ...input, participants: ownPart, id: old?.id ?? aid, version: old?.version ?? 1 }, old);
@@ -97,7 +98,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const cur = (await s.list("EventActivities")).find((a) => a.id === aid && a.eventId === id);
   if (!cur) return bad("활동을 찾을 수 없어요.", 404);
   await s.remove("EventActivities", aid);
-  const live = (await s.list("LiveState")).find((l) => l.eventActivityId === aid);
-  if (live) await s.remove("LiveState", live.id);
+  // 회원 화면 상태(활동 전체·조별 줄 모두)
+  for (const l of (await s.list("LiveState")).filter((x) => x.eventActivityId === aid)) await s.remove("LiveState", l.id);
   return NextResponse.json({ ok: true });
 }

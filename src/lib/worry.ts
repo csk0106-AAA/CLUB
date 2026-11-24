@@ -5,7 +5,7 @@ import { ask, isAiEnabled } from "./ai";
 import { guidelinesFor } from "./ai-guides";
 import { parseJson } from "./api";
 import { canJoin, joinSet, onsiteGate } from "./participants";
-import { liveRow, setLive } from "./rounds";
+import { WHOLE, liveRow, setLive as setLiveRow, type RoundScope } from "./rounds";
 import { getStore, getSetting } from "./store";
 import type { Row } from "./store/types";
 import type { TemplateConfig } from "./template-schema";
@@ -42,8 +42,9 @@ export function missingWorrySteps(cfg: TemplateConfig): string[] {
   return WORRY_STEPS.filter((k) => !cfg.onsite.steps.some((s) => s.key === k));
 }
 
-export async function readPayload(aid: string): Promise<Payload> {
-  return parseJson<Payload>((await liveRow(aid))?.payload, {});
+// teamId: 조별 진행이면 그 조의 진행 상태(조마다 따로 뽑는다), "" 이면 활동 전체
+export async function readPayload(aid: string, teamId = ""): Promise<Payload> {
+  return parseJson<Payload>((await liveRow(aid, teamId))?.payload, {});
 }
 
 export function timerView(p: WorryPayload | undefined, now = Date.now()) {
@@ -67,19 +68,22 @@ export async function displayName(w: Row): Promise<string> {
 export type WorryAction = "draw" | "pause" | "resume" | "extend" | "skip" | "reveal" | "tips" | "end";
 type R = { ok: true } | { ok: false; error: string; status?: number };
 
-export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { category?: string; minutes?: number }): Promise<R> {
+// scope: 조별 진행이면 그 조(그 조 회원이 쓴 고민만 뽑고, 진행 상태도 그 조 줄에 둔다)
+export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { category?: string; minutes?: number }, scope: RoundScope = WHOLE): Promise<R> {
   const s = await getStore();
   const aid = ctx.act.id;
+  const team = scope.teamId;
+  const setLive = (step: string | null, unlocked: boolean, pl?: Record<string, unknown>) => setLiveRow(aid, step, unlocked, pl, team);
   const miss = missingWorrySteps(ctx.cfg);
   if (miss.length) return { ok: false, error: `이 활동의 템플릿에 필요한 단계가 없어요: ${miss.join(", ")}` };
 
-  const payload = await readPayload(aid);
+  const payload = await readPayload(aid, team);
   const cur = payload.worry;
   const rows = await worryRows(aid);
   const current = cur?.currentId ? rows.find((w) => w.id === cur.currentId) : undefined;
   const now = Date.now();
   const tv = timerView(cur, now);
-  const live = await liveRow(aid);
+  const live = await liveRow(aid, team);
   const stepKeep = live?.step ?? "";
 
   if (action === "draw") {
@@ -90,15 +94,17 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     // 이미 나온 고민은 제외하고, 카테고리를 지정하면 그 안에서만 뽑는다.
     // 현장 참석자만 참여하는 활동이면 참석을 신청한 회원의 고민만 뽑는다.
     const join = await joinSet(ctx.cfg, ctx.act, ctx.ev);
-    const pool = rows.filter((w) => !w.drawnAt && (!p.category || w.category === p.category) && (!join || join.has(w.memberId)));
-    if (pool.length === 0) return { ok: false, error: p.category ? `“${p.category}” 고민이 더 없어요.` : "뽑을 고민이 더 없어요.", status: 409 };
+    // 조별 진행이면 그 조 회원이 쓴 고민만 뽑고, 순서 번호도 그 조 안에서 센다.
+    const mine = rows.filter((w) => scope.inScope(w.memberId));
+    const pool = mine.filter((w) => !w.drawnAt && (!p.category || w.category === p.category) && (!join || join.has(w.memberId)));
+    if (pool.length === 0) return { ok: false, error: p.category ? `“${p.category}” 고민이 더 없어요.` : team ? "이 조에서 뽑을 고민이 더 없어요." : "뽑을 고민이 더 없어요.", status: 409 };
     const pick = pool[randomInt(pool.length)];
-    const order = rows.reduce((n, w) => Math.max(n, Number(w.orderNo) || 0), 0) + 1;
+    const order = mine.reduce((n, w) => Math.max(n, Number(w.orderNo) || 0), 0) + 1;
     // 대화 타이머: 진행자가 고른 시간 → 템플릿의 대화 시간 → (예전) 설정값 → 15분
     const minutes = p.minutes ?? ctx.cfg.worry?.talkMinutes ?? (await getSetting<number>("worryMinutes", 15));
     await s.update("Worries", pick.id, { drawnAt: new Date(now).toISOString(), orderNo: String(order), nameRevealed: "false", authorShown: "false" });
     payload.worry = { currentId: pick.id, endsAt: new Date(now + minutes * 60_000).toISOString(), remainingMs: null, minutes, tips: [] };
-    await setLive(aid, "talk", true, payload);
+    await setLive("talk", true, payload);
     return { ok: true };
   }
 
@@ -106,7 +112,7 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
   if (action === "end") {
     if (!liveView(ctx.cfg, live).active && !cur) return { ok: false, error: "이미 마친 활동이에요.", status: 409 };
     delete payload.worry;
-    await setLive(aid, "", false, payload);
+    await setLive("", false, payload);
     return { ok: true };
   }
 
@@ -130,7 +136,7 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
   } else if (action === "reveal") {
     // 진행자는 대화 중에도 언제든 작성자 이름을 오픈할 수 있다(타이머는 그대로 흐른다).
     await s.update("Worries", current.id, { nameRevealed: "true" });
-    await setLive(aid, "reveal", true, payload);
+    await setLive("reveal", true, payload);
     return { ok: true };
   } else if (action === "tips") {
     if (!isAiEnabled()) return { ok: false, error: "AI가 아직 연결되지 않았어요. 연결되면 관점 3가지를 보여 드릴 수 있어요.", status: 503 };
@@ -143,7 +149,7 @@ export async function doWorryAction(ctx: WorryCtx, action: WorryAction, p: { cat
     if (!out) return { ok: false, error: "AI가 응답하지 않았어요.", status: 503 };
     cur.tips = out.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 3);
   }
-  await setLive(aid, stepKeep || "talk", live?.memberUnlocked === "true", payload);
+  await setLive(stepKeep || "talk", live?.memberUnlocked === "true", payload);
   return { ok: true };
 }
 
@@ -164,9 +170,10 @@ export type MemberWorry = {
   serverNow: number;
 };
 
-export async function memberWorry(act: Row, ev: Row, memberId: string, cfg: TemplateConfig): Promise<MemberWorry | null> {
+// teamId: 이 회원이 따르는 조(조별 진행이 아니면 "")
+export async function memberWorry(act: Row, ev: Row, memberId: string, cfg: TemplateConfig, teamId = ""): Promise<MemberWorry | null> {
   const aid = act.id;
-  const live = await liveRow(aid);
+  const live = await liveRow(aid, teamId);
   if (!liveView(cfg, live).active) return null;
   const payload = parseJson<Payload>(live?.payload, {});
   const cur = payload.worry;

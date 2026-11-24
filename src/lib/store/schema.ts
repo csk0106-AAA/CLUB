@@ -120,7 +120,9 @@ export const TABS = {
   // startsAt/endsAt: 이 활동이 진행되는 날짜와 시간(한국 시간, YYYY-MM-DDTHH:mm). 비어 있으면 시간 제한 없음.
   // hostId: 진행자(회원 id), hostCode: 진행자 접속번호(이 번호로 로그인하면 활동 진행 화면만 보인다)
   // hosts: 진행자 여러 명 JSON [{memberId, code}] — 사람마다 접속번호가 따로(lib/hosts.ts). hostId/hostCode 는 예전 값(첫 진행자)
-  EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode", "hosts"],
+  //  조 진행자: hosts 항목에 teamId 가 있으면 그 조(Teams id)만 진행한다(팀 구성 보드에서 조마다 고르고, 접속번호는 자동으로 만든다)
+  // teamRun: "true"면 조별로 따로 진행(lib/team-run.ts). 팀이 있고 배포됐을 때만 실제로 켜진다. 비어 있으면 활동 전체를 한 번에 진행(예전과 같음)
+  EventActivities: ["id", "eventId", "templateId", "templateVersion", "config", "state", "order", "startsAt", "endsAt", "hostId", "hostCode", "hosts", "teamRun"],
   // 활동별 출석 체크: 자동 명단(날짜 선택 기반)을 관리자가 고칠 때만 행이 생긴다. present: true(출석) / false(결석)
   // level: 참여 방식 full(전체참여) / partial(선택참여, 템플릿 선별 조건의 액션만)
   Attendance: ["id", "eventActivityId", "memberId", "present", "level"],
@@ -139,7 +141,8 @@ export const TABS = {
   ],
   // 숙박 숙소배정: date(YYYY-MM-DD) 날짜별 방, guests 는 회원 id 배열 JSON
   Rooms: ["id", "eventId", "date", "name", "capacity", "memo", "guests"],
-  LiveState: ["id", "eventActivityId", "step", "memberUnlocked", "payload", "updatedAt"],
+  // teamId: 조별 진행(EventActivities.teamRun)일 때 그 조(Teams id)의 회원 화면 상태. 비어 있으면 활동 전체(예전 행도 이쪽)
+  LiveState: ["id", "eventActivityId", "step", "memberUnlocked", "payload", "updatedAt", "teamId"],
   // 내가 누구일까요? : 프로필(회원당 1개), 인터뷰 원문(본인만), 2진실 1거짓, 사전 추측
   Profiles: [
     "id", "memberId", "alias", "draftMd", "introMd", "introStatus", "publicFields",
@@ -168,7 +171,8 @@ export const TABS = {
   // 타임캡슐: body 는 서버 키로 암호화해서 저장한다. kind: goal(개인 목표, ownerId=회원) / pact(팀 약속, ownerId=팀)
   Capsules: ["id", "eventActivityId", "kind", "ownerId", "body", "lastBy", "updatedAt"],
   // 현장 진행: 한 사람씩 진행하는 라운드, 거짓 투표
-  Rounds: ["id", "eventActivityId", "targetMemberId", "state", "orderNo", "nameRevealed", "updatedAt"],
+  // teamId: 조별 진행이면 그 조의 차례(그 조 회원만 대상·투표). 비어 있으면 활동 전체
+  Rounds: ["id", "eventActivityId", "targetMemberId", "state", "orderNo", "nameRevealed", "updatedAt", "teamId"],
   Votes: ["id", "roundId", "voterId", "chosenIndex", "createdAt"],
   // 게시글. form: rules|fee|general|survey|poll|quiz (lib/board.ts). minutes 는 예전 회의록 글(이제 회의 일정으로 옮김). data: 양식별 내용 JSON.
   // audience: 공개 대상 JSON(lib/audience.ts), files: 첨부 [{id,name,type,size,image}] JSON

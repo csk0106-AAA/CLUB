@@ -6,6 +6,7 @@ import { bad, guard } from "@/lib/api";
 import { NOT_ATTENDEE, canJoin, canAct, NOT_ACTION } from "@/lib/participants";
 import { currentRound, liveRow } from "@/lib/rounds";
 import { getStore } from "@/lib/store";
+import { memberTeamId } from "@/lib/team-run";
 import { loadWho } from "@/lib/who";
 
 const body = z.object({ chosenIndex: z.number().int().min(0).max(2) });
@@ -23,10 +24,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ aid: string }>
 
   if (!(await canJoin(w.cfg, w.act, w.ev, g.s.mid))) return bad(NOT_ATTENDEE, 403);
   if (!(await canAct(w.cfg, w.act, w.ev, g.s.mid, onsiteKeyOf(w.cfg, "vote")))) return bad(NOT_ACTION, 403);
-  const cur = await currentRound(aid);
+  // 조별 진행이면 내가 속한 조의 차례·회원 화면을 따른다
+  const team = await memberTeamId(w.act, g.s.mid);
+  const cur = await currentRound(aid, team);
   if (!cur) return bad("지금 진행 중인 소개가 없어요.", 409);
   if (cur.targetMemberId === g.s.mid) return bad("내 차례에는 투표할 수 없어요.", 403);
-  const view = liveView(w.cfg, await liveRow(aid));
+  const view = liveView(w.cfg, await liveRow(aid, team));
   if (cur.state !== "voting" || !view.unlocked || view.memberScreen !== "vote") return bad("지금은 투표할 수 없어요. 진행자가 투표를 열면 할 수 있어요.", 409);
 
   const s = await getStore();

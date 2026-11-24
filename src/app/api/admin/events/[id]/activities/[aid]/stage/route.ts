@@ -5,28 +5,35 @@ import { currentRound, eligibleTargets, liveRow, loadStage, missingSteps, rounds
 import { actionSet, joinSet } from "@/lib/participants";
 import { onsiteKeyOf } from "@/lib/template-schema";
 import { getStore } from "@/lib/store";
+import { scopeOf } from "@/lib/team-run";
 
 export const dynamic = "force-dynamic";
 
 // 진행자 전체화면이 2초마다 읽는 곳. 이름과 정답은 공개 단계가 되기 전에는 내려주지 않는다.
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string; aid: string }> }) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const st = await loadStage(id, aid);
   if (typeof st === "string") return bad(st, 404);
 
+  // 조별 진행이면 ?team=조 id 의 차례·회원 화면(조 진행자는 맡은 조로 고정)
+  const sc = await scopeOf(req, st.act, g);
+  if (sc instanceof NextResponse) return sc;
   const s = await getStore();
-  const cur = await currentRound(aid);
+  const cur = await currentRound(aid, sc.teamId);
   const join = await joinSet(st.cfg, st.act, st.ev);
   const [members, profiles, tls, guesses, votes, live, all, pool] = await Promise.all([
     s.list("Members"), s.list("Profiles"), s.list("TruthLies"), s.list("Guesses"), s.list("Votes"),
-    liveRow(aid), rounds(aid), eligibleTargets(aid, join),
+    liveRow(aid, sc.teamId), rounds(aid, sc.on ? sc.teamId : undefined), eligibleTargets(aid, join, sc.inScope),
   ]);
   const nameOf = (mid: string) => members.find((m) => m.id === mid)?.name ?? "";
   const base = {
     event: { id: st.ev.id, name: st.ev.name },
     activity: { id: aid, name: st.cfg.name, participants: st.cfg.participants },
+    // 조별 진행: 지금 보는 조와 고를 수 있는 조(조 진행자는 맡은 조만)
+    team: sc.team ? { id: sc.team.id, name: sc.team.name } : null,
+    teams: sc.on ? (g.team ? sc.teams.filter((t) => t.id === g.team) : sc.teams).map((t) => ({ id: t.id, name: t.name })) : [],
     missingSteps: missingSteps(st.cfg),
     live: liveView(st.cfg, live),
     steps: st.cfg.onsite.steps.map((x) => ({ key: x.key, label: x.label, memberScreen: x.memberScreen, unlock: x.unlock })),
@@ -50,15 +57,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
     actionSet(st.cfg, st.act, st.ev, onsiteKeyOf(st.cfg, "vote")),
     actionSet(st.cfg, st.act, st.ev, "guess"),
   ]);
-  const eligible = members.filter((m) => m.id !== target && voteSet.has(m.id));
-  const guessEligible = members.filter((m) => m.id !== target && guessSet.has(m.id));
+  //  조별 진행이면 그 조 회원만 센다.
+  const eligible = members.filter((m) => m.id !== target && voteSet.has(m.id) && sc.inScope(m.id));
+  const guessEligible = members.filter((m) => m.id !== target && guessSet.has(m.id) && sc.inScope(m.id));
 
   // 사전 추측 결과: 누가 누구를 몇 표로 골랐는지(추측 결과 단계부터)
   let guessResults: { name: string; count: number }[] = [];
   if (state !== "intro") {
     const counts = new Map<string, number>();
     for (const x of guesses) {
-      if (x.eventActivityId === aid && x.targetMemberId === target) counts.set(x.chosenMemberId, (counts.get(x.chosenMemberId) ?? 0) + 1);
+      if (x.eventActivityId === aid && x.targetMemberId === target && sc.inScope(x.guesserId)) counts.set(x.chosenMemberId, (counts.get(x.chosenMemberId) ?? 0) + 1);
     }
     guessResults = [...counts.entries()].map(([mid, count]) => ({ name: nameOf(mid), count })).sort((a, b) => b.count - a.count);
   }
@@ -96,7 +104,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; ai
       votes: { counts, voted: votedEligible, total: rv.length, eligible: eligible.length, notVoted },
       lieIndex: state === "answer" ? lie : -1,
       correctVoters: state === "answer" ? rv.filter((v) => Number(v.chosenIndex) === lie).map((v) => nameOf(v.voterId)) : [],
-      correctGuessers: state === "answer" ? guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && x.chosenMemberId === target).map((x) => nameOf(x.guesserId)) : [],
+      correctGuessers: state === "answer" ? guesses.filter((x) => x.eventActivityId === aid && x.targetMemberId === target && x.chosenMemberId === target && sc.inScope(x.guesserId)).map((x) => nameOf(x.guesserId)) : [],
     },
   });
 }

@@ -5,6 +5,7 @@ import { bad, hostGuard } from "@/lib/api";
 import { hostGate } from "@/lib/host-gate";
 import { joinSet } from "@/lib/participants";
 import { liveRow } from "@/lib/rounds";
+import { scopeOf } from "@/lib/team-run";
 import {
   CATEGORIES, displayName, doWorryAction, loadWorry, missingWorrySteps, readPayload, timerView, worryRows,
 } from "@/lib/worry";
@@ -13,17 +14,20 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; aid: string }> };
 
 // 진행자 전체화면이 읽는 곳. 뽑히기 전 고민과 작성자는 내려주지 않는다.
-export async function GET(_req: Request, ctx: Ctx) {
+export async function GET(req: Request, ctx: Ctx) {
   const g = await hostGuard((await ctx.params).aid);
   if ("err" in g) return g.err;
   const { id, aid } = await ctx.params;
   const w = await loadWorry(aid, id);
   if (typeof w === "string") return bad(w, 404);
 
+  // 조별 진행이면 ?team=조 id 의 진행 상태와 그 조 회원이 쓴 고민만(조 진행자는 맡은 조로 고정)
+  const sc = await scopeOf(req, w.act, g);
+  if (sc instanceof NextResponse) return sc;
   const rows = await worryRows(aid);
   const join = await joinSet(w.cfg, w.act, w.ev);
-  const usable = rows.filter((x) => !join || join.has(x.memberId));
-  const payload = await readPayload(aid);
+  const usable = rows.filter((x) => (!join || join.has(x.memberId)) && sc.inScope(x.memberId));
+  const payload = await readPayload(aid, sc.teamId);
   const cur = payload.worry;
   const current = cur?.currentId ? rows.find((x) => x.id === cur.currentId) : undefined;
   const tv = timerView(cur);
@@ -31,13 +35,15 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({
     event: { id: w.ev.id, name: w.ev.name },
     activity: { id: aid, name: w.cfg.name, participants: w.cfg.participants },
+    team: sc.team ? { id: sc.team.id, name: sc.team.name } : null,
+    teams: sc.on ? (g.team ? sc.teams.filter((t) => t.id === g.team) : sc.teams).map((t) => ({ id: t.id, name: t.name })) : [],
     // 진행자 버튼 글자(템플릿 단계의 진행자 버튼, 비어 있으면 기본 글자)
     buttons: {
       draw: w.cfg.onsite.steps.find((s) => s.key === "draw")?.hostButton || "고민 뽑기",
       reveal: w.cfg.onsite.steps.find((s) => s.key === "reveal")?.hostButton || "이름 오픈",
     },
     missingSteps: missingWorrySteps(w.cfg),
-    live: liveView(w.cfg, await liveRow(aid)),
+    live: liveView(w.cfg, await liveRow(aid, sc.teamId)),
     serverNow: Date.now(),
     categories: CATEGORIES,
     // 남은 고민 수만 알려준다(카테고리별 포함). 내용은 내려주지 않는다.
@@ -72,10 +78,12 @@ export async function POST(req: Request, ctx: Ctx) {
   if (typeof w === "string") return bad(w, 404);
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("요청을 확인해 주세요.");
+  const sc = await scopeOf(req, w.act, g);
+  if (sc instanceof NextResponse) return sc;
   // 진행자가 꼭 있어야 하는 활동인데 진행자가 없으면: 관리자는 알려만 주고, 그 밖에는 막는다(고민 뽑기에서).
   const hg: ReturnType<typeof hostGate> = parsed.data.action === "draw" ? hostGate(w.cfg, w.act, g.s) : {};
   if (hg.block) return bad(hg.block, 409);
-  const r = await doWorryAction(w, parsed.data.action, { category: parsed.data.category, minutes: parsed.data.minutes });
+  const r = await doWorryAction(w, parsed.data.action, { category: parsed.data.category, minutes: parsed.data.minutes }, sc);
   if (!r.ok) return bad(r.error, r.status ?? 400);
   return NextResponse.json({ ok: true, ...(hg.warn ? { warning: hg.warn } : {}) });
 }

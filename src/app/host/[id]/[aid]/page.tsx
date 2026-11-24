@@ -4,10 +4,13 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
 import { api } from "@/lib/client";
+import { TeamPicker, teamQ, useTeamParam } from "@/components/TeamScope";
 
 type Stage = {
   event: { id: string; name: string };
   activity: { id: string; name: string };
+  team: { id: string; name: string } | null; // 조별 진행: 지금 보는 조
+  teams: { id: string; name: string }[]; // 고를 수 있는 조(조 진행자는 맡은 조만)
   missingSteps: string[];
   live: { active: boolean; stepLabel: string; unlocked: boolean; memberScreen: string };
   playedCount: number;
@@ -49,15 +52,20 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
   const [busy, setBusy] = useState(false);
   const [board, setBoard] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
+  // 조별 진행: ?team=조 id (고르지 않았으면 첫 조로)
+  const [team, setTeam] = useTeamParam();
+  const q = teamQ(team);
 
   const load = useCallback(async () => {
-    const r = await api<Stage>(`/api/admin/events/${id}/activities/${aid}/stage`);
+    if (team === null) return;
+    const r = await api<Stage>(`/api/admin/events/${id}/activities/${aid}/stage${q}`);
     if (r.ok) {
       setSt(r.data);
       setLoadErr("");
-    } else if (r.status === 401 || r.status === 403) setDenied(true);
+      if (r.data.teams.length > 0 && !r.data.team) setTeam(r.data.teams[0].id);
+    } else if (r.status === 401 || (r.status === 403 && !team)) setDenied(true);
     else setLoadErr(r.error);
-  }, [id, aid]);
+  }, [id, aid, team, q, setTeam]);
 
   useEffect(() => {
     let stop = false;
@@ -77,7 +85,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
     if (action === "back" && st?.round?.state === "intro" && !window.confirm("이 소개를 취소하고 이전 사람으로 돌아갈까요? 이 분은 다시 순서에 들어가요.")) return;
     setBusy(true);
     setError("");
-    const r = await api(`/api/admin/events/${id}/activities/${aid}/round`, { body: { action, targetMemberId } });
+    const r = await api(`/api/admin/events/${id}/activities/${aid}/round${q}`, { body: { action, targetMemberId } });
     setBusy(false);
     if (!r.ok) setError(r.error);
     else setNotice((r.data as { warning?: string }).warning ?? "");
@@ -89,7 +97,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
     if (!window.confirm("활동을 마칠까요? 회원 화면에서 진행 중 표시가 사라져요. 점수와 기록은 그대로예요. 다음 사람을 열면 다시 진행돼요.")) return;
     setBusy(true);
     setError("");
-    const r = await api(`/api/admin/events/${id}/activities/${aid}/live`, { body: { action: "reset" } });
+    const r = await api(`/api/admin/events/${id}/activities/${aid}/live${q}`, { body: { action: "reset" } });
     setBusy(false);
     if (!r.ok) setError(r.error);
     else setNotice("");
@@ -112,11 +120,12 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
     <div className="host" ref={wrap}>
       <header style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 28 }}>{st.activity.name}</h1>
-        <span className="sub">{st.event.name} · {r ? `${r.orderNo}번째 · ${STATE_LABEL[r.state]}` : "시작 전"} · 진행 완료 {st.playedCount}명</span>
+        <TeamPicker teams={st.teams} value={st.team?.id ?? ""} onChange={(t) => { setTeam(t); setPickId(""); }} />
+        <span className="sub">{st.event.name}{st.team ? ` · ${st.team.name}` : ""} · {r ? `${r.orderNo}번째 · ${STATE_LABEL[r.state]}` : "시작 전"} · 진행 완료 {st.playedCount}명</span>
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => setBoard(!board)}>{board ? "진행 화면" : "점수판"}</button>
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
-        <HostLiveControls eventId={id} aid={aid} />
+        <HostLiveControls eventId={id} aid={aid} team={st.team?.id ?? ""} />
         <HostBack eventId={id} activityId={aid} />
       </header>
 
@@ -129,7 +138,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
       )}
 
       {board ? (
-        <Board id={id} aid={aid} setError={setError} />
+        <Board id={id} aid={aid} q={q} setError={setError} />
       ) : (
         <>
           <div className="stage">
@@ -277,21 +286,21 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
 }
 
 /* ───── 점수판과 동점자 룰렛 ───── */
-function Board({ id, aid, setError }: { id: string; aid: string; setError: (e: string) => void }) {
+function Board({ id, aid, q, setError }: { id: string; aid: string; q: string; setError: (e: string) => void }) {
   const [sc, setSc] = useState<Scores | null>(null);
   const [spin, setSpin] = useState<{ cat: "A" | "B"; shown: string } | null>(null);
 
   const load = useCallback(async () => {
-    const r = await api<Scores>(`/api/admin/events/${id}/activities/${aid}/scores`);
+    const r = await api<Scores>(`/api/admin/events/${id}/activities/${aid}/scores${q}`);
     if (r.ok) setSc(r.data);
     else setError(r.error);
-  }, [id, aid, setError]);
+  }, [id, aid, q, setError]);
   useEffect(() => {
     load();
   }, [load]);
 
   async function roulette(cat: "A" | "B", redo = false) {
-    const r = await api<{ tied: { id: string; name: string }[]; winnerName: string }>(`/api/admin/events/${id}/activities/${aid}/scores`, { body: { category: cat, redo } });
+    const r = await api<{ tied: { id: string; name: string }[]; winnerName: string }>(`/api/admin/events/${id}/activities/${aid}/scores${q}`, { body: { category: cat, redo } });
     if (!r.ok) return setError(r.error);
     const names = r.data.tied.map((x) => x.name); // 동점자만 룰렛에 나온다
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
