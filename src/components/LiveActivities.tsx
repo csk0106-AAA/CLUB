@@ -280,10 +280,11 @@ function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a
                 활동 시간: {fmtRange(a.startsAt, a.endsAt)}
               </span>
             )}
-            {(a.teamName || a.teamHost) && (
+            {(a.teamName || (a.teamHost && !inPage)) && (
               <div className="row" style={{ flexWrap: "wrap" }}>
                 {a.teamName && <span className="pill blue">조별 진행 · 내 조 {a.teamName}</span>}
-                {a.teamHost && (
+                {/* 조 진행자 바로가기는 일정 화면(주요 활동 아래)에만. 활동 화면 안에서는 회원으로 참여한다 */}
+                {a.teamHost && !inPage && (
                   <Link href={a.teamHost.href} className="btn blue" style={{ width: "auto", minHeight: 46, fontSize: fs(15), textDecoration: "none" }}>{a.teamHost.name} 진행하기</Link>
                 )}
               </div>
