@@ -9,7 +9,8 @@ import { fs } from "@/lib/fs";
 type Data = {
   schedule: SchedItem[];
   dayPlaces?: Record<string, string>;
-  groups: { title: string; team: string; members: string[]; teams?: { name: string; members: string[]; mine: boolean }[] }[];
+  // titles: 같은 구성을 쓰는 곳(일정 조편성·활동). 구성이 같으면 한 칸으로 합쳐 온다
+  groups: { title: string; titles?: string[]; team: string; members: string[]; teams?: { name: string; members: string[]; mine: boolean }[] }[];
   groupsPending?: number;
   // 미응답·불참이라 닫힌 항목 중 이 일정에 실제로 있는 것(groups·rooms·cars) → 잠긴 칸으로 보여 준다
   lockedCards?: string[];
@@ -67,8 +68,8 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false, loc
       {!lockedSet.has("groups") && d.usesGroups && d.groups.length === 0 && waitCard("조편성", (d.groupsPending ?? 0) > 0 ? "조편성을 준비하고 있어요. 확정되면 여기에 보여요." : "조 편성 전이에요. 정해지면 여기에 보여요.")}
       {/* 조편성: 한 줄 요약(내 조 2팀 · 조원 5명), 조원 명단·전체 조는 펼쳐서 보기 */}
       {d.groups.map((g, i) => (
-        <Fold key={i} title={`조편성 · ${g.title}`}
-          summary={g.team ? `내 조 ${g.team} · 조원 ${g.members.length}명` : `내가 들어간 조는 없어요 · 전체 ${g.teams?.length ?? 0}개 조`}>
+        <Fold key={i} title={`조편성 · ${g.titles?.[0] ?? g.title}`}
+          summary={`${g.team ? `내 조 ${g.team} · 조원 ${g.members.length}명` : `내가 들어간 조는 없어요 · 전체 ${g.teams?.length ?? 0}개 조`}${(g.titles?.length ?? 1) > 1 ? ` · ${g.titles!.slice(1).join(", ")}도 같은 조` : ""}`}>
           {/* 펼쳐도 요약 한 줄은 그대로(조원 명단은 아래 전체 조에서 내 조로 확인) */}
           {g.team && (
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>

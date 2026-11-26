@@ -42,6 +42,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       const teams = gTeams(x);
       const t = teams.find((y) => y.memberIds.includes(g.s.mid));
       return {
+        raw: teams, act: false,
         title: x.title, team: t?.name ?? "", members: t ? t.memberIds.map(nmMe) : [],
         teams: teams.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid) })),
       };
@@ -59,10 +60,29 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
     const t = ts.find((y) => y.memberIds.includes(g.s.mid));
     myGroups.push({
+      raw: ts, act: true,
       title: parseJson<{ name?: string }>(a.config, {}).name ?? "팀 활동", team: t?.name ?? "", members: t ? t.memberIds.map(nmMe) : [],
       teams: ts.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid) })),
     });
   }
+
+  // 구성이 같은 조편성은 한 칸으로 합친다. titles: 이 구성을 쓰는 곳
+  //  - 조 이름과 조원이 모두 같으면 같다
+  //  - 활동 팀이 일정 조편성에서 활동에 참여하지 않는 사람만 뺀 것이면(조편성 가져오기) 그 조편성과 같다
+  type Raw = { name: string; memberIds: string[] }[];
+  const sigOf = (teams: Raw, only?: Set<string>) => JSON.stringify(
+    teams.map((y) => [y.name, y.memberIds.filter((m) => !only || only.has(m)).sort()] as const)
+      .filter(([, ms]) => ms.length > 0)
+      .sort((p, q) => p[0].localeCompare(q[0])),
+  );
+  const merged: (Omit<(typeof myGroups)[number], "raw" | "act"> & { titles: string[]; raw: Raw; act: boolean })[] = [];
+  for (const x of myGroups) {
+    const inAct = new Set(x.raw.flatMap((y) => y.memberIds));
+    const same = merged.find((m) => sigOf(m.raw) === sigOf(x.raw) || (x.act && !m.act && sigOf(m.raw, inAct) === sigOf(x.raw)));
+    if (same) same.titles.push(x.title);
+    else merged.push({ ...x, titles: [x.title] });
+  }
+  const groupsOut = merged.map(({ raw: _r, act: _a, ...rest }) => { void _r; void _a; return rest; });
 
   // 구간별(갈 때 → 올 때)로 내가 운전하거나 타는 차량. 확정된 자리만 보인다(승인만 되고 확정 전이면 안 보임).
   const carReqs = await carRequests(id);
@@ -110,7 +130,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     rooms: lk.includes("rooms") ? { published: false, mine: [] } : { published: roomSt.published, mine: myRooms },
     schedule: schedLocked ? [] : sched.filter((r) => r.eventId === id).sort((a, b) => a.at.localeCompare(b.at)).map((r) => ({ at: r.at, title: r.title, place: r.place ?? "", memo: r.memo ?? "" })),
     dayPlaces: readDayPlaces(ev.dayPlaces), // 세부일정 날짜별 기본 위치
-    groups: lk.includes("groups") ? [] : myGroups,
+    groups: lk.includes("groups") ? [] : groupsOut,
     groupsPending: lk.includes("groups") ? 0 : groupsPending,
     groupsLocked: lk.includes("groups"),
     carpool: lk.includes("cars") ? { published: false, mine: [] } : { published: state.published, mine: myCars },
