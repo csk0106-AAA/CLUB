@@ -449,6 +449,25 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
   const [openActs, setOpenActs] = useState<Set<string>>(new Set());
   const [openInit, setOpenInit] = useState(false);
   const toggleAct = (id: string) => setOpenActs((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  // 활동 순서: 손잡이(⠿)를 끌어 다른 카드에 놓거나 ▲▼로 옮긴다. 바꾸면 바로 저장되고 회원 화면도 이 순서를 따른다.
+  const [dragId, setDragId] = useState("");
+  const [overId, setOverId] = useState("");
+  async function reorder(next: Act[]) {
+    setActs(next);
+    const r = await api(`/api/admin/events/${eventId}/activities`, { method: "PATCH", body: { order: next.map((x) => x.id) } });
+    if (!r.ok) setMsg({ tone: "bad", text: r.error });
+    else setMsg({ tone: "info", text: "활동 순서를 바꿨어요. 회원 화면에도 이 순서로 보여요." });
+    if (!r.ok) load();
+  }
+  function moveAct(from: string, to: string) {
+    if (!acts || !from || from === to) return;
+    const fi = acts.findIndex((x) => x.id === from), ti = acts.findIndex((x) => x.id === to);
+    if (fi < 0 || ti < 0) return;
+    const next = [...acts];
+    const [m] = next.splice(fi, 1);
+    next.splice(ti, 0, m);
+    reorder(next);
+  }
   const scrolled = useRef(false);
   useEffect(() => {
     if (!acts) return;
@@ -605,9 +624,36 @@ export function EventActivities({ eventId, canEdit }: { eventId: string; canEdit
       {!acts && !msg && <p className="small">불러오는 중이에요…</p>}
       {acts && acts.length === 0 && <div className="msg info">아직 넣은 활동이 없어요. “+ 템플릿에서 활동 추가”로 넣어 보세요.</div>}
 
-      {acts?.map((a) => (
-        <div key={a.id} id={`act-${a.id}`} className="card act-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {canEdit && (acts?.length ?? 0) > 1 && (
+        <span className="small" style={{ margin: 0 }}>활동 순서는 카드 왼쪽 ⠿를 끌어 놓거나 ▲▼로 바꿔요. 회원 화면의 주요 활동도 이 순서로 보여요.</span>
+      )}
+      {acts?.map((a, i) => (
+        <div key={a.id} id={`act-${a.id}`} className="card act-card"
+          onDragOver={(e) => { if (dragId && dragId !== a.id) { e.preventDefault(); setOverId(a.id); } }}
+          onDragLeave={() => setOverId((k) => (k === a.id ? "" : k))}
+          onDrop={(e) => { e.preventDefault(); moveAct(dragId, a.id); setDragId(""); setOverId(""); }}
+          style={{
+            display: "flex", flexDirection: "column", gap: 10, opacity: dragId === a.id ? 0.5 : 1,
+            ...(overId === a.id && dragId ? { outline: "2px dashed var(--brand)", outlineOffset: 2 } : {}),
+          }}>
           <div className="row" style={{ flexWrap: "wrap" }}>
+            {canEdit && acts.length > 1 && (
+              <span className="row" style={{ gap: 2, flex: "none" }}>
+                <span role="button" tabIndex={-1} aria-hidden="true" draggable title="끌어서 순서를 바꿔요"
+                  onDragStart={(e) => {
+                    setDragId(a.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", a.id);
+                    const card = (e.currentTarget as HTMLElement).closest(".act-card");
+                    if (card) e.dataTransfer.setDragImage(card, 20, 20);
+                  }}
+                  onDragEnd={() => { setDragId(""); setOverId(""); }}
+                  style={{ cursor: "grab", fontSize: fs(20), lineHeight: 1, padding: "4px 6px", userSelect: "none", color: "var(--sub)" }}>⠿</span>
+                <button className="mini" type="button" aria-label={`${a.config.name} 위로`} disabled={i === 0} onClick={() => moveAct(a.id, acts[i - 1].id)} style={{ padding: "0 8px" }}>▲</button>
+                <button className="mini" type="button" aria-label={`${a.config.name} 아래로`} disabled={i === acts.length - 1} onClick={() => moveAct(a.id, acts[i + 1].id)} style={{ padding: "0 8px" }}>▼</button>
+              </span>
+            )}
+            <span className="pill gray num" title="진행 순서">{i + 1}</span>
             <b style={{ font: `700 ${fs(18)} var(--display)` }}>{a.config.name}</b>
             <span className="pill gray">
               {(() => { const t = tpls.find((x) => x.id === a.templateId); return t?.config.sourceEvent ? `템플릿 v${t.version} · ${sourceLabel(t)}` : `템플릿 v${t?.version ?? a.templateVersion}`; })()}

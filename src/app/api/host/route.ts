@@ -20,7 +20,8 @@ export async function GET() {
 
   const st = await getStore();
   const [events, acts, lives] = await Promise.all([st.list("Events"), st.list("EventActivities"), st.list("LiveState")]);
-  const mine = acts.filter((a) => s.host!.includes(a.id) && isHost(a, s.mid)); // 지정이 풀렸거나 다른 사람으로 바뀌면 바로 목록에서 빠진다.
+  // 지정이 풀렸거나 다른 사람으로 바뀌면 바로 목록에서 빠진다. 같은 시각이면 일정의 활동 순서대로.
+  const mine = acts.filter((a) => s.host!.includes(a.id) && isHost(a, s.mid)).sort((p, q) => Number(p.order || 0) - Number(q.order || 0));
   const items = (await Promise.all(mine.map(async (a) => {
     const cfg = readConfig(a.config);
     const ev = events.find((e) => e.id === a.eventId);

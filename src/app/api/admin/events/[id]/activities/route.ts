@@ -55,6 +55,28 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({ activities });
 }
 
+// 활동 순서 바꾸기: { order: [활동 id …] } 이 일정의 활동 전부를 새 순서대로. 회원 화면(주요 활동·활동 길·바로가기·조편성)도 이 순서를 따른다.
+const orderBody = z.object({ order: z.array(z.string().min(1)).min(1).max(50) });
+export async function PATCH(req: Request, ctx: Ctx) {
+  const g = await guardEv(ctx, ["templates", "events"]);
+  if ("err" in g) return g.err;
+  const { id } = await ctx.params;
+  const parsed = orderBody.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return bad("순서를 확인해 주세요.");
+  const s = await getStore();
+  const mine = (await s.list("EventActivities", { fresh: true })).filter((a) => a.eventId === id);
+  const want = parsed.data.order;
+  // 화면이 오래돼서 그사이 활동이 더해지거나 빠졌으면 다시 불러오게 한다
+  if (want.length !== mine.length || new Set(want).size !== want.length || !want.every((x) => mine.some((a) => a.id === x))) {
+    return bad("그사이 활동이 바뀌었어요. 화면을 새로 고친 뒤 다시 해 주세요.", 409);
+  }
+  for (const [i, aid] of want.entries()) {
+    const a = mine.find((x) => x.id === aid)!;
+    if (a.order !== String(i + 1)) await s.update("EventActivities", aid, { order: String(i + 1) });
+  }
+  return NextResponse.json({ ok: true });
+}
+
 const addBody = z.object({ templateId: z.string().min(1), participants: z.enum(["all", "selected"]).optional() });
 
 // 템플릿에서 활동을 골라 일정에 넣는다. 설정은 그 시점 것을 복사해 일정별로 따로 수정할 수 있다.
