@@ -50,6 +50,7 @@ type Live = {
   endsAt: string;
   canJoin: boolean;
   live: { active: boolean; stepLabel: string; unlocked: boolean; memberScreen: string };
+  liveAt?: string; // 진행 화면이 마지막으로 바뀐 시각
   stepAllowed?: boolean; // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만)
   round: Round | null;
   worry: Worry | null;
@@ -207,7 +208,10 @@ export function LiveNowBanner({ eventId, exclude }: { eventId: string; exclude?:
       clearTimeout(timer);
     };
   }, [eventId]);
-  const now = list.filter((a) => a.id !== exclude && (a.round || a.worry || a.live.active));
+  // 진행 중인 활동 중 가장 최근에 진행자가 바꾼 활동 하나만(다음 활동으로 넘어가면 앞 활동은 알림 줄에서 빠진다)
+  const live = list.filter((a) => a.round || a.worry || a.live.active);
+  const latest = live.reduce<Live | null>((m, a) => (!m || (a.liveAt ?? "") > (m.liveAt ?? "") ? a : m), null);
+  const now = latest && latest.id !== exclude ? [latest] : [];
   if (now.length === 0) return null;
   return (
     <>

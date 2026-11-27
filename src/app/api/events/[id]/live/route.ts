@@ -65,6 +65,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         startsAt: a.startsAt, // 활동 날짜와 진행 시간(안내용)
         endsAt: a.endsAt,
         live,
+        liveAt: liveOf(lives, a.id, team)?.updatedAt ?? "", // 이 활동 진행 화면이 마지막으로 바뀐 시각(가장 최근 활동만 알림 줄에)
         // 지금 열린 현장 단계를 내가 할 수 있는지(선택참여 회원은 선별 조건에 있는 단계만). false 면 회원 화면에 기다림 안내를 보인다.
         stepAllowed: stepAllowed(cfg, levelOf(a.id), live.stepKey),
         // 현장 진행 중인 사람(라운드): 내가 보는 화면만. 정답은 공개 단계 전에는 포함하지 않는다.
