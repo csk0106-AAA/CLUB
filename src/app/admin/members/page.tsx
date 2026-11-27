@@ -105,11 +105,6 @@ function Members() {
     if (r.ok) setConsent(r.data);
   }, []);
   useEffect(() => { loadConsent(); }, [loadConsent]);
-  async function resetConsent() {
-    if (!window.confirm("모든 회원에게 개인정보 안내 동의를 다시 받을까요?\n지금까지의 동의는 기록으로 남고, 회원마다 다음 접속 때 동의 안내가 다시 떠요. 동의하기 전에는 다른 회원의 프로필 북을 볼 수 없어요.")) return;
-    const r = await api("/api/admin/consent", { body: { action: "reset" } });
-    if (r.ok) loadConsent();
-  }
   const [lists, setLists] = useState<Lists>({ memberKinds: [], positions: [], clubs: [], clubRoles: [] });
   const kinds = lists.memberKinds;
   const [form, setForm] = useState<Form>(EMPTY);
@@ -762,8 +757,7 @@ function Members() {
           <span title="대기회원·참관회원과 프로필 북 노출을 끈 회원은 빼고 세요">, 프로필북공개 {list.filter((m) => inBook(m)).length}</span>
           {consent && (
             <span title={consent.since ? `${fmtDateTime(consent.since)} 뒤에 동의한 회원(대기·참관·탈퇴회원 제외)` : "개인정보 안내에 동의한 회원(대기·참관·탈퇴회원 제외)"}>
-              , 개인정보 동의 {consent.agreed}/{consent.total}{consent.since ? ` (${fmtDate(consent.since)} 다시 받는 중)` : ""}{" "}
-              <button type="button" className="mini" style={{ fontSize: fs(12), minHeight: 26, padding: "0 8px" }} onClick={resetConsent}>모두 다시 동의 받기</button>
+              , 개인정보 동의 {consent.agreed}/{consent.total}{consent.since ? ` (${fmtDate(consent.since)} 다시 받는 중)` : ""}
             </span>
           )}
         </p>
