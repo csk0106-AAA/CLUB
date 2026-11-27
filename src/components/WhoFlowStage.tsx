@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { playSfx } from "@/lib/sfx";
-import { NextActivityButton, type NextLink } from "./NextActivityButton";
+import { EndOfActivities, type NextLink } from "./NextActivityButton";
 
 // 내가 누구일까요? 현장 맞히기 흐름의 진행자 전체화면(프로젝터용, 조마다)
 //  ① 한 명씩 소개 열기 → 맞히기 → 마감 ② 한 명씩 “저예요” ③ 한 명씩 진실과 거짓(모두 투표하면 저절로 결과) ④ 시상(추측왕·직감왕)
@@ -37,8 +37,8 @@ const NO = [
 ];
 const BAR = ["#eceef0", "#a6adb5", "#6b737c", "#ced3d8"];
 
-export function WhoFlowStage({ flow, r, remaining, selectable, busy, act, id, aid, q, setError, next }: {
-  flow: FlowInfo; r: FlowRound | null; remaining: number; selectable: { id: string; name: string }[]; next?: NextLink | null;
+export function WhoFlowStage({ flow, r, remaining, selectable, busy, act, id, aid, q, setError, next, leftover }: {
+  flow: FlowInfo; r: FlowRound | null; remaining: number; selectable: { id: string; name: string }[]; next?: NextLink | null; leftover?: (NextLink & { remaining: number }) | null;
   busy: boolean; act: (a: FlowAct, target?: string) => void; id: string; aid: string; q: string; setError: (e: string) => void;
 }) {
   const [pickId, setPickId] = useState("");
@@ -71,13 +71,11 @@ export function WhoFlowStage({ flow, r, remaining, selectable, busy, act, id, ai
         <Stepper now={nowPhase} />
         <Awards id={id} aid={aid} q={q} setError={setError} />
         {/* 아직 진실과 거짓을 하지 않은 사람이 남아 있으면(시상을 먼저 연 경우) 이어서 할 수 있다 */}
-        {(leftNamed > 0 || next) && (
-          <div className="controls" role="group" aria-label="진행자 버튼">
-            {leftNamed > 0 && <button className="btn white" type="button" disabled={busy} onClick={() => act("vote")}>‹ 남은 진실과 거짓 이어서 하기</button>}
-            {/* 다음 활동의 진행 화면으로 바로 */}
-            {next && <NextActivityButton next={next} />}
-          </div>
-        )}
+        <div className="controls" role="group" aria-label="진행자 버튼">
+          {leftNamed > 0 && <button className="btn white" type="button" disabled={busy} onClick={() => act("vote")}>‹ 남은 진실과 거짓 이어서 하기</button>}
+          {/* 다음 활동으로, 없으면 "남은 활동이 없습니다"(남은 고민이 있으면 다시 나누기) */}
+          <EndOfActivities next={next} leftover={leftover} />
+        </div>
       </>
     );
   }

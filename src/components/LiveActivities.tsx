@@ -209,9 +209,10 @@ export function LiveNowBanner({ eventId, exclude }: { eventId: string; exclude?:
     };
   }, [eventId]);
   // 진행 중인 활동 중 가장 최근에 진행자가 바꾼 활동 하나만(다음 활동으로 넘어가면 앞 활동은 알림 줄에서 빠진다)
-  const live = list.filter((a) => a.round || a.worry || a.live.active);
-  const latest = live.reduce<Live | null>((m, a) => (!m || (a.liveAt ?? "") > (m.liveAt ?? "") ? a : m), null);
-  const now = latest && latest.id !== exclude ? [latest] : [];
+  const touched = list.filter((a) => a.liveAt);
+  const latest = touched.reduce<Live | null>((m, a) => (!m || (a.liveAt ?? "") > (m.liveAt ?? "") ? a : m), null);
+  // 가장 최근 활동이 끝났으면(활동 마치기 등) 앞 활동을 대신 보여 주지 않는다
+  const now = latest && latest.id !== exclude && (latest.round || latest.worry || latest.live.active) ? [latest] : [];
   if (now.length === 0) return null;
   return (
     <>

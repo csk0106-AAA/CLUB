@@ -3,7 +3,7 @@
 import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
 import { SfxToggle } from "@/components/SfxToggle";
-import { NextActivityButton, type NextLink } from "@/components/NextActivityButton";
+import { EndOfActivities, type NextLink } from "@/components/NextActivityButton";
 import { playSfx } from "@/lib/sfx";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
@@ -16,7 +16,7 @@ type PactMember = { id: string; name: string; goal: boolean; pactOk: boolean };
 type PactState = Record<string, { pacts: string[]; saved: boolean; sealed: boolean; members: PactMember[] }>;
 
 // 타임캡슐 진행(조마다): 조원별 1년 뒤 목표 봉인·팀 약속 저장 현황 + 팀 약속 입력 → 조원 확인 → 진행자 봉인
-function PactBox({ eventId, aid, teamId, st, reload, next }: { eventId: string; aid: string; teamId: string; st: PactState[string]; reload: () => void; next?: NextLink | null }) {
+function PactBox({ eventId, aid, teamId, st, reload, next, leftover }: { eventId: string; aid: string; teamId: string; st: PactState[string]; reload: () => void; next?: NextLink | null; leftover?: (NextLink & { remaining: number }) | null }) {
   const [p, setP] = useState<string[]>(["", ""]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,7 +56,7 @@ function PactBox({ eventId, aid, teamId, st, reload, next }: { eventId: string; 
         <>
           <div className="msg info" role="status" style={{ fontSize: 20 }}>봉인 완료 ✓ · 열림 일시가 되면 회원 화면에서 볼 수 있어요.</div>
           {/* 봉인한 뒤 다음 활동 진행 화면으로 바로 */}
-          {next && <NextActivityButton next={next} style={{ display: "flex", minHeight: 64, fontSize: 22 }} />}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}><EndOfActivities next={next} leftover={leftover} style={{ display: "flex", minHeight: 64, fontSize: 22, flex: "1 1 260px" }} /></div>
         </>
       ) : (
         <>
@@ -89,11 +89,13 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
   const wrap = useRef<HTMLDivElement>(null);
   const [team] = useTeamParam();
   const [pacts, setPacts] = useState<PactState | null>(null); // 타임캡슐 활동이면 조별 팀 약속 상태
-  const [next, setNext] = useState<NextLink | null>(null); // 봉인 뒤 다음 활동
+  const [next, setNext] = useState<NextLink | null>(null);
+  const [leftover, setLeftover] = useState<(NextLink & { remaining: number }) | null>(null); // 봉인 뒤 다음 활동
   const loadPacts = useCallback(async () => {
-    const r = await api<{ teams: PactState; next?: NextLink | null }>(`/api/admin/events/${id}/activities/${aid}/capsule/pact${team ? `?team=${encodeURIComponent(team)}` : ""}`);
+    const r = await api<{ teams: PactState; next?: NextLink | null; leftover?: (NextLink & { remaining: number }) | null }>(`/api/admin/events/${id}/activities/${aid}/capsule/pact${team ? `?team=${encodeURIComponent(team)}` : ""}`);
     setPacts(r.ok ? r.data.teams : null);
     setNext(r.ok ? r.data.next ?? null : null);
+    setLeftover(r.ok ? r.data.leftover ?? null : null);
   }, [id, aid, team]);
   // 조원이 목표를 봉인하고 약속을 저장하는 것을 바로 보이게 3초마다
   useEffect(() => { loadPacts(); const t = setInterval(() => document.visibilityState === "visible" && loadPacts(), 3000); return () => clearInterval(t); }, [loadPacts]);
@@ -153,7 +155,7 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
                 );
               })}
             </div>
-            {pacts?.[t.id] && <PactBox eventId={id} aid={aid} teamId={t.id} st={pacts[t.id]} reload={loadPacts} next={next} />}
+            {pacts?.[t.id] && <PactBox eventId={id} aid={aid} teamId={t.id} st={pacts[t.id]} reload={loadPacts} next={next} leftover={leftover} />}
           </div>
         ))}
       </div>

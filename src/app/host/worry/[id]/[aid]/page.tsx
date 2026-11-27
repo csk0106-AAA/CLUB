@@ -3,7 +3,7 @@
 import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
 import { SfxToggle } from "@/components/SfxToggle";
-import { NextActivityButton, type NextLink } from "@/components/NextActivityButton";
+import { EndOfActivities, type NextLink } from "@/components/NextActivityButton";
 import { playSfx } from "@/lib/sfx";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
@@ -17,6 +17,7 @@ type Stage = {
   buttons?: { draw: string; reveal: string }; // 진행자 버튼 글자(템플릿)
   missingSteps: string[];
   next?: NextLink | null; // 다음 활동 진행 화면
+  leftover?: (NextLink & { remaining: number }) | null; // 남은 활동이 없을 때 다시 나눌 고민
   live?: { active: boolean };
   serverNow: number;
   categories: string[];
@@ -240,9 +241,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
         {c && <button className="btn white" type="button" disabled={busy} onClick={() => act("tips")}>AI 관점 3가지</button>}
         {(c || st.live?.active) && <button className="btn red" type="button" disabled={busy || !!spin} onClick={finish}>활동 마치기</button>}
         {/* 마지막 화면(남은 고민이 없고 이름까지 열었거나, 활동을 마침): 다음 활동으로 */}
-        {st.next && ((canDraw && st.counts.remaining === 0 && st.counts.drawn > 0) || (!st.live?.active && st.counts.drawn > 0)) && (
-          <NextActivityButton next={st.next} />
-        )}
+        {((canDraw && st.counts.remaining === 0 && st.counts.drawn > 0) || (!st.live?.active && st.counts.drawn > 0)) && <EndOfActivities next={st.next} leftover={st.leftover} />}
       </div>
     </div>
   );

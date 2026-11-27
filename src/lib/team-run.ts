@@ -92,28 +92,57 @@ export function hostScreen(kind: string, eventId: string, aid: string): string {
 
 // 다음 활동의 진행 화면(일정의 활동 순서로 지금 활동 다음, 진행 화면이 있고 이 사람이 진행할 수 있는 첫 활동).
 //  조 진행자는 다음 활동에서 맡은 조로, 관리자는 지금 보는 조와 이름이 같은 조로 연다. 없으면 null.
-export async function nextHostLink(act: Row, s: Session, teamName: string): Promise<{ href: string; name: string; eventId: string; aid: string; teamId: string } | null> {
-  const all = (await (await getStore()).list("EventActivities"))
-    .filter((a) => a.eventId === act.eventId)
-    .sort((p, q) => Number(p.order || 0) - Number(q.order || 0));
-  const i = all.findIndex((a) => a.id === act.id);
+export type HostLink = { href: string; name: string; eventId: string; aid: string; teamId: string };
+// 이 사람이 진행할 수 있는 활동이면 그 진행 화면 주소(조 진행자는 맡은 조, 관리자는 teamName 과 같은 이름의 조)
+async function hostLinkFor(a: Row, s: Session, teamName: string): Promise<HostLink | null> {
+  const cfg = readConfig(a.config);
+  if (!cfg) return null;
+  const kind = activityKind(cfg);
+  if (kind !== "who" && kind !== "worry" && activityMode(cfg) !== "team") return null;
+  if (s.host && !s.host.includes(a.id)) return null; // 진행자 접속번호로 들어온 사람은 그 번호의 활동만
   const admin = !s.host && (can(s, "templates") || can(s, "events"));
+  const run = await teamRunInfo(a);
+  let teamId = "";
+  if (admin) {
+    if (run.on && teamName) teamId = run.teams.find((t) => t.name === teamName)?.id ?? "";
+  } else {
+    if (!isHost(a, s.mid)) return null;
+    teamId = hostTeamOf(a, s.mid);
+    if (teamId && !run.on) return null; // 조별 진행이 꺼져 있으면 조 진행자는 진행할 수 없다
+  }
+  return { href: `${hostScreen(kind, a.eventId, a.id)}${teamId ? `?team=${encodeURIComponent(teamId)}` : ""}`, name: cfg.name, eventId: a.eventId, aid: a.id, teamId };
+}
+const eventActs = async (eventId: string) => (await (await getStore()).list("EventActivities"))
+  .filter((a) => a.eventId === eventId)
+  .sort((p, q) => Number(p.order || 0) - Number(q.order || 0));
+
+export async function nextHostLink(act: Row, s: Session, teamName: string): Promise<HostLink | null> {
+  const all = await eventActs(act.eventId);
+  const i = all.findIndex((a) => a.id === act.id);
   for (const a of all.slice(i + 1)) {
+    const l = await hostLinkFor(a, s, teamName);
+    if (l) return l;
+  }
+  return null;
+}
+
+// 활동을 모두 마친 뒤: 이 일정의 "나의 고민은?"에 아직 뽑지 않은 고민이 남아 있으면 그 진행 화면(다시 나누기)
+export async function leftoverWorryLink(act: Row, s: Session, teamName: string): Promise<(HostLink & { remaining: number }) | null> {
+  const all = await eventActs(act.eventId);
+  for (const a of all) {
     const cfg = readConfig(a.config);
-    if (!cfg) continue;
-    const kind = activityKind(cfg);
-    if (kind !== "who" && kind !== "worry" && activityMode(cfg) !== "team") continue;
-    if (s.host && !s.host.includes(a.id)) continue; // 진행자 접속번호로 들어온 사람은 그 번호의 활동만
+    if (!cfg || activityKind(cfg) !== "worry") continue;
+    const l = await hostLinkFor(a, s, teamName);
+    if (!l) continue;
+    const { worryRows } = await import("./worry");
+    const { joinSet } = await import("./participants");
     const run = await teamRunInfo(a);
-    let teamId = "";
-    if (admin) {
-      if (run.on && teamName) teamId = run.teams.find((t) => t.name === teamName)?.id ?? "";
-    } else {
-      if (!isHost(a, s.mid)) continue;
-      teamId = hostTeamOf(a, s.mid);
-      if (teamId && !run.on) continue; // 조별 진행이 꺼져 있으면 조 진행자는 진행할 수 없다
-    }
-    return { href: `${hostScreen(kind, a.eventId, a.id)}${teamId ? `?team=${encodeURIComponent(teamId)}` : ""}`, name: cfg.name, eventId: a.eventId, aid: a.id, teamId };
+    const team = run.teams.find((t) => t.id === l.teamId);
+    const inTeams = new Set(run.teams.flatMap((t) => t.memberIds));
+    const inScope = (m: string) => (team ? team.memberIds.includes(m) : !run.on || !inTeams.has(m));
+    const join = await joinSet(cfg, a);
+    const remaining = (await worryRows(a.id)).filter((w) => !w.drawnAt && (!join || join.has(w.memberId)) && inScope(w.memberId)).length;
+    if (remaining > 0) return { ...l, remaining };
   }
   return null;
 }

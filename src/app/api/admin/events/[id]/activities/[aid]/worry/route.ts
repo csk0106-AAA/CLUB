@@ -5,7 +5,7 @@ import { bad, hostGuard } from "@/lib/api";
 import { hostGate } from "@/lib/host-gate";
 import { joinSet } from "@/lib/participants";
 import { liveRow } from "@/lib/rounds";
-import { nextHostLink, scopeOf } from "@/lib/team-run";
+import { leftoverWorryLink, nextHostLink, scopeOf } from "@/lib/team-run";
 import {
   CATEGORIES, displayName, doWorryAction, loadWorry, missingWorrySteps, readPayload, timerView, worryRows,
 } from "@/lib/worry";
@@ -44,6 +44,8 @@ export async function GET(req: Request, ctx: Ctx) {
     },
     missingSteps: missingWorrySteps(w.cfg),
     next: await nextHostLink(w.act, g.s, sc.team?.name ?? ""), // 마지막 화면의 "다음 활동으로 이동"
+    // 남은 활동이 없을 때 다시 나눌 고민(이 활동이면 남은 고민 수만 쓴다)
+    leftover: await leftoverWorryLink(w.act, g.s, sc.team?.name ?? ""),
     live: liveView(w.cfg, await liveRow(aid, sc.teamId)),
     serverNow: Date.now(),
     categories: CATEGORIES,

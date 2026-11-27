@@ -5,7 +5,7 @@ import { bad, hostGuard, parseJson } from "@/lib/api";
 import { capsuleCfg, capsuleRows, isOpened, loadCapsule, teams } from "@/lib/capsule";
 import { liveRow } from "@/lib/rounds";
 import { getStore } from "@/lib/store";
-import { nextHostLink, teamRunInfo } from "@/lib/team-run";
+import { leftoverWorryLink, nextHostLink, teamRunInfo } from "@/lib/team-run";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string; aid: string }> };
@@ -42,7 +42,8 @@ export async function GET(req: Request, ctx: Ctx) {
   // 봉인한 뒤 다음 활동 진행 화면(조 진행자는 맡은 조, 관리자는 ?team= 으로 보는 조와 같은 이름의 조)
   const want = g.team || (new URL(req.url).searchParams.get("team") ?? "");
   const next = await nextHostLink(c.act, g.s, ts.find((t) => t.id === want)?.name ?? "");
-  return NextResponse.json({ teams: out, opened, next });
+  const leftover = next ? null : await leftoverWorryLink(c.act, g.s, ts.find((t) => t.id === want)?.name ?? "");
+  return NextResponse.json({ teams: out, opened, next, leftover });
 }
 
 const body = z.object({ teamId: z.string().min(1), pacts: z.array(z.string().trim().min(1).max(200)).length(2) });
