@@ -45,7 +45,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; aid
     })),
   };
   // 시상까지 마치면 다음 활동으로 바로(진행 화면 주소)
-  const next = flowMode ? await nextHostLink(st.act, g.s, sc.team?.name ?? "") : null;
+  const next = await nextHostLink(st.act, g.s, sc.team?.name ?? "");
   const base = {
     flow,
     next,

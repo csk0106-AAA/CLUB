@@ -286,6 +286,10 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
             {r?.state === "closed" && <button className="btn" type="button" disabled={busy} onClick={() => act("answer")}>정답 공개</button>}
             {r?.state === "voting" && <button className="btn white" type="button" disabled={busy} onClick={() => act("answer")}>마감하고 정답 공개</button>}
             {r?.state === "answer" && st.live.active && <button className="btn red" type="button" disabled={busy} onClick={finish}>활동 마치기</button>}
+            {/* 마지막 화면(모두 진행했거나 활동을 마침): 다음 활동으로 */}
+            {st.next && r?.state === "answer" && (st.remaining === 0 || !st.live.active) && (
+              <a className="btn blue" href={st.next.href} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>다음 활동으로 이동 › {st.next.name}</a>
+            )}
           </div>
         </>
       )}

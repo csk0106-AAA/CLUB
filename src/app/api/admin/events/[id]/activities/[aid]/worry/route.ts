@@ -5,7 +5,7 @@ import { bad, hostGuard } from "@/lib/api";
 import { hostGate } from "@/lib/host-gate";
 import { joinSet } from "@/lib/participants";
 import { liveRow } from "@/lib/rounds";
-import { scopeOf } from "@/lib/team-run";
+import { nextHostLink, scopeOf } from "@/lib/team-run";
 import {
   CATEGORIES, displayName, doWorryAction, loadWorry, missingWorrySteps, readPayload, timerView, worryRows,
 } from "@/lib/worry";
@@ -43,6 +43,7 @@ export async function GET(req: Request, ctx: Ctx) {
       reveal: w.cfg.onsite.steps.find((s) => s.key === "reveal")?.hostButton || "이름 오픈",
     },
     missingSteps: missingWorrySteps(w.cfg),
+    next: await nextHostLink(w.act, g.s, sc.team?.name ?? ""), // 마지막 화면의 "다음 활동으로 이동"
     live: liveView(w.cfg, await liveRow(aid, sc.teamId)),
     serverNow: Date.now(),
     categories: CATEGORIES,
