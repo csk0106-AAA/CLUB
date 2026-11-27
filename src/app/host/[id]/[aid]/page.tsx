@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
+import { SfxToggle } from "@/components/SfxToggle";
 import { api } from "@/lib/client";
 import { TeamPicker, teamQ, useTeamParam } from "@/components/TeamScope";
 import { WhoFlowStage, type FlowAct, type FlowInfo, type FlowRound } from "@/components/WhoFlowStage";
@@ -130,6 +131,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
         {!st.flow && <button className="mini" type="button" onClick={() => setBoard(!board)}>{board ? "진행 화면" : "점수판"}</button>}
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
         <HostLiveControls eventId={id} aid={aid} team={st.team?.id ?? ""} />
+        <SfxToggle />
         <HostBack eventId={id} activityId={aid} />
       </header>
 

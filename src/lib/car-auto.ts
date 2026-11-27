@@ -4,6 +4,7 @@ import { kstTime } from "./kst-time";
 import { addAlerts } from "./member-alerts";
 import { managersOf } from "./event-managers";
 import { remindRefunds } from "./refund";
+import { remindCapsules } from "./capsule-notify";
 import { pushTo } from "./push";
 import { getSetting, getStore, patchSetting } from "./store";
 import { effectivePerms, getPermGroups } from "./perms";
@@ -36,6 +37,7 @@ async function run(): Promise<void> {
   await remindUnconfirmed();
   await remindUnassigned();
   await remindRefunds(); // 회비 송금대기: 일주일마다 관리자에게
+  await remindCapsules().catch((e) => console.error("[capsule] 열림 알림 실패", e)); // 타임캡슐 열림 7일 전(관리자)·1일 전·열림(회원)
   if (ids.length === 0) return;
   // 끝난 일정만 하나씩 지운다(목록 전체를 다시 쓰면 그사이 markDue 로 들어온 일정이 사라진다)
   const drop = (eventId: string) => patchSetting(DUE, [eventId], undefined);

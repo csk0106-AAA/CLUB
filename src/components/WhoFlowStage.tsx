@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { playSfx } from "@/lib/sfx";
 
 // 내가 누구일까요? 현장 맞히기 흐름의 진행자 전체화면(프로젝터용, 조마다)
 //  ① 한 명씩 소개 열기 → 맞히기 → 마감 ② 한 명씩 “저예요” ③ 한 명씩 진실과 거짓(모두 투표하면 저절로 결과) ④ 시상(추측왕·직감왕)
@@ -40,6 +41,21 @@ export function WhoFlowStage({ flow, r, remaining, selectable, busy, act, id, ai
   busy: boolean; act: (a: FlowAct, target?: string) => void; id: string; aid: string; q: string; setError: (e: string) => void;
 }) {
   const [pickId, setPickId] = useState("");
+  // 효과음: 단계가 바뀔 때(다른 기기에서 눌러도 이 화면이 바뀌면) 한 번
+  const sig = `${r?.id ?? ""}:${r?.state ?? ""}:${flow.awards ? "awards" : ""}`;
+  const prevSig = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevSig.current;
+    prevSig.current = sig;
+    if (prev === null || prev === sig) return; // 처음 열 때는 소리 없이
+    if (flow.awards && !prev.endsWith(":awards")) return playSfx("fanfare");
+    const st = r?.state;
+    if (st === "guess" || st === "voting") playSfx("ding");
+    else if (st === "guessed") playSfx("drum");
+    else if (st === "reveal") playSfx("roll");
+    else if (st === "named") playSfx("tada");
+    else if (st === "answer") playSfx("correct");
+  }, [sig, flow.awards, r?.state]);
   const count = (st: string) => flow.rounds.filter((x) => x.state === st).length;
   const nowPhase = flow.awards ? "awards" : flow.phase === "done" ? "tl" : flow.phase;
   const guessing = r?.state === "guess";
@@ -255,7 +271,8 @@ function Awards({ id, aid, q, setError }: { id: string; aid: string; q: string; 
     let i = 0;
     const steps = 28;
     const run = (n: number) => {
-      if (n >= steps) { setSpin(null); load(); return; }
+      if (n >= steps) { setSpin(null); playSfx("tada"); load(); return; }
+      playSfx("tick");
       setSpin({ cat, shown: n === steps - 1 ? r.data.winnerName : names[i++ % names.length] });
       setTimeout(() => run(n + 1), 80 + n * 14);
     };

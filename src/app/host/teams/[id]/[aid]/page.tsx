@@ -2,6 +2,8 @@
 
 import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
+import { SfxToggle } from "@/components/SfxToggle";
+import { playSfx } from "@/lib/sfx";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { useTeamParam } from "@/components/TeamScope";
@@ -21,6 +23,12 @@ function PactBox({ eventId, aid, teamId, st, reload }: { eventId: string; aid: s
   // 저장된 약속을 칸에 넣는다. 고치는 중에는 덮어쓰지 않는다
   useEffect(() => { if (!touched && st.pacts.length === 2) setP(st.pacts); }, [st.pacts, touched]);
   const ms = st.members;
+  // 봉인되면 "철컥"(처음 열 때는 소리 없이)
+  const wasSealed = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (wasSealed.current === false && st.sealed) playSfx("lock");
+    wasSealed.current = st.sealed;
+  }, [st.sealed]);
   const goals = ms.filter((m) => m.goal).length, oks = ms.filter((m) => m.pactOk).length;
   async function savePact() {
     setBusy(true);
@@ -108,6 +116,7 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : wrap.current?.requestFullscreen?.())}>전체화면 ⛶</button>
         {team !== null && <HostLiveControls eventId={id} aid={aid} team={team} withSteps={!!team} />}
+        <SfxToggle />
         <HostBack eventId={id} activityId={aid} />
       </header>
       {error && <div className="msg bad" role="alert">{error}</div>}

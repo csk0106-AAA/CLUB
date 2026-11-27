@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { teamQ } from "./TeamScope";
+import { playSfx } from "@/lib/sfx";
 
 type Live = { active: boolean; stepKey: string; stepLabel: string; unlocked: boolean };
 
@@ -38,6 +39,7 @@ export function HostLiveControls({ eventId, aid, onChange, team, withSteps }: { 
     const r = await api<{ live: Live }>(url, { body });
     setBusy(false);
     if (!r.ok) return setErr(r.error);
+    if (body.action === "activate" && body.step !== "seal") playSfx("ding");
     setLive(r.data.live);
     onChange?.();
   }

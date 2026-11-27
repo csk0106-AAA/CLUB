@@ -2,6 +2,8 @@
 
 import { HostBack, HostDenied } from "@/components/HostBack";
 import { HostLiveControls } from "@/components/HostLiveControls";
+import { SfxToggle } from "@/components/SfxToggle";
+import { playSfx } from "@/lib/sfx";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { TeamPicker, teamQ, useTeamParam } from "@/components/TeamScope";
@@ -30,6 +32,21 @@ const fmt = (ms: number) => {
 };
 
 // 진행자 전체화면: 고민 뽑기. 뽑힌 고민의 내용만 크게 보이고 작성자는 이름 오픈 전까지 숨겨진다.
+// 값이 바뀔 때만 소리(처음 그릴 때는 소리 없이)
+function WorrySfx({ sig }: { sig: string }) {
+  const prev = useRef<string | null>(null);
+  useEffect(() => {
+    const p = prev.current;
+    prev.current = sig;
+    if (p === null || p === sig) return;
+    const [id, up, named] = sig.split(":"), [pid, pup, pnamed] = p.split(":");
+    if (id && id !== pid) playSfx("pop");
+    else if (up && !pup) playSfx("beep");
+    else if (named && !pnamed) playSfx("tada");
+  }, [sig]);
+  return null;
+}
+
 export default function WorryHostPage({ params }: { params: Promise<{ id: string; aid: string }> }) {
   const { id, aid } = use(params);
   const [st, setSt] = useState<Stage | null>(null);
@@ -103,6 +120,7 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
       let step = 70;
       while (elapsed < 1800) {
         setSpin(labels[i++ % labels.length]);
+        playSfx("tick");
         await new Promise((r) => setTimeout(r, step));
         elapsed += step;
         step = Math.min(260, Math.round(step * 1.12));
@@ -138,6 +156,8 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
   const remaining = c ? Math.max(0, c.remainingMs - elapsed) : 0;
   const timeUp = c ? c.timeUp || (!c.paused && remaining <= 0) : false;
   const canDraw = !c || c.nameRevealed;
+  // 효과음: 새 고민(뾰롱), 대화 시간 끝(삐삐), 이름 공개(짠)
+  const wsig = `${c?.id ?? ""}:${timeUp ? "up" : ""}:${c?.nameRevealed ? "named" : ""}`;
   const ended = !c && st.live?.active === false && st.counts.drawn > 0; // 마친 뒤(한 번이라도 뽑은 적이 있고 지금은 꺼짐)
 
   return (
@@ -149,8 +169,10 @@ export default function WorryHostPage({ params }: { params: Promise<{ id: string
         <span style={{ flex: 1 }} />
         <button className="mini" type="button" onClick={fullscreen}>전체화면 ⛶</button>
         <HostLiveControls eventId={id} aid={aid} team={st.team?.id ?? ""} />
+        <SfxToggle />
         <HostBack eventId={id} activityId={aid} />
       </header>
+      <WorrySfx sig={wsig} />
 
       {error && <div className="msg bad" role="alert">{error}</div>}
       {loadErr && !error && <div className="msg bad" role="alert">{loadErr}</div>}

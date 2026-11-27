@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { buzz } from "@/lib/sfx";
 import { api, fmtDate, fmtDateTime, fmtRange } from "@/lib/client";
 import { IconChat, IconLock, IconQuestion, IconStar } from "./Icons";
 import { fs } from "@/lib/fs";
@@ -260,6 +261,14 @@ export function ActivityLiveBox({ eventId, activityId }: { eventId: string; acti
 
 // 활동 박스. inPage: 그 활동 화면 안에서 보일 때(같은 화면으로 가는 버튼은 빼고 내용만)
 function ActivityCard({ eventId, a, reload: load, inPage }: { eventId: string; a: Live; reload: () => Promise<void>; inPage?: boolean }) {
+        // 현장 진행 화면이 바뀌면 짧게 진동(안드로이드만). 처음 열 때는 울리지 않는다
+        const sig = [a.live.stepLabel, a.live.unlocked, a.live.memberScreen, a.round?.id, a.round?.state, a.round?.guessOpen, a.worry?.orderNo, a.worry?.nameRevealed, !!a.awards].join(":");
+        const prevSig = useRef<string | null>(null);
+        useEffect(() => {
+          const p = prevSig.current;
+          prevSig.current = sig;
+          if (p !== null && p !== sig && a.canJoin && a.live.active && document.visibilityState === "visible") buzz();
+        }, [sig, a.canJoin, a.live.active]);
         const b = preBadge(a.pre);
         return (
           <div key={a.id} className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
