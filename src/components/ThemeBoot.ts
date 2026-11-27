@@ -18,7 +18,7 @@ export const APP_W_KEY = "club-app-w";
 export const ADMIN_W_KEY = "club-admin-w";
 
 // 첫 화면을 그리기 전에 이 기기에 저장된 모드·글자 크기·앱 너비를 적용하는 짧은 스크립트(깜빡임 방지)
-export const THEME_BOOT = `try{var d=document.documentElement,t=localStorage.getItem(${JSON.stringify(THEME_KEY)});localStorage.removeItem(${JSON.stringify(OLD_THEME_KEY)});if(location.pathname.indexOf("/host")!==0&&(t==="light"||(t==="system"&&matchMedia("(prefers-color-scheme: light)").matches))){d.dataset.theme="light";var c=document.querySelector('meta[name="theme-color"]');if(c)c.setAttribute("content","#F7F7F4");}var L=${JSON.stringify(SCALE_LEVELS)},o={"0.9":3,"1.15":7,"1.3":8}[localStorage.getItem(${JSON.stringify(OLD_SCALE_KEY)})||""],s=parseInt(localStorage.getItem(${JSON.stringify(SCALE_KEY)})||(o?String(o):""),10);if(s>=1&&s<=10&&s!==${SCALE_DEFAULT}){var z=L[s-1];if(window.innerWidth<400&&z>${SCALE_NARROW_MAX})z=${SCALE_NARROW_MAX};d.dataset.scale=String(s);d.style.setProperty("--fs",String(z));}var a=parseInt(localStorage.getItem(${JSON.stringify(APP_W_KEY)})||"",10);if(a>=420)d.style.setProperty("--app-w",a+"px");var m=parseInt(localStorage.getItem(${JSON.stringify(ADMIN_W_KEY)})||"",10);if(m>=420)d.style.setProperty("--admin-w",m+"px");}catch(e){}`;
+export const THEME_BOOT = `try{var d=document.documentElement,t=localStorage.getItem(${JSON.stringify(THEME_KEY)});localStorage.removeItem(${JSON.stringify(OLD_THEME_KEY)});if(location.pathname.indexOf("/host")!==0&&(t==="light"||(t==="system"&&matchMedia("(prefers-color-scheme: light)").matches))){d.dataset.theme="light";var c=document.querySelector('meta[name="theme-color"]');if(c)c.setAttribute("content","#EEEFF3");}var L=${JSON.stringify(SCALE_LEVELS)},o={"0.9":3,"1.15":7,"1.3":8}[localStorage.getItem(${JSON.stringify(OLD_SCALE_KEY)})||""],s=parseInt(localStorage.getItem(${JSON.stringify(SCALE_KEY)})||(o?String(o):""),10);if(s>=1&&s<=10&&s!==${SCALE_DEFAULT}){var z=L[s-1];if(window.innerWidth<400&&z>${SCALE_NARROW_MAX})z=${SCALE_NARROW_MAX};d.dataset.scale=String(s);d.style.setProperty("--fs",String(z));}var a=parseInt(localStorage.getItem(${JSON.stringify(APP_W_KEY)})||"",10);if(a>=420)d.style.setProperty("--app-w",a+"px");var m=parseInt(localStorage.getItem(${JSON.stringify(ADMIN_W_KEY)})||"",10);if(m>=420)d.style.setProperty("--admin-w",m+"px");}catch(e){}`;
 
 // 브라우저에서만 부른다
 export function readScale(): number {
@@ -59,7 +59,7 @@ export function applyTheme(theme: ThemeChoice): void {
     if (light) root.dataset.theme = "light";
     else delete root.dataset.theme;
     // 주소창·상태 표시줄 색도 바탕에 맞춘다
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#F7F7F4" : "#5a5c61");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#EEEFF3" : "#5a5c61");
   };
   paint();
   // 폰 설정 따라: 폰의 밝은/다크 모드가 바뀌면 바로 따라간다

@@ -75,48 +75,56 @@
 }
 
 /* 밝은 화면(설정 › 화면 모드 "밝은 화면", 또는 "폰 설정 따라"에서 폰이 밝은 모드일 때 <html data-theme="light">).
-   목업 https://claude.ai/artifact/XY4sgXWrwQ3mpKshjffNL3. 레몬은 채우는 곳(버튼·선택·스위치)에만, 레몬 글자·테두리는 올리브로. */
+   2026-11-27 "너무 밝다"는 의견으로 연회색 바탕 + 보라 포인트(예전 플로우 스타일 보라 #5B4DE8)로 바꿨다(시안 A, https://claude.ai/artifact/VE33QhnbzWgWVAkV2akR26).
+   보라는 채우는 곳(주 버튼·고른 탭·스위치·선택·활동 아이콘, 위 글자 흰색), 보라 글자는 한 단계 진한 #4436C4. */
 :root[data-theme="light"] {
-  --page-grad: linear-gradient(165deg, #F7F7F4 0%, #EFEFEB 45%, #ECEDE8 70%, #F1F3DF 100%);
-  --page: #F2F2EE;
-  --bg: #FFFFFF;
-  --card: #FFFFFF;
-  --soft: rgba(30, 32, 36, 0.05);
-  --line: #DCDDD6;
-  --line2: #ECEDE8;
-  --ink: #1E2024;
-  --ink2: #2B2E33;
-  --sub: #55585E;
-  --icon: #4A4D53;
-  --muted: #5F6268;
-  --dis: #8E9096;
-  --chip: rgba(30, 32, 36, 0.07);
-  --switch-off: #CFD1CA;
-  --switch-on: #e9f25c;
+  --page-grad: linear-gradient(165deg, #EEEFF3 0%, #E8E9EE 45%, #E5E6EC 70%, #EAE8F3 100%);
+  --page: #EBECF0;
+  --bg: #F9F9FB;
+  --card: #F9F9FB;
+  --soft: rgba(30, 32, 40, 0.05);
+  --line: #D6D8DF;
+  --line2: #E4E5EA;
+  --ink: #1E2027;
+  --ink2: #2A2D35;
+  --sub: #555863;
+  --icon: #4A4D57;
+  --muted: #5E616B;
+  --dis: #8E919A;
+  --chip: rgba(30, 32, 40, 0.07);
+  --switch-off: #CDCFD7;
+  --switch-on: #5B4DE8;
   --switch-knob: #FFFFFF;
-  --switch-ring: rgba(30, 32, 36, 0.12);
-  --knob-ring: rgba(30, 32, 36, 0.12);
-  --scrim: rgba(30, 32, 36, 0.4);
-  --shadow: rgba(30, 32, 36, 0.12);
+  --switch-ring: rgba(30, 32, 40, 0.12);
+  --knob-ring: rgba(30, 32, 40, 0.12);
+  --scrim: rgba(30, 32, 40, 0.4);
+  --shadow: rgba(30, 32, 40, 0.12);
   --red: #C62F2F;
   --red-d: #A92424;
   --red-t: #B42318;
   --red-bg: #FDE8E6;
   --red-line: #F0B4AD;
-  --brand-h: #dde84a;
-  --violet-t: #5A6400;
-  --violet-bg: #F3F6C4;
-  --violet-line: #A3AD1F;
-  --ok-bg: #F0F1EC;
-  --orange-bg: rgba(30, 32, 36, 0.07);
-  --orange-t: #2B2E33;
-  --off-bg: #EEEFEA;
-  --off-line: #DCDDD6;
-  --off-ink: #8E9096;
-  --focus: #6B7500;
-  --accent-ink: #5A6400;
-  --accent-edge: #8A9400;
-  --tabbar-bg: rgba(255, 255, 255, 0.88);
+  /* 주 동작 = 보라 */
+  --brand: #5B4DE8;
+  --brand-h: #4C3ED6;
+  --on-brand: #FFFFFF;
+  --violet: #5B4DE8;
+  --violet-d: #4C3ED6;
+  --on-violet: #FFFFFF;
+  --violet-t: #4436C4;
+  --violet-bg: #E6E3FB;
+  --violet-line: #A99FF0;
+  --ok-bg: #EEEEF4;
+  --orange-bg: rgba(30, 32, 40, 0.07);
+  --orange-t: #2A2D35;
+  --off-bg: #E9EAEF;
+  --off-line: #D6D8DF;
+  --off-ink: #8E919A;
+  --ic-ink: #FFFFFF;
+  --focus: #5B4DE8;
+  --accent-ink: #4436C4;
+  --accent-edge: #5B4DE8;
+  --tabbar-bg: rgba(249, 249, 251, 0.9);
   --sun: #C62F2F;
   --sat: #2F5BB7;
   --apricot-t: #B5541C;
@@ -453,9 +461,9 @@ button.fb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; 
   display: grid; place-items: center; color: var(--off-ink); position: relative; text-decoration: none;
 }
 .node svg { width: calc(28px * var(--fs, 1)); height: calc(28px * var(--fs, 1)); }
-.node.now { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.node.now { background: var(--brand); border-color: var(--brand); color: var(--on-brand); --glyph: var(--brand); }
 .node.open { background: var(--card); border: 2px solid var(--red); color: var(--red-t); }
-.node.done { background: var(--green); border-color: var(--green); color: var(--on-brand); }
+.node.done { background: var(--green); border-color: var(--green); color: var(--on-brand); --glyph: var(--green); }
 a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .nl { font: 700 calc(15px * var(--fs, 1)) var(--display); text-align: center; }
 .nl small { display: block; font: 400 calc(13px * var(--fs, 1)) var(--body); color: var(--sub); }
@@ -1415,8 +1423,10 @@ select option:disabled { color: var(--dis); }
 .mode-sw { height: 48px; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px; border: 1px solid var(--line); }
 .mode-sw i { display: block; width: 100%; height: 9px; border-radius: 999px; background: #e9f25c; }
 .mode-opt.dark .mode-sw { background: linear-gradient(165deg, #5A5C61, #444649); }
-.mode-opt.light .mode-sw { background: linear-gradient(165deg, #F7F7F4, #ECEDE8); }
-.mode-opt.system .mode-sw { background: linear-gradient(90deg, #F2F2EE 50%, #4F5155 50%); }
+.mode-opt.light .mode-sw { background: linear-gradient(165deg, #EEEFF3, #E5E6EC); }
+.mode-opt.light .mode-sw i { background: #5B4DE8; }
+.mode-opt.system .mode-sw { background: linear-gradient(90deg, #EBECF0 50%, #4F5155 50%); }
+.mode-opt.system .mode-sw i { background: linear-gradient(90deg, #5B4DE8 50%, #e9f25c 50%); }
 
 /* 세부일정(휴대폰 폭): 한 줄에 다 넣으면 내용 칸이 한두 글자만 남는다.
    윗줄 = (끌기) · 시간 · … · 위치·메모 아이콘 · 삭제, 아랫줄 = 내용(줄 전체, 두 줄까지) */

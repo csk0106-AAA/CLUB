@@ -363,7 +363,7 @@ export default function SettingsPage() {
                 ))}
               </div>
               <span className="small" style={{ fontSize: fs(12) }}>
-                {pr.screen === "light" ? "밝은 바탕에 레몬 포인트로 보여요." : pr.screen === "system" ? "폰이 다크 모드면 어두운 화면, 아니면 밝은 화면으로 바뀌어요." : "그래파이트 바탕에 레몬 포인트(기본)로 보여요."} 내 계정에 저장돼서 다른 기기에서 로그인해도 같게 보여요.
+                {pr.screen === "light" ? "연회색 바탕에 보라 포인트로 보여요." : pr.screen === "system" ? "폰이 다크 모드면 어두운 화면, 아니면 밝은 화면으로 바뀌어요." : "그래파이트 바탕에 레몬 포인트(기본)로 보여요."} 내 계정에 저장돼서 다른 기기에서 로그인해도 같게 보여요.
               </span>
             </div>
           </section>

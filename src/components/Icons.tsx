@@ -93,8 +93,9 @@ export function IconQuestion({ size = 36, max }: P) {
   return (
     <svg width={size} height={size} style={sz(size, max)} viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="10" fill="currentColor" />
-      <path d="M9 9.5a3 3 0 1 1 4.5 2.6c-1 .6-1.5 1.2-1.5 2.4" stroke="var(--card, #fff)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      <circle cx="12" cy="18" r="1.5" fill="var(--card, #fff)" />
+      {/* 물음표는 놓인 칸의 바탕색(--glyph: 활동 아이콘 칸이 정한다, 없으면 카드색) — 동그라미와 같은 색이 되어 안 보이지 않게 */}
+      <path d="M9 9.5a3 3 0 1 1 4.5 2.6c-1 .6-1.5 1.2-1.5 2.4" stroke="var(--glyph, var(--card, #fff))" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="12" cy="18" r="1.5" fill="var(--glyph, var(--card, #fff))" />
     </svg>
   );
 }
