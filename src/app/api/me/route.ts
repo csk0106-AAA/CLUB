@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readPausedClubs } from "@/lib/club-status";
 import { pinActive } from "@/lib/pin";
+import { consentOk, consentSince } from "@/lib/consent";
 import { z } from "zod";
 import { bad, guard, parseJson } from "@/lib/api";
 import { avatarView } from "@/lib/avatar";
@@ -33,7 +34,7 @@ async function view(s: Sess, me: Member) {
     // 지금 DB 기준 권한(권한 그룹·직책 반영). 화면에서 버튼을 보일지 정할 때 쓴다(실제 작업은 서버가 다시 확인).
     livePerms: effectivePerms(me as Parameters<typeof effectivePerms>[0], await getPermGroups()),
     admin: s.admin,
-    consent: Boolean(extra.consentAt),
+    consent: consentOk(extra, await consentSince()), // 다시 동의 기준 시각 전의 동의는 다시 묻는다
     pinOn: pinActive(), // 로그인 PIN·관리자용 PIN 적용 중인지(2026-12-12부터)
     bookGuide,
     gender: me.gender === "남" || me.gender === "여" ? me.gender : "",

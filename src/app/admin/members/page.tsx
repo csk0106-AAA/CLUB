@@ -98,6 +98,18 @@ function customFromImport(text: string, fields: string[]): Map<string, Record<st
 
 function Members() {
   const [list, setList] = useState<M[] | null>(null);
+  // 개인정보 동의 현황(다시 동의 기준 시각 뒤에 동의한 회원)
+  const [consent, setConsent] = useState<{ since: string; agreed: number; total: number } | null>(null);
+  const loadConsent = useCallback(async () => {
+    const r = await api<{ since: string; agreed: number; total: number }>("/api/admin/consent");
+    if (r.ok) setConsent(r.data);
+  }, []);
+  useEffect(() => { loadConsent(); }, [loadConsent]);
+  async function resetConsent() {
+    if (!window.confirm("모든 회원에게 개인정보 안내 동의를 다시 받을까요?\n지금까지의 동의는 기록으로 남고, 회원마다 다음 접속 때 동의 안내가 다시 떠요. 동의하기 전에는 다른 회원의 프로필 북을 볼 수 없어요.")) return;
+    const r = await api("/api/admin/consent", { body: { action: "reset" } });
+    if (r.ok) loadConsent();
+  }
   const [lists, setLists] = useState<Lists>({ memberKinds: [], positions: [], clubs: [], clubRoles: [] });
   const kinds = lists.memberKinds;
   const [form, setForm] = useState<Form>(EMPTY);
@@ -748,6 +760,12 @@ function Members() {
           <span>, 남 {list.filter((m) => m.gender === "남").length}, 여 {list.filter((m) => m.gender === "여").length}</span>
           {/* 프로필 북에 실제로 나오는 회원(대기회원·참관회원 제외, 노출을 끈 회원 제외) */}
           <span title="대기회원·참관회원과 프로필 북 노출을 끈 회원은 빼고 세요">, 프로필북공개 {list.filter((m) => inBook(m)).length}</span>
+          {consent && (
+            <span title={consent.since ? `${fmtDateTime(consent.since)} 뒤에 동의한 회원(대기·참관·탈퇴회원 제외)` : "개인정보 안내에 동의한 회원(대기·참관·탈퇴회원 제외)"}>
+              , 개인정보 동의 {consent.agreed}/{consent.total}{consent.since ? ` (${fmtDate(consent.since)} 다시 받는 중)` : ""}{" "}
+              <button type="button" className="mini" style={{ fontSize: fs(12), minHeight: 26, padding: "0 8px" }} onClick={resetConsent}>모두 다시 동의 받기</button>
+            </span>
+          )}
         </p>
       )}
       {/* 회원구분 보기: 한 줄, "전체" 외에는 여러 개를 함께 고를 수 있다(아무것도 안 고르면 전체) */}
