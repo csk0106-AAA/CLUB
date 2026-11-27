@@ -41,14 +41,10 @@ function PactBox({ eventId, aid, teamId, st, reload }: { eventId: string; aid: s
     setMsg(r.ok ? "봉인했어요." : r.error);
     reload();
   }
-  const mark = (ok: boolean) => <b style={{ color: ok ? "#7ee2a8" : "rgba(255,255,255,0.45)" }}>{ok ? "✓" : "·"}</b>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid rgba(255,255,255,0.14)", paddingTop: 12 }}>
-      {/* 조원별 현황(내용은 보이지 않는다) */}
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 22 }}>
-        <thead><tr style={{ fontSize: 16, opacity: 0.8 }}><th style={{ textAlign: "left" }}>조원</th><th>1년 뒤 목표 봉인 {goals}/{ms.length}</th><th>팀 약속 저장 {oks}/{ms.length}</th></tr></thead>
-        <tbody>{ms.map((m) => <tr key={m.id}><td>{m.name}</td><td style={{ textAlign: "center" }}>{mark(m.goal)}</td><td style={{ textAlign: "center" }}>{mark(m.pactOk)}</td></tr>)}</tbody>
-      </table>
+      {/* 조원별 현황은 위 명단 옆에 표시(여기는 합계만) */}
+      <span className="sub" style={{ fontSize: 18 }}>목표 봉인 {goals}/{ms.length} · 팀 약속 저장 {oks}/{ms.length}</span>
       {st.sealed ? (
         <div className="msg info" role="status" style={{ fontSize: 20 }}>봉인 완료 ✓ · 열림 일시가 되면 회원 화면에서 볼 수 있어요.</div>
       ) : (
@@ -123,7 +119,22 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
         {teams?.filter((t) => !team || t.id === team).map((t) => (
           <div key={t.id} className="panel">
             <h2 style={{ color: "var(--violet-t)", fontSize: 40 }}>{t.name}</h2>
-            {t.members.map((m) => <div key={m.id} style={{ fontSize: 30 }}>{m.name}</div>)}
+            {/* 명단: 타임캡슐이면 이름 옆에 목표 봉인·팀 약속 저장 표시(내용은 보이지 않는다) */}
+            {/* 명단은 가로로(이름마다 한 칸). 타임캡슐이면 이름 아래 목표 봉인·약속 저장 표시 */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {t.members.map((m) => {
+                const st = pacts?.[t.id]?.members.find((x) => x.id === m.id);
+                const mark = (ok: boolean, label: string) => (
+                  <span aria-label={`${label} ${ok ? "완료" : "전"}`} style={{ color: ok ? "#7ee2a8" : "rgba(255,255,255,0.45)" }}>{label} {ok ? "✓" : "·"}</span>
+                );
+                return (
+                  <div key={m.id} className="hostcard" style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                    <span style={{ fontSize: 28, fontWeight: 700 }}>{m.name}</span>
+                    {st && <span style={{ fontSize: 15, display: "flex", gap: 10 }}>{mark(st.goal, "목표")}{mark(st.pactOk, "약속")}</span>}
+                  </div>
+                );
+              })}
+            </div>
             {pacts?.[t.id] && <PactBox eventId={id} aid={aid} teamId={t.id} st={pacts[t.id]} reload={loadPacts} />}
           </div>
         ))}
