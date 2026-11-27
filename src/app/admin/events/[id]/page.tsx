@@ -1,6 +1,7 @@
 "use client";
 
 import { VisSwitch } from "@/components/VisSwitch";
+import { CalcText } from "@/components/CalcField";
 import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -812,7 +813,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                             </select>
                           </td>
                           <td data-label="금액(원)">
-                            <input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} />
+                            <CalcText className="field" style={sel} aria-label={`${i + 1}번째 줄 금액`} value={r.amount} onChange={(v) => upd({ amount: v })} />
                           </td>
                           <td className="act" data-label="">
                             <button className="mini danger" type="button" aria-label={`${i + 1}번째 줄 삭제`} onClick={() => setRules(rules.filter((_, j) => j !== i))}>삭제</button>
@@ -858,7 +859,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                             <input className="field" style={sel} list={x.kind === "member" ? "sup-members" : undefined} maxLength={60} aria-label={`${i + 1}번째 지원한 분·내용`}
                               placeholder={x.kind === "member" ? "회원 이름" : `예) ${new Date().getFullYear()} 연회비`} value={x.name} onChange={(e) => upd({ name: e.target.value })} onBlur={() => saveSupports(supports)} />
                           </td>
-                          <td data-label="금액(원)"><input className="field" style={sel} inputMode="numeric" aria-label={`${i + 1}번째 지원금 금액`} value={x.amount} onChange={(e) => upd({ amount: e.target.value.replace(/\D/g, "") })} onBlur={() => saveSupports(supports)} /></td>
+                          <td data-label="금액(원)"><CalcText className="field" style={sel} aria-label={`${i + 1}번째 지원금 금액`} value={x.amount} onChange={(v) => upd({ amount: v })} onBlur={() => saveSupports(supports)} /></td>
                           <td data-label="메모"><input className="field" style={sel} maxLength={200} aria-label={`${i + 1}번째 지원금 메모`} value={x.memo} onChange={(e) => upd({ memo: e.target.value })} onBlur={() => saveSupports(supports)} /></td>
                           <td className="act" data-label=""><button className="mini danger" type="button" aria-label={`${i + 1}번째 지원금 삭제`} onClick={() => { if (!x.amount || window.confirm(`${x.name || SUPPORT_LABEL[x.kind]} ${won(x.amount)} 지원금을 지울까요?${x.kind === "dues" ? "\n모임설정 › 회비현황 장부에서도 함께 빠져요." : ""}`)) setAndSaveSupports(supports.filter((_, j) => j !== i)); }}>삭제</button></td>
                         </tr>

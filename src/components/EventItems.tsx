@@ -1,6 +1,7 @@
 "use client";
 
 import { VisSwitch } from "./VisSwitch";
+import { CalcField } from "./CalcField";
 import { ActionNote } from "@/components/ActionNote";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RowDelete } from "./RowDelete";
@@ -395,23 +396,23 @@ function ItemsTable({ eventId, kind, canEdit, onSaved }: { eventId: string; kind
                         </select>
                       </td>
                       <td className="wide" data-label="준비물"><input aria-label="준비물" className="field" style={{ ...cs, minWidth: 120, textDecoration: i.done ? "line-through" : undefined }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
-                      <td data-label="가격(원)"><input aria-label="가격" className="field num" inputMode="numeric" style={{ ...cs, width: 100 }} value={String(d.price ?? 0)} disabled={!canEdit} onChange={(e) => set(i.id, "price", Number(e.target.value.replace(/\D/g, "")))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td data-label="가격(원)"><CalcField aria-label="가격" className="field num" style={{ ...cs, width: 100 }} value={Number(d.price ?? 0)} disabled={!canEdit} onChange={(n) => set(i.id, "price", n)} onCommit={(n) => save(i.id, { price: n })} /></td>
                       <td data-label="담당"><input aria-label="담당" className="field" style={{ ...cs, width: 80 }} value={String(d.owner)} disabled={!canEdit} onChange={(e) => set(i.id, "owner", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
                     </>
                   )}
                   {kind === "costs" && (
                     <>
                       <td className={dragCosts ? "main" : "wide"} data-label="항목"><input aria-label="항목" className="field" style={{ ...cs, minWidth: 130 }} value={String(d.item)} disabled={!canEdit} onChange={(e) => set(i.id, "item", e.target.value)} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
-                      <td data-label="예산(원)"><input aria-label="예산" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String(d.budget)} disabled={!canEdit} onChange={(e) => set(i.id, "budget", Number(e.target.value.replace(/\D/g, "")))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} /></td>
+                      <td data-label="예산(원)"><CalcField aria-label="예산" className="field num" style={{ ...cs, width: 110 }} value={Number(d.budget) || 0} disabled={!canEdit} onChange={(n) => set(i.id, "budget", n)} onCommit={(n) => save(i.id, { budget: n })} /></td>
                       <td data-label="집행(원)">
                         {/* 집행 칸에는 합계(직접 적은 집행 + 준비목록에서 완료된 같은 항목 가격)를 보여 준다.
                             고치면 준비목록 합계를 뺀 나머지를 "직접 적은 집행"으로 저장한다. */}
                         {(() => {
                           const ps = Number(i.prepSum) || 0;
                           return (
-                            <input aria-label="집행" className="field num" inputMode="numeric" style={{ ...cs, width: 110 }} value={String((Number(d.spent) || 0) + ps)} disabled={!canEdit}
-                              title={ps ? `준비목록에서 넘어온 ${won(ps)} 포함` : undefined}
-                              onChange={(e) => set(i.id, "spent", Math.max(0, Number(e.target.value.replace(/\D/g, "")) - ps))} onBlur={() => save(i.id)} onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />
+                            <CalcField aria-label="집행" className="field num" style={{ ...cs, width: 110 }} value={(Number(d.spent) || 0) + ps} disabled={!canEdit}
+                              title={ps ? `준비목록에서 넘어온 ${won(ps)} 포함 (=3*5 처럼 계산식도 돼요)` : undefined}
+                              onChange={(n) => set(i.id, "spent", Math.max(0, n - ps))} onCommit={(n) => save(i.id, { spent: Math.max(0, n - ps) })} />
                           );
                         })()}
                       </td>
@@ -462,15 +463,15 @@ function ItemsTable({ eventId, kind, canEdit, onSaved }: { eventId: string; kind
                   </select>
                 </div>
                 <div><label className="l" htmlFor="n-item">준비물</label><input id="n-item" className="field" value={String(add.item)} onChange={(e) => setAdd({ ...add, item: e.target.value })} /></div>
-                <div><label className="l" htmlFor="n-price">가격(원)</label><input id="n-price" className="field" inputMode="numeric" value={String(add.price ?? 0)} onChange={(e) => setAdd({ ...add, price: Number(e.target.value.replace(/\D/g, "")) })} /></div>
+                <div><label className="l" htmlFor="n-price">가격(원)</label><CalcField id="n-price" className="field" value={Number(add.price ?? 0)} onChange={(n) => setAdd((a) => ({ ...a, price: n }))} /></div>
                 <div><label className="l" htmlFor="n-owner">담당</label><input id="n-owner" className="field" value={String(add.owner)} onChange={(e) => setAdd({ ...add, owner: e.target.value })} /></div>
               </>
             )}
             {kind === "costs" && (
               <>
                 <div><label className="l" htmlFor="n-item">항목</label><input id="n-item" className="field" value={String(add.item)} onChange={(e) => setAdd({ ...add, item: e.target.value })} /></div>
-                <div><label className="l" htmlFor="n-bud">예산(원)</label><input id="n-bud" className="field" inputMode="numeric" value={String(add.budget)} onChange={(e) => setAdd({ ...add, budget: Number(e.target.value.replace(/\D/g, "")) })} /></div>
-                <div><label className="l" htmlFor="n-sp">집행(원)</label><input id="n-sp" className="field" inputMode="numeric" value={String(add.spent)} onChange={(e) => setAdd({ ...add, spent: Number(e.target.value.replace(/\D/g, "")) })} /></div>
+                <div><label className="l" htmlFor="n-bud">예산(원)</label><CalcField id="n-bud" className="field" value={Number(add.budget) || 0} onChange={(n) => setAdd((a) => ({ ...a, budget: n }))} /></div>
+                <div><label className="l" htmlFor="n-sp">집행(원)</label><CalcField id="n-sp" className="field" value={Number(add.spent) || 0} onChange={(n) => setAdd((a) => ({ ...a, spent: n }))} /></div>
                 <div><label className="l" htmlFor="n-own">담당</label><input id="n-own" className="field" value={String(add.owner)} onChange={(e) => setAdd({ ...add, owner: e.target.value })} /></div>
               </>
             )}
