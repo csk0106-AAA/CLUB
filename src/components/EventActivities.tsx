@@ -387,8 +387,9 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
         {att.members.map((m) => {
           const on = sel.has(m.id);
           return (
-            <div key={m.id} className="row" style={{ gap: 6, flexWrap: "wrap", padding: "4px 8px", border: "1px solid var(--line)", borderRadius: 10, ...(on ? { borderColor: "var(--blue)", background: "var(--blue-bg)" } : {}) }}>
-              <label className="row grow" style={{ gap: 6, cursor: canEdit ? "pointer" : "default", border: 0, padding: 0, background: "none", minWidth: 0 }}>
+            // 한 줄에 다 보이게: 이름·표시·참여 방식이 줄바꿈되지 않도록(참여 방식은 "전체 / 선택"으로 짧게)
+            <div key={m.id} className="row" style={{ gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", padding: "4px 8px", border: "1px solid var(--line)", borderRadius: 10, ...(on ? { borderColor: "var(--blue)", background: "var(--blue-bg)" } : {}) }}>
+              <label className="row grow" style={{ gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", cursor: canEdit ? "pointer" : "default", border: 0, padding: 0, background: "none", minWidth: 0 }}>
                 <input type="checkbox" checked={on} disabled={!canEdit || (m.bookBlocked && !partialOk)} onChange={() => toggle(m)} />
                 {m.name}
                 {m.answer && <span className={`pill ${m.answer === "참석" ? "ok" : "gray"}`}>{m.answer === "참석" ? "참석" : "불참"}</span>}
@@ -396,8 +397,8 @@ function Attendance({ eventId, a, canEdit, onChange }: { eventId: string; a: Act
               </label>
               {on && partialOk && (
                 <span className="seg" role="group" aria-label={`${m.name} 참여 방식`} style={{ flex: "0 0 auto" }}>
-                  <button type="button" aria-pressed={!part.has(m.id)} disabled={!canEdit || m.bookBlocked} onClick={() => setLevel(m.id, false)} style={{ minHeight: 30, fontSize: fs(12), padding: "0 8px" }}>전체참여</button>
-                  <button type="button" aria-pressed={part.has(m.id)} disabled={!canEdit} onClick={() => setLevel(m.id, true)} style={{ minHeight: 30, fontSize: fs(12), padding: "0 8px" }}>선택참여</button>
+                  <button type="button" aria-pressed={!part.has(m.id)} disabled={!canEdit || m.bookBlocked} onClick={() => setLevel(m.id, false)} aria-label="전체참여" title="전체참여" style={{ minHeight: 30, fontSize: fs(12), padding: "0 8px" }}>전체</button>
+                  <button type="button" aria-pressed={part.has(m.id)} disabled={!canEdit} onClick={() => setLevel(m.id, true)} aria-label="선택참여" title="선택참여" style={{ minHeight: 30, fontSize: fs(12), padding: "0 8px" }}>선택</button>
                 </span>
               )}
             </div>
