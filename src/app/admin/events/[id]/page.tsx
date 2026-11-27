@@ -932,9 +932,15 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                         {r.paid && (r.feeDiff ?? 0) !== 0 && <span className="pill red" style={{ marginLeft: 4 }} title={`입금 확인 ${won(r.paidAmount ?? "0")}`}>차액 있음 · {(r.feeDiff ?? 0) > 0 ? `추가 입금 ${won(String(r.feeDiff))}` : `환불 ${won(String(-(r.feeDiff ?? 0)))}`}</span>}
                       </td>
                       <td className="num" data-label="확인일">{fmtDate(r.paidAt) || "-"}</td>
-                      <td className="act" data-label="">{r.paid && (r.feeDiff ?? 0) > 0 && <button className="mini" type="button" style={{ marginRight: 4 }} onClick={() => pay(r.memberId, true)}>추가 입금 확인</button>}<button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{r.payNotice && r.paid && !((r.feeDiff ?? 0) > 0)
-                        ? <button className="mini" type="button" style={{ marginLeft: 4 }} title="이미 입금 확인된 회원이 다시 알렸어요. 입금 확인 알림을 한 번 더 보내요." onClick={() => dismissNotice(r.memberId)}>입금 확인</button>
-                        : r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}{near?.at === `pay:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`pay:${r.memberId}`)}</div>}</td>
+                      <td className="act" data-label="">
+                        {/* 처리 결과 안내는 버튼 앞(위)에 */}
+                        {near?.at === `pay:${r.memberId}` && <div style={{ marginBottom: 4 }}>{nearNote(`pay:${r.memberId}`)}</div>}
+                        {r.paid && (r.feeDiff ?? 0) > 0 && <button className="mini" type="button" style={{ marginRight: 4 }} onClick={() => pay(r.memberId, true)}>추가 입금 확인</button>}
+                        {/* 입금 확인 뒤 다시 들어온 알림: "입금 확인"을 먼저, "확인 취소"는 그 뒤 */}
+                        {r.payNotice && r.paid && !((r.feeDiff ?? 0) > 0) && <button className="mini" type="button" style={{ marginRight: 4 }} title="이미 입금 확인된 회원이 다시 알렸어요. 입금 확인 알림을 한 번 더 보내요." onClick={() => dismissNotice(r.memberId)}>입금 확인</button>}
+                        <button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>
+                        {r.payNotice && !(r.paid && !((r.feeDiff ?? 0) > 0)) && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
