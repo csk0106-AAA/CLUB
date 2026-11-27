@@ -42,7 +42,6 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
   const base = `/api/events/${eventId}/cars`;
   const [d, setD] = useState<Data | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pickOther, setPickOther] = useState(false); // 확정 뒤 다른 차량 목록 펼치기
   const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [offer, setOffer] = useState<Offer | null>(null);
   const [offerErr, setOfferErr] = useState("");
@@ -66,6 +65,8 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
 
   if (!d || !d.hasCarpool) return null;
 
+  // 회원이 직접 바꿀 수 있는 때: 신청 받는 중(마감 전)만. 마감·확정 뒤에는 관리자에게 요청한다(서버도 막는다)
+  const canChange = d.phase === "open" && !d.waitClosed;
   const latest = (dir: Dir) => d.mine.filter((m) => m.dir === dir);
   const seated = (dir: Dir) => latest(dir).find((m) => m.status === "confirmed" || m.status === "approved");
   const openReq = (dir: Dir) => latest(dir).find((m) => m.status === "pending" || m.status === "waiting");
@@ -228,7 +229,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
         <span className={`pill ${TONE[m.status] ?? "gray"}`}>{shown(m)}{m.status === "waiting" && m.waitRank ? ` ${m.waitRank}번` : ""}</span>
         <span className="grow small">{LABEL[m.dir]} · {car?.name ?? "차량"}{m.note ? ` · ${m.note}` : ""}</span>
         {m.isNew && <span className="chip red">NEW</span>}
-        {(m.status === "waiting" || m.status === "approved" || m.status === "confirmed") && !d.waitClosed && <button type="button" className="mini" disabled={busy} onClick={() => cancel(m)}>취소</button>}
+        {(m.status === "waiting" || m.status === "approved" || m.status === "confirmed") && canChange && <button type="button" className="mini" disabled={busy} onClick={() => cancel(m)}>취소</button>}
       </div>
     );
   });
@@ -242,7 +243,7 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
     setMsg(r.ok ? { tone: "info", text: `${LABEL[dir]} 배정을 취소했어요. 개별이동하거나 다른 차량을 신청할 수 있어요.` } : { tone: "bad", text: r.error });
     await load();
   }
-  // 확정·마감 뒤 "내 탑승": 구간마다 지금 상태와 바꿀 수 있는 것
+  // "내 탑승": 구간마다 지금 상태(마감 전에는 바꾸는 버튼도)
   const myRideBlock = d.attending && (d.phase === "confirmed" || d.phase === "closed" || d.phase === "open") && (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--soft)" }}>
       <b style={{ fontSize: fs(15) }}>내 탑승</b>
@@ -260,24 +261,19 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
             </span>
             {!role && (() => {
               const w = d.mine.find((m) => m.dir === dir && (m.status === "waiting" || m.status === "pending"));
-              return w && !d.waitClosed ? <button type="button" className="mini" disabled={busy} onClick={() => cancel(w)}>대기 취소</button> : null;
+              return w && canChange ? <button type="button" className="mini" disabled={busy} onClick={() => cancel(w)}>대기 취소</button> : null;
             })()}
-            {role === "rider" && <button type="button" className="mini" disabled={busy} onClick={() => leave(dir)}>배정취소</button>}
-            {role !== "self" && role !== "driver" && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별이동</button>}
-            {role === "self" && !d.waitClosed && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별이동 취소</button>}
+            {canChange && role === "rider" && <button type="button" className="mini" disabled={busy} onClick={() => leave(dir)}>배정취소</button>}
+            {canChange && role !== "self" && role !== "driver" && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별이동</button>}
+            {canChange && role === "self" && <button type="button" className="mini" disabled={busy} onClick={() => toggleSelf(dir)}>개별이동 취소</button>}
           </div>
         );
       })}
-      {/* 다른 차량 신청: 마감 전이면 직접(목록에서 “신청”·“이 차로 바꾸기”), 마감 뒤에는 관리자에게 요청 */}
-      {d.phase === "open" ? (
+      {/* 마감 전이면 직접(목록에서 “이 차 신청”·“이 차로 바꾸기”), 마감 뒤에는 관리자에게 요청 */}
+      {canChange ? (
         <span className="small">아래 차량 목록에서 “이 차 신청”을 누르면 돼요. 차 없이 각자 가시면 “개별이동”을 눌러 주세요.</span>
-      ) : !d.waitClosed && !d.adminOnly ? (
-        <>
-          <button type="button" className="mini" style={{ alignSelf: "flex-start" }} onClick={() => setPickOther(!pickOther)}>{pickOther ? "차량 목록 접기" : "다른 차량 신청하기"}</button>
-          {pickOther && carList(true)}
-        </>
       ) : (
-        <span className="small">다른 차량이 필요하면 아래 “관리자에게 변경·취소 요청”을 눌러 주세요. 배정취소와 개별이동은 지금도 직접 할 수 있어요.</span>
+        <span className="small">마감됐어요. 차를 바꾸거나 취소하려면 아래 “관리자에게 변경·취소 요청”을 눌러 주세요.</span>
       )}
     </div>
   );
@@ -325,10 +321,10 @@ export function CarRequestBox({ eventId }: { eventId: string }) {
             {d.cars.some((c) => c.name !== d.myRide?.go && c.name !== d.myRide?.back) && (
               <details className="car-others">
                 <summary>다른 차량 보기</summary>
-                {carList(!d.waitClosed && !d.adminOnly, (c) => c.name !== d.myRide?.go && c.name !== d.myRide?.back)}
+                {carList(false, (c) => c.name !== d.myRide?.go && c.name !== d.myRide?.back)}
               </details>
             )}
-            {(d.waitClosed || d.adminOnly) && askBlock}
+            {askBlock}
           </>
         )}
       </Fold>

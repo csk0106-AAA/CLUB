@@ -114,6 +114,12 @@ export async function POST(req: Request, ctx: Ctx) {
     await markSeen(id, g.s.mid);
     return NextResponse.json({ ok: true });
   }
+  // 마감(신청 마감 시각이 지났거나 관리자가 배정을 확정함) 뒤에는 회원이 직접 바꾸지 않고 관리자에게 요청한다
+  const CLOSED_MSG = "차량신청이 마감됐어요. 바꾸려면 “관리자에게 변경·취소 요청”을 눌러 주세요.";
+  if (d.action === "cancel" || d.action === "leave" || d.action === "self" || d.action === "request") {
+    const st0 = await carpoolState(id);
+    if (st0.published || waitClosed(st0.waitUntil)) return bad(CLOSED_MSG, 409);
+  }
   if (d.action === "cancel") {
     const why = await cancelRequest(id, g.s.mid, d.reqId ?? "");
     return why ? bad(why, 409) : NextResponse.json({ ok: true });
@@ -132,7 +138,7 @@ export async function POST(req: Request, ctx: Ctx) {
     await pushTo(managers, "alerts", g.s.mid).catch(() => undefined);
     return NextResponse.json({ ok: true });
   }
-  // 탑승 취소: 배정된 차에서 내린다(마감·확정 뒤에도 회원이 직접). 확정된 배정이면 관리자에게 알린다.
+  // 탑승 취소: 배정된 차에서 내린다(마감 전에만 — 위에서 막는다).
   if (d.action === "leave") {
     if (!d.dir) return bad("구간을 골라 주세요.");
     const st = await carpoolState(id);
@@ -142,7 +148,7 @@ export async function POST(req: Request, ctx: Ctx) {
     return NextResponse.json({ ok: true });
   }
   if (!attending) return bad("참석 신청한 회원만 차량을 신청할 수 있어요.", 403);
-  // 개별 이동: 회원이 직접 켜고 끈다. 켜는 것(차에서 내림)은 마감·확정 뒤에도 되고, 끄는 것(다시 차가 필요)은 마감 전에만.
+  // 개별 이동: 회원이 직접 켜고 끈다(마감 전에만 — 위에서 막는다).
   if (d.action === "self") {
     if (!d.dir || d.on === undefined) return bad("구간을 골라 주세요.");
     const st = await carpoolState(id);
