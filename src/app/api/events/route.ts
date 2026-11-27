@@ -50,9 +50,15 @@ export async function GET() {
       if (likes > c.likes || (likes === c.likes && (p.createdAt ?? "") < c.at)) Object.assign(c, { id: p.id, likes, at: p.createdAt ?? "" });
     }
   }
-  // 일정별 참석 인원
-  const goingOf = new Map<string, number>();
-  for (const a of applies) if (a.answer === "참석") goingOf.set(a.eventId, (goingOf.get(a.eventId) ?? 0) + 1);
+  // 일정별 참석 인원: 지금 회원 명단에 있는 사람만, 한 사람은 한 번(명단에서 지운 회원의 신청 줄은 세지 않는다 — 관리자 신청현황과 같게)
+  const memberIds = new Set(members.map((m) => m.id));
+  const goingSet = new Map<string, Set<string>>();
+  for (const a of applies) {
+    if (a.answer !== "참석" || !memberIds.has(a.memberId)) continue;
+    if (!goingSet.has(a.eventId)) goingSet.set(a.eventId, new Set());
+    goingSet.get(a.eventId)!.add(a.memberId);
+  }
+  const goingOf = new Map([...goingSet].map(([k, v]) => [k, v.size] as const));
   await fixLegacyTypes(events);
   const mine = applies.filter((a) => a.memberId === session.mid);
   const me = members.find((m) => m.id === session.mid);

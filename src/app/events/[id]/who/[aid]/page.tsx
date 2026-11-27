@@ -49,11 +49,13 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
     );
   }
 
+  // "누구일까요?" 탭: 일정 전 맞히기 기간이 있는 활동만. 현장 맞히기 활동은 위쪽 진행 칸에서 맞히므로 탭이 없다
+  const guessTab = st.guess.status !== "none";
   // 위쪽 진행 막대: 작성 탭은 인터뷰 답변 수, 맞히기 탭은 고른 사람 수
   const iv = st.interview;
   const ivStarted = iv.messages.length > 0;
   const progress =
-    tab === "guess" ? guessProg
+    tab === "guess" && guessTab ? guessProg
     : tab === "saju" ? null
     : ivStarted ? { done: iv.status === "done" ? Math.max(iv.answered, iv.required + (iv.extra ?? 0)) : iv.answered, total: Math.max(1, iv.required + (iv.extra ?? 0)) }
     : null;
@@ -66,13 +68,14 @@ export default function WhoPage({ params }: { params: Promise<{ id: string; aid:
       <div className="seg" role="tablist" aria-label="내가 누구일까요? 메뉴">
         <button type="button" role="tab" aria-selected={tab === "write"} onClick={() => setTab("write")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(인터뷰)</button>
         {sajuTabOn(st) && <button type="button" role="tab" aria-selected={tab === "saju"} onClick={() => setTab("saju")} style={{ minHeight: 40, fontSize: fs(13) }}>내 소개(명리학)</button>}
-        <button type="button" role="tab" aria-selected={tab === "guess"} onClick={() => setTab("guess")} style={{ minHeight: 40, fontSize: fs(13) }}>누구일까요?</button>
+        {/* 사전 맞히기가 있는 활동만(현장 맞히기는 이 화면 위쪽 진행 칸에서 한다) */}
+        {guessTab && <button type="button" role="tab" aria-selected={tab === "guess"} onClick={() => setTab("guess")} style={{ minHeight: 40, fontSize: fs(13) }}>누구일까요?</button>}
       </div>
       {note && (note.tone === "bad"
         ? <div className="msg bad" role="alert">{note.text}</div>
         : <p className="small" role="status" style={{ margin: 0, color: "var(--accent-ink)", fontWeight: 700 }}>✓ {note.text}</p>)}
 
-      {tab === "guess" ? (
+      {tab === "guess" && guessTab ? (
         <Guess aid={aid} setNote={setNote} onProgress={setGuessProg} />
       ) : tab === "saju" && st.state === "in" ? (
         <WhoWrite st={st} aid={aid} busy={busy} setBusy={setBusy} setNote={setNote} reload={load} part="saju" />

@@ -117,7 +117,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       // 관리하는 사람이 공개 대상 밖·공개전 일정을 회원 화면으로 보는 중(참석 신청 안 됨). draft: 공개전 일정
       preview, draft: e.published !== "true",
       coverUrl, // 맨 위 큰 사진(원본 크기). 없으면 ""
-      going: new Set(applies.filter((x) => x.eventId === id && x.answer === "참석").map((x) => x.memberId)).size, // 참석 인원(같은 회원 줄이 겹쳐도 한 번)
+      going: new Set(applies.filter((x) => x.eventId === id && x.answer === "참석" && members.some((m) => m.id === x.memberId)).map((x) => x.memberId)).size, // 참석 인원(지금 명단에 있는 회원만, 같은 회원 줄이 겹쳐도 한 번)
       type: e.type,
       approval: e.approval === "admin" ? "admin" : "", // 참석 확정 방식(admin = 관리자 승인 후 참석)
       name: e.name,
