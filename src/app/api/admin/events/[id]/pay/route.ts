@@ -8,7 +8,8 @@ import { eventTitle } from "@/lib/event-title";
 import { feeDiff, memberFee } from "@/lib/fee";
 
 // paid: 입금 확인(true)·확인 취소(false). reject: 입금 알림을 "입금 안 됨"으로 돌려보내기. reason: 회원에게 보일 사유
-const body = z.object({ memberId: z.string().min(1), paid: z.boolean().optional(), reject: z.boolean().optional(), reason: z.string().trim().max(200).optional() });
+// dismiss: 이미 입금 확인된 회원이 다시 보낸 입금 알림 → 입금 확인을 한 번 더(알림을 지우고 회원에게 확인 알림, 입금 상태·확인일은 그대로)
+const body = z.object({ memberId: z.string().min(1), paid: z.boolean().optional(), reject: z.boolean().optional(), dismiss: z.boolean().optional(), reason: z.string().trim().max(200).optional() });
 
 // 입금 확인. 확인하면 그 회원 화면의 회비 알림이 사라진다(회원 화면은 이 값으로 알림을 계산한다).
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad("입력값을 확인해 주세요.");
-  const { memberId, paid, reject, reason } = parsed.data;
+  const { memberId, paid, reject, dismiss, reason } = parsed.data;
 
   const s = await getStore();
   const a = (await s.list("EventApplies")).find((x) => x.eventId === id && x.memberId === memberId);
@@ -31,7 +32,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const m = await s.get("Members", memberId);
   const mf = ev ? memberFee(ev, { kind: m?.kind, position: m?.position }, a) : { known: false, amount: "" };
   const extra = feeDiff(a, mf);
-  if (reject) {
+  if (dismiss) {
+    // 입금 확인 뒤 다시 들어온 입금 알림(회비는 그대로): 입금 확인을 한 번 더 보낸다
+    if (a.paid !== "true") return bad("입금 확인 전에는 “입금 확인” 또는 “입금 안 됨”을 눌러 주세요.");
+    if (extra > 0) return bad("추가로 낼 회비가 있어요. “추가 입금 확인” 또는 “입금 안 됨”을 눌러 주세요.");
+    await s.update("EventApplies", a.id, { payNotice: "" });
+    text = `${title} 회비 입금이 확인됐어요.`;
+  } else if (reject) {
     // 입금 알림 돌려보내기(입금 확인 전, 또는 추가 입금 알림)
     if (!a.payNotice) return bad("입금 알림을 보낸 회원만 돌려보낼 수 있어요.");
     await s.update("EventApplies", a.id, { payNotice: "", payUndoAt: now, payUndoReason: reason ?? "" });

@@ -297,6 +297,13 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   }
 
   // 입금 확인·확인 취소·입금 알림 돌려보내기(입금 안 됨). 취소·돌려보낼 때는 회원에게 보일 사유를 받고, 회원에게 바로 알림이 간다.
+  // 입금 확인된 회원이 다시 보낸 입금 알림: 입금 확인을 한 번 더(회원에게 확인 알림)
+  async function dismissNotice(memberId: string) {
+    setNear(null);
+    const r = await api(`/api/admin/events/${id}/pay`, { body: { memberId, dismiss: true } });
+    setNear({ at: `pay:${memberId}`, tone: r.ok ? "info" : "bad", text: r.ok ? "입금을 다시 확인했어요. 회원에게 알림을 보냈어요." : r.error });
+    load();
+  }
   async function pay(memberId: string, paid: boolean, reject?: boolean) {
     let reason: string | undefined;
     if (!paid || reject) {
@@ -920,12 +927,14 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
                       <td className="num" data-label="금액">{r.feePending ? <span className="small">날짜 선택 전</span> : owed(r) ? owed(r).toLocaleString("ko-KR") : "-"}</td>
                       <td data-label="">
                         <span className={`pill ${r.paid ? "ok" : "warn"}`}>{r.paid ? "입금" : "미입금"}</span>
-                        {r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>{r.paid ? "추가 입금 알림" : "입금 알림 받음"} {fmtDate(r.payNotice)}</span>}
+                        {r.payNotice && <span className="pill blue" style={{ marginLeft: 4 }}>{!r.paid ? "입금 알림 받음" : (r.feeDiff ?? 0) > 0 ? "추가 입금 알림" : "입금 알림 다시 받음"} {fmtDate(r.payNotice)}</span>}
                         {/* 입금 확인 때 금액과 지금 회비가 다름(참석 날짜·회비 조건 변경) */}
                         {r.paid && (r.feeDiff ?? 0) !== 0 && <span className="pill red" style={{ marginLeft: 4 }} title={`입금 확인 ${won(r.paidAmount ?? "0")}`}>차액 있음 · {(r.feeDiff ?? 0) > 0 ? `추가 입금 ${won(String(r.feeDiff))}` : `환불 ${won(String(-(r.feeDiff ?? 0)))}`}</span>}
                       </td>
                       <td className="num" data-label="확인일">{fmtDate(r.paidAt) || "-"}</td>
-                      <td className="act" data-label="">{r.paid && (r.feeDiff ?? 0) > 0 && <button className="mini" type="button" style={{ marginRight: 4 }} onClick={() => pay(r.memberId, true)}>추가 입금 확인</button>}<button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}{near?.at === `pay:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`pay:${r.memberId}`)}</div>}</td>
+                      <td className="act" data-label="">{r.paid && (r.feeDiff ?? 0) > 0 && <button className="mini" type="button" style={{ marginRight: 4 }} onClick={() => pay(r.memberId, true)}>추가 입금 확인</button>}<button className="mini" type="button" onClick={() => pay(r.memberId, !r.paid)}>{r.paid ? "확인 취소" : "입금 확인"}</button>{r.payNotice && r.paid && !((r.feeDiff ?? 0) > 0)
+                        ? <button className="mini" type="button" style={{ marginLeft: 4 }} title="이미 입금 확인된 회원이 다시 알렸어요. 입금 확인 알림을 한 번 더 보내요." onClick={() => dismissNotice(r.memberId)}>입금 확인</button>
+                        : r.payNotice && <button className="mini danger" type="button" style={{ marginLeft: 4 }} onClick={() => pay(r.memberId, false, true)}>입금 안 됨</button>}{near?.at === `pay:${r.memberId}` && <div style={{ marginTop: 4 }}>{nearNote(`pay:${r.memberId}`)}</div>}</td>
                     </tr>
                   ))}
                 </tbody>
