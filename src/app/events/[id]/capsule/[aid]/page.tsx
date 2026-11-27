@@ -21,6 +21,9 @@ type Data = {
   opened: boolean;
   hasGoal: boolean;
   hasPact: boolean;
+  sealed?: boolean; // 우리 조가 봉인됐는지
+  pactDraft?: string[]; // 진행자가 입력한 팀 약속(봉인 전)
+  pactOk?: boolean; // 지금 약속을 내가 확인하고 저장했는지
   content: null | { goal: string; pacts: string[] };
 };
 
@@ -32,8 +35,6 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
   const [d, setD] = useState<Data | null>(null);
   const [note, setNote] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
   const [goal, setGoal] = useState("");
-  const [p1, setP1] = useState("");
-  const [p2, setP2] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -58,14 +59,15 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
     };
   }, [load]);
 
+  // goal: 1년 뒤 목표 봉인 / pacts: 진행자가 입력한 팀 약속을 확인하고 저장
   async function save(what: "goal" | "pacts") {
     setBusy(true);
     setNote(null);
-    const body = what === "goal" ? { goal } : { pacts: [p1, p2] };
+    const body = what === "goal" ? { goal } : { confirmPact: true };
     const r = await api(`/api/capsule/${aid}`, { method: "PUT", body });
     setBusy(false);
     if (!r.ok) return setNote({ tone: "bad", text: r.error });
-    setNote({ tone: "info", text: what === "goal" ? "목표를 봉인함에 넣었어요. 열림 전에는 아무도 볼 수 없어요." : "팀 약속을 저장했어요. 팀원 누구나 열림 전까지 고칠 수 있어요." });
+    setNote({ tone: "info", text: what === "goal" ? "목표를 봉인함에 넣었어요. 열림 전에는 아무도 볼 수 없어요." : "팀 약속을 확인하고 저장했어요. 조원이 모두 저장하면 진행자가 봉인해요." });
     if (what === "goal") setGoal("");
     await load();
   }
@@ -149,24 +151,25 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
                   <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 44, fontSize: fs(14) }} disabled={busy || !d.canWrite || !goal.trim()} onClick={() => save("goal")}>목표 봉인하기</button>
                 </div>
               </section>
-              <section className="lcard" aria-labelledby="c-h2" aria-disabled={!d.canWrite}>
+              <section className="lcard" aria-labelledby="c-h2">
                 <header className="lcard-h">
-                  <h2 id="c-h2">우리 팀 약속 2가지 {d.hasPact && <span className="chip violet">저장됨 ✓</span>}</h2>
-                  <p>{d.team ? "팀원이 함께 정해요. 저장하면 팀 이름과 구성원이 함께 남아요." : "팀이 정해진 뒤에 쓸 수 있어요."}</p>
+                  <h2 id="c-h2">우리 팀 약속 2가지 {d.pactOk && <span className="chip violet">저장함 ✓</span>}</h2>
+                  <p>{d.team ? "팀원과 이야기해 정하면 조 진행자가 입력해요. 내용을 확인하고 “팀 약속 저장하기”를 눌러 주세요. 모두 저장하면 진행자가 봉인해요." : "팀이 정해진 뒤에 정해요."}</p>
                 </header>
                 <div className="lcard-b">
-                  <div>
-                    <label className="l" htmlFor="c-p1">약속 1</label>
-                    <input id="c-p1" className="field" maxLength={200} value={p1} disabled={!d.team || !d.canWrite} onChange={(e) => setP1(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="l" htmlFor="c-p2">약속 2</label>
-                    <input id="c-p2" className="field" maxLength={200} value={p2} disabled={!d.team || !d.canWrite} onChange={(e) => setP2(e.target.value)} />
-                  </div>
+                  {d.sealed ? (
+                    <span className="small">봉인했어요. 열림 일시가 되면 여기에서 볼 수 있어요.</span>
+                  ) : (d.pactDraft?.length ?? 0) > 0 ? (
+                    <ol style={{ margin: 0, paddingLeft: 20, fontSize: fs(15), lineHeight: 1.7 }}>{d.pactDraft!.map((p, i) => <li key={i}>{p}</li>)}</ol>
+                  ) : (
+                    <span className="small">아직 진행자가 입력하기 전이에요. 팀원과 이야기해 약속 2가지를 정해 주세요.</span>
+                  )}
                 </div>
-                <div className="lcard-f" style={{ justifyContent: "flex-end" }}>
-                  <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 44, fontSize: fs(14) }} disabled={busy || !d.canWrite || !d.team || !p1.trim() || !p2.trim()} onClick={() => save("pacts")}>팀 약속 저장하기</button>
-                </div>
+                {!d.sealed && (d.pactDraft?.length ?? 0) > 0 && (
+                  <div className="lcard-f" style={{ justifyContent: "flex-end" }}>
+                    <button className="btn" type="button" style={{ width: "auto", minWidth: 140, minHeight: 44, fontSize: fs(14) }} disabled={busy || !d.canWrite || d.pactOk} onClick={() => save("pacts")}>{d.pactOk ? "저장했어요 ✓" : "팀 약속 저장하기"}</button>
+                  </div>
+                )}
               </section>
             </>
           )}

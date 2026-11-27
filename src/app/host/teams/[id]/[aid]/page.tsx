@@ -8,6 +8,68 @@ import { useTeamParam } from "@/components/TeamScope";
 
 type Team = { id: string; name: string; members: { id: string; name: string; ageGroup: string }[] };
 type Data = { teams: Team[]; published: boolean };
+const NL = String.fromCharCode(10); // 확인 창 줄바꿈
+type PactMember = { id: string; name: string; goal: boolean; pactOk: boolean };
+type PactState = Record<string, { pacts: string[]; saved: boolean; sealed: boolean; members: PactMember[] }>;
+
+// 타임캡슐 진행(조마다): 조원별 1년 뒤 목표 봉인·팀 약속 저장 현황 + 팀 약속 입력 → 조원 확인 → 진행자 봉인
+function PactBox({ eventId, aid, teamId, st, reload }: { eventId: string; aid: string; teamId: string; st: PactState[string]; reload: () => void }) {
+  const [p, setP] = useState<string[]>(["", ""]);
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [touched, setTouched] = useState(false);
+  // 저장된 약속을 칸에 넣는다. 고치는 중에는 덮어쓰지 않는다
+  useEffect(() => { if (!touched && st.pacts.length === 2) setP(st.pacts); }, [st.pacts, touched]);
+  const ms = st.members;
+  const goals = ms.filter((m) => m.goal).length, oks = ms.filter((m) => m.pactOk).length;
+  async function savePact() {
+    setBusy(true);
+    setMsg("");
+    const r = await api(`/api/admin/events/${eventId}/activities/${aid}/capsule/pact`, { method: "PUT", body: { teamId, pacts: p } });
+    setBusy(false);
+    setMsg(r.ok ? "저장했어요. 조원 휴대폰에 약속이 보여요. 조원이 한 명씩 확인하고 “팀 약속 저장하기”를 눌러요." : r.error);
+    if (r.ok) setTouched(false);
+    reload();
+  }
+  async function seal() {
+    const notGoal = ms.filter((m) => !m.goal).map((m) => m.name), notOk = ms.filter((m) => !m.pactOk).map((m) => m.name);
+    const left = [notGoal.length ? `목표 봉인 전: ${notGoal.join(", ")}` : "", notOk.length ? `약속 저장 전: ${notOk.join(", ")}` : ""].filter(Boolean).join(NL);
+    if (!window.confirm((left ? "아직 끝나지 않은 조원이 있어요." + NL + left + NL + NL : "") + "타임캡슐을 봉인할까요? 봉인하면 열림 일시 전에는 아무도 볼 수 없고 더 쓸 수 없어요.")) return;
+    setBusy(true);
+    const r = await api(`/api/admin/events/${eventId}/activities/${aid}/live?team=${encodeURIComponent(teamId)}`, { body: { action: "activate", step: "seal" } });
+    setBusy(false);
+    setMsg(r.ok ? "봉인했어요." : r.error);
+    reload();
+  }
+  const mark = (ok: boolean) => <b style={{ color: ok ? "#7ee2a8" : "rgba(255,255,255,0.45)" }}>{ok ? "✓" : "·"}</b>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid rgba(255,255,255,0.14)", paddingTop: 12 }}>
+      {/* 조원별 현황(내용은 보이지 않는다) */}
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 22 }}>
+        <thead><tr style={{ fontSize: 16, opacity: 0.8 }}><th style={{ textAlign: "left" }}>조원</th><th>1년 뒤 목표 봉인 {goals}/{ms.length}</th><th>팀 약속 저장 {oks}/{ms.length}</th></tr></thead>
+        <tbody>{ms.map((m) => <tr key={m.id}><td>{m.name}</td><td style={{ textAlign: "center" }}>{mark(m.goal)}</td><td style={{ textAlign: "center" }}>{mark(m.pactOk)}</td></tr>)}</tbody>
+      </table>
+      {st.sealed ? (
+        <div className="msg info" role="status" style={{ fontSize: 20 }}>봉인 완료 ✓ · 열림 일시가 되면 회원 화면에서 볼 수 있어요.</div>
+      ) : (
+        <>
+          <b style={{ fontSize: 24 }}>우리 팀 약속 2가지 {st.saved && <span className="pill ok" style={{ fontSize: 14 }}>조원에게 보임</span>}</b>
+          <span className="sub" style={{ fontSize: 16 }}>팀원과 이야기해서 정한 약속을 적고 “저장”을 누르면 조원 휴대폰에 보여요. 조원이 모두 저장하면 “봉인하기”를 눌러 주세요.</span>
+          {[0, 1].map((i) => (
+            <input key={i} id={`pact-${teamId}-${i}`} className="field" maxLength={200} placeholder={`약속 ${i + 1}`} value={p[i]} disabled={busy}
+              style={{ minHeight: 56, fontSize: 22 }} onChange={(e) => { setTouched(true); setP((cur) => cur.map((x, j) => (j === i ? e.target.value : x))); }} />
+          ))}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="btn white" type="button" disabled={busy || !p[0].trim() || !p[1].trim()} style={{ width: "auto", flex: "1 1 160px", minHeight: 56, fontSize: 20 }} onClick={savePact}>{st.saved ? "고쳐서 다시 저장" : "저장"}</button>
+            <button className="btn" type="button" disabled={busy || !st.saved} style={{ width: "auto", flex: "1 1 200px", minHeight: 56, fontSize: 20 }} onClick={seal}>봉인하기{st.saved && oks === ms.length && goals === ms.length ? " (모두 완료)" : ""}</button>
+          </div>
+          {st.saved && touched && <span className="sub" style={{ fontSize: 16 }}>약속을 고쳐서 다시 저장하면 조원이 다시 확인하고 저장해야 해요.</span>}
+        </>
+      )}
+      {msg && <span role="status" style={{ fontSize: 18 }}>{msg}</span>}
+    </div>
+  );
+}
 
 // 팀 구성 결과를 큰 화면에 보여 준다.
 // ?team=조 id 로 열면(조 진행자의 "○조 진행하기") 그 조만 보이고, 위쪽에서 그 조의 단계를 열고 잠근다.
@@ -19,6 +81,13 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
   const [error, setError] = useState("");
   const wrap = useRef<HTMLDivElement>(null);
   const [team] = useTeamParam();
+  const [pacts, setPacts] = useState<PactState | null>(null); // 타임캡슐 활동이면 조별 팀 약속 상태
+  const loadPacts = useCallback(async () => {
+    const r = await api<{ teams: PactState }>(`/api/admin/events/${id}/activities/${aid}/capsule/pact`);
+    setPacts(r.ok ? r.data.teams : null);
+  }, [id, aid]);
+  // 조원이 목표를 봉인하고 약속을 저장하는 것을 바로 보이게 3초마다
+  useEffect(() => { loadPacts(); const t = setInterval(() => document.visibilityState === "visible" && loadPacts(), 3000); return () => clearInterval(t); }, [loadPacts]);
 
   const load = useCallback(async () => {
     const r = await api<Data>(`/api/admin/events/${id}/activities/${aid}/teams`);
@@ -55,6 +124,7 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
           <div key={t.id} className="panel">
             <h2 style={{ color: "var(--violet-t)", fontSize: 40 }}>{t.name}</h2>
             {t.members.map((m) => <div key={m.id} style={{ fontSize: 30 }}>{m.name}</div>)}
+            {pacts?.[t.id] && <PactBox eventId={id} aid={aid} teamId={t.id} st={pacts[t.id]} reload={loadPacts} />}
           </div>
         ))}
       </div>
