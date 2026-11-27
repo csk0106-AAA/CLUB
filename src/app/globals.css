@@ -505,7 +505,8 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .host h1, .host h2, .host h3 { margin: 0; font-family: var(--display); font-weight: 700; }
 .host .sub { color: var(--sub); font-size: 18px; }
 .host .stage { flex: 1; display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; min-height: 0; }
-@media (max-width: 800px) { .host .stage { grid-template-columns: 1fr; } }
+.host .stage.even { grid-template-columns: 1fr 1fr; } /* 두 칸을 같은 너비로(시상: 추측왕·직감왕) */
+@media (max-width: 800px) { .host .stage, .host .stage.even { grid-template-columns: 1fr; } }
 .host .panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .host .alias { font: 700 clamp(32px, 5vw, 56px)/1.2 var(--display); color: var(--violet-t); }
 .host .intro { font-size: clamp(19px, 2.2vw, 26px); line-height: 1.7; white-space: pre-wrap; overflow: auto; max-height: 52vh; }
@@ -517,7 +518,9 @@ a.node:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .host .bar i { display: block; height: 100%; border-radius: 10px; background: #ff5a52; transition: width 0.4s; }
 .host .namebox { font: 700 clamp(36px, 5vw, 60px)/1.2 var(--display); text-align: center; padding: 20px 8px; border: 2px dashed rgba(255, 255, 255, 0.32); border-radius: 22px; min-height: 120px; display: grid; place-items: center; }
 .host .namebox.on { border: 2px solid #ffffff; color: #ffffff; }
-.host .controls { display: flex; gap: 12px; flex-wrap: wrap; border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 14px; }
+/* 진행자 버튼 줄: 화면 아래에 붙어 있다(내용이 길어도 태블릿·노트북에서 스크롤 없이 바로 누른다) */
+.host .controls { display: flex; gap: 12px; flex-wrap: wrap; border-top: 1px solid rgba(255, 255, 255, 0.14);
+  position: sticky; bottom: 0; z-index: 5; background: var(--bg); margin: 0 -24px; padding: 14px 24px max(14px, env(safe-area-inset-bottom)); }
 .host .controls .btn { width: auto; flex: 1 1 180px; min-height: 64px; font-size: 22px; }
 .host .btn { border-radius: 999px; }
 .host .btn.white { background: rgba(255, 255, 255, 0.08); color: #ffffff; border-color: rgba(255, 255, 255, 0.28); }

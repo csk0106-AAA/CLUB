@@ -300,7 +300,7 @@ function Awards({ id, aid, q, setError }: { id: string; aid: string; q: string; 
     );
   };
   return (
-    <div className="stage">
+    <div className="stage even">
       {card("A", "추측왕", "누구인지 가장 많이 맞힌 사람", "명", sc.A)}
       {card("B", "직감왕", "거짓을 가장 많이 맞힌 사람", "개", sc.B)}
     </div>
