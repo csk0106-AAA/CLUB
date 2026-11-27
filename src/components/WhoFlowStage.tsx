@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { playSfx } from "@/lib/sfx";
+import { NextActivityButton, type NextLink } from "./NextActivityButton";
 
 // 내가 누구일까요? 현장 맞히기 흐름의 진행자 전체화면(프로젝터용, 조마다)
 //  ① 한 명씩 소개 열기 → 맞히기 → 마감 ② 한 명씩 “저예요” ③ 한 명씩 진실과 거짓(모두 투표하면 저절로 결과) ④ 시상(추측왕·직감왕)
@@ -37,7 +38,7 @@ const NO = [
 const BAR = ["#eceef0", "#a6adb5", "#6b737c", "#ced3d8"];
 
 export function WhoFlowStage({ flow, r, remaining, selectable, busy, act, id, aid, q, setError, next }: {
-  flow: FlowInfo; r: FlowRound | null; remaining: number; selectable: { id: string; name: string }[]; next?: { href: string; name: string } | null;
+  flow: FlowInfo; r: FlowRound | null; remaining: number; selectable: { id: string; name: string }[]; next?: NextLink | null;
   busy: boolean; act: (a: FlowAct, target?: string) => void; id: string; aid: string; q: string; setError: (e: string) => void;
 }) {
   const [pickId, setPickId] = useState("");
@@ -74,7 +75,7 @@ export function WhoFlowStage({ flow, r, remaining, selectable, busy, act, id, ai
           <div className="controls" role="group" aria-label="진행자 버튼">
             {leftNamed > 0 && <button className="btn white" type="button" disabled={busy} onClick={() => act("vote")}>‹ 남은 진실과 거짓 이어서 하기</button>}
             {/* 다음 활동의 진행 화면으로 바로 */}
-            {next && <a className="btn blue" href={next.href} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>다음 활동으로 이동 › {next.name}</a>}
+            {next && <NextActivityButton next={next} />}
           </div>
         )}
       </>

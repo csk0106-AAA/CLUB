@@ -92,7 +92,7 @@ export function hostScreen(kind: string, eventId: string, aid: string): string {
 
 // 다음 활동의 진행 화면(일정의 활동 순서로 지금 활동 다음, 진행 화면이 있고 이 사람이 진행할 수 있는 첫 활동).
 //  조 진행자는 다음 활동에서 맡은 조로, 관리자는 지금 보는 조와 이름이 같은 조로 연다. 없으면 null.
-export async function nextHostLink(act: Row, s: Session, teamName: string): Promise<{ href: string; name: string } | null> {
+export async function nextHostLink(act: Row, s: Session, teamName: string): Promise<{ href: string; name: string; eventId: string; aid: string; teamId: string } | null> {
   const all = (await (await getStore()).list("EventActivities"))
     .filter((a) => a.eventId === act.eventId)
     .sort((p, q) => Number(p.order || 0) - Number(q.order || 0));
@@ -113,7 +113,7 @@ export async function nextHostLink(act: Row, s: Session, teamName: string): Prom
       teamId = hostTeamOf(a, s.mid);
       if (teamId && !run.on) continue; // 조별 진행이 꺼져 있으면 조 진행자는 진행할 수 없다
     }
-    return { href: `${hostScreen(kind, a.eventId, a.id)}${teamId ? `?team=${encodeURIComponent(teamId)}` : ""}`, name: cfg.name };
+    return { href: `${hostScreen(kind, a.eventId, a.id)}${teamId ? `?team=${encodeURIComponent(teamId)}` : ""}`, name: cfg.name, eventId: a.eventId, aid: a.id, teamId };
   }
   return null;
 }

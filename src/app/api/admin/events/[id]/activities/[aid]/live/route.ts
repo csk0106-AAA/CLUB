@@ -11,6 +11,7 @@ const body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("activate"), step: z.string().min(1) }), // 진행자가 단계 버튼을 누름 → 회원 화면 켜짐
   z.object({ action: z.literal("lock") }), // 회원 화면을 다시 잠금(예: 투표 마감)
   z.object({ action: z.literal("reset") }), // 현장 진행 처음으로
+  z.object({ action: z.literal("ready") }), // 다음 활동으로 넘어옴: 진행 전이면 첫 단계를 잠근 채로 열고(회원 화면 "들어가기" 줄이 이 활동으로), 진행 중이면 그대로 두고 시각만 새로
 ]);
 
 // 지금 회원 화면 상태(진행자 전체화면 위쪽의 잠그기·다시 열기·처음으로 칸이 읽는다)
@@ -73,6 +74,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; ai
     if (d.action === "activate") {
       step = d.step;
       unlocked = true; // host_click, immediate 모두 이 시점에 켜진다
+    } else if (d.action === "ready") {
+      if (!step) { step = cfg!.onsite.steps[0]?.key ?? ""; unlocked = false; }
     } else if (d.action === "lock") {
       if (!step) return "진행 중인 단계가 없어요.";
       unlocked = false;

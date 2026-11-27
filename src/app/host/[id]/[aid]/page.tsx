@@ -7,6 +7,7 @@ import { SfxToggle } from "@/components/SfxToggle";
 import { api } from "@/lib/client";
 import { TeamPicker, teamQ, useTeamParam } from "@/components/TeamScope";
 import { WhoFlowStage, type FlowAct, type FlowInfo, type FlowRound } from "@/components/WhoFlowStage";
+import { NextActivityButton, type NextLink } from "@/components/NextActivityButton";
 
 type Stage = {
   event: { id: string; name: string };
@@ -20,7 +21,7 @@ type Stage = {
   selectable: { id: string; name: string }[];
   // 현장 맞히기 흐름(템플릿에 “사람 고르기” 단계가 있는 활동만)
   flow: FlowInfo | null;
-  next?: { href: string; name: string } | null; // 다음 활동 진행 화면
+  next?: NextLink | null; // 다음 활동 진행 화면
   round: null | {
     id: string; state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer" | "guess" | "guessed" | "named"; orderNo: number;
     alias: string; introMd: string; nameRevealed: boolean; name: string;
@@ -288,7 +289,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
             {r?.state === "answer" && st.live.active && <button className="btn red" type="button" disabled={busy} onClick={finish}>활동 마치기</button>}
             {/* 마지막 화면(모두 진행했거나 활동을 마침): 다음 활동으로 */}
             {st.next && r?.state === "answer" && (st.remaining === 0 || !st.live.active) && (
-              <a className="btn blue" href={st.next.href} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>다음 활동으로 이동 › {st.next.name}</a>
+              <NextActivityButton next={st.next} />
             )}
           </div>
         </>
