@@ -73,7 +73,8 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false, loc
           {/* 펼쳐도 요약 한 줄은 그대로(조원 명단은 아래 전체 조에서 내 조로 확인) */}
           {g.team && (
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-              <span className="small">내 조</span><span className="pill blue">{g.team}</span><span className="small">· 조원 {g.members.length}명{g.leader ? ` · 조장 ${g.leader}` : ""}</span>
+              <span className="small">내 조</span><span className="pill blue">{g.team}</span><span className="small">· 조원 {g.members.length}명</span>
+              {g.leader && <span className="small">· 조장 <b style={{ color: "var(--red-t)" }}>{g.leader}</b></span>}
             </div>
           )}
           {(g.teams?.length ?? 0) > 0 && (
@@ -88,8 +89,10 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false, loc
                       {t.members.map((n, k) => (
                         <span key={k}>
                           {k > 0 && ", "}
-                          {t.leader && n === t.leader && "조장 "}
-                          {n.includes("(나)") ? <b style={{ color: "var(--violet-t)" }}>{n}</b> : n}
+                          {/* 조장은 빨간 포인트 색(나는 보라) */}
+                          {t.leader && n === t.leader
+                            ? <b style={{ color: "var(--red-t)" }}>조장 {n}</b>
+                            : n.includes("(나)") ? <b style={{ color: "var(--violet-t)" }}>{n}</b> : n}
                         </span>
                       ))}
                     </span>
