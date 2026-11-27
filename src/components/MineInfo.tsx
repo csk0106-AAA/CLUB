@@ -10,7 +10,7 @@ type Data = {
   schedule: SchedItem[];
   dayPlaces?: Record<string, string>;
   // titles: 같은 구성을 쓰는 곳(일정 조편성·활동). 구성이 같으면 한 칸으로 합쳐 온다
-  groups: { title: string; titles?: string[]; team: string; members: string[]; teams?: { name: string; members: string[]; mine: boolean }[] }[];
+  groups: { title: string; titles?: string[]; team: string; members: string[]; leader?: string; teams?: { name: string; members: string[]; mine: boolean; leader?: string }[] }[];
   groupsPending?: number;
   // 미응답·불참이라 닫힌 항목 중 이 일정에 실제로 있는 것(groups·rooms·cars) → 잠긴 칸으로 보여 준다
   lockedCards?: string[];
@@ -73,7 +73,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false, loc
           {/* 펼쳐도 요약 한 줄은 그대로(조원 명단은 아래 전체 조에서 내 조로 확인) */}
           {g.team && (
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-              <span className="small">내 조</span><span className="pill blue">{g.team}</span><span className="small">· 조원 {g.members.length}명</span>
+              <span className="small">내 조</span><span className="pill blue">{g.team}</span><span className="small">· 조원 {g.members.length}명{g.leader ? ` · 조장 ${g.leader}` : ""}</span>
             </div>
           )}
           {(g.teams?.length ?? 0) > 0 && (
@@ -88,6 +88,7 @@ export function MineInfo({ eventId, placeholder = false, noSchedule = false, loc
                       {t.members.map((n, k) => (
                         <span key={k}>
                           {k > 0 && ", "}
+                          {t.leader && n === t.leader && "조장 "}
                           {n.includes("(나)") ? <b style={{ color: "var(--violet-t)" }}>{n}</b> : n}
                         </span>
                       ))}

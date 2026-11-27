@@ -9,11 +9,11 @@ import { fs } from "@/lib/fs";
 type M = { id: string; name: string; ageGroup: string };
 type TeamsData = {
   poolKind: "selected" | "attending" | "all"; published: boolean; publishedAt: string; locked: boolean;
-  teams: { id: string; name: string; members: M[] }[]; unassigned: M[]; participantCount: number;
+  teams: { id: string; name: string; members: M[]; leaderId?: string }[]; unassigned: M[]; participantCount: number;
   // 활동 팀 보드에서만: 조 진행자(팀 id → 회원·접속번호), 조별로 따로 진행 스위치
   teamHosts?: Record<string, { memberId: string; code: string }>; teamRun?: boolean;
 };
-type Col = { key: string; name: string; ids: string[] };
+type Col = { key: string; name: string; ids: string[]; leaderId?: string };
 type Mode = "manual" | "mix" | "random";
 
 const MODE_TEXT: Record<Mode, { label: string; hint: string }> = {
@@ -27,7 +27,8 @@ const POOL_TEXT: Record<string, string> = { selected: "관리자 선택 회원",
 // base 는 `.../teams`, `.../teams/publish` 를 가진 API 주소다(타임캡슐 팀 구성과 일정 조편성이 같이 쓴다).
 // copyFromEvent: 활동 팀 보드에서 쓰면, 그 일정의 "일정 › 조편성"을 골라 그대로 가져올 수 있다(가져온 뒤에는 서로 연결되지 않음).
 // members/onChange: 활동 팀 보드에서 조 진행자·조별 진행을 바꾼 뒤 활동 카드를 다시 읽는다
-export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEvent, onChange }: { base: string; canEdit: boolean; unit?: string; screenHref?: string; copyFromEvent?: string; members?: { id: string; name: string }[]; onChange?: () => void }) {
+// leaders: 일정 조편성에서만 — 조마다 조장을 고른다(없어도 된다). 초안 저장·확인 때 구성과 함께 저장
+export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEvent, onChange, leaders }: { base: string; canEdit: boolean; unit?: string; screenHref?: string; copyFromEvent?: string; members?: { id: string; name: string }[]; onChange?: () => void; leaders?: boolean }) {
   const [srcs, setSrcs] = useState<{ id: string; title: string; teamCount: number }[]>([]);
   const [src, setSrc] = useState("");
   useEffect(() => {
@@ -60,7 +61,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
     t.data.teams.forEach((tm) => tm.members.forEach((m) => (ppl[m.id] = m)));
     t.data.unassigned.forEach((m) => (ppl[m.id] = m));
     setPeople(ppl);
-    setCols(t.data.teams.map((tm) => ({ key: tm.id, name: tm.name, ids: tm.members.map((m) => m.id) })));
+    setCols(t.data.teams.map((tm) => ({ key: tm.id, name: tm.name, ids: tm.members.map((m) => m.id), leaderId: tm.leaderId || "" })));
     setPool(t.data.unassigned.map((m) => m.id));
     setDirty(false);
   }, [base]);
@@ -72,7 +73,8 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
 
   // 회원을 다른 팀(또는 '없음')으로 옮긴다. 드래그와 선택 상자가 같은 함수를 쓴다.
   function move(memberId: string, to: string) {
-    setCols((cs) => cs.map((c) => ({ ...c, ids: c.ids.filter((x) => x !== memberId) })).map((c) => (c.key === to ? { ...c, ids: [...c.ids, memberId] } : c)));
+    // 조장이 다른 조로 가면 원래 조는 조장 없음
+    setCols((cs) => cs.map((c) => ({ ...c, ids: c.ids.filter((x) => x !== memberId), leaderId: c.leaderId === memberId && c.key !== to ? "" : c.leaderId })).map((c) => (c.key === to ? { ...c, ids: [...c.ids, memberId] } : c)));
     setPool((p) => {
       const rest = p.filter((x) => x !== memberId);
       return to === "pool" ? [...rest, memberId] : rest;
@@ -82,6 +84,10 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
   // 조(팀) 이름 바꾸기: 고치면 초안이 바뀐 것으로 본다(초안 저장·확인 때 함께 저장)
   function renameTeam(key: string, name: string) {
     setCols((cs) => cs.map((c) => (c.key === key ? { ...c, name: name.slice(0, 20) } : c)));
+    setDirty(true);
+  }
+  function setLeader(key: string, memberId: string) {
+    setCols((cs) => cs.map((c) => (c.key === key ? { ...c, leaderId: memberId } : c)));
     setDirty(true);
   }
   function addTeam() {
@@ -127,7 +133,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
   }
   async function saveDraft(): Promise<boolean> {
     // id: 이미 있는 팀은 그 id 로 저장해서 팀 id 가 그대로 남게 한다(조 진행자·조별 진행 기록이 팀 id 에 묶여 있다)
-    const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c, i) => ({ ...(c.key.startsWith("new-") ? {} : { id: c.key }), name: c.name.trim() || `${i + 1}${unit}`, memberIds: c.ids })) } });
+    const r = await api(`${base}/teams`, { method: "PUT", body: { teams: cols.map((c, i) => ({ ...(c.key.startsWith("new-") ? {} : { id: c.key }), name: c.name.trim() || `${i + 1}${unit}`, memberIds: c.ids, ...(leaders ? { leaderId: c.leaderId && c.ids.includes(c.leaderId) ? c.leaderId : "" } : {}) })) } });
     if (!r.ok) setMsg({ tone: "bad", text: r.error, at: "bottom" });
     return r.ok;
   }
@@ -181,10 +187,11 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
   const person = (id: string, where: string) => {
     const m = people[id];
     if (!m) return null;
+    const lead = leaders && cols.some((c) => c.key === where && c.leaderId === id);
     return (
       <div key={id} draggable={editable} onDragStart={(e) => { e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "move"; }}
         className="row" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "4px 8px", background: "var(--card)", cursor: editable ? "grab" : "default", gap: 6 }}>
-        <span className="grow" style={{ fontWeight: 700 }}>{m.name}{m.ageGroup ? <span className="small"> · {m.ageGroup}</span> : null}</span>
+        <span className="grow" style={{ fontWeight: 700 }}>{lead && <span className="pill blue" style={{ marginRight: 4 }}>조장</span>}{m.name}{m.ageGroup ? <span className="small"> · {m.ageGroup}</span> : null}</span>
         {editable && (
           <select aria-label={`${m.name} 옮기기`} className="field" style={{ width: 96, minHeight: 36, fontSize: fs(14), padding: "0 6px" }} value={where} onChange={(e) => move(id, e.target.value)}>
             {targets.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
@@ -210,6 +217,21 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
       </div>
     );
   };
+  // 조장 고르기(일정 조편성에서만): 지금 화면의 그 조 조원 중 한 명, 또는 없음
+  const leaderPick = (k: string) => {
+    const col = cols.find((c) => c.key === k);
+    if (!col) return null;
+    return (
+      <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+        <span className="small" style={{ flex: "none" }}>조장</span>
+        <select className="field" aria-label={`${col.name} 조장`} style={{ width: "auto", minWidth: 110, minHeight: 36, fontSize: fs(14), padding: "0 6px" }}
+          value={col.leaderId && col.ids.includes(col.leaderId) ? col.leaderId : ""} disabled={!editable || busy} onChange={(e) => setLeader(k, e.target.value)}>
+          <option value="">없음</option>
+          {col.ids.map((id) => <option key={id} value={id}>{people[id]?.name ?? id}</option>)}
+        </select>
+      </div>
+    );
+  };
   const drop = (k: string, title: React.ReactNode, ids: string[], removable?: boolean) => (
     <div key={k} className="card"
       onDragOver={(e) => { if (editable) { e.preventDefault(); setOver(k); } }}
@@ -223,6 +245,7 @@ export function TeamBoard({ base, canEdit, unit = "팀", screenHref, copyFromEve
         ) : <b>{title}</b>}
         <span className="small" style={{ flex: "none" }}>{ids.length}명</span><span className="grow" />{removable && editable && ids.length === 0 && <button className="mini danger" type="button" onClick={() => removeTeam(k)}>{unit} 지우기</button>}</div>
       {removable && td.teamHosts && hostPick(k)}
+      {removable && leaders && leaderPick(k)}
       {ids.map((id) => person(id, k))}
       {ids.length === 0 && <span className="hint">{editable ? "여기로 끌어 놓으세요" : "비어 있어요"}</span>}
     </div>

@@ -41,10 +41,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .map((x) => {
       const teams = gTeams(x);
       const t = teams.find((y) => y.memberIds.includes(g.s.mid));
+      // 조장(있으면): 명단 맨 앞에 두고 leader 로 따로 알려 준다
+      const lead = (y: typeof teams[number]) => (y.leaderId && y.memberIds.includes(y.leaderId) ? y.leaderId : "");
+      const ordered = (y: typeof teams[number]) => { const l = lead(y); return l ? [l, ...y.memberIds.filter((m) => m !== l)] : y.memberIds; };
       return {
         raw: teams, act: false,
-        title: x.title, team: t?.name ?? "", members: t ? t.memberIds.map(nmMe) : [],
-        teams: teams.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid) })),
+        title: x.title, team: t?.name ?? "", members: t ? ordered(t).map(nmMe) : [], leader: t && lead(t) ? nmMe(lead(t)) : "",
+        teams: teams.map((y) => ({ name: y.name, members: ordered(y).map(nmMe), mine: y.memberIds.includes(g.s.mid), leader: lead(y) ? nmMe(lead(y)) : "" })),
       };
     });
   let groupsPending = evGroups.filter((x) => x.published !== "true").length;
@@ -61,8 +64,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const t = ts.find((y) => y.memberIds.includes(g.s.mid));
     myGroups.push({
       raw: ts, act: true,
-      title: parseJson<{ name?: string }>(a.config, {}).name ?? "팀 활동", team: t?.name ?? "", members: t ? t.memberIds.map(nmMe) : [],
-      teams: ts.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid) })),
+      title: parseJson<{ name?: string }>(a.config, {}).name ?? "팀 활동", team: t?.name ?? "", members: t ? t.memberIds.map(nmMe) : [], leader: "",
+      teams: ts.map((y) => ({ name: y.name, members: y.memberIds.map(nmMe), mine: y.memberIds.includes(g.s.mid), leader: "" })),
     });
   }
 

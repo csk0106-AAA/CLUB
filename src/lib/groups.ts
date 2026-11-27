@@ -3,7 +3,8 @@ import { isGuest } from "./member-kind";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
-export type GTeam = { name: string; memberIds: string[] };
+// leaderId: 조장(없으면 비움, 그 조 조원 중 한 명)
+export type GTeam = { name: string; memberIds: string[]; leaderId?: string };
 
 export async function loadGrouping(eventId: string, gid: string): Promise<{ g: Row; ev: Row } | null> {
   const s = await getStore();

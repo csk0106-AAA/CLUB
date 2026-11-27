@@ -28,13 +28,13 @@ export async function GET(_req: Request, ctx: Ctx) {
     published: c.g.published === "true",
     publishedAt: "",
     locked: false,
-    teams: teams.map((t, i) => ({ id: `t${i}`, name: t.name, members: t.memberIds.map((mid) => view(byId.get(mid) ?? { id: mid, name: "(삭제된 회원)", ageGroup: "" })) })),
+    teams: teams.map((t, i) => ({ id: `t${i}`, name: t.name, leaderId: t.leaderId && t.memberIds.includes(t.leaderId) ? t.leaderId : "", members: t.memberIds.map((mid) => view(byId.get(mid) ?? { id: mid, name: "(삭제된 회원)", ageGroup: "" })) })),
     unassigned: pool.members.filter((m) => !assigned.has(m.id)).map(view),
     participantCount: pool.members.length,
   });
 }
 
-async function save(gid: string, teams: { name: string; memberIds: string[] }[]) {
+async function save(gid: string, teams: { name: string; memberIds: string[]; leaderId?: string }[]) {
   // 구성을 바꾸면 다시 '확인'을 눌러야 회원에게 배포된다.
   await (await getStore()).update("Groupings", gid, { teams: JSON.stringify(teams), published: "false", updatedAt: new Date().toISOString() });
 }
@@ -61,7 +61,7 @@ export async function POST(req: Request, ctx: Ctx) {
   return NextResponse.json({ ok: true, teams: count, mode: parsed.data.mode });
 }
 
-const manual = z.object({ teams: z.array(z.object({ name: z.string().trim().min(1).max(20), memberIds: z.array(z.string()).max(60) })).max(40) });
+const manual = z.object({ teams: z.array(z.object({ name: z.string().trim().min(1).max(20), memberIds: z.array(z.string()).max(60), leaderId: z.string().max(60).optional() })).max(40) });
 
 export async function PUT(req: Request, ctx: Ctx) {
   const g = await guardEv(ctx, ["events", "templates"]);
@@ -83,6 +83,7 @@ export async function PUT(req: Request, ctx: Ctx) {
       seen.add(mid);
     }
   }
-  await save(gid, parsed.data.teams);
+  // 조장: 그 조 조원일 때만(없으면 조장 없음)
+  await save(gid, parsed.data.teams.map((t) => ({ name: t.name, memberIds: t.memberIds, ...(t.leaderId && t.memberIds.includes(t.leaderId) ? { leaderId: t.leaderId } : {}) })));
   return NextResponse.json({ ok: true });
 }

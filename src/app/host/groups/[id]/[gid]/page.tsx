@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 
-type Team = { id: string; name: string; members: { id: string; name: string; ageGroup: string }[] };
+type Team = { id: string; name: string; leaderId?: string; members: { id: string; name: string; ageGroup: string }[] };
 type Data = { teams: Team[]; published: boolean };
 
 // 일정 조편성 결과를 큰 화면(프로젝터)에 보여 준다. 읽기 전용이고 관리자만 열 수 있다.
@@ -54,7 +54,10 @@ export default function GroupsScreen({ params }: { params: Promise<{ id: string;
         {teams?.map((t) => (
           <div key={t.id} className="panel">
             <h2 style={{ color: "var(--violet-t)", fontSize: 40 }}>{t.name} <span className="sub">{t.members.length}명</span></h2>
-            {t.members.map((m) => <div key={m.id} style={{ fontSize: 30 }}>{m.name}</div>)}
+            {/* 조장이 있으면 맨 위에 "조장" 표시 */}
+            {[...t.members].sort((a, b) => Number(b.id === t.leaderId) - Number(a.id === t.leaderId)).map((m) => (
+              <div key={m.id} style={{ fontSize: 30 }}>{m.id === t.leaderId && <span className="pill blue" style={{ fontSize: 20, marginRight: 8, verticalAlign: "middle" }}>조장</span>}{m.name}</div>
+            ))}
           </div>
         ))}
       </div>
