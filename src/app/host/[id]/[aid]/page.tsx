@@ -19,6 +19,7 @@ type Stage = {
   selectable: { id: string; name: string }[];
   // 현장 맞히기 흐름(템플릿에 “사람 고르기” 단계가 있는 활동만)
   flow: FlowInfo | null;
+  next?: { href: string; name: string } | null; // 다음 활동 진행 화면
   round: null | {
     id: string; state: "intro" | "results" | "reveal" | "voting" | "closed" | "answer" | "guess" | "guessed" | "named"; orderNo: number;
     alias: string; introMd: string; nameRevealed: boolean; name: string;
@@ -141,7 +142,7 @@ export default function HostPage({ params }: { params: Promise<{ id: string; aid
       )}
 
       {st.flow ? (
-        <WhoFlowStage flow={st.flow} r={st.round as FlowRound | null} remaining={st.remaining} selectable={st.selectable} busy={busy} act={act} id={id} aid={aid} q={q} setError={setError} />
+        <WhoFlowStage flow={st.flow} r={st.round as FlowRound | null} remaining={st.remaining} selectable={st.selectable} busy={busy} act={act} id={id} aid={aid} q={q} setError={setError} next={st.next} />
       ) : board ? (
         <Board id={id} aid={aid} q={q} setError={setError} />
       ) : (

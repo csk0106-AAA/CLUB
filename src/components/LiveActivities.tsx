@@ -187,7 +187,8 @@ function TeamHostLinks({ list }: { list: Live[] }) {
 
 // 일정 화면 맨 위 알림 줄: 현장 진행 중인 활동이 있으면 "들어가기"(누르면 그 활동 화면, 거기서 저예요·투표 등).
 //  내 소개 차례에 "저예요" 버튼이 열렸으면 더 눈에 띄게 알려 준다. 10초마다(화면이 보일 때만) 확인한다.
-export function LiveNowBanner({ eventId }: { eventId: string }) {
+// exclude: 지금 보고 있는 활동(활동 화면 안에서 쓸 때 — 그 활동은 위 칸에 이미 보인다)
+export function LiveNowBanner({ eventId, exclude }: { eventId: string; exclude?: string }) {
   const [list, setList] = useState<Live[]>([]);
   useEffect(() => {
     let stop = false;
@@ -205,7 +206,7 @@ export function LiveNowBanner({ eventId }: { eventId: string }) {
       clearTimeout(timer);
     };
   }, [eventId]);
-  const now = list.filter((a) => a.round || a.worry || a.live.active);
+  const now = list.filter((a) => a.id !== exclude && (a.round || a.worry || a.live.active));
   if (now.length === 0) return null;
   return (
     <>

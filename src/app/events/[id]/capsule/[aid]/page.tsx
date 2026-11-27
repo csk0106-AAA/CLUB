@@ -2,7 +2,7 @@
 
 import { ActivitySaju } from "@/components/ActivitySaju";
 import { use, useCallback, useEffect, useState } from "react";
-import { ActivityLiveBox } from "@/components/LiveActivities";
+import { ActivityLiveBox, LiveNowBanner } from "@/components/LiveActivities";
 import { useRouter } from "next/navigation";
 import { IconLock } from "@/components/Icons";
 import { LessonHeader } from "@/components/LessonHeader";
@@ -80,6 +80,7 @@ export default function CapsulePage({ params }: { params: Promise<{ id: string; 
       <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title={d.activity.name} done={d.opened ? undefined : done} total={d.opened ? undefined : 2}
         right={<span className={`chip ${state.tone === "ok" ? "violet" : "line"}`}>{state.text}</span>} />
       {/* 이 활동의 설명·시간·진행 상황(일정의 활동 길에서 아이콘을 눌러 들어옴) */}
+      <LiveNowBanner eventId={id} exclude={aid} />
       <ActivityLiveBox eventId={id} activityId={aid} />
       {/* 기능 블록: 명리학 사주풀이(넣은 활동이고 여는 시점일 때만 보임) */}
       <ActivitySaju aid={aid} />

@@ -3,7 +3,7 @@
 import { ActionNote, type ActionMsg } from "@/components/ActionNote";
 import { ActivitySaju } from "@/components/ActivitySaju";
 import { use, useCallback, useEffect, useState, useRef } from "react";
-import { ActivityLiveBox, PartialWait } from "@/components/LiveActivities";
+import { ActivityLiveBox, LiveNowBanner, PartialWait } from "@/components/LiveActivities";
 import { useRouter } from "next/navigation";
 import { LessonHeader } from "@/components/LessonHeader";
 import { Mascot } from "@/components/Mascot";
@@ -136,6 +136,7 @@ export default function WorryPage({ params }: { params: Promise<{ id: string; ai
       <LessonHeader href={`/events/${id}`} closeLabel="일정으로 돌아가기" title={d.activity.name}
         right={d.canJoin ? <span className={`chip ${d.mine.length ? "violet" : "line"}`}>{d.mine.length ? `${d.mine.length}개 작성 ✓` : "아직 없음"}</span> : undefined} />
       {/* 이 활동의 설명·시간·진행 상황(일정의 활동 길에서 아이콘을 눌러 들어옴) */}
+      <LiveNowBanner eventId={id} exclude={aid} />
       <ActivityLiveBox eventId={id} activityId={aid} />
       {/* 기능 블록: 명리학 사주풀이(넣은 활동이고 여는 시점일 때만 보임) */}
       <ActivitySaju aid={aid} />

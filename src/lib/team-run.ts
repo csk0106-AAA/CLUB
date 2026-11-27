@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { teams, teamsState, type Team } from "./capsule";
-import { readHosts } from "./hosts";
+import { hostTeamOf, isHost, readHosts } from "./hosts";
+import { activityKind, activityMode, readConfig } from "./activities";
+import { can, type Session } from "./auth";
 import { getStore } from "./store";
 import type { Row } from "./store/types";
 
@@ -86,6 +88,34 @@ export async function scopeOf(req: Request, act: Row, g: { team: string }, opts:
 // 진행 화면 주소: 내가 누구일까요? / 나의 고민은? 은 그 진행 화면, 그 밖에는 팀 화면(단계 버튼이 있다)
 export function hostScreen(kind: string, eventId: string, aid: string): string {
   return kind === "who" ? `/host/${eventId}/${aid}` : kind === "worry" ? `/host/worry/${eventId}/${aid}` : `/host/teams/${eventId}/${aid}`;
+}
+
+// 다음 활동의 진행 화면(일정의 활동 순서로 지금 활동 다음, 진행 화면이 있고 이 사람이 진행할 수 있는 첫 활동).
+//  조 진행자는 다음 활동에서 맡은 조로, 관리자는 지금 보는 조와 이름이 같은 조로 연다. 없으면 null.
+export async function nextHostLink(act: Row, s: Session, teamName: string): Promise<{ href: string; name: string } | null> {
+  const all = (await (await getStore()).list("EventActivities"))
+    .filter((a) => a.eventId === act.eventId)
+    .sort((p, q) => Number(p.order || 0) - Number(q.order || 0));
+  const i = all.findIndex((a) => a.id === act.id);
+  const admin = !s.host && (can(s, "templates") || can(s, "events"));
+  for (const a of all.slice(i + 1)) {
+    const cfg = readConfig(a.config);
+    if (!cfg) continue;
+    const kind = activityKind(cfg);
+    if (kind !== "who" && kind !== "worry" && activityMode(cfg) !== "team") continue;
+    if (s.host && !s.host.includes(a.id)) continue; // 진행자 접속번호로 들어온 사람은 그 번호의 활동만
+    const run = await teamRunInfo(a);
+    let teamId = "";
+    if (admin) {
+      if (run.on && teamName) teamId = run.teams.find((t) => t.name === teamName)?.id ?? "";
+    } else {
+      if (!isHost(a, s.mid)) continue;
+      teamId = hostTeamOf(a, s.mid);
+      if (teamId && !run.on) continue; // 조별 진행이 꺼져 있으면 조 진행자는 진행할 수 없다
+    }
+    return { href: `${hostScreen(kind, a.eventId, a.id)}${teamId ? `?team=${encodeURIComponent(teamId)}` : ""}`, name: cfg.name };
+  }
+  return null;
 }
 
 // 팀 구성이 바뀐 뒤: 조 진행자가 그 조에 더 이상 없거나 조가 없어졌으면 조 진행자 지정을 푼다(활동 전체 진행자는 그대로).

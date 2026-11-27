@@ -5,7 +5,7 @@ import { activeRound, currentRound, eligibleTargets, flowPhase, isFlow, liveRow,
 import { actionSet, joinSet } from "@/lib/participants";
 import { guessActionKey, onsiteKeyOf } from "@/lib/template-schema";
 import { getStore } from "@/lib/store";
-import { scopeOf } from "@/lib/team-run";
+import { nextHostLink, scopeOf } from "@/lib/team-run";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +44,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; aid
       name: r.nameRevealed === "true" ? nameOf(r.targetMemberId) : "",
     })),
   };
+  // 시상까지 마치면 다음 활동으로 바로(진행 화면 주소)
+  const next = flowMode ? await nextHostLink(st.act, g.s, sc.team?.name ?? "") : null;
   const base = {
     flow,
+    next,
     event: { id: st.ev.id, name: st.ev.name },
     activity: { id: aid, name: st.cfg.name, participants: st.cfg.participants },
     // 조별 진행: 지금 보는 조와 고를 수 있는 조(조 진행자는 맡은 조만)
