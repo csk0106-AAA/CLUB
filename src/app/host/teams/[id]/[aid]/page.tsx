@@ -43,8 +43,6 @@ function PactBox({ eventId, aid, teamId, st, reload }: { eventId: string; aid: s
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid rgba(255,255,255,0.14)", paddingTop: 12 }}>
-      {/* 조원별 현황은 위 명단 옆에 표시(여기는 합계만) */}
-      <span className="sub" style={{ fontSize: 18 }}>목표 봉인 {goals}/{ms.length} · 팀 약속 저장 {oks}/{ms.length}</span>
       {st.sealed ? (
         <div className="msg info" role="status" style={{ fontSize: 20 }}>봉인 완료 ✓ · 열림 일시가 되면 회원 화면에서 볼 수 있어요.</div>
       ) : (
@@ -118,7 +116,11 @@ export default function TeamsScreen({ params }: { params: Promise<{ id: string; 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
         {teams?.filter((t) => !team || t.id === team).map((t) => (
           <div key={t.id} className="panel">
-            <h2 style={{ color: "var(--violet-t)", fontSize: 40 }}>{t.name}</h2>
+            {/* 팀 이름 옆에 타임캡슐 합계(목표 봉인·팀 약속 저장) */}
+            <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
+              <h2 style={{ color: "var(--violet-t)", fontSize: 40 }}>{t.name}</h2>
+              {pacts?.[t.id] && (() => { const ms = pacts[t.id].members; return <span className="sub" style={{ fontSize: 20 }}>목표 봉인 {ms.filter((m) => m.goal).length}/{ms.length} · 팀 약속 저장 {ms.filter((m) => m.pactOk).length}/{ms.length}</span>; })()}
+            </div>
             {/* 명단: 타임캡슐이면 이름 옆에 목표 봉인·팀 약속 저장 표시(내용은 보이지 않는다) */}
             {/* 명단은 가로로(이름마다 한 칸). 타임캡슐이면 이름 아래 목표 봉인·약속 저장 표시 */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
