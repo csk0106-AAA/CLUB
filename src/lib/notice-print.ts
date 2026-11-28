@@ -5,12 +5,13 @@
 //  편집 도구(⠿·버튼)는 인쇄·PDF 에 나오지 않는다. 고친 내용은 그 PDF 에만 들어가고 앱에는 저장되지 않는다.
 export type Notice = { title: string; body: string[]; sections: { title: string; lines: string[] }[]; footer: string[] };
 
-// 컬러 이모지를 강제하는 표시(U+FE0F)는 빼서 흑백 선 아이콘으로 나오게 한다
-const esc = (t: string) => t.replace(/️/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// 글자를 HTML 에 넣을 때 꺾쇠·& 를 바꾼다
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 // 줄 앞 공백은 들여쓰기로 살린다
 const line = (t: string) => {
   const pad = /^ */.exec(t)![0].length;
-  return t.trim() ? `<div class="ln" style="padding-left:${pad * 0.45}em">${esc(t.trim())}</div>` : `<div class="gap"></div>`;
+  const head = /^(🔹|➡|⬅|🗓)/.test(t.trim()) ? " head" : "";
+  return t.trim() ? `<div class="ln${head}" style="padding-left:${pad * 0.45}em">${esc(t.trim())}</div>` : `<div class="gap"></div>`;
 };
 const TOOLS_BOX = `<span class="bt" contenteditable="false"><button type="button" class="note-add">＋ 안내</button><button type="button" class="up" title="위로">▲</button><button type="button" class="down" title="아래로">▼</button><span class="h" draggable="true" title="끌어서 칸 순서 바꾸기">⠿</span><button type="button" class="x">칸 지우기</button></span>`;
 
@@ -99,29 +100,30 @@ export function noticeHtml(n: Notice, name: string): string {
   };
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(name)}</title>
 <style>
-/* 보내 주신 흑백 공지(워드 PDF) 모양: 흰 바탕, 선 아이콘(흑백 글자 모양 이모지), 칸 제목 위아래 짧은 줄, 넉넉한 줄 간격.
+/* 보내 주신 공지(워드 PDF)의 배치: 흰 바탕, 칸 제목 위아래 짧은 줄, 넉넉한 줄 간격. 아이콘은 컬러 그대로.
    편집 도구는 마우스를 올릴 때만 또렷하게, 인쇄에는 안 나온다 */
 @page { size: A4; margin: 18mm 20mm; }
 * { box-sizing: border-box; }
 body { margin: 0; padding: 28px 24px; background: #fff; color: #111;
-  font: 14.5px/2 "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
-  font-variant-emoji: text; }
+  font: 14.5px/2 "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
 .page { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-#doc { display: flex; flex-direction: column; gap: 26px; }
+#doc { display: flex; flex-direction: column; gap: 40px; }
 h1 { margin: 0 0 6px; font-size: 22px; line-height: 1.5; font-weight: 800; }
 .box { position: relative; break-inside: avoid; page-break-inside: avoid; }
 .box.sched { break-inside: auto; page-break-inside: auto; }
 /* 칸 제목: 위아래 짧은 줄(━━ 대신) */
-.box h2 { position: relative; margin: 0 0 8px; font-size: 15px; font-weight: 600; padding: 10px 0; padding-right: 230px; }
+.box h2 { position: relative; margin: 0 0 14px; font-size: 15px; font-weight: 600; padding: 10px 0; padding-right: 230px; }
 .box h2::before, .box h2::after { content: ""; position: absolute; left: 0; width: 220px; border-top: 1px solid #111; }
 .box h2::before { top: 0; } .box h2::after { bottom: 0; }
-.ln { overflow-wrap: anywhere; }
+.ln { overflow-wrap: anywhere; margin: 4px 0; }
+.ln.head { margin-top: 16px; font-weight: 600; }
+.box h2 + .ln.head, .box .bt + h2 + .ln.head { margin-top: 4px; }
 .ln.note { padding-left: 0 !important; }
-.gap { height: 10px; }
-.day { margin-top: 6px; }
-.item { display: flex; align-items: flex-start; gap: 4px; break-inside: avoid; page-break-inside: avoid; }
+.gap { height: 14px; }
+.day { margin: 18px 0 6px; font-weight: 600; }
+.item { display: flex; align-items: flex-start; gap: 4px; margin: 10px 0; break-inside: avoid; page-break-inside: avoid; }
 .ib { flex: 1; min-width: 0; padding-left: 0.9em; }
-.it, .it2 { flex: none; user-select: none; opacity: 0; transition: opacity .15s; font-variant-emoji: normal; }
+.it, .it2 { flex: none; user-select: none; opacity: 0; transition: opacity .15s; }
 .item:hover .it, .item:hover .it2, .item:focus-within .it, .item:focus-within .it2 { opacity: 1; }
 .h { cursor: grab; color: #888; font-size: 13px; padding: 0 4px; border-radius: 4px; line-height: 1.6; }
 .bt button, .add { font: 12px/1.6 sans-serif; border: 1px solid #ccc; background: #fff; color: #444; border-radius: 6px; padding: 1px 7px; cursor: pointer; white-space: nowrap; }
@@ -130,7 +132,7 @@ h1 { margin: 0 0 6px; font-size: 22px; line-height: 1.5; font-weight: 800; }
 .bt .h { border: 1px solid #ccc; background: #fff; font: 12px/1.6 sans-serif; padding: 1px 7px; }
 .box:not(:has(h2)) .bt { top: -26px; }
 .dragging { opacity: .4; outline: 1px dashed #888; }
-.tools { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid #ddd; font-variant-emoji: normal; }
+.tools { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
 .tools button { font: 14px sans-serif; font-weight: 700; padding: 7px 14px; border-radius: 8px; border: 1px solid #333; background: #333; color: #fff; cursor: pointer; }
 .tools button.sub { background: #fff; color: #333; }
 .tools .hint { flex: 1 1 300px; align-self: center; color: #666; font-size: 13px; line-height: 1.6; }
