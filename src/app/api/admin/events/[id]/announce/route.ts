@@ -7,6 +7,7 @@ import { roomState, rooms } from "@/lib/rooms";
 import { gTeams } from "@/lib/groups";
 import { readConfig, windowBase, windowStatus } from "@/lib/activities";
 import { getStore } from "@/lib/store";
+import { readDayPlaces } from "@/lib/day-places";
 
 export const dynamic = "force-dynamic";
 
@@ -115,5 +116,25 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if (carSt.recruitOn && carSt.recruitUntil) deadlines.push(`🚙 차량 모집(내 차 등록): ${range(carSt.recruitFrom, carSt.recruitUntil)}`);
   if ((carSt.open || carSt.recruitOn) && carSt.waitUntil) deadlines.push(`🚗 차량 신청: ${range(carSt.open ? carSt.openFrom : carSt.recruitUntil, carSt.waitUntil)}`);
 
-  return NextResponse.json({ groups, rooms: roomLines, cars: carLines, carsFinal, deadlines });
+  // 세부일정(대화방에 따로 올리는 용): 날짜마다 "🗓 12/11(목) · 📍 그날 기본 장소" 아래에 "🕑 14:30 체크인", 장소가 다르면 📍, 메모는 📝
+  const DOW = "일월화수목금토";
+  const dayPlaces = readDayPlaces(ev.dayPlaces);
+  const schedule: string[] = [];
+  let curDay = "-";
+  for (const r of (await s.list("EventSchedule")).filter((x) => x.eventId === id).sort((p, q) => (p.at ?? "").localeCompare(q.at ?? ""))) {
+    const d = (r.at ?? "").slice(0, 10);
+    if (d !== curDay) {
+      curDay = d;
+      const t = Date.parse(d + "T00:00:00Z");
+      if (schedule.length) schedule.push("");
+      schedule.push(`🗓 ${when(d)}${Number.isNaN(t) ? "" : `(${DOW[new Date(t).getUTCDay()]})`}${dayPlaces[d] ? ` · 📍 ${dayPlaces[d]}` : ""}`);
+    }
+    const time = /T(\d{2}:\d{2})/.exec(r.at ?? "")?.[1] ?? "";
+    schedule.push(`  🕑 ${time ? `${time} ` : ""}${r.title ?? ""}`);
+    if (r.place && r.place !== dayPlaces[d]) schedule.push(`        📍 ${r.place}`);
+    // 메모가 여러 줄이면 첫 줄에만 📝, 나머지는 같은 들여쓰기로
+    String(r.memo ?? "").split("\n").filter((x) => x.trim()).forEach((l, i) => schedule.push(`        ${i ? "     " : "📝 "}${l.trim()}`));
+  }
+
+  return NextResponse.json({ groups, rooms: roomLines, cars: carLines, carsFinal, deadlines, schedule });
 }

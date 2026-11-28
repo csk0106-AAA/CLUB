@@ -129,6 +129,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const [whoFor, setWhoFor] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [announced, setAnnounced] = useState(false);
+  const [schedCopied, setSchedCopied] = useState(false);
   const [actNames, setActNames] = useState<string[]>([]);
   const [schedule, setSchedule] = useState<SchedItem[]>([]); // 세부 일정(미리보기용)
   const [opts, setOpts] = useState<Opts>({ kinds: [], positions: [], clubs: [], dues: { account: "", holder: "" } });
@@ -415,6 +416,30 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     }
   }
 
+  // 세부일정만 따로 대화방에 올리는 문구(날짜별 · 시각 · 내용 · 장소 · 메모)
+  async function copySchedule() {
+    if (!ev) return;
+    const a = await api<{ schedule: string[] }>(`/api/admin/events/${id}/announce`);
+    if (!a.ok) return setMsg({ tone: "bad", text: a.error });
+    if (!a.data.schedule.length) return setMsg({ tone: "bad", text: "세부일정이 아직 없어요. 세부일정 탭에서 먼저 적어 주세요." });
+    const LINE = "━━━━━━━━━━━━━━";
+    const text = [
+      `📣 [${ev.type}] ${ev.name}`,
+      "🗒 세부일정",
+      LINE,
+      ...a.data.schedule,
+      LINE,
+      `👉 일정 바로가기: ${window.location.origin}/events/${id}`,
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setSchedCopied(true);
+      setTimeout(() => setSchedCopied(false), 1800);
+    } catch {
+      setMsg({ tone: "bad", text: "복사하지 못했어요. 브라우저에서 클립보드 사용을 허용해 주세요." });
+    }
+  }
+
   // 미응답 회원에게 보낼 안내 문구를 복사한다(단체 대화방 등에 붙여 넣기).
   async function copyReminder(names: string[]) {
     if (!ev) return;
@@ -590,6 +615,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
               {ev.published === "true" ? "저장 (공개 유지)" : "공개 및 회원전달"}
             </button>
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
+            <button className="btn white" type="button" style={{ width: "auto", minWidth: 160 }} onClick={copySchedule}>{schedCopied ? "복사했어요 ✓" : "세부일정 복사"}</button>
           </div>
           <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회비는 참석 날짜·직책별 금액을 모두 적고 입금 기한·계좌도 함께 나가요. 조편성·숙소 배정·차량 배정은 회원에게 배포된 것만 명단으로 함께 나가요.</span>
           </section>
