@@ -128,8 +128,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   const [memoText, setMemoText] = useState("");
   const [whoFor, setWhoFor] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [announced, setAnnounced] = useState(false);
-  const [schedCopied, setSchedCopied] = useState(false);
+  const [noticeCopied, setNoticeCopied] = useState<"" | "main" | "full">(""); // 방금 복사한 공지(버튼에 "복사했어요 ✓")
   const [actNames, setActNames] = useState<string[]>([]);
   const [schedule, setSchedule] = useState<SchedItem[]>([]); // 세부 일정(미리보기용)
   const [opts, setOpts] = useState<Opts>({ kinds: [], positions: [], clubs: [], dues: { account: "", holder: "" } });
@@ -376,68 +375,111 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     load();
   }
 
-  // 일정 공지 문구(단체 대화방용). "회원에게 보이는 모습"과 같은 순서·아이콘을 쓴다.
-  // 계좌는 모든 회원 회비가 같을 때만 넣는다(infoLines 참고).
-  async function copyAnnounce() {
-    if (!ev) return;
-    // 읽기 쉽게: 칸마다 구분선 + 아이콘 제목, 줄마다 아이콘. 회비 금액은 ▪️ 목록, 안내 글은 들여쓰기
-    const LINE = "━━━━━━━━━━━━━━";
+  // 일정 공지(단체 대화방용·인쇄용). "회원에게 보이는 모습"과 같은 순서·아이콘을 쓴다.
+  //  full=false: 주요 정보만(정식 공지 전에 먼저 공유) — 일시·장소·주요 활동·회비·안내
+  //  full=true : 전체 — 주요 정보 + 마감 일정 · 세부일정 · 조편성 · 숙소 · 차량(차량은 최종 배정 전이면 지금 신청 기준)
+  type Notice = { title: string; body: string[]; sections: { title: string; lines: string[] }[]; footer: string[] };
+  async function buildNotice(full: boolean): Promise<Notice | null> {
+    if (!ev) return null;
     const body = eventInfoLines(infoEv, { kind: "rules", rules }, actNames).flatMap((x) =>
       x.multiline ? [`${x.icon} ${x.label}`, ...x.value.split("\n").map((l) => (x.label === "회비" ? `  ▪️ ${l}` : `   ${l}`))] : [`${x.icon} ${x.label}: ${x.value}`],
     );
-    // 배정 내용: 마감 일정 · 조편성 · 숙소 · 차량(차량은 최종 배정 전이면 지금 신청 기준). 못 불러오면 빼고 나머지만 복사한다.
-    const a = await api<{ groups: { title: string; lines: string[] }[]; rooms: string[]; cars: string[]; carsFinal: boolean; deadlines: string[] }>(`/api/admin/events/${id}/announce`);
-    const extra: string[] = [];
-    const sec = (title: string, ls: string[]) => { if (ls.length) extra.push("", LINE, title, LINE, ...ls.map((l) => `  ${l}`)); };
-    if (a.ok) {
-      sec("📌 마감 일정", a.data.deadlines);
-      for (const g of a.data.groups) sec(`👥 조편성 · ${g.title}`, g.lines);
-      sec("🛏 숙소 배정", a.data.rooms);
-      sec(a.data.carsFinal ? "🚗 차량 배정" : "🚗 차량 배정 (지금 신청 기준, 최종 배정 전)", a.data.cars);
+    const sections: Notice["sections"] = [];
+    if (full) {
+      // 못 불러오면 그 칸만 빼고 나머지로 만든다
+      const a = await api<{ groups: { title: string; lines: string[] }[]; rooms: string[]; cars: string[]; carsFinal: boolean; deadlines: string[]; schedule: string[] }>(`/api/admin/events/${id}/announce`);
+      if (a.ok) {
+        const add = (title: string, lines: string[]) => { if (lines.length) sections.push({ title, lines }); };
+        add("📌 마감 일정", a.data.deadlines);
+        add("🗒 세부일정", a.data.schedule);
+        for (const g of a.data.groups) add(`👥 조편성 · ${g.title}`, g.lines);
+        add("🛏 숙소 배정", a.data.rooms);
+        add(a.data.carsFinal ? "🚗 차량 배정" : "🚗 차량 배정 (지금 신청 기준, 최종 배정 전)", a.data.cars);
+      }
     }
-    const lines = [
-      `📣 [${ev.type}] ${ev.name}`,
-      LINE,
-      ...body,
-      ...extra,
-      "",
-      LINE,
-      "📲 모임 앱에서 참석 여부를 알려 주세요.",
-      "🔑 로그인: 내 이름 선택 + 휴대폰 번호 뒷자리 4자리",
-      // 맨 마지막: 이 일정 바로가기(로그인하면 바로 이 일정 화면이 열려요)
-      `👉 일정 바로가기: ${window.location.origin}/events/${id}`,
-    ];
+    return {
+      title: `📣 [${ev.type}] ${ev.name}`,
+      body,
+      sections,
+      footer: [
+        "📲 모임 앱에서 참석 여부를 알려 주세요.",
+        "🔑 로그인: 내 이름 선택 + 휴대폰 번호 뒷자리 4자리",
+        // 맨 마지막: 이 일정 바로가기(로그인하면 바로 이 일정 화면이 열려요)
+        `👉 일정 바로가기: ${window.location.origin}/events/${id}`,
+      ],
+    };
+  }
+  // 대화방에 붙여 넣는 글: 칸마다 구분선 + 아이콘 제목
+  const noticeText = (n: Notice) => {
+    const LINE = "━━━━━━━━━━━━━━";
+    return [
+      n.title, LINE, ...n.body,
+      ...n.sections.flatMap((x) => ["", LINE, x.title, LINE, ...x.lines.map((l) => `  ${l}`)]),
+      "", LINE, ...n.footer,
+    ].join("\n");
+  };
+  async function copyNotice(full: boolean) {
+    const n = await buildNotice(full);
+    if (!n) return;
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
-      setAnnounced(true);
-      setTimeout(() => setAnnounced(false), 1800);
+      await navigator.clipboard.writeText(noticeText(n));
+      setNoticeCopied(full ? "full" : "main");
+      setTimeout(() => setNoticeCopied(""), 1800);
     } catch {
       setMsg({ tone: "bad", text: "복사하지 못했어요. 브라우저에서 클립보드 사용을 허용해 주세요." });
     }
   }
-
-  // 세부일정만 따로 대화방에 올리는 문구(날짜별 · 시각 · 내용 · 장소 · 메모)
-  async function copySchedule() {
-    if (!ev) return;
-    const a = await api<{ schedule: string[] }>(`/api/admin/events/${id}/announce`);
-    if (!a.ok) return setMsg({ tone: "bad", text: a.error });
-    if (!a.data.schedule.length) return setMsg({ tone: "bad", text: "세부일정이 아직 없어요. 세부일정 탭에서 먼저 적어 주세요." });
-    const LINE = "━━━━━━━━━━━━━━";
-    const text = [
-      `📣 [${ev.type}] ${ev.name}`,
-      "🗒 세부일정",
-      LINE,
-      ...a.data.schedule,
-      LINE,
-      `👉 일정 바로가기: ${window.location.origin}/events/${id}`,
-    ].join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setSchedCopied(true);
-      setTimeout(() => setSchedCopied(false), 1800);
-    } catch {
-      setMsg({ tone: "bad", text: "복사하지 못했어요. 브라우저에서 클립보드 사용을 허용해 주세요." });
-    }
+  // 인쇄·PDF 저장: 전체 공지를 A4 한 파일로(색깔 이모지 그대로). 새 창을 먼저 열고(팝업 차단 방지) 내용을 채운다.
+  async function printNotice() {
+    const w = window.open("", "_blank");
+    if (!w) return setMsg({ tone: "bad", text: "새 창이 막혔어요. 브라우저에서 이 사이트의 팝업을 허용해 주세요." });
+    w.document.write("<p style='font:16px sans-serif;padding:24px'>불러오는 중이에요…</p>");
+    const n = await buildNotice(true);
+    if (!n) { w.close(); return; }
+    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // 줄 앞 공백은 들여쓰기로 살린다
+    const line = (t: string) => {
+      const pad = /^ */.exec(t)![0].length;
+      return t.trim() ? `<div class="ln" style="padding-left:${pad * 0.45}em">${esc(t.trim())}</div>` : `<div class="gap"></div>`;
+    };
+    const link = n.footer[n.footer.length - 1];
+    const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(ev?.name ?? "공지")}</title>
+<style>
+@page { size: A4; margin: 14mm; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; background: #f3f3f6; color: #1e2027; font: 15px/1.65 "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.page { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+h1 { margin: 0; font-size: 24px; line-height: 1.35; }
+.box { background: #fff; border: 1px solid #dcdde3; border-radius: 12px; padding: 14px 18px; break-inside: avoid; page-break-inside: avoid; }
+.box h2 { margin: 0 0 8px; font-size: 18px; padding-bottom: 6px; border-bottom: 2px solid #5B4DE8; }
+.ln { overflow-wrap: anywhere; }
+.gap { height: 8px; }
+.tools { display: flex; gap: 8px; justify-content: flex-end; }
+.tools button { font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 10px; border: 1px solid #5B4DE8; background: #5B4DE8; color: #fff; cursor: pointer; }
+.tools button.sub { background: #fff; color: #4436C4; }
+.tools .hint { flex: 1; align-self: center; color: #555863; font-size: 14px; }
+.box { position: relative; }
+.box .x { position: absolute; top: 8px; right: 8px; font: 13px sans-serif; border: 1px solid #dcdde3; background: #fff; color: #555863; border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+[contenteditable="true"]:focus { outline: 2px dashed #5B4DE8; outline-offset: 4px; border-radius: 6px; }
+@media print { body { background: #fff; padding: 0; } .tools, .box .x { display: none !important; } .box { border-color: #c9cad2; } }
+</style></head><body><div class="page">
+<div class="tools"><span class="hint">글을 눌러 바로 고칠 수 있어요. 필요한 안내는 칸을 추가해 적은 뒤 인쇄하세요.</span><button class="sub" onclick="addBox()">＋ 안내 칸 추가</button><button onclick="window.print()">인쇄 · PDF로 저장</button></div>
+<div id="doc" contenteditable="true" spellcheck="false" style="display:flex;flex-direction:column;gap:14px">
+<h1>${esc(n.title)}</h1>
+<div class="box">${n.body.map(line).join("")}</div>
+${n.sections.map((x) => `<div class="box"><h2>${esc(x.title)}</h2>${x.lines.map(line).join("")}</div>`).join("\n")}
+<div class="box" id="foot">${n.footer.slice(0, -1).map(line).join("")}<div class="ln">${esc(link)}</div></div>
+</div></div>
+<script>
+// 칸마다 지우기 버튼(인쇄에는 안 나옴), 안내 칸 추가(맨 아래 로그인 안내 칸 바로 위)
+function xBtn(box){var b=document.createElement("button");b.className="x";b.type="button";b.contentEditable="false";b.textContent="칸 지우기";b.onclick=function(){if(confirm("이 칸을 지울까요?"))box.remove();};box.appendChild(b);}
+document.querySelectorAll(".box").forEach(xBtn);
+function addBox(){var box=document.createElement("div");box.className="box";box.innerHTML="<h2>📢 안내</h2><div class='ln'>여기에 안내를 적어 주세요.</div>";var foot=document.getElementById("foot");foot.parentNode.insertBefore(box,foot);xBtn(box);var t=box.querySelector(".ln");var r=document.createRange();r.selectNodeContents(t);var sel=getSelection();sel.removeAllRanges();sel.addRange(r);t.focus&&t.focus();box.scrollIntoView({block:"center"});}
+</script>
+</body></html>`;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   }
 
   // 미응답 회원에게 보낼 안내 문구를 복사한다(단체 대화방 등에 붙여 넣기).
@@ -614,10 +656,11 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             <button className="btn" type="button" disabled={busy} style={{ width: "auto", minWidth: 200 }} onClick={() => save(true)}>
               {ev.published === "true" ? "저장 (공개 유지)" : "공개 및 회원전달"}
             </button>
-            <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
-            <button className="btn white" type="button" style={{ width: "auto", minWidth: 160 }} onClick={copySchedule}>{schedCopied ? "복사했어요 ✓" : "세부일정 복사"}</button>
+            <button className="btn white" type="button" style={{ width: "auto", minWidth: 180 }} onClick={() => copyNotice(false)}>{noticeCopied === "main" ? "복사했어요 ✓" : "주요 정보 복사"}</button>
+            <button className="btn white" type="button" style={{ width: "auto", minWidth: 180 }} onClick={() => copyNotice(true)}>{noticeCopied === "full" ? "복사했어요 ✓" : "전체 공지 복사"}</button>
+            <button className="btn white" type="button" style={{ width: "auto", minWidth: 160 }} onClick={printNotice}>인쇄 · PDF 저장</button>
           </div>
-          <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회비는 참석 날짜·직책별 금액을 모두 적고 입금 기한·계좌도 함께 나가요. 조편성·숙소 배정·차량 배정은 회원에게 배포된 것만 명단으로 함께 나가요.</span>
+          <span className="small"><b>주요 정보 복사</b>: 일시·장소·주요 활동·회비(입금 기한·계좌)·안내만 — 정식 공지 전에 먼저 공유할 때. <b>전체 공지 복사</b>: 주요 정보에 마감 일정·세부일정·조편성·숙소·차량까지(조편성·숙소는 배포된 것만, 차량은 최종 배정 전이면 지금 신청 기준). <b>인쇄 · PDF 저장</b>: 전체 공지를 A4 한 파일로 열어요. 인쇄에서 “PDF로 저장”을 고르면 색깔 아이콘 그대로 저장돼요.</span>
           </section>
 
           {/* 공개·참석 설정: 모두 누르면 바로 저장(저장 버튼과 상관없음) */}
