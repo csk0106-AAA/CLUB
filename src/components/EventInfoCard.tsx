@@ -4,6 +4,12 @@ import { useId, useState } from "react";
 import { ScheduleView, type SchedItem } from "./ScheduleBoard";
 import { fmtDate, fmtRange, fmtWhen, TYPE_TONE, won } from "@/lib/client";
 import type { FeeRule } from "@/lib/fee";
+
+// 회비 조건 줄을 읽는 말로(lib/fee ruleLabel 과 같은 규칙. lib/fee 는 서버 코드를 끌고 와서 화면에서는 따로 둔다)
+const ruleLabel = (r: FeeRule): string => {
+  const parts = [r.kind, r.position, r.days ? (r.days === "1" ? "1일 참석" : `${r.days}일 참석(${Number(r.days) - 1}박${r.days}일)`) : ""].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "전체";
+};
 import { fs } from "@/lib/fs";
 
 // 일정 정보 조각: 회원 일정 화면(/events/[id])과 관리자 개요의 "회원에게 보이는 모습"이 같은 코드로 그린다.
@@ -70,7 +76,14 @@ export function eventInfoLines(ev: InfoEvent, fee: FeeView, actNames: string[]):
   out.push({ icon: "📅", label: "일시", value: fmtRange(ev.startsAt, ev.endsAt) });
   if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
   if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
-  out.push(...feeLines(ev, fee));
+  // 회비: 대화방 공지에는 조건별(참석 날짜·회원구분·직책) 금액을 모두 적고 입금 기한·계좌도 함께(앱이 어려운 회원도 공지만 보고 낼 수 있게)
+  const rules = fee.kind === "rules" ? fee.rules : [];
+  if (rules.length > 1) {
+    out.push({ icon: "💰", label: "회비", value: rules.map((r) => `${ruleLabel(r)}: ${won(r.amount)}`).join("\n"), multiline: true });
+    if (ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: fmtDate(ev.feeDeadline) });
+    const account = accountText(ev);
+    if (account) out.push({ icon: "🏦", label: "계좌", value: account });
+  } else out.push(...feeLines(ev, fee));
   if (ev.booking?.trim()) out.push({ icon: "📢", label: "안내", value: ev.booking.trim(), multiline: true });
   return out;
 }

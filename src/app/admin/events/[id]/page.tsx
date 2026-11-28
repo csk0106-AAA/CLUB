@@ -382,10 +382,19 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     const body = eventInfoLines(infoEv, { kind: "rules", rules }, actNames).flatMap((x) =>
       x.multiline ? [`${x.icon} ${x.label}`,...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
     );
+    // 배정 내용(회원에게 배포된 것만): 조편성 · 숙소 · 차량. 못 불러오면 빼고 나머지만 복사한다.
+    const a = await api<{ groups: { title: string; lines: string[] }[]; rooms: string[]; cars: string[] }>(`/api/admin/events/${id}/announce`);
+    const extra: string[] = [];
+    if (a.ok) {
+      for (const g of a.data.groups) if (g.lines.length) extra.push("", `👥 조편성 · ${g.title}`, ...g.lines.map((l) => `   ${l}`));
+      if (a.data.rooms.length) extra.push("", "🛏 숙소 배정", ...a.data.rooms.map((l) => `   ${l}`));
+      if (a.data.cars.length) extra.push("", "🚗 차량 배정", ...a.data.cars.map((l) => `   ${l}`));
+    }
     const lines = [
       `[${ev.type}] ${ev.name}`,
       "",
       ...body,
+      ...extra,
       "",
       "모임 앱에서 참석 여부를 알려 주세요.",
       "로그인: 내 이름 선택 + 휴대폰 번호 뒷자리 4자리",
@@ -578,7 +587,7 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
             </button>
             <button className="btn white" type="button" style={{ width: "auto", minWidth: 200 }} onClick={copyAnnounce}>{announced ? "복사했어요 ✓" : "대화방 안내 문구 복사"}</button>
           </div>
-          <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회원마다 회비가 다르면 금액과 계좌 대신 “앱 접속 후 내 회비 확인”으로 나가요.</span>
+          <span className="small">“대화방 안내 문구 복사”는 위 “회원에게 보이는 모습”과 같은 내용으로 단체 대화방에 붙여 넣을 공지를 만들어 줘요. 회비는 참석 날짜·직책별 금액을 모두 적고 입금 기한·계좌도 함께 나가요. 조편성·숙소 배정·차량 배정은 회원에게 배포된 것만 명단으로 함께 나가요.</span>
           </section>
 
           {/* 공개·참석 설정: 모두 누르면 바로 저장(저장 버튼과 상관없음) */}
