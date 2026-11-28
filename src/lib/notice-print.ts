@@ -140,6 +140,14 @@ h1 { margin: 0 0 6px; font-size: 22px; line-height: 1.5; font-weight: 800; }
 .ln:focus { outline: 1px dashed #888; }
 @media print {
   body { padding: 0; }
+  /* 페이지 나눔이 잘 되게 인쇄에서는 블록 배치로(플렉스 안에서는 "나누지 않기"가 잘 안 먹는다)
+     일정 한 묶음(시각 + 장소·메모·안내)은 페이지 중간에서 자르지 않고 다음 페이지로 넘긴다.
+     한 묶음이 한 페이지보다 길면 그 안에서는 나뉜다. 날짜 줄은 다음 일정과 붙여 둔다 */
+  .page, #doc { display: block !important; }
+  #doc > * + * { margin-top: 40px; }
+  .item { display: block !important; break-inside: avoid; page-break-inside: avoid; }
+  .ib { padding-left: 0.9em; }
+  .day, .box h2, .ln.head { break-after: avoid; page-break-after: avoid; }
   .tools, .bt, .it, .it2 { display: none !important; }
   .box h2 { padding-right: 0; }
 }
