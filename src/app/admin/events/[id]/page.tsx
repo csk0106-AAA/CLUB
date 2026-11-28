@@ -1,6 +1,7 @@
 "use client";
 
 import { VisSwitch } from "@/components/VisSwitch";
+import { noticeHtml, type Notice } from "@/lib/notice-print";
 import { CalcText } from "@/components/CalcField";
 import { ActionNote } from "@/components/ActionNote";
 import Link from "next/link";
@@ -378,7 +379,6 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   // 일정 공지(단체 대화방용·인쇄용). "회원에게 보이는 모습"과 같은 순서·아이콘을 쓴다.
   //  full=false: 주요 정보만(정식 공지 전에 먼저 공유) — 일시·장소·주요 활동·회비·안내
   //  full=true : 전체 — 주요 정보 + 마감 일정 · 세부일정 · 조편성 · 숙소 · 차량(차량은 최종 배정 전이면 지금 신청 기준)
-  type Notice = { title: string; body: string[]; sections: { title: string; lines: string[] }[]; footer: string[] };
   async function buildNotice(full: boolean): Promise<Notice | null> {
     if (!ev) return null;
     const body = eventInfoLines(infoEv, { kind: "rules", rules }, actNames).flatMap((x) =>
@@ -436,51 +436,12 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
     w.document.write("<p style='font:16px sans-serif;padding:24px'>불러오는 중이에요…</p>");
     const n = await buildNotice(true);
     if (!n) { w.close(); return; }
-    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    // 줄 앞 공백은 들여쓰기로 살린다
-    const line = (t: string) => {
-      const pad = /^ */.exec(t)![0].length;
-      return t.trim() ? `<div class="ln" style="padding-left:${pad * 0.45}em">${esc(t.trim())}</div>` : `<div class="gap"></div>`;
-    };
-    const link = n.footer[n.footer.length - 1];
-    const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(ev?.name ?? "공지")}</title>
-<style>
-@page { size: A4; margin: 14mm; }
-* { box-sizing: border-box; }
-body { margin: 0; padding: 24px; background: #f3f3f6; color: #1e2027; font: 15px/1.65 "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
-.page { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
-h1 { margin: 0; font-size: 24px; line-height: 1.35; }
-.box { background: #fff; border: 1px solid #dcdde3; border-radius: 12px; padding: 14px 18px; break-inside: avoid; page-break-inside: avoid; }
-.box h2 { margin: 0 0 8px; font-size: 18px; padding-bottom: 6px; border-bottom: 2px solid #5B4DE8; }
-.ln { overflow-wrap: anywhere; }
-.gap { height: 8px; }
-.tools { display: flex; gap: 8px; justify-content: flex-end; }
-.tools button { font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 10px; border: 1px solid #5B4DE8; background: #5B4DE8; color: #fff; cursor: pointer; }
-.tools button.sub { background: #fff; color: #4436C4; }
-.tools .hint { flex: 1; align-self: center; color: #555863; font-size: 14px; }
-.box { position: relative; }
-.box .x { position: absolute; top: 8px; right: 8px; font: 13px sans-serif; border: 1px solid #dcdde3; background: #fff; color: #555863; border-radius: 8px; padding: 2px 8px; cursor: pointer; }
-[contenteditable="true"]:focus { outline: 2px dashed #5B4DE8; outline-offset: 4px; border-radius: 6px; }
-@media print { body { background: #fff; padding: 0; } .tools, .box .x { display: none !important; } .box { border-color: #c9cad2; } }
-</style></head><body><div class="page">
-<div class="tools"><span class="hint">글을 눌러 바로 고칠 수 있어요. 필요한 안내는 칸을 추가해 적은 뒤 인쇄하세요.</span><button class="sub" onclick="addBox()">＋ 안내 칸 추가</button><button onclick="window.print()">인쇄 · PDF로 저장</button></div>
-<div id="doc" contenteditable="true" spellcheck="false" style="display:flex;flex-direction:column;gap:14px">
-<h1>${esc(n.title)}</h1>
-<div class="box">${n.body.map(line).join("")}</div>
-${n.sections.map((x) => `<div class="box"><h2>${esc(x.title)}</h2>${x.lines.map(line).join("")}</div>`).join("\n")}
-<div class="box" id="foot">${n.footer.slice(0, -1).map(line).join("")}<div class="ln">${esc(link)}</div></div>
-</div></div>
-<script>
-// 칸마다 지우기 버튼(인쇄에는 안 나옴), 안내 칸 추가(맨 아래 로그인 안내 칸 바로 위)
-function xBtn(box){var b=document.createElement("button");b.className="x";b.type="button";b.contentEditable="false";b.textContent="칸 지우기";b.onclick=function(){if(confirm("이 칸을 지울까요?"))box.remove();};box.appendChild(b);}
-document.querySelectorAll(".box").forEach(xBtn);
-function addBox(){var box=document.createElement("div");box.className="box";box.innerHTML="<h2>📢 안내</h2><div class='ln'>여기에 안내를 적어 주세요.</div>";var foot=document.getElementById("foot");foot.parentNode.insertBefore(box,foot);xBtn(box);var t=box.querySelector(".ln");var r=document.createRange();r.selectNodeContents(t);var sel=getSelection();sel.removeAllRanges();sel.addRange(r);t.focus&&t.focus();box.scrollIntoView({block:"center"});}
-</script>
-</body></html>`;
+    const html = noticeHtml(n, ev?.name ?? "공지");
     w.document.open();
     w.document.write(html);
     w.document.close();
   }
+
 
   // 미응답 회원에게 보낼 안내 문구를 복사한다(단체 대화방 등에 붙여 넣기).
   async function copyReminder(names: string[]) {
