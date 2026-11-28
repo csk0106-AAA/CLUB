@@ -379,27 +379,30 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
   // 계좌는 모든 회원 회비가 같을 때만 넣는다(infoLines 참고).
   async function copyAnnounce() {
     if (!ev) return;
+    // 읽기 쉽게: 칸마다 구분선 + 아이콘 제목, 줄마다 아이콘. 회비 금액은 ▪️ 목록, 안내 글은 들여쓰기
+    const LINE = "━━━━━━━━━━━━━━";
     const body = eventInfoLines(infoEv, { kind: "rules", rules }, actNames).flatMap((x) =>
-      x.multiline ? [`${x.icon} ${x.label}`,...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
+      x.multiline ? [`${x.icon} ${x.label}`, ...x.value.split("\n").map((l) => (x.label === "회비" ? `  ▪️ ${l}` : `   ${l}`))] : [`${x.icon} ${x.label}: ${x.value}`],
     );
-    // 배정 내용(회원에게 배포된 것만): 조편성 · 숙소 · 차량. 못 불러오면 빼고 나머지만 복사한다.
+    // 배정 내용: 마감 일정 · 조편성 · 숙소 · 차량(차량은 최종 배정 전이면 지금 신청 기준). 못 불러오면 빼고 나머지만 복사한다.
     const a = await api<{ groups: { title: string; lines: string[] }[]; rooms: string[]; cars: string[]; carsFinal: boolean; deadlines: string[] }>(`/api/admin/events/${id}/announce`);
     const extra: string[] = [];
+    const sec = (title: string, ls: string[]) => { if (ls.length) extra.push("", LINE, title, LINE, ...ls.map((l) => `  ${l}`)); };
     if (a.ok) {
-      if (a.data.deadlines.length) extra.push("", "📌 마감 일정", ...a.data.deadlines.map((l) => `   ${l}`));
-      for (const g of a.data.groups) if (g.lines.length) extra.push("", `👥 조편성 · ${g.title}`, ...g.lines.map((l) => `   ${l}`));
-      if (a.data.rooms.length) extra.push("", "🛏 숙소 배정", ...a.data.rooms.map((l) => `   ${l}`));
-      if (a.data.cars.length) extra.push("", a.data.carsFinal ? "🚗 차량 배정" : "🚗 차량 배정 (지금 신청 기준, 최종 배정 전)", ...a.data.cars.map((l) => `   ${l}`));
+      sec("📌 마감 일정", a.data.deadlines);
+      for (const g of a.data.groups) sec(`👥 조편성 · ${g.title}`, g.lines);
+      sec("🛏 숙소 배정", a.data.rooms);
+      sec(a.data.carsFinal ? "🚗 차량 배정" : "🚗 차량 배정 (지금 신청 기준, 최종 배정 전)", a.data.cars);
     }
     const lines = [
-      `[${ev.type}] ${ev.name}`,
-      "",
+      `📣 [${ev.type}] ${ev.name}`,
+      LINE,
       ...body,
       ...extra,
       "",
-      "모임 앱에서 참석 여부를 알려 주세요.",
-      "로그인: 내 이름 선택 + 휴대폰 번호 뒷자리 4자리",
-      "",
+      LINE,
+      "📲 모임 앱에서 참석 여부를 알려 주세요.",
+      "🔑 로그인: 내 이름 선택 + 휴대폰 번호 뒷자리 4자리",
       // 맨 마지막: 이 일정 바로가기(로그인하면 바로 이 일정 화면이 열려요)
       `👉 일정 바로가기: ${window.location.origin}/events/${id}`,
     ];
