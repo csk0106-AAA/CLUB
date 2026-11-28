@@ -383,12 +383,13 @@ function Detail({ id, initialTab }: { id: string; initialTab?: string }) {
       x.multiline ? [`${x.icon} ${x.label}`,...x.value.split("\n").map((l) => `   ${l}`)] : [`${x.icon} ${x.label}: ${x.value}`],
     );
     // 배정 내용(회원에게 배포된 것만): 조편성 · 숙소 · 차량. 못 불러오면 빼고 나머지만 복사한다.
-    const a = await api<{ groups: { title: string; lines: string[] }[]; rooms: string[]; cars: string[] }>(`/api/admin/events/${id}/announce`);
+    const a = await api<{ groups: { title: string; lines: string[] }[]; rooms: string[]; cars: string[]; carsFinal: boolean; deadlines: string[] }>(`/api/admin/events/${id}/announce`);
     const extra: string[] = [];
     if (a.ok) {
+      if (a.data.deadlines.length) extra.push("", "📌 마감 일정", ...a.data.deadlines.map((l) => `   ${l}`));
       for (const g of a.data.groups) if (g.lines.length) extra.push("", `👥 조편성 · ${g.title}`, ...g.lines.map((l) => `   ${l}`));
       if (a.data.rooms.length) extra.push("", "🛏 숙소 배정", ...a.data.rooms.map((l) => `   ${l}`));
-      if (a.data.cars.length) extra.push("", "🚗 차량 배정", ...a.data.cars.map((l) => `   ${l}`));
+      if (a.data.cars.length) extra.push("", a.data.carsFinal ? "🚗 차량 배정" : "🚗 차량 배정 (지금 신청 기준, 최종 배정 전)", ...a.data.cars.map((l) => `   ${l}`));
     }
     const lines = [
       `[${ev.type}] ${ev.name}`,

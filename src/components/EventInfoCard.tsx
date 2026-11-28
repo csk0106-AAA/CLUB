@@ -26,6 +26,7 @@ export type InfoEvent = {
   endsAt: string;
   place: string;
   booking?: string;
+  fee?: string; // 기본 회비(회비 줄이 없을 때 대화방 공지에 쓴다)
   feeDeadline?: string;
   account?: string;
   accountHolder?: string;
@@ -77,9 +78,13 @@ export function eventInfoLines(ev: InfoEvent, fee: FeeView, actNames: string[]):
   if (ev.place) out.push({ icon: "📍", label: "장소", value: ev.place });
   if (actNames.length) out.push({ icon: "🎯", label: "주요 활동", value: actNames.join(" · ") });
   // 회비: 대화방 공지에는 조건별(참석 날짜·회원구분·직책) 금액을 모두 적고 입금 기한·계좌도 함께(앱이 어려운 회원도 공지만 보고 낼 수 있게)
+  //  회비 줄이 없으면 기본 회비(ev.fee). 금액이 있으면 계좌는 늘 함께.
   const rules = fee.kind === "rules" ? fee.rules : [];
-  if (rules.length > 1) {
-    out.push({ icon: "💰", label: "회비", value: rules.map((r) => `${ruleLabel(r)}: ${won(r.amount)}`).join("\n"), multiline: true });
+  const one = oneFee(rules);
+  const base = !rules.length && Number(ev.fee) > 0 ? ev.fee! : "";
+  if (fee.kind === "rules" && (rules.length || base)) {
+    if (one || base) out.push({ icon: "💰", label: "회비", value: won(one || base) });
+    else out.push({ icon: "💰", label: "회비", value: rules.map((r) => `${ruleLabel(r)}: ${won(r.amount)}`).join("\n"), multiline: true });
     if (ev.feeDeadline) out.push({ icon: "⏰", label: "입금 기한", value: fmtDate(ev.feeDeadline) });
     const account = accountText(ev);
     if (account) out.push({ icon: "🏦", label: "계좌", value: account });
